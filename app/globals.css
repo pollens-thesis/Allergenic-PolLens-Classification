@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+:root {
+  --field: #0b1d17;       /* darkfield microscopy background */
+  --field-deep: #081712;
+  --panel: #f6f1e4;       /* herbarium specimen card */
+  --panel-line: #e3d9bf;
+  --ink: #1c2a20;         /* near-black botanical ink for text on panel */
+  --parchment: #f1ede0;   /* text on dark field */
+  --sage: #8fa396;        /* muted text on dark field */
+  --pollen: #e8b93f;      /* pollen-grain gold, primary accent */
+  --pollen-soft: #f3d27a;
+  --anther: #d9704a;      /* secondary accent, used sparingly */
+  --grass: #3f8f5c;       /* Poaceae (Grass) line */
+  --birch: #4f7bb0;       /* Betula (Birch) line */
+  --hazel: #8a6fb0;       /* Corylus (Hazel) line */
+
+  --font-display: var(--font-fraunces);
+  --font-body: var(--font-inter);
+  --font-mono: var(--font-plex-mono);
+}
+
+@theme inline {
+  --color-field: var(--field);
+  --color-panel: var(--panel);
+  --color-panel-line: var(--panel-line);
+  --color-ink: var(--ink);
+  --color-parchment: var(--parchment);
+  --color-sage: var(--sage);
+  --color-pollen: var(--pollen);
+  --color-anther: var(--anther);
+  --color-grass: var(--grass);
+  --color-birch: var(--birch);
+  --color-hazel: var(--hazel);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background: var(--field);
+  color: var(--parchment);
+  font-family: var(--font-body);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drift {
+    animation: none !important;
+  }
+}
+
+@keyframes drift {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  50%  { transform: translate(var(--dx, 6px), var(--dy, -8px)) rotate(var(--dr, 6deg)); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes glow {
+  0%, 100% { opacity: var(--op-a, 0.55); }
+  50% { opacity: var(--op-b, 0.95); }
+}
+
+.drift {
+  animation: drift var(--dur, 14s) ease-in-out infinite,
+             glow var(--gdur, 6s) ease-in-out infinite;
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--pollen);
+  outline-offset: 3px;
+}
