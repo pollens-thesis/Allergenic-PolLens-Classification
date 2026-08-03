@@ -46,8 +46,8 @@ html, body {
 }
 
 body {
-  background: var(--field);
-  color: var(--parchment);
+  background: var(--panel);
+  color: var(--ink);
   font-family: var(--font-body);
 }
 
