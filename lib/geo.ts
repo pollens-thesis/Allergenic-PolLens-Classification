@@ -91,6 +91,19 @@ export function featureKey(feature: GeoFeature): string {
   return normalize(feature.properties.name);
 }
 
+/**
+ * How a boundary's name is written on the map and in lists.
+ *
+ * PSGC names carry bookkeeping the reader does not need: NCR's districts and
+ * Isabela City are tagged "(Not a Province)" because they sit in the province
+ * slot without being one. Dropping it costs nothing — the key is derived from
+ * the raw name, so matching is unaffected — and it stops four overlapping
+ * labels from covering Metro Manila the moment you zoom in.
+ */
+export function displayName(name: string): string {
+  return name.replace(/\s*\(Not a Province\)\s*$/i, "").replace(/^City of\s+/, "");
+}
+
 export type PlaceStats = {
   key: string;
   label: string;
@@ -186,6 +199,44 @@ export function describeTopPollen(detections: SpecimenDetection[]): string {
   return `${species.genus} (${species.commonName})`;
 }
 
+// --- Search & regions ------------------------------------------------------
+
+/**
+ * Substring match on the same normalised form used to match reports to
+ * boundaries, so searching behaves like the rest of the map: "tayabas" finds
+ * "City of Tayabas", and accents or punctuation in either string are ignored.
+ */
+export function matchesQuery(name: string, query: string): boolean {
+  const q = normalize(query);
+  if (!q) return true;
+  return normalize(name).includes(q);
+}
+
+/**
+ * The 17 regions, in PSA order, keyed by the region PSGC carried on every
+ * province feature. Towns do not carry one — municipality files were trimmed to
+ * name and psgc — so this filter is offered on the country view only.
+ */
+export const REGIONS: { code: number; label: string }[] = [
+  { code: 1300000000, label: "NCR" },
+  { code: 1400000000, label: "CAR" },
+  { code: 100000000, label: "Region I (Ilocos)" },
+  { code: 200000000, label: "Region II (Cagayan Valley)" },
+  { code: 300000000, label: "Region III (Central Luzon)" },
+  { code: 400000000, label: "Region IV-A (CALABARZON)" },
+  { code: 1700000000, label: "MIMAROPA" },
+  { code: 500000000, label: "Region V (Bicol)" },
+  { code: 600000000, label: "Region VI (Western Visayas)" },
+  { code: 700000000, label: "Region VII (Central Visayas)" },
+  { code: 800000000, label: "Region VIII (Eastern Visayas)" },
+  { code: 900000000, label: "Region IX (Zamboanga Peninsula)" },
+  { code: 1000000000, label: "Region X (Northern Mindanao)" },
+  { code: 1100000000, label: "Region XI (Davao)" },
+  { code: 1200000000, label: "Region XII (SOCCSKSARGEN)" },
+  { code: 1600000000, label: "Caraga" },
+  { code: 1900000000, label: "BARMM" },
+];
+
 // --- Projection ------------------------------------------------------------
 
 export type Projection = {
@@ -274,6 +325,112 @@ export function centroid(feature: GeoFeature, projection: Projection): [number, 
   }
   const n = largest.length || 1;
   return [sumX / n, sumY / n];
+}
+
+// --- Zoom & pan ------------------------------------------------------------
+//
+// The map is one SVG with a fitted viewBox, so zooming is a transform on the
+// drawn group rather than a change of projection: `translate(x, y) scale(k)`
+// applied to projected coordinates. Nothing is re-projected and no geometry is
+// re-fetched, which is what makes zooming free — the province outlines are
+// already at full source precision, they were just drawn small.
+
+export type ViewTransform = { x: number; y: number; k: number };
+export type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
+
+export const IDENTITY_VIEW: ViewTransform = { x: 0, y: 0, k: 1 };
+export const MIN_ZOOM = 1;
+export const MAX_ZOOM = 20;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+/**
+ * Keep the drawing inside the frame: never zoomed out past fit, never panned so
+ * far that the map leaves the viewport. At k = 1 the only legal offset is 0,
+ * which is why dragging an unzoomed map does nothing.
+ */
+export function clampView(view: ViewTransform, width: number, height: number): ViewTransform {
+  const k = clamp(view.k, MIN_ZOOM, MAX_ZOOM);
+  return {
+    k,
+    x: clamp(view.x, width * (1 - k), 0),
+    y: clamp(view.y, height * (1 - k), 0),
+  };
+}
+
+/**
+ * Scale about a fixed point — the cursor, or the pinch midpoint — so whatever
+ * is under the pointer stays under it.
+ */
+export function zoomAtPoint(
+  view: ViewTransform,
+  factor: number,
+  px: number,
+  py: number,
+  width: number,
+  height: number,
+): ViewTransform {
+  const k = clamp(view.k * factor, MIN_ZOOM, MAX_ZOOM);
+  return clampView(
+    {
+      k,
+      x: px - ((px - view.x) / view.k) * k,
+      y: py - ((py - view.y) / view.k) * k,
+    },
+    width,
+    height,
+  );
+}
+
+export function featureBounds(feature: GeoFeature, projection: Projection): Bounds {
+  const rings: number[][][] =
+    feature.geometry.type === "Polygon"
+      ? feature.geometry.coordinates
+      : feature.geometry.coordinates.flat();
+
+  const bounds: Bounds = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+  for (const ring of rings) {
+    for (const [lon, lat] of ring) {
+      const [x, y] = projection.project(lon, lat);
+      bounds.minX = Math.min(bounds.minX, x);
+      bounds.minY = Math.min(bounds.minY, y);
+      bounds.maxX = Math.max(bounds.maxX, x);
+      bounds.maxY = Math.max(bounds.maxY, y);
+    }
+  }
+  return bounds;
+}
+
+/** Bounds of a place drawn as a point, padded so fitting one doesn't zoom to a dot. */
+export function pointBounds(x: number, y: number, radius = 40): Bounds {
+  return { minX: x - radius, minY: y - radius, maxX: x + radius, maxY: y + radius };
+}
+
+export function unionBounds(all: Bounds[]): Bounds | null {
+  if (all.length === 0) return null;
+  return all.reduce((a, b) => ({
+    minX: Math.min(a.minX, b.minX),
+    minY: Math.min(a.minY, b.minY),
+    maxX: Math.max(a.maxX, b.maxX),
+    maxY: Math.max(a.maxY, b.maxY),
+  }));
+}
+
+/** The view that frames `bounds`, with margin left around it. */
+export function fitView(
+  bounds: Bounds,
+  width: number,
+  height: number,
+  margin = 0.78,
+): ViewTransform {
+  const spanX = Math.max(bounds.maxX - bounds.minX, 1);
+  const spanY = Math.max(bounds.maxY - bounds.minY, 1);
+  const k = clamp((Math.min(width / spanX, height / spanY) * margin), MIN_ZOOM, MAX_ZOOM);
+  const cx = (bounds.minX + bounds.maxX) / 2;
+  const cy = (bounds.minY + bounds.maxY) / 2;
+  return clampView({ k, x: width / 2 - cx * k, y: height / 2 - cy * k }, width, height);
 }
 
 // --- Colour ----------------------------------------------------------------
