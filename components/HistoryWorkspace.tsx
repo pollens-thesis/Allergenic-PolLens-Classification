@@ -16,6 +16,7 @@ export default function HistoryWorkspace() {
   const [reports, setReports] = useState<Specimen[] | null>(null);
   const searchParams = useSearchParams();
   const savedId = searchParams.get("saved");
+  const initialQuery = searchParams.get("q") ?? "";
 
   useEffect(() => {
     let cancelled = false;
@@ -36,5 +37,11 @@ export default function HistoryWorkspace() {
     );
   }
 
-  return <HistoryReportsTable data={reports.map(toHistoryReport)} highlightId={savedId} />;
+  return (
+    <HistoryReportsTable
+      data={reports.map(toHistoryReport)}
+      highlightId={savedId}
+      initialQuery={initialQuery}
+    />
+  );
 }
