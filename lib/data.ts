@@ -151,9 +151,50 @@ export function formatWeather(weather: WeatherConditions | null): string {
 // Specimens
 // ---------------------------------------------------------------------------
 
+/**
+ * When the specimen was collected in the field — not when it was analyzed.
+ * ISO 8601, either "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm" when the hour is known.
+ * Sorts correctly as a plain string, which avoids the timezone traps of
+ * parsing a bare date with `new Date()`.
+ */
+export type CollectedAt = string;
+
+/** The date half of a `CollectedAt`, e.g. "2026-07-29". */
+export function getCollectionDate(collectedAt: CollectedAt): string {
+  return collectedAt.split("T")[0];
+}
+
+/** The time half, e.g. "08:30", or null when only the date was recorded. */
+export function getCollectionTime(collectedAt: CollectedAt): string | null {
+  return collectedAt.split("T")[1] ?? null;
+}
+
+/** "08:30" → "8:30 AM". */
+export function formatTime(hhmm: string): string {
+  const [rawHour, minute] = hhmm.split(":");
+  const hour = Number(rawHour);
+  const suffix = hour < 12 ? "AM" : "PM";
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${hour12}:${minute} ${suffix}`;
+}
+
+/** "Jul 29, 2026 · 8:30 AM", or just the date when no time was recorded. */
+export function formatCollectedAt(collectedAt: CollectedAt): string {
+  // Parsed as local midnight; `new Date("2026-07-29")` would be UTC midnight
+  // and render as the previous day for anyone west of Greenwich.
+  const date = new Date(`${getCollectionDate(collectedAt)}T00:00:00`);
+  const formatted = date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const time = getCollectionTime(collectedAt);
+  return time ? `${formatted} · ${formatTime(time)}` : formatted;
+}
+
 export type Specimen = {
   sampleId: string;
-  date: string; // ISO date
+  collectedAt: CollectedAt;
   location: string;
   detections: SpecimenDetection[]; // one row per pollen type found, richest first
   notes: string; // free-text field notes; "" when the researcher left it blank
@@ -172,98 +213,98 @@ function d(speciesId: SpeciesId, grainCount: number, avgConfidence: number): Spe
 
 export const specimens: Specimen[] = [
   {
-    sampleId: "PLN-2026-0142", date: "2026-07-29", location: "Lucena City, Quezon",
+    sampleId: "PLN-2026-0142", collectedAt: "2026-07-29T07:15", location: "Lucena City, Quezon",
     detections: [d("ambrosia", 18, 0.97), d("poaceae", 6, 0.84), d("artemisia", 2, 0.71)],
     notes: "Dense ragweed load along the roadside transect; slide re-stained once for contrast.",
     weather: { condition: "Sunny", temperatureC: 32, humidityPct: 64, windKph: 11 },
     researcher: "You", status: "Completed",
   },
   {
-    sampleId: "PLN-2026-0141", date: "2026-07-28", location: "Lucban, Quezon",
+    sampleId: "PLN-2026-0141", collectedAt: "2026-07-28T09:40", location: "Lucban, Quezon",
     detections: [d("betula", 12, 0.91), d("pinus", 5, 0.8), d("quercus", 3, 0.76)],
     notes: "Collected upslope of the treeline, mid-morning.",
     weather: { condition: "Partly cloudy", temperatureC: 26, humidityPct: 78, windKph: 8 },
     researcher: "You", status: "Completed",
   },
   {
-    sampleId: "PLN-2026-0140", date: "2026-07-28", location: "Lucena City, Quezon",
+    sampleId: "PLN-2026-0140", collectedAt: "2026-07-28T14:05", location: "Lucena City, Quezon",
     detections: [d("poaceae", 9, 0.62), d("artemisia", 4, 0.58)],
     notes: "Several grains partly obscured by debris — flagged for a second reading.",
     weather: { condition: "Overcast", temperatureC: 29, humidityPct: 85, windKph: 6 },
     researcher: "M. Reyes", status: "Needs review",
   },
   {
-    sampleId: "PLN-2026-0139", date: "2026-07-27", location: "Tayabas, Quezon",
+    sampleId: "PLN-2026-0139", collectedAt: "2026-07-27T08:30", location: "Tayabas, Quezon",
     detections: [d("quercus", 15, 0.94), d("pinus", 4, 0.87), d("poaceae", 2, 0.69)],
     notes: "",
     weather: { condition: "Sunny", temperatureC: 31, humidityPct: 60, windKph: 14 },
     researcher: "You", status: "Completed",
   },
   {
-    sampleId: "PLN-2026-0138", date: "2026-07-26", location: "Lucena City, Quezon",
+    sampleId: "PLN-2026-0138", collectedAt: "2026-07-26", location: "Lucena City, Quezon",
     detections: [d("ambrosia", 11, 0.79), d("poaceae", 7, 0.73)],
     notes: "",
     weather: null,
     researcher: "M. Reyes", status: "Processing",
   },
   {
-    sampleId: "PLN-2026-0137", date: "2026-07-26", location: "Sariaya, Quezon",
+    sampleId: "PLN-2026-0137", collectedAt: "2026-07-26T16:20", location: "Sariaya, Quezon",
     detections: [d("artemisia", 13, 0.86), d("ambrosia", 5, 0.82), d("poaceae", 3, 0.7)],
     notes: "Fallow field margin; strong afternoon breeze during sampling.",
     weather: { condition: "Windy", temperatureC: 30, humidityPct: 58, windKph: 27 },
     researcher: "You", status: "Completed",
   },
   {
-    sampleId: "PLN-2026-0136", date: "2026-07-25", location: "Lucban, Quezon",
+    sampleId: "PLN-2026-0136", collectedAt: "2026-07-25T06:50", location: "Lucban, Quezon",
     detections: [d("pinus", 16, 0.88), d("betula", 4, 0.83)],
     notes: "",
     weather: { condition: "Partly cloudy", temperatureC: 25, humidityPct: 80, windKph: 9 },
     researcher: "You", status: "Completed",
   },
   {
-    sampleId: "PLN-2026-0135", date: "2026-06-14", location: "Lucena City, Quezon",
+    sampleId: "PLN-2026-0135", collectedAt: "2026-06-14T10:10", location: "Lucena City, Quezon",
     detections: [d("poaceae", 21, 0.93), d("quercus", 3, 0.75)],
     notes: "Peak grass season — highest grain count recorded at this site so far.",
     weather: { condition: "Sunny", temperatureC: 33, humidityPct: 62, windKph: 12 },
     researcher: "You", status: "Completed",
   },
   {
-    sampleId: "PLN-2026-0134", date: "2026-05-30", location: "Candelaria, Quezon",
+    sampleId: "PLN-2026-0134", collectedAt: "2026-05-30", location: "Candelaria, Quezon",
     detections: [d("corylus", 10, 0.81), d("alnus", 6, 0.78), d("betula", 2, 0.72)],
     notes: "",
     weather: null,
     researcher: "M. Reyes", status: "Completed",
   },
   {
-    sampleId: "PLN-2026-0133", date: "2026-05-12", location: "Lucban, Quezon",
+    sampleId: "PLN-2026-0133", collectedAt: "2026-05-12T07:35", location: "Lucban, Quezon",
     detections: [d("alnus", 14, 0.9), d("corylus", 5, 0.85)],
     notes: "Sampled after two dry days; slide was unusually clean.",
     weather: { condition: "Sunny", temperatureC: 27, humidityPct: 70, windKph: 10 },
     researcher: "You", status: "Completed",
   },
   {
-    sampleId: "PLN-2026-0132", date: "2026-04-22", location: "Tayabas, Quezon",
+    sampleId: "PLN-2026-0132", collectedAt: "2026-04-22T11:25", location: "Tayabas, Quezon",
     detections: [d("betula", 12, 0.85), d("quercus", 6, 0.8), d("pinus", 3, 0.74)],
     notes: "",
     weather: { condition: "Partly cloudy", temperatureC: 28, humidityPct: 73, windKph: 15 },
     researcher: "You", status: "Completed",
   },
   {
-    sampleId: "PLN-2026-0131", date: "2026-03-18", location: "Lucena City, Quezon",
+    sampleId: "PLN-2026-0131", collectedAt: "2026-03-18T15:45", location: "Lucena City, Quezon",
     detections: [d("quercus", 8, 0.77), d("poaceae", 6, 0.64), d("alnus", 2, 0.6)],
     notes: "Low contrast on the oak grains; worth confirming against the reference set.",
     weather: { condition: "Rainy", temperatureC: 24, humidityPct: 92, windKph: 18 },
     researcher: "M. Reyes", status: "Needs review",
   },
   {
-    sampleId: "PLN-2026-0130", date: "2026-02-09", location: "Sariaya, Quezon",
+    sampleId: "PLN-2026-0130", collectedAt: "2026-02-09T08:05", location: "Sariaya, Quezon",
     detections: [d("alnus", 17, 0.89), d("corylus", 7, 0.83), d("betula", 2, 0.76)],
     notes: "",
     weather: { condition: "Overcast", temperatureC: 23, humidityPct: 88, windKph: 7 },
     researcher: "You", status: "Completed",
   },
   {
-    sampleId: "PLN-2026-0129", date: "2026-01-20", location: "Lucban, Quezon",
+    sampleId: "PLN-2026-0129", collectedAt: "2026-01-20T05:55", location: "Lucban, Quezon",
     detections: [d("corylus", 19, 0.92), d("alnus", 8, 0.87)],
     notes: "Early hazel flush, sampled at dawn.",
     weather: { condition: "Overcast", temperatureC: 22, humidityPct: 90, windKph: 5 },
@@ -277,7 +318,7 @@ export const specimens: Specimen[] = [
 
 export type HistoryReport = {
   sampleId: string;
-  date: string;
+  collectedAt: CollectedAt;
   location: string;
   topPollen: string;
   status: ReportStatus;
@@ -288,7 +329,7 @@ export const historyReports: HistoryReport[] = specimens.map((s) => {
   const sp = top ? getSpecies(top.speciesId) : null;
   return {
     sampleId: s.sampleId,
-    date: s.date,
+    collectedAt: s.collectedAt,
     location: s.location,
     topPollen: sp ? `${sp.genus} (${sp.commonName})` : "No pollen detected",
     status: s.status,
@@ -312,7 +353,8 @@ export type Detection = {
 };
 
 export const recentDetections: Detection[] = [...specimens]
-  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  // ISO strings sort chronologically as text, so no timezone-sensitive parsing.
+  .sort((a, b) => b.collectedAt.localeCompare(a.collectedAt))
   .slice(0, 6)
   .flatMap((s) => {
     const top = getTopDetection(s.detections);
@@ -329,7 +371,7 @@ export const recentDetections: Detection[] = [...specimens]
         grainCount: top.grainCount,
         confidence: top.avgConfidence,
         researcher: s.researcher,
-        createdAt: s.date,
+        createdAt: s.collectedAt,
       },
     ];
   });
@@ -374,7 +416,9 @@ export const dashboardStats = {
   totalSpecimens: specimens.length,
   classesTracked: speciesCatalog.length,
   detectionsThisWeek: specimens.filter((s) => {
-    const days = new Date(MOCK_TODAY).getTime() - new Date(s.date).getTime();
+    // Compare date parts only, so a recorded time can't shift the week window.
+    const days =
+      new Date(MOCK_TODAY).getTime() - new Date(getCollectionDate(s.collectedAt)).getTime();
     return days >= 0 && days <= ONE_WEEK_MS;
   }).length,
   avgConfidence:
