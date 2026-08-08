@@ -12,10 +12,10 @@ app as static files under `public/geo/`:
 | File | Contents | Size |
 |---|---|---|
 | `provinces.json` | 88 provinces and districts | ~260 KB |
-| `municipalities/<psgc>.json` | one file per province, 1,613 towns total | ~650 KB across 88 files |
+| `municipalities/<psgc>.json` | one file per province, 1,633 towns total | ~860 KB across 88 files |
 
 The country view always loads `provinces.json`. A province's towns are fetched
-only when that province is opened, so no page load pulls more than about 40 KB
+only when that province is opened, so no page load pulls more than about 45 KB
 of town geometry (Palawan is the largest single file).
 
 Shipping the data rather than calling a service was deliberate:
@@ -61,42 +61,75 @@ Region I through `1200000000` for Region XII, plus `1300000000` (NCR),
    towns. At the zoom levels drawn, more precision is invisible and only costs
    bytes.
 
-Rounding and property-trimming take the raw ~2.2 MB down to ~910 KB.
+Rounding and property-trimming take the raw ~2.2 MB down to ~1.1 MB.
 
-## What is missing from the source
+## The gap in the province layer, and how it was filled
 
-Three gaps, all handled explicitly rather than silently:
+The province-level source is incomplete. `municities-provdist-<prov>.json`
+covers 1,613 of the country's 1,642 cities and municipalities; 29 are absent,
+for two reasons:
 
-**Highly Urbanized Cities have no polygon.** The PSA treats an HUC as
-administratively independent of the province that surrounds it, so it appears in
-neither the province list nor the province's town list. Lucena City is the case
-that matters here — it is the busiest site in the seed data. Davao, Cebu,
-Iloilo, Bacolod, Baguio and the rest are absent for the same reason. NCR cities
-are unaffected, since NCR's districts decompose into cities normally.
+**Highly Urbanized Cities are not in any province's town list.** The PSA treats
+an HUC as administratively independent of the province around it, so it belongs
+to no province's set. Sixteen are missing this way — Lucena, Cebu City,
+Lapu-Lapu, Mandaue, Bacolod, Iloilo City, Baguio, Cagayan de Oro, Iligan,
+Zamboanga City, Butuan, Tacloban, General Santos, Angeles, Olongapo and Puerto
+Princesa. (Not every HUC: Davao City ships in the province layer as
+`City of Davao`. NCR is unaffected — its districts decompose into cities
+normally.)
 
-These are drawn as points from `POINT_TOWNS` in `lib/geo.ts`. Add an entry there
-for any other HUC that gets sampled:
+**Five ordinary towns carry a null geometry** in that layer: Pikit, Kalayaan,
+City of San Pedro, Jala-Jala and Limasawa.
 
-```ts
-export const POINT_TOWNS = {
-  lucena: { label: "Lucena City", lon: 121.617, lat: 13.9314 },
-};
+**The remaining eight** are the municipalities of BARMM's Special Geographic
+Area, PSGC `1909900000` — the barangays transferred from Cotabato in 2019.
+
+### Recovering them from the barangay layer
+
+The barangay layer has no such gap: every one of the 1,642 municities has a
+file, and the barangays inside one tile it exactly. So a missing town's outline
+can be recovered by dissolving its barangays — dropping every edge that two of
+them share and stitching what is left into rings. `scripts/fill-missing-towns.mjs`
+does this, and running it is what took the shipped set from 1,613 towns to
+1,633:
+
+```
+node scripts/fill-missing-towns.mjs <path-to-philippines-json-maps> --write
 ```
 
-Province-level totals are unaffected: they are derived from the province named
-in the report's location, so a report collected in an HUC still colours the
-province around it.
+It prints every name and parent province it derives, and writes nothing without
+`--write`, because both are inferred rather than given:
 
-**Five towns ship without geometry** and are skipped: Pikit (Cotabato),
-Kalayaan (Palawan), City of San Pedro (Laguna), Jala-Jala (Rizal) and Limasawa
-(Southern Leyte).
+- **Names** are not in the barangay layer. They come from the 2019 municity
+  layer — by PSGC for the five ordinary towns, whose codes survived, and by
+  overlap for the cities, which were recoded when they became independent. The
+  overlap is measured against barangay vertices rather than the dissolved
+  outline: an outline lies *on* the border it shares with its neighbours, where
+  point-in-polygon between two editions is a coin toss. Where one candidate
+  encloses another — Baguio City sits entirely inside Tuba — the tightest fit
+  wins.
+- **Parent provinces** come from the source's own parent code where it records
+  one, and otherwise from which province the outline sits in. Limasawa sits in
+  none, being an island off the coast of Southern Leyte, so it falls back to the
+  nearest.
 
-**One province entry has no name.** PSGC `1909900000` is BARMM's Special
-Geographic Area — the barangays transferred from Cotabato in 2019. It is
-labelled explicitly in the build step, and its town file is empty.
+The recovered outline and its neighbours describe the same border but were
+simplified in different passes, so they disagree by roughly a hundred metres —
+a hairline gap once the map is zoomed in. Each new outline is therefore snapped
+onto a neighbour's vertex wherever one is within ~1 km. Coastline is untouched:
+the open sea has no neighbouring vertex to snap to.
 
-Any sampled place that matches no polygon and has no point entry is listed under
-the map as "not shown", so a missing boundary never reads as a missing hotzone.
+### What is still missing
+
+**Kalayaan (Palawan)** has a null geometry in every layer of both editions — the
+Spratly claim has no polygon to recover. **The eight BARMM Special Geographic
+Area municipalities** dissolve cleanly but cannot be named: they were carved out
+of Cotabato towns in 2019, so they sit inside 2019 polygons carrying a different
+town's name, and any positional match would confidently return the wrong one.
+The script skips both rather than guessing, and says so when it runs.
+
+Any sampled place that matches no polygon is listed under the map as "not
+shown", so a missing boundary never reads as a missing hotzone.
 
 ## Matching a report to a place
 
