@@ -37,7 +37,7 @@ export default function DashboardPage() {
             <div>
               <div className="text-[15px] font-medium text-parchment">Start new analysis</div>
               <div className="text-[13px] text-parchment/60">
-                Upload a microscope image to identify its pollen allergen class
+                Upload a microscope image to count and identify the pollen grains it contains
               </div>
             </div>
           </div>

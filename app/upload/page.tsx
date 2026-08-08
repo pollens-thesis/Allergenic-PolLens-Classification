@@ -18,7 +18,7 @@ export default function UploadPage() {
             Analyze specimen
           </h1>
           <p className="mt-1 text-sm text-ink/60">
-            Upload a microscope image to identify its pollen allergen class.
+            Upload a microscope image to count and identify the pollen grains it contains.
           </p>
         </div>
 
