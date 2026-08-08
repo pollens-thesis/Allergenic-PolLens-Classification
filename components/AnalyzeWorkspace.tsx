@@ -26,6 +26,7 @@ import {
 } from "@/lib/data";
 import { analyzeSpecimen } from "@/lib/analysis";
 import { saveReport } from "@/lib/store";
+import { accountName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 
 type ItemStatus = "pending" | "analyzing" | "analyzed";
@@ -234,6 +235,7 @@ export default function AnalyzeWorkspace() {
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const settings = useSettings();
+  const researcherName = accountName(settings.email);
 
   // Time is optional — a researcher who only knows the day can leave it blank.
   const collectedAt = collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate;
@@ -278,14 +280,10 @@ export default function AnalyzeWorkspace() {
     // is no hydration mismatch, and nothing the researcher has already typed
     // gets overwritten.
     const startingBatch = items.length === 0;
-    if (startingBatch) {
-      if (!location) setLocation(settings.defaultLocation);
-      if (!researcher) setResearcher(settings.displayName);
-      setWeather((current) => ({ ...current, condition: settings.defaultWeatherCondition }));
-    }
-    // Stamp the batch with "now" the first time images arrive, unless the
-    // researcher has opted to enter the real collection moment themselves.
-    if (!collectedDate && settings.autoStampCollectionTime) {
+    if (startingBatch && !researcher) setResearcher(researcherName);
+    // Stamp the batch with "now" the first time images arrive. Both fields stay
+    // editable, so a slide read long after collection can be corrected.
+    if (!collectedDate) {
       const { date, time } = nowParts();
       setCollectedDate(date);
       setCollectedTime(time);
@@ -305,15 +303,10 @@ export default function AnalyzeWorkspace() {
     items.forEach((item) => URL.revokeObjectURL(item.imageUrl));
     setItems([]);
     setSelectedId(null);
-    setWeather({ ...EMPTY_WEATHER, condition: settings.defaultWeatherCondition });
-    if (settings.autoStampCollectionTime) {
-      const { date, time } = nowParts();
-      setCollectedDate(date);
-      setCollectedTime(time);
-    } else {
-      setCollectedDate("");
-      setCollectedTime("");
-    }
+    setWeather({ ...EMPTY_WEATHER });
+    const { date, time } = nowParts();
+    setCollectedDate(date);
+    setCollectedTime(time);
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -346,7 +339,7 @@ export default function AnalyzeWorkspace() {
       {
         collectedAt,
         location,
-        researcher: researcher || settings.displayName,
+        researcher: researcher || researcherName,
         weather,
         slides: analyzed.map((item) => ({
           fileName: item.file.name,
@@ -481,7 +474,7 @@ export default function AnalyzeWorkspace() {
                 type="text"
                 value={researcher}
                 onChange={(e) => setResearcher(e.target.value)}
-                placeholder={settings.displayName}
+                placeholder={researcherName}
                 className={fieldClass}
               />
             </label>

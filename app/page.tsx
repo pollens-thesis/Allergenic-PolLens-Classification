@@ -1,6 +1,5 @@
-import Link from "next/link";
 import PollenField from "@/components/PollenField";
-import GoogleIcon from "@/components/GoogleIcon";
+import SignInForm from "@/components/SignInForm";
 
 export default function LoginPage() {
   return (
@@ -80,18 +79,12 @@ export default function LoginPage() {
               Sign in to continue
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-ink/70">
-              Use your Google account to open the console. New accounts are
-              registered automatically on first sign-in.
+              Sign in with the account your institution works from. The console
+              takes its name from that address.
             </p>
           </div>
 
-          <Link
-            href="/dashboard"
-            className="focus-ring flex w-full items-center justify-center gap-3 rounded-md border border-panel-line bg-white px-5 py-3 text-sm font-medium text-ink shadow-sm transition hover:shadow-md hover:-translate-y-[1px] active:translate-y-0"
-          >
-            <GoogleIcon />
-            Continue with Google
-          </Link>
+          <SignInForm />
 
           <div className="my-7 flex items-center gap-3 text-ink/65">
             <span className="h-px flex-1 bg-panel-line" />

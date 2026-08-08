@@ -18,7 +18,7 @@ export default function SettingsPage() {
             Settings
           </h1>
           <p className="mt-1 text-sm text-ink/70">
-            Your profile, the defaults applied to new analyses, and the data stored in this browser.
+            The account this browser is signed in with, and the data it has stored.
           </p>
         </div>
 

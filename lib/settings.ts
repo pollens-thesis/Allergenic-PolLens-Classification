@@ -1,8 +1,13 @@
 // ---------------------------------------------------------------------------
-// USER SETTINGS
+// SIGNED-IN ACCOUNT
 //
-// Preferences are small and read on almost every screen, so they live in
-// localStorage rather than IndexedDB (which holds the reports and their images).
+// The console stores one thing about you: the address you signed in with.
+// Everything else on the profile — the name, the institution, the initials on
+// the avatar — is derived from it in lib/account.ts rather than stored, so
+// there is no second copy to fall out of step.
+//
+// It is small and read on almost every screen, so it lives in localStorage
+// rather than IndexedDB (which holds the reports and their images).
 //
 // Reading is done through `useSyncExternalStore`, the React API built for
 // exactly this: an external mutable source that must not desync during
@@ -10,40 +15,23 @@
 // HTML is stable, and React swaps in the stored values after hydration without
 // a mismatch warning or a setState-inside-an-effect.
 //
-// TODO(backend): when accounts are real, `load`/`save` become GET/PATCH on the
-// profile endpoint and localStorage becomes an offline cache. Nothing that
-// calls useSettings() has to change.
+// TODO(backend): when Google sign-in is real this becomes the session, and the
+// address comes from the ID token rather than from the sign-in form. Nothing
+// that calls useSettings() has to change.
 // ---------------------------------------------------------------------------
 
 import { useSyncExternalStore } from "react";
-import type { WeatherCondition } from "@/lib/data";
 
 const STORAGE_KEY = "pollens.settings.v1";
 /** Fired on the window so other components in this tab re-read immediately. */
 const CHANGE_EVENT = "pollens:settings-changed";
 
 export type Settings = {
-  // Profile
-  displayName: string;
+  /** The address this browser is signed in with. Empty means signed out. */
   email: string;
-  institution: string;
-  role: string;
-
-  // Defaults applied when a new batch is started on the Analyze screen
-  defaultLocation: string;
-  defaultWeatherCondition: WeatherCondition;
-  autoStampCollectionTime: boolean;
 };
 
-export const DEFAULT_SETTINGS: Settings = {
-  displayName: "Researcher",
-  email: "",
-  institution: "",
-  role: "Researcher",
-  defaultLocation: "",
-  defaultWeatherCondition: "Sunny",
-  autoStampCollectionTime: true,
-};
+export const DEFAULT_SETTINGS: Settings = { email: "" };
 
 // getSnapshot must return a referentially stable value or React re-renders
 // forever, so the parsed object is cached against the raw string it came from.
@@ -72,7 +60,7 @@ function getSnapshot(): Settings {
   try {
     // Spread over the defaults so a settings blob written by an older build is
     // still usable after new fields are added.
-    cachedValue = { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) };
+      cachedValue = { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) };
   } catch {
     cachedValue = DEFAULT_SETTINGS;
   }
@@ -107,6 +95,7 @@ export function updateSettings(patch: Partial<Settings>): void {
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
+/** Sign out: forget the account this browser was using. */
 export function resetSettings(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
@@ -114,12 +103,4 @@ export function resetSettings(): void {
     // ignore
   }
   window.dispatchEvent(new Event(CHANGE_EVENT));
-}
-
-/** "Maria Reyes" → "MR"; falls back to the first two characters. */
-export function getInitials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "??";
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
