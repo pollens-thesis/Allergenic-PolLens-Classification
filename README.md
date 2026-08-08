@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PolLens
 
-## Getting Started
+A research console for identifying airborne pollen allergens from microscope
+imagery. Upload slide photographs, count and classify the grains on them, and
+build a searchable history and a map of where each pollen type is turning up.
 
-First, run the development server:
+Thesis project. Next.js 16 · React 19 · TypeScript · Tailwind CSS v4.
+
+## Running it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev     # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+```bash
+npm run build   # production build
+npm start       # serve it
+npm run lint    # eslint
+npx tsc --noEmit  # typecheck
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Documentation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **[docs/overview.md](docs/overview.md)** — what the app does today, the data
+  model, where the seams to a real backend are, and what is still unbuilt.
+  Start here.
+- [docs/pollen-map.md](docs/pollen-map.md) — the shipped boundary data: where it
+  came from, what was missing, and how zoom and search work.
+- [docs/allergen-reference-plan.md](docs/allergen-reference-plan.md) — the plan
+  for the unbuilt `/dataset` page.
+- [AGENTS.md](AGENTS.md) — conventions for anyone writing code here.
 
-## Learn More
+## Status
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The front end is complete and usable end to end. Not real yet: the detection
+model (`lib/analysis.ts` returns deterministic mock readings), sign-in
+(`components/SignInForm.tsx` is a stand-in), and the server — reports live in
+the browser's IndexedDB, so they do not travel between machines. Each of those
+is isolated behind a single module; see the overview for the migration path.
