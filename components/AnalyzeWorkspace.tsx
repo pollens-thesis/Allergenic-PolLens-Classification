@@ -22,9 +22,22 @@ import {
   type WeatherCondition,
   type WeatherConditions,
 } from "@/lib/data";
-import { analyzeSpecimen, saveSpecimen, type AnalysisResult } from "@/lib/analysis";
+import { analyzeSpecimen, saveSpecimen } from "@/lib/analysis";
 
-type Stage = "empty" | "ready" | "analyzing" | "result";
+type ItemStatus = "pending" | "analyzing" | "analyzed";
+
+/** One uploaded slide. Detections and notes are per image; the collection
+ *  details (location, researcher, weather) are shared by the whole batch. */
+type BatchItem = {
+  id: string;
+  file: File;
+  imageUrl: string;
+  status: ItemStatus;
+  detections: SpecimenDetection[];
+  notes: string;
+  saving: boolean;
+  savedSampleId: string | null;
+};
 
 const EMPTY_WEATHER: WeatherConditions = {
   condition: "Sunny",
@@ -36,13 +49,15 @@ const EMPTY_WEATHER: WeatherConditions = {
 const fieldClass =
   "focus-ring w-full rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink placeholder:text-ink/35";
 
+const sectionHeadingClass = "mb-2 text-[11px] tracking-[0.2em] text-ink/45 uppercase";
+
 function riskBadgeClass(level: Species["riskLevel"]) {
   if (level === "High") return "bg-[#b3492f]/10 text-[#b3492f]";
   if (level === "Moderate") return "bg-anther/10 text-anther";
   return "bg-[#3f7a4f]/10 text-[#3f7a4f]";
 }
 
-/** One pollen type found on the slide: how many grains, and how sure the model is. */
+/** One pollen type found on a slide: how many grains, and how sure the model is. */
 function DetectionRow({ detection }: { detection: SpecimenDetection }) {
   const species = getSpecies(detection.speciesId);
   const confidencePct = Math.round(detection.avgConfidence * 100);
@@ -104,14 +119,12 @@ function MeasurementField({
   label,
   value,
   onChange,
-  placeholder,
   min,
   max,
 }: {
   label: string;
   value: number | null;
   onChange: (next: number | null) => void;
-  placeholder: string;
   min?: number;
   max?: number;
 }) {
@@ -124,7 +137,7 @@ function MeasurementField({
         min={min}
         max={max}
         value={value ?? ""}
-        placeholder={placeholder}
+        placeholder="—"
         onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
         className={fieldClass}
       />
@@ -132,96 +145,203 @@ function MeasurementField({
   );
 }
 
+/** One row in the batch list: thumbnail, file name, and a live one-line summary. */
+function SpecimenListRow({
+  item,
+  isSelected,
+  onSelect,
+  onRemove,
+}: {
+  item: BatchItem;
+  isSelected: boolean;
+  onSelect: () => void;
+  onRemove: () => void;
+}) {
+  const grains = getTotalGrains(item.detections);
+
+  return (
+    <li className="flex items-stretch gap-1">
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-current={isSelected}
+        className={`focus-ring flex min-w-0 flex-1 items-center gap-3 rounded-md border px-2.5 py-2 text-left transition ${
+          isSelected
+            ? "border-ink/25 bg-white"
+            : "border-panel-line bg-white/50 hover:border-ink/20"
+        }`}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={item.imageUrl}
+          alt=""
+          className="h-10 w-10 shrink-0 rounded object-cover bg-panel"
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[12.5px] text-ink">{item.file.name}</span>
+          <span className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-ink/50">
+            {item.status === "pending" && "Not analyzed yet"}
+            {item.status === "analyzing" && (
+              <>
+                <Loader2 size={11} strokeWidth={2} className="animate-spin" />
+                Analyzing…
+              </>
+            )}
+            {item.status === "analyzed" && (
+              <span style={{ fontFamily: "var(--font-mono)" }}>
+                {grains} {grains === 1 ? "grain" : "grains"} · {item.detections.length}{" "}
+                {item.detections.length === 1 ? "type" : "types"}
+              </span>
+            )}
+            {item.savedSampleId && (
+              <Check size={11} strokeWidth={2.25} className="text-[#3f7a4f]" />
+            )}
+          </span>
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Remove ${item.file.name}`}
+        className="focus-ring flex w-8 shrink-0 items-center justify-center rounded-md border border-panel-line bg-white/50 text-ink/35 transition hover:text-ink"
+      >
+        <X size={13} strokeWidth={1.75} />
+      </button>
+    </li>
+  );
+}
+
 export default function AnalyzeWorkspace() {
-  const [stage, setStage] = useState<Stage>("empty");
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [items, setItems] = useState<BatchItem[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [location, setLocation] = useState("");
   const [researcher, setResearcher] = useState("You");
-  const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [notes, setNotes] = useState("");
   const [weather, setWeather] = useState<WeatherConditions>(EMPTY_WEATHER);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [savedSampleId, setSavedSampleId] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [savingAll, setSavingAll] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const detections = result ? [...result.detections].sort(sortByAbundance) : [];
+  const selected = items.find((item) => item.id === selectedId) ?? null;
+  const pendingCount = items.filter((item) => item.status === "pending").length;
+  const unsavedCount = items.filter(
+    (item) => item.status === "analyzed" && !item.savedSampleId,
+  ).length;
+
+  const detections = selected ? [...selected.detections].sort(sortByAbundance) : [];
   const totalGrains = getTotalGrains(detections);
   const overallConfidence = getWeightedAvgConfidence(detections);
+
+  function patchItem(id: string, patch: Partial<BatchItem>) {
+    setItems((current) =>
+      current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+    );
+  }
 
   function updateWeather<K extends keyof WeatherConditions>(key: K, value: WeatherConditions[K]) {
     setWeather((current) => ({ ...current, [key]: value }));
   }
 
-  function handleFile(nextFile: File | undefined) {
-    if (!nextFile || !nextFile.type.startsWith("image/")) return;
-    if (imageUrl) URL.revokeObjectURL(imageUrl);
-    setImageUrl(URL.createObjectURL(nextFile));
-    setFile(nextFile);
-    setResult(null);
-    setSaved(false);
-    setSavedSampleId(null);
-    setStage("ready");
+  function handleFiles(fileList: FileList | null) {
+    const images = Array.from(fileList ?? []).filter((f) => f.type.startsWith("image/"));
+    if (images.length === 0) return;
+
+    const added: BatchItem[] = images.map((file) => ({
+      id: crypto.randomUUID(),
+      file,
+      imageUrl: URL.createObjectURL(file),
+      status: "pending",
+      detections: [],
+      notes: "",
+      saving: false,
+      savedSampleId: null,
+    }));
+
+    setItems((current) => [...current, ...added]);
+    setSelectedId((current) => current ?? added[0].id);
+    if (inputRef.current) inputRef.current.value = "";
   }
 
-  function handleRemoveImage() {
-    if (imageUrl) URL.revokeObjectURL(imageUrl);
-    setImageUrl(null);
-    setFile(null);
-    setResult(null);
-    setNotes("");
+  function handleRemove(id: string) {
+    const target = items.find((item) => item.id === id);
+    if (target) URL.revokeObjectURL(target.imageUrl);
+    const next = items.filter((item) => item.id !== id);
+    setItems(next);
+    if (selectedId === id) setSelectedId(next[0]?.id ?? null);
+  }
+
+  function handleClearAll() {
+    items.forEach((item) => URL.revokeObjectURL(item.imageUrl));
+    setItems([]);
+    setSelectedId(null);
     setWeather(EMPTY_WEATHER);
-    setSaved(false);
-    setSavedSampleId(null);
-    setStage("empty");
     if (inputRef.current) inputRef.current.value = "";
   }
 
   async function handleAnalyze() {
-    if (!file) return;
-    setStage("analyzing");
-    const analysis = await analyzeSpecimen(file);
-    setResult(analysis);
-    // A weather lookup (once wired up) pre-fills the fields; until then the
-    // researcher's own entries are kept.
-    if (analysis.weather) setWeather(analysis.weather);
-    setStage("result");
+    const queue = items.filter((item) => item.status === "pending");
+    if (queue.length === 0) return;
+
+    setIsAnalyzing(true);
+    // One slide at a time, so the list shows progress as each result lands.
+    for (const item of queue) {
+      patchItem(item.id, { status: "analyzing" });
+      const analysis = await analyzeSpecimen(item.file);
+      patchItem(item.id, { status: "analyzed", detections: analysis.detections });
+      if (analysis.weather) setWeather(analysis.weather);
+    }
+    setIsAnalyzing(false);
   }
 
-  async function handleSave() {
-    if (!result) return;
-    setSaving(true);
+  async function saveItem(item: BatchItem) {
+    patchItem(item.id, { saving: true });
     const specimen = await saveSpecimen({
       location,
       researcher,
-      notes,
+      notes: item.notes,
       weather,
-      detections,
+      detections: item.detections,
     });
-    setSavedSampleId(specimen.sampleId);
-    setSaving(false);
-    setSaved(true);
+    patchItem(item.id, { saving: false, savedSampleId: specimen.sampleId });
+  }
+
+  async function handleSaveAll() {
+    setSavingAll(true);
+    for (const item of items) {
+      if (item.status === "analyzed" && !item.savedSampleId) await saveItem(item);
+    }
+    setSavingAll(false);
   }
 
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
-      {/* Left: image + metadata */}
+      {/* Left: batch + collection details */}
       <div className="rounded-lg border border-panel-line bg-white/60 p-5 xl:col-span-3">
-        <h2 className="mb-4 text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
-          Specimen image
-        </h2>
+        <div className="mb-4 flex items-baseline justify-between gap-3">
+          <h2 className="text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+            Specimen images
+          </h2>
+          {items.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="focus-ring rounded text-[12px] text-ink/45 transition hover:text-ink"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
 
         <input
           ref={inputRef}
           type="file"
           accept="image/*"
+          multiple
           className="hidden"
-          onChange={(e) => handleFile(e.target.files?.[0])}
+          onChange={(e) => handleFiles(e.target.files)}
         />
 
-        {!imageUrl ? (
+        {items.length === 0 ? (
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
@@ -233,7 +353,7 @@ export default function AnalyzeWorkspace() {
             onDrop={(e) => {
               e.preventDefault();
               setIsDragging(false);
-              handleFile(e.dataTransfer.files?.[0]);
+              handleFiles(e.dataTransfer.files);
             }}
             className={`focus-ring flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-14 text-center transition ${
               isDragging ? "border-anther bg-anther/5" : "border-panel-line hover:border-ink/30"
@@ -243,57 +363,125 @@ export default function AnalyzeWorkspace() {
               <ImagePlus size={20} strokeWidth={1.75} className="text-ink/50" />
             </span>
             <span className="text-[13.5px] text-ink/70">
-              Drag and drop a microscope image, or click to browse
+              Drag and drop microscope images, or click to browse
             </span>
-            <span className="text-[11.5px] text-ink/40">JPG, PNG — up to 10MB</span>
+            <span className="text-[11.5px] text-ink/40">
+              JPG, PNG — up to 10MB each. Select several to analyze a batch.
+            </span>
           </button>
         ) : (
-          <div className="relative overflow-hidden rounded-lg border border-panel-line">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageUrl} alt="Uploaded specimen preview" className="max-h-80 w-full object-contain bg-panel" />
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDragging(false);
+              handleFiles(e.dataTransfer.files);
+            }}
+            className={`rounded-lg border-2 border-dashed p-2 transition ${
+              isDragging ? "border-anther bg-anther/5" : "border-transparent"
+            }`}
+          >
+            <ul className="flex flex-col gap-1.5">
+              {items.map((item) => (
+                <SpecimenListRow
+                  key={item.id}
+                  item={item}
+                  isSelected={item.id === selectedId}
+                  onSelect={() => setSelectedId(item.id)}
+                  onRemove={() => handleRemove(item.id)}
+                />
+              ))}
+            </ul>
             <button
               type="button"
-              onClick={handleRemoveImage}
-              aria-label="Remove image"
-              className="focus-ring absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-ink/80 text-parchment hover:bg-ink"
+              onClick={() => inputRef.current?.click()}
+              className="focus-ring mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-panel-line px-3 py-2 text-[12.5px] text-ink/55 transition hover:border-ink/25 hover:text-ink"
             >
-              <X size={14} strokeWidth={1.75} />
+              <ImagePlus size={14} strokeWidth={1.75} />
+              Add more images
             </button>
-            <div className="border-t border-panel-line bg-white px-3 py-2 text-[12px] text-ink/50">
-              {file?.name}
-            </div>
           </div>
         )}
 
-        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1 block text-[11.5px] text-ink/50">Location</span>
-            <input
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g. Lucena City, Quezon"
-              className={fieldClass}
+        {/* Collection details — shared by every slide in the batch. */}
+        <div className="mt-5">
+          <h3 className={sectionHeadingClass} style={{ fontFamily: "var(--font-mono)" }}>
+            Collection details
+          </h3>
+          <p className="mb-2.5 text-[11.5px] text-ink/40">
+            Applies to every specimen in this batch.
+          </p>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block text-[11.5px] text-ink/50">Location</span>
+              <input
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="e.g. Lucena City, Quezon"
+                className={fieldClass}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[11.5px] text-ink/50">Researcher</span>
+              <input
+                type="text"
+                value={researcher}
+                onChange={(e) => setResearcher(e.target.value)}
+                className={fieldClass}
+              />
+            </label>
+          </div>
+
+          {/* TODO(backend): fetchWeather(location) will pre-fill these. */}
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <label className="col-span-2 block sm:col-span-1">
+              <span className="mb-1 block text-[11.5px] text-ink/50">Weather</span>
+              <select
+                value={weather.condition}
+                onChange={(e) => updateWeather("condition", e.target.value as WeatherCondition)}
+                className={fieldClass}
+              >
+                {weatherConditionOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <MeasurementField
+              label="Temp (°C)"
+              value={weather.temperatureC}
+              onChange={(next) => updateWeather("temperatureC", next)}
             />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[11.5px] text-ink/50">Researcher</span>
-            <input
-              type="text"
-              value={researcher}
-              onChange={(e) => setResearcher(e.target.value)}
-              className={fieldClass}
+            <MeasurementField
+              label="Humidity (%)"
+              value={weather.humidityPct}
+              onChange={(next) => updateWeather("humidityPct", next)}
+              min={0}
+              max={100}
             />
-          </label>
+            <MeasurementField
+              label="Wind (km/h)"
+              value={weather.windKph}
+              onChange={(next) => updateWeather("windKph", next)}
+              min={0}
+            />
+          </div>
         </div>
 
         <button
           type="button"
-          disabled={!imageUrl || stage === "analyzing"}
+          disabled={pendingCount === 0 || isAnalyzing}
           onClick={handleAnalyze}
           className="focus-ring mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-ink px-4 py-2.5 text-sm font-medium text-parchment transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {stage === "analyzing" ? (
+          {isAnalyzing ? (
             <>
               <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
               Analyzing…
@@ -301,29 +489,68 @@ export default function AnalyzeWorkspace() {
           ) : (
             <>
               <Microscope size={16} strokeWidth={1.75} />
-              Analyze specimen
+              {items.length > 0 && pendingCount === 0
+                ? "All specimens analyzed"
+                : pendingCount > 1
+                  ? `Analyze ${pendingCount} specimens`
+                  : "Analyze specimen"}
             </>
           )}
         </button>
+
+        {unsavedCount > 1 && (
+          <button
+            type="button"
+            disabled={savingAll}
+            onClick={handleSaveAll}
+            className="focus-ring mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-panel-line bg-white px-4 py-2 text-[13px] text-ink/70 transition hover:text-ink disabled:opacity-50"
+          >
+            {savingAll ? (
+              <>
+                <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
+                Saving…
+              </>
+            ) : (
+              <>
+                <Save size={14} strokeWidth={1.75} />
+                Save all {unsavedCount} to history
+              </>
+            )}
+          </button>
+        )}
       </div>
 
-      {/* Right: result */}
+      {/* Right: result for the selected specimen */}
       <div className="rounded-lg border border-panel-line bg-white/60 p-5 xl:col-span-2">
         <h2 className="mb-4 text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
           Result
         </h2>
 
-        {stage !== "result" || !result ? (
+        {!selected || selected.status !== "analyzed" ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-lg bg-panel/60 px-6 py-14 text-center">
             <Microscope size={22} strokeWidth={1.5} className="text-ink/25" />
             <p className="text-[13px] text-ink/45">
-              {stage === "analyzing"
+              {selected?.status === "analyzing"
                 ? "Counting and identifying pollen grains…"
-                : "Upload an image and run analysis to see every pollen type detected, with its grain count and average confidence."}
+                : selected
+                  ? "This specimen hasn't been analyzed yet. Run the analysis to see its pollen breakdown."
+                  : "Upload one or more images and run analysis to see every pollen type detected, with its grain count and average confidence."}
             </p>
           </div>
         ) : (
           <div>
+            <div className="mb-3 overflow-hidden rounded-md border border-panel-line">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={selected.imageUrl}
+                alt={`Specimen ${selected.file.name}`}
+                className="max-h-44 w-full bg-panel object-contain"
+              />
+              <div className="truncate border-t border-panel-line bg-white px-3 py-2 text-[12px] text-ink/55">
+                {selected.file.name}
+              </div>
+            </div>
+
             <p className="mb-3 flex items-center gap-1.5 text-[12px] text-ink/55">
               <MapPin size={13} strokeWidth={1.75} className="shrink-0 text-ink/35" />
               <span className="truncate">{location || "Location not specified"}</span>
@@ -355,7 +582,7 @@ export default function AnalyzeWorkspace() {
 
             {/* Detected pollen */}
             <div className="mb-5">
-              <h3 className="mb-2 text-[11px] tracking-[0.2em] text-ink/45 uppercase" style={{ fontFamily: "var(--font-mono)" }}>
+              <h3 className={sectionHeadingClass} style={{ fontFamily: "var(--font-mono)" }}>
                 Pollen detected
               </h3>
               {detections.length === 0 ? (
@@ -371,60 +598,15 @@ export default function AnalyzeWorkspace() {
               )}
             </div>
 
-            {/* Collection conditions.
-                TODO(backend): fetchWeather(location) will pre-fill these. */}
+            {/* Notes — per specimen, unlike the batch-level collection details. */}
             <div className="mb-5">
-              <h3 className="mb-2 text-[11px] tracking-[0.2em] text-ink/45 uppercase" style={{ fontFamily: "var(--font-mono)" }}>
-                Weather conditions
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="col-span-2 block">
-                  <span className="mb-1 block text-[11.5px] text-ink/50">Conditions</span>
-                  <select
-                    value={weather.condition}
-                    onChange={(e) => updateWeather("condition", e.target.value as WeatherCondition)}
-                    className={fieldClass}
-                  >
-                    {weatherConditionOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <MeasurementField
-                  label="Temperature (°C)"
-                  value={weather.temperatureC}
-                  onChange={(next) => updateWeather("temperatureC", next)}
-                  placeholder="—"
-                />
-                <MeasurementField
-                  label="Humidity (%)"
-                  value={weather.humidityPct}
-                  onChange={(next) => updateWeather("humidityPct", next)}
-                  placeholder="—"
-                  min={0}
-                  max={100}
-                />
-                <MeasurementField
-                  label="Wind (km/h)"
-                  value={weather.windKph}
-                  onChange={(next) => updateWeather("windKph", next)}
-                  placeholder="—"
-                  min={0}
-                />
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div className="mb-5">
-              <h3 className="mb-2 text-[11px] tracking-[0.2em] text-ink/45 uppercase" style={{ fontFamily: "var(--font-mono)" }}>
+              <h3 className={sectionHeadingClass} style={{ fontFamily: "var(--font-mono)" }}>
                 Notes
               </h3>
               <textarea
                 rows={3}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                value={selected.notes}
+                onChange={(e) => patchItem(selected.id, { notes: e.target.value })}
                 placeholder="Slide preparation, staining, obscured grains, anything unusual…"
                 className={`${fieldClass} resize-y`}
               />
@@ -433,16 +615,16 @@ export default function AnalyzeWorkspace() {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={handleSave}
-                disabled={saved || saving}
+                onClick={() => saveItem(selected)}
+                disabled={selected.saving || selected.savedSampleId !== null}
                 className="focus-ring flex flex-1 items-center justify-center gap-2 rounded-md bg-ink px-3 py-2 text-[13px] font-medium text-parchment transition hover:opacity-90 disabled:cursor-default disabled:opacity-60"
               >
-                {saving ? (
+                {selected.saving ? (
                   <>
                     <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
                     Saving…
                   </>
-                ) : saved ? (
+                ) : selected.savedSampleId ? (
                   <>
                     <Check size={14} strokeWidth={1.75} />
                     Saved
@@ -456,19 +638,20 @@ export default function AnalyzeWorkspace() {
               </button>
               <button
                 type="button"
-                onClick={handleRemoveImage}
+                onClick={handleClearAll}
                 className="focus-ring flex items-center justify-center gap-2 rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink/70 transition hover:text-ink"
               >
                 <RotateCcw size={14} strokeWidth={1.75} />
-                New
+                New batch
               </button>
             </div>
 
-            {saved && (
+            {selected.savedSampleId && (
               <p className="mt-3 text-[11.5px] text-ink/40">
                 Saved as{" "}
-                <span style={{ fontFamily: "var(--font-mono)" }}>{savedSampleId}</span> locally for
-                this session — this will sync to your real History once the backend is connected.
+                <span style={{ fontFamily: "var(--font-mono)" }}>{selected.savedSampleId}</span>{" "}
+                locally for this session — this will sync to your real History once the backend is
+                connected.
               </p>
             )}
           </div>
