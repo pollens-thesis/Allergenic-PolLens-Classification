@@ -18,8 +18,8 @@ export default function PollenMapPage() {
             Pollen map
           </h1>
           <p className="mt-1 text-sm text-ink/60">
-            Where each pollen type is turning up. Towns are shaded by how many grains have been
-            counted there.
+            Where each pollen type is turning up. Provinces are shaded by how many grains have been
+            counted in them — open one to see which of its towns the pollen came from.
           </p>
         </div>
 
