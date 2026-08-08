@@ -48,12 +48,116 @@ export function getSpecies(id: SpeciesId): Species {
 
 export type ReportStatus = "Completed" | "Processing" | "Needs review";
 
+// ---------------------------------------------------------------------------
+// Detections
+//
+// The detection model reports one box per pollen grain, so its raw output is a
+// flat list of `GrainPrediction`. The UI (and the record we persist) wants one
+// row per species, so `aggregateGrainPredictions` collapses that list into
+// `SpecimenDetection[]`. Keeping the two shapes separate is what lets the mock
+// in lib/analysis.ts be swapped for a real inference call without touching any
+// component: only the source of the predictions changes.
+// ---------------------------------------------------------------------------
+
+export type GrainPrediction = {
+  speciesId: SpeciesId;
+  confidence: number; // 0-1, this single grain's score
+};
+
+export type SpecimenDetection = {
+  speciesId: SpeciesId;
+  grainCount: number;
+  avgConfidence: number; // 0-1, mean confidence across that species' grains
+};
+
+/** Collapse per-grain predictions into one row per species, richest first. */
+export function aggregateGrainPredictions(predictions: GrainPrediction[]): SpecimenDetection[] {
+  const bySpecies = new Map<SpeciesId, { grainCount: number; confidenceSum: number }>();
+
+  for (const p of predictions) {
+    const entry = bySpecies.get(p.speciesId) ?? { grainCount: 0, confidenceSum: 0 };
+    entry.grainCount += 1;
+    entry.confidenceSum += p.confidence;
+    bySpecies.set(p.speciesId, entry);
+  }
+
+  return [...bySpecies.entries()]
+    .map(([speciesId, { grainCount, confidenceSum }]) => ({
+      speciesId,
+      grainCount,
+      avgConfidence: confidenceSum / grainCount,
+    }))
+    .sort(sortByAbundance);
+}
+
+/** Most abundant species first; ties broken by the more confident reading. */
+export function sortByAbundance(a: SpecimenDetection, b: SpecimenDetection): number {
+  return b.grainCount - a.grainCount || b.avgConfidence - a.avgConfidence;
+}
+
+export function getTopDetection(detections: SpecimenDetection[]): SpecimenDetection | null {
+  if (detections.length === 0) return null;
+  return [...detections].sort(sortByAbundance)[0];
+}
+
+export function getTotalGrains(detections: SpecimenDetection[]): number {
+  return detections.reduce((sum, d) => sum + d.grainCount, 0);
+}
+
+/**
+ * Overall confidence for a reading, weighted by grain count so a 14-grain
+ * species counts for more than a single stray grain.
+ */
+export function getWeightedAvgConfidence(detections: SpecimenDetection[]): number {
+  const grains = getTotalGrains(detections);
+  if (grains === 0) return 0;
+  return detections.reduce((sum, d) => sum + d.avgConfidence * d.grainCount, 0) / grains;
+}
+
+// ---------------------------------------------------------------------------
+// Weather recorded at collection time. Entered by hand today; the same shape is
+// what a weather API lookup would fill in later (see fetchWeather in
+// lib/analysis.ts), which is why every measurement is nullable.
+// ---------------------------------------------------------------------------
+
+export type WeatherCondition = "Sunny" | "Partly cloudy" | "Overcast" | "Rainy" | "Windy";
+
+export const weatherConditionOptions: WeatherCondition[] = [
+  "Sunny",
+  "Partly cloudy",
+  "Overcast",
+  "Rainy",
+  "Windy",
+];
+
+export type WeatherConditions = {
+  condition: WeatherCondition;
+  temperatureC: number | null;
+  humidityPct: number | null;
+  windKph: number | null;
+};
+
+/** e.g. "Sunny · 31°C · 68% RH · 12 km/h", skipping anything not recorded. */
+export function formatWeather(weather: WeatherConditions | null): string {
+  if (!weather) return "Not recorded";
+  const parts: string[] = [weather.condition];
+  if (weather.temperatureC !== null) parts.push(`${weather.temperatureC}°C`);
+  if (weather.humidityPct !== null) parts.push(`${weather.humidityPct}% RH`);
+  if (weather.windKph !== null) parts.push(`${weather.windKph} km/h`);
+  return parts.join(" · ");
+}
+
+// ---------------------------------------------------------------------------
+// Specimens
+// ---------------------------------------------------------------------------
+
 export type Specimen = {
   sampleId: string;
   date: string; // ISO date
   location: string;
-  speciesId: SpeciesId;
-  confidence: number; // 0-1
+  detections: SpecimenDetection[]; // one row per pollen type found, richest first
+  notes: string; // free-text field notes; "" when the researcher left it blank
+  weather: WeatherConditions | null; // null when conditions weren't recorded
   researcher: string;
   status: ReportStatus;
 };
@@ -61,21 +165,110 @@ export type Specimen = {
 // "Today" for the mock dataset, so "this week" / "recent" calculations are stable.
 export const MOCK_TODAY = "2026-07-29";
 
+/** Terse constructor so the specimen table below stays readable. */
+function d(speciesId: SpeciesId, grainCount: number, avgConfidence: number): SpecimenDetection {
+  return { speciesId, grainCount, avgConfidence };
+}
+
 export const specimens: Specimen[] = [
-  { sampleId: "PLN-2026-0142", date: "2026-07-29", location: "Lucena City, Quezon", speciesId: "ambrosia", confidence: 0.97, researcher: "You", status: "Completed" },
-  { sampleId: "PLN-2026-0141", date: "2026-07-28", location: "Lucban, Quezon", speciesId: "betula", confidence: 0.91, researcher: "You", status: "Completed" },
-  { sampleId: "PLN-2026-0140", date: "2026-07-28", location: "Lucena City, Quezon", speciesId: "poaceae", confidence: 0.62, researcher: "M. Reyes", status: "Needs review" },
-  { sampleId: "PLN-2026-0139", date: "2026-07-27", location: "Tayabas, Quezon", speciesId: "quercus", confidence: 0.94, researcher: "You", status: "Completed" },
-  { sampleId: "PLN-2026-0138", date: "2026-07-26", location: "Lucena City, Quezon", speciesId: "ambrosia", confidence: 0.79, researcher: "M. Reyes", status: "Processing" },
-  { sampleId: "PLN-2026-0137", date: "2026-07-26", location: "Sariaya, Quezon", speciesId: "artemisia", confidence: 0.86, researcher: "You", status: "Completed" },
-  { sampleId: "PLN-2026-0136", date: "2026-07-25", location: "Lucban, Quezon", speciesId: "pinus", confidence: 0.88, researcher: "You", status: "Completed" },
-  { sampleId: "PLN-2026-0135", date: "2026-06-14", location: "Lucena City, Quezon", speciesId: "poaceae", confidence: 0.93, researcher: "You", status: "Completed" },
-  { sampleId: "PLN-2026-0134", date: "2026-05-30", location: "Candelaria, Quezon", speciesId: "corylus", confidence: 0.81, researcher: "M. Reyes", status: "Completed" },
-  { sampleId: "PLN-2026-0133", date: "2026-05-12", location: "Lucban, Quezon", speciesId: "alnus", confidence: 0.90, researcher: "You", status: "Completed" },
-  { sampleId: "PLN-2026-0132", date: "2026-04-22", location: "Tayabas, Quezon", speciesId: "betula", confidence: 0.85, researcher: "You", status: "Completed" },
-  { sampleId: "PLN-2026-0131", date: "2026-03-18", location: "Lucena City, Quezon", speciesId: "quercus", confidence: 0.77, researcher: "M. Reyes", status: "Needs review" },
-  { sampleId: "PLN-2026-0130", date: "2026-02-09", location: "Sariaya, Quezon", speciesId: "alnus", confidence: 0.89, researcher: "You", status: "Completed" },
-  { sampleId: "PLN-2026-0129", date: "2026-01-20", location: "Lucban, Quezon", speciesId: "corylus", confidence: 0.92, researcher: "You", status: "Completed" },
+  {
+    sampleId: "PLN-2026-0142", date: "2026-07-29", location: "Lucena City, Quezon",
+    detections: [d("ambrosia", 18, 0.97), d("poaceae", 6, 0.84), d("artemisia", 2, 0.71)],
+    notes: "Dense ragweed load along the roadside transect; slide re-stained once for contrast.",
+    weather: { condition: "Sunny", temperatureC: 32, humidityPct: 64, windKph: 11 },
+    researcher: "You", status: "Completed",
+  },
+  {
+    sampleId: "PLN-2026-0141", date: "2026-07-28", location: "Lucban, Quezon",
+    detections: [d("betula", 12, 0.91), d("pinus", 5, 0.8), d("quercus", 3, 0.76)],
+    notes: "Collected upslope of the treeline, mid-morning.",
+    weather: { condition: "Partly cloudy", temperatureC: 26, humidityPct: 78, windKph: 8 },
+    researcher: "You", status: "Completed",
+  },
+  {
+    sampleId: "PLN-2026-0140", date: "2026-07-28", location: "Lucena City, Quezon",
+    detections: [d("poaceae", 9, 0.62), d("artemisia", 4, 0.58)],
+    notes: "Several grains partly obscured by debris — flagged for a second reading.",
+    weather: { condition: "Overcast", temperatureC: 29, humidityPct: 85, windKph: 6 },
+    researcher: "M. Reyes", status: "Needs review",
+  },
+  {
+    sampleId: "PLN-2026-0139", date: "2026-07-27", location: "Tayabas, Quezon",
+    detections: [d("quercus", 15, 0.94), d("pinus", 4, 0.87), d("poaceae", 2, 0.69)],
+    notes: "",
+    weather: { condition: "Sunny", temperatureC: 31, humidityPct: 60, windKph: 14 },
+    researcher: "You", status: "Completed",
+  },
+  {
+    sampleId: "PLN-2026-0138", date: "2026-07-26", location: "Lucena City, Quezon",
+    detections: [d("ambrosia", 11, 0.79), d("poaceae", 7, 0.73)],
+    notes: "",
+    weather: null,
+    researcher: "M. Reyes", status: "Processing",
+  },
+  {
+    sampleId: "PLN-2026-0137", date: "2026-07-26", location: "Sariaya, Quezon",
+    detections: [d("artemisia", 13, 0.86), d("ambrosia", 5, 0.82), d("poaceae", 3, 0.7)],
+    notes: "Fallow field margin; strong afternoon breeze during sampling.",
+    weather: { condition: "Windy", temperatureC: 30, humidityPct: 58, windKph: 27 },
+    researcher: "You", status: "Completed",
+  },
+  {
+    sampleId: "PLN-2026-0136", date: "2026-07-25", location: "Lucban, Quezon",
+    detections: [d("pinus", 16, 0.88), d("betula", 4, 0.83)],
+    notes: "",
+    weather: { condition: "Partly cloudy", temperatureC: 25, humidityPct: 80, windKph: 9 },
+    researcher: "You", status: "Completed",
+  },
+  {
+    sampleId: "PLN-2026-0135", date: "2026-06-14", location: "Lucena City, Quezon",
+    detections: [d("poaceae", 21, 0.93), d("quercus", 3, 0.75)],
+    notes: "Peak grass season — highest grain count recorded at this site so far.",
+    weather: { condition: "Sunny", temperatureC: 33, humidityPct: 62, windKph: 12 },
+    researcher: "You", status: "Completed",
+  },
+  {
+    sampleId: "PLN-2026-0134", date: "2026-05-30", location: "Candelaria, Quezon",
+    detections: [d("corylus", 10, 0.81), d("alnus", 6, 0.78), d("betula", 2, 0.72)],
+    notes: "",
+    weather: null,
+    researcher: "M. Reyes", status: "Completed",
+  },
+  {
+    sampleId: "PLN-2026-0133", date: "2026-05-12", location: "Lucban, Quezon",
+    detections: [d("alnus", 14, 0.9), d("corylus", 5, 0.85)],
+    notes: "Sampled after two dry days; slide was unusually clean.",
+    weather: { condition: "Sunny", temperatureC: 27, humidityPct: 70, windKph: 10 },
+    researcher: "You", status: "Completed",
+  },
+  {
+    sampleId: "PLN-2026-0132", date: "2026-04-22", location: "Tayabas, Quezon",
+    detections: [d("betula", 12, 0.85), d("quercus", 6, 0.8), d("pinus", 3, 0.74)],
+    notes: "",
+    weather: { condition: "Partly cloudy", temperatureC: 28, humidityPct: 73, windKph: 15 },
+    researcher: "You", status: "Completed",
+  },
+  {
+    sampleId: "PLN-2026-0131", date: "2026-03-18", location: "Lucena City, Quezon",
+    detections: [d("quercus", 8, 0.77), d("poaceae", 6, 0.64), d("alnus", 2, 0.6)],
+    notes: "Low contrast on the oak grains; worth confirming against the reference set.",
+    weather: { condition: "Rainy", temperatureC: 24, humidityPct: 92, windKph: 18 },
+    researcher: "M. Reyes", status: "Needs review",
+  },
+  {
+    sampleId: "PLN-2026-0130", date: "2026-02-09", location: "Sariaya, Quezon",
+    detections: [d("alnus", 17, 0.89), d("corylus", 7, 0.83), d("betula", 2, 0.76)],
+    notes: "",
+    weather: { condition: "Overcast", temperatureC: 23, humidityPct: 88, windKph: 7 },
+    researcher: "You", status: "Completed",
+  },
+  {
+    sampleId: "PLN-2026-0129", date: "2026-01-20", location: "Lucban, Quezon",
+    detections: [d("corylus", 19, 0.92), d("alnus", 8, 0.87)],
+    notes: "Early hazel flush, sampled at dawn.",
+    weather: { condition: "Overcast", temperatureC: 22, humidityPct: 90, windKph: 5 },
+    researcher: "You", status: "Completed",
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -91,12 +284,13 @@ export type HistoryReport = {
 };
 
 export const historyReports: HistoryReport[] = specimens.map((s) => {
-  const sp = getSpecies(s.speciesId);
+  const top = getTopDetection(s.detections);
+  const sp = top ? getSpecies(top.speciesId) : null;
   return {
     sampleId: s.sampleId,
     date: s.date,
     location: s.location,
-    topPollen: `${sp.genus} (${sp.commonName})`,
+    topPollen: sp ? `${sp.genus} (${sp.commonName})` : "No pollen detected",
     status: s.status,
   };
 });
@@ -111,6 +305,7 @@ export type Detection = {
   classId: SpeciesId;
   className: string;
   code: string;
+  grainCount: number;
   confidence: number;
   researcher: string;
   createdAt: string;
@@ -119,19 +314,24 @@ export type Detection = {
 export const recentDetections: Detection[] = [...specimens]
   .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   .slice(0, 6)
-  .map((s) => {
-    const sp = getSpecies(s.speciesId);
+  .flatMap((s) => {
+    const top = getTopDetection(s.detections);
+    if (!top) return [];
+    const sp = getSpecies(top.speciesId);
     const sampleNumber = parseInt(s.sampleId.split("-").pop() ?? "0", 10);
-    return {
-      id: s.sampleId,
-      thumbColor: sp.color,
-      classId: sp.id,
-      className: `${sp.genus} (${sp.commonName})`,
-      code: `${sp.code}·${sampleNumber}`,
-      confidence: s.confidence,
-      researcher: s.researcher,
-      createdAt: s.date,
-    };
+    return [
+      {
+        id: s.sampleId,
+        thumbColor: sp.color,
+        classId: sp.id,
+        className: `${sp.genus} (${sp.commonName})`,
+        code: `${sp.code}·${sampleNumber}`,
+        grainCount: top.grainCount,
+        confidence: top.avgConfidence,
+        researcher: s.researcher,
+        createdAt: s.date,
+      },
+    ];
   });
 
 // ---------------------------------------------------------------------------
@@ -145,7 +345,8 @@ export type AllergenClass = {
   code: string;
   season: string;
   riskLevel: "High" | "Moderate" | "Low";
-  count: number;
+  count: number; // specimens this class was found in
+  grainCount: number; // grains of this class across every specimen
 };
 
 export const allergenClasses: AllergenClass[] = speciesCatalog.map((sp) => ({
@@ -155,7 +356,12 @@ export const allergenClasses: AllergenClass[] = speciesCatalog.map((sp) => ({
   code: sp.code,
   season: sp.season,
   riskLevel: sp.riskLevel,
-  count: specimens.filter((s) => s.speciesId === sp.id).length,
+  count: specimens.filter((s) => s.detections.some((det) => det.speciesId === sp.id)).length,
+  grainCount: specimens.reduce(
+    (sum, s) =>
+      sum + s.detections.reduce((n, det) => (det.speciesId === sp.id ? n + det.grainCount : n), 0),
+    0,
+  ),
 }));
 
 // ---------------------------------------------------------------------------
@@ -172,7 +378,8 @@ export const dashboardStats = {
     return days >= 0 && days <= ONE_WEEK_MS;
   }).length,
   avgConfidence:
-    specimens.reduce((sum, s) => sum + s.confidence, 0) / specimens.length,
+    specimens.reduce((sum, s) => sum + getWeightedAvgConfidence(s.detections), 0) /
+    specimens.length,
 };
 
 // ---------------------------------------------------------------------------
