@@ -41,8 +41,18 @@
   box-sizing: border-box;
 }
 
-html, body {
+html {
   height: 100%;
+}
+
+/*
+ * min-height, not height: capping the body at the viewport makes the page
+ * shell exactly as tall as the sidebar, which leaves a `position: sticky`
+ * sidebar no room to travel inside its containing block — it just scrolls
+ * away. The body has to grow with its content for the sidebar to stay pinned.
+ */
+body {
+  min-height: 100%;
 }
 
 body {
