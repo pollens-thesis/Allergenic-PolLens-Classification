@@ -15,6 +15,16 @@
   --birch: #4f7bb0;       /* Betula (Birch) line */
   --hazel: #8a6fb0;       /* Corylus (Hazel) line */
 
+  /*
+   * Accents darkened for use as text. The display versions above are tuned to
+   * be read as colour — a chart line, a progress bar, a tinted badge — and sit
+   * around 2.8:1 on the surfaces this app uses, well under the 4.5:1 a word
+   * needs. These carry the same hue at a weight you can actually read.
+   */
+  --anther-ink: #8f3a1f;  /* anther, for text and badges */
+  --leaf-ink: #2f6340;    /* "Completed" */
+  --ember-ink: #8f3620;   /* "Needs review" */
+
   --font-display: var(--font-fraunces);
   --font-body: var(--font-inter);
   --font-mono: var(--font-plex-mono);
@@ -32,6 +42,9 @@
   --color-grass: var(--grass);
   --color-birch: var(--birch);
   --color-hazel: var(--hazel);
+  --color-anther-ink: var(--anther-ink);
+  --color-leaf-ink: var(--leaf-ink);
+  --color-ember-ink: var(--ember-ink);
   --font-display: var(--font-display);
   --font-body: var(--font-body);
   --font-mono: var(--font-mono);

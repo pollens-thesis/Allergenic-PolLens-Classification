@@ -28,7 +28,7 @@ import { clearAllReports, getStorageSummary, listReports } from "@/lib/store";
 import { exportReportsCsv, exportReportsJson } from "@/lib/export";
 
 const fieldClass =
-  "focus-ring w-full rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink placeholder:text-ink/35";
+  "focus-ring w-full rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink placeholder:text-ink/70";
 
 function Section({
   icon: Icon,
@@ -45,13 +45,13 @@ function Section({
     <section className="rounded-lg border border-panel-line bg-white/60 p-5">
       <div className="mb-4 flex items-start gap-3">
         <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-panel">
-          <Icon size={16} strokeWidth={1.75} className="text-ink/55" />
+          <Icon size={16} strokeWidth={1.75} className="text-ink/70" />
         </span>
         <div>
-          <h2 className="text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+          <h2 className="text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
             {title}
           </h2>
-          <p className="mt-0.5 text-[12.5px] text-ink/50">{description}</p>
+          <p className="mt-0.5 text-[13px] text-ink/70">{description}</p>
         </div>
       </div>
       {children}
@@ -70,9 +70,9 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11.5px] text-ink/50">{label}</span>
+      <span className="mb-1 block text-[12.5px] text-ink/70">{label}</span>
       {children}
-      {hint && <span className="mt-1 block text-[11px] text-ink/40">{hint}</span>}
+      {hint && <span className="mt-1 block text-[12px] text-ink/70">{hint}</span>}
     </label>
   );
 }
@@ -133,7 +133,7 @@ export default function SettingsWorkspace() {
       {savedFlash && (
         <div
           role="status"
-          className="fixed top-5 right-5 z-10 flex items-center gap-2 rounded-md border border-panel-line bg-white px-3 py-2 text-[12.5px] text-ink/70 shadow-sm"
+          className="fixed top-5 right-5 z-10 flex items-center gap-2 rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink/70 shadow-sm"
         >
           <Check size={14} strokeWidth={2} className="text-[#3f7a4f]" />
           Saved
@@ -148,14 +148,14 @@ export default function SettingsWorkspace() {
       >
         <div className="mb-4 flex items-center gap-3">
           <span
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-anther/15 text-[15px] text-anther"
-            style={{ fontFamily: "var(--font-mono)" }}
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-anther/15 text-[15px] text-anther-ink"
+            style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
           >
             {getInitials(settings.displayName)}
           </span>
           <div className="leading-tight">
             <div className="text-[14px] text-ink">{settings.displayName || "Unnamed"}</div>
-            <div className="text-[12px] text-ink/50">
+            <div className="text-[13px] text-ink/70">
               {settings.institution || "No institution set"}
             </div>
           </div>
@@ -243,7 +243,7 @@ export default function SettingsWorkspace() {
           />
           <span>
             <span className="block text-[13px] text-ink">Stamp collection time automatically</span>
-            <span className="mt-0.5 block text-[11.5px] text-ink/45">
+            <span className="mt-0.5 block text-[12.5px] text-ink/65">
               Fills the date and time with &ldquo;now&rdquo; when you add the first image. Turn this
               off if you usually analyze slides well after collecting them, and would rather enter
               the real moment yourself.
@@ -258,7 +258,7 @@ export default function SettingsWorkspace() {
             setSavedFlash(true);
             window.setTimeout(() => setSavedFlash(false), 1200);
           }}
-          className="focus-ring mt-4 inline-flex items-center gap-1.5 rounded-md border border-panel-line bg-white px-3 py-1.5 text-[12.5px] text-ink/60 transition hover:text-ink"
+          className="focus-ring mt-4 inline-flex items-center gap-1.5 rounded-md border border-panel-line bg-white px-3 py-1.5 text-[13px] text-ink/70 transition hover:text-ink"
         >
           <RotateCcw size={13} strokeWidth={1.75} />
           Reset all settings to defaults
@@ -273,22 +273,22 @@ export default function SettingsWorkspace() {
       >
         <div className="mb-4 grid grid-cols-3 gap-3 rounded-md bg-panel/60 px-3 py-3 text-center">
           <div>
-            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)" }}>
+            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
               {storage ? savedReportCount : "—"}
             </div>
-            <div className="text-[11px] text-ink/45">Saved here</div>
+            <div className="text-[12px] text-ink/65">Saved here</div>
           </div>
           <div>
-            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)" }}>
+            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
               {storage ? storage.imageCount : "—"}
             </div>
-            <div className="text-[11px] text-ink/45">Slide images</div>
+            <div className="text-[12px] text-ink/65">Slide images</div>
           </div>
           <div>
-            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)" }}>
+            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
               {storage ? formatBytes(storage.approxBytes) : "—"}
             </div>
-            <div className="text-[11px] text-ink/45">Approx. size</div>
+            <div className="text-[12px] text-ink/65">Approx. size</div>
           </div>
         </div>
 
@@ -315,7 +315,7 @@ export default function SettingsWorkspace() {
         {/* The text lives in its own span: as bare children of a flex row the
             runs either side of {count} become separate flex items and the
             spaces around the number are lost. */}
-        <p className="mt-2 flex items-start gap-1.5 text-[11.5px] text-ink/40">
+        <p className="mt-2 flex items-start gap-1.5 text-[12.5px] text-ink/70">
           <Download size={12} strokeWidth={1.75} className="mt-0.5 shrink-0" />
           <span>
             Exports cover all {reports?.length ?? 0}{" "}
@@ -329,7 +329,7 @@ export default function SettingsWorkspace() {
             <AlertTriangle size={15} strokeWidth={1.75} className="mt-0.5 shrink-0 text-[#b3492f]" />
             <div className="min-w-0 flex-1">
               <div className="text-[13px] font-medium text-ink">Clear locally saved reports</div>
-              <p className="mt-0.5 text-[11.5px] text-ink/55">
+              <p className="mt-0.5 text-[12.5px] text-ink/70">
                 Permanently deletes the {savedReportCount}{" "}
                 {savedReportCount === 1 ? "report" : "reports"}{" "}
                 saved in this browser, and their slide images. The sample records that ship with
@@ -341,19 +341,19 @@ export default function SettingsWorkspace() {
                   type="button"
                   disabled={savedReportCount === 0}
                   onClick={() => setConfirmingClear(true)}
-                  className="focus-ring mt-2.5 inline-flex items-center gap-1.5 rounded-md border border-[#b3492f]/30 bg-white px-3 py-1.5 text-[12.5px] text-[#b3492f] transition hover:bg-[#b3492f]/5 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="focus-ring mt-2.5 inline-flex items-center gap-1.5 rounded-md border border-[#b3492f]/30 bg-white px-3 py-1.5 text-[13px] text-[#b3492f] transition hover:bg-[#b3492f]/5 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Trash2 size={13} strokeWidth={1.75} />
                   Clear saved reports
                 </button>
               ) : (
                 <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                  <span className="text-[12.5px] text-ink/70">Delete {savedReportCount}?</span>
+                  <span className="text-[13px] text-ink/70">Delete {savedReportCount}?</span>
                   <button
                     type="button"
                     disabled={clearing}
                     onClick={handleClearAll}
-                    className="focus-ring inline-flex items-center gap-1.5 rounded-md bg-[#b3492f] px-3 py-1.5 text-[12.5px] font-medium text-parchment transition hover:opacity-90 disabled:opacity-60"
+                    className="focus-ring inline-flex items-center gap-1.5 rounded-md bg-[#b3492f] px-3 py-1.5 text-[13px] font-medium text-parchment transition hover:opacity-90 disabled:opacity-60"
                   >
                     {clearing ? (
                       <>
@@ -370,7 +370,7 @@ export default function SettingsWorkspace() {
                   <button
                     type="button"
                     onClick={() => setConfirmingClear(false)}
-                    className="focus-ring rounded-md border border-panel-line bg-white px-3 py-1.5 text-[12.5px] text-ink/65 transition hover:text-ink"
+                    className="focus-ring rounded-md border border-panel-line bg-white px-3 py-1.5 text-[13px] text-ink/70 transition hover:text-ink"
                   >
                     Cancel
                   </button>
@@ -391,7 +391,7 @@ export default function SettingsWorkspace() {
           <div className="text-[13px] text-ink/70">
             Signed in as{" "}
             <span className="text-ink">{settings.displayName || DEFAULT_SETTINGS.displayName}</span>
-            {settings.email && <span className="text-ink/50"> · {settings.email}</span>}
+            {settings.email && <span className="text-ink/70"> · {settings.email}</span>}
           </div>
           <button
             type="button"
