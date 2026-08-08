@@ -208,50 +208,137 @@ function tightestContaining(points, candidates) {
 }
 
 /**
- * Pull a new outline onto its neighbours' vertices where the two nearly agree.
+ * Weld a recovered outline onto the towns beside it.
  *
- * The recovered boundary and the boundary of the town next to it describe the
- * same border, but they were simplified in different passes — the barangay
- * layer and the province layer — so they disagree by a hundred metres or so.
- * Left alone that shows as a hairline gap once the map is zoomed in. Snapping
- * to a neighbour's vertex when one is within `tolerance` closes the seam
- * without moving anything that is genuinely coastline: the open sea has no
- * neighbouring vertex to snap to.
+ * The recovered boundary and its neighbour's describe the same border, but they
+ * were simplified in different passes — the barangay layer and the province
+ * layer — so they disagree by up to a kilometre. Left alone that shows as a
+ * white wedge between the two once the map is zoomed in.
+ *
+ * Snapping vertex-to-vertex is not enough: between two matched corners the
+ * neighbour draws one straight segment while the recovered outline wanders
+ * through several of its own, and the space between them stays open. So each
+ * outline vertex is projected onto the nearest point of the neighbour's edge —
+ * landing it *on* that segment rather than near its ends — and then the
+ * neighbour's own corners are inserted into the outline. After both passes the
+ * two boundaries run through the same points along their shared border and the
+ * seam closes exactly.
+ *
+ * Which gaps may be closed is decided by the province outline, not by distance.
+ * A gap is welded only when the ground between the two boundaries lies inside
+ * the province — that is, when it is land. Distance alone cannot tell a border
+ * from a strait: the channel between Lapu-Lapu and Mandaue is 600 m across,
+ * narrower than several of Cagayan de Oro's genuine land seams. The province
+ * outline knows the difference, because its edge is the coast, and Mactan is a
+ * separate ring of it.
  */
-function snapToNeighbours(geometry, neighbours, tolerance = 0.01) {
-  const targets = [];
+const CONTACT = 0.0005; // ~55 m: boundaries this close are the same border
+const BOW = 0.01; // ~1.1 km: how far a neighbour may bow away from a shared edge
+
+function distanceToSegment(p, a, b) {
+  const vx = b[0] - a[0];
+  const vy = b[1] - a[1];
+  const len = vx * vx + vy * vy;
+  const t = len > 0 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * vx + (p[1] - a[1]) * vy) / len)) : 0;
+  const cx = a[0] + t * vx;
+  const cy = a[1] + t * vy;
+  return { distance: Math.hypot(cx - p[0], cy - p[1]), point: [cx, cy] };
+}
+
+function nearestOnEdges(p, edges) {
+  let best = { distance: Infinity, point: p };
+  for (const [a, b] of edges) {
+    const hit = distanceToSegment(p, a, b);
+    if (hit.distance < best.distance) best = hit;
+  }
+  return best;
+}
+
+function weldToNeighbours(geometry, neighbours, province, tolerance = 0.02) {
+  const edges = [];
+  const corners = [];
   for (const n of neighbours) {
     if (!n.geometry) continue;
-    for (const ring of ringsOf(n.geometry)) targets.push(...ring);
-  }
-  const limit = tolerance ** 2;
-  let moved = 0;
-
-  const snap = ([x, y]) => {
-    let best = null;
-    let bestDistance = limit;
-    for (const [tx, ty] of targets) {
-      const d = (tx - x) ** 2 + (ty - y) ** 2;
-      if (d < bestDistance) { bestDistance = d; best = [tx, ty]; }
+    for (const ring of ringsOf(n.geometry)) {
+      for (let i = 0; i < ring.length - 1; i++) {
+        edges.push([ring[i], ring[i + 1]]);
+        corners.push(ring[i]);
+      }
     }
-    if (!best || (best[0] === x && best[1] === y)) return [x, y];
-    moved++;
-    return [round(best[0]), round(best[1])];
+  }
+  if (!edges.length) return { geometry, welded: 0, inserted: 0 };
+
+  /** Is the ground between these two points land, or the sea between islands? */
+  const overLand = (from, to) =>
+    containsPoint([(from[0] + to[0]) / 2, (from[1] + to[1]) / 2], province.geometry);
+
+  let welded = 0;
+  let inserted = 0;
+
+  const conform = (ring) => {
+    // 1. Pull each vertex onto the neighbour's edge it belongs to.
+    const onBorder = [];
+    const pulled = ring.slice(0, -1).map((p) => {
+      const hit = nearestOnEdges(p, edges);
+      if (hit.distance > tolerance || (hit.distance > CONTACT && !overLand(p, hit.point))) {
+        onBorder.push(false);
+        return p;
+      }
+      onBorder.push(true);
+      if (hit.distance > 0) welded++;
+      return [round(hit.point[0]), round(hit.point[1])];
+    });
+
+    // 2. Take the neighbour's corners too, between any two points already on
+    //    their border. Step 1 alone leaves a wedge wherever their boundary bows
+    //    away from ours between two matched points — our straight segment cuts
+    //    the corner off, and the space it cuts stays empty. Requiring both ends
+    //    to be on the border keeps this to the shared edge and off the coast.
+    const withCorners = [];
+    for (let i = 0; i < pulled.length; i++) {
+      withCorners.push(pulled[i]);
+      const next = (i + 1) % pulled.length;
+      if (!onBorder[i] || !onBorder[next]) continue;
+      const a = pulled[i];
+      const b = pulled[next];
+      const span = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (span === 0) continue;
+      const along = corners
+        .map((c) => {
+          const t = ((c[0] - a[0]) * (b[0] - a[0]) + (c[1] - a[1]) * (b[1] - a[1])) / span ** 2;
+          return { c, t, distance: distanceToSegment(c, a, b).distance };
+        })
+        .filter((x) => x.t > 0 && x.t < 1 && x.distance < BOW && overLand(x.c, [
+          a[0] + x.t * (b[0] - a[0]),
+          a[1] + x.t * (b[1] - a[1]),
+        ]))
+        .sort((x, y) => x.t - y.t);
+      const seen = new Set();
+      for (const { c } of along) {
+        const key = `${round(c[0])},${round(c[1])}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        withCorners.push([round(c[0]), round(c[1])]);
+        inserted++;
+      }
+    }
+
+    // Drop points the welding collapsed onto each other.
+    const cleaned = withCorners.filter(
+      (p, i) => i === 0 || p[0] !== withCorners[i - 1][0] || p[1] !== withCorners[i - 1][1],
+    );
+    return [...cleaned, cleaned[0]];
   };
 
-  const rings = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
-  const snapped = rings.map((polygon) =>
-    polygon.map((ring) => {
-      const out = ring.slice(0, -1).map(snap);
-      return [...out, out[0]];
-    }),
-  );
+  const polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+  const conformed = polygons.map((polygon) => polygon.map(conform));
   return {
     geometry:
       geometry.type === "Polygon"
-        ? { type: "Polygon", coordinates: snapped[0] }
-        : { type: "MultiPolygon", coordinates: snapped },
-    moved,
+        ? { type: "Polygon", coordinates: conformed[0] }
+        : { type: "MultiPolygon", coordinates: conformed },
+    welded,
+    inserted,
   };
 }
 
@@ -356,7 +443,7 @@ for (const code of missing.sort((a, b) => a - b)) {
 
   const target = shippedByProvince.get(province.properties.psgc);
   touched.add(province.properties.psgc);
-  const fitted = snapToNeighbours(geometry, target.features);
+  const fitted = weldToNeighbours(geometry, target.features, province);
   target.features.push({
     type: "Feature",
     properties: { name: match.name, psgc: code },
@@ -367,14 +454,15 @@ for (const code of missing.sort((a, b) => a - b)) {
     name: match.name,
     province: province.properties.name,
     rings: rings.length,
-    snapped: fitted.moved,
+    welded: fitted.welded,
+    inserted: fitted.inserted,
   });
 }
 
 console.log(`added ${added.length}:`);
 for (const a of added) {
   console.log(
-    `   ${String(a.code).padStart(10)}  ${a.name.padEnd(24)} -> ${a.province.padEnd(20)} ${a.rings} ring(s), ${a.snapped} vertices snapped`,
+    `   ${String(a.code).padStart(10)}  ${a.name.padEnd(24)} -> ${a.province.padEnd(20)} ${a.rings} ring(s), ${a.welded} welded, ${a.inserted} corners added`,
   );
 }
 console.log(`\nskipped ${skipped.length}:`);
