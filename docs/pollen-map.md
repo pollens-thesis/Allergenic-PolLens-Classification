@@ -113,11 +113,36 @@ It prints every name and parent province it derives, and writes nothing without
   none, being an island off the coast of Southern Leyte, so it falls back to the
   nearest.
 
-The recovered outline and its neighbours describe the same border but were
-simplified in different passes, so they disagree by roughly a hundred metres —
-a hairline gap once the map is zoomed in. Each new outline is therefore snapped
-onto a neighbour's vertex wherever one is within ~1 km. Coastline is untouched:
-the open sea has no neighbouring vertex to snap to.
+### Welding the seam
+
+A recovered outline and its neighbour's describe the same border, but they were
+simplified in different passes — the barangay layer and the province layer — so
+they disagree by up to a kilometre. Left alone that shows as a white wedge
+between the two once the map is zoomed in. Closing it takes two passes, because
+the boundaries diverge in both directions:
+
+1. **Each outline vertex is projected onto the nearest point of the neighbour's
+   edge**, landing it *on* that segment. Snapping vertex-to-vertex is not
+   enough: between two matched corners the neighbour draws one straight segment
+   while the recovered outline wanders through several of its own, and the space
+   between them stays open.
+2. **The neighbour's own corners are inserted**, between any two points already
+   on their border. Otherwise a boundary that bows away between two matched
+   points gets its corner cut off by our straight segment, and the space it cuts
+   stays empty. Requiring both ends to be on the border keeps this to the shared
+   edge and off the coast.
+
+After both passes the two boundaries run through the same points along their
+shared border, and the seam closes.
+
+**Which gaps may be closed is decided by the province outline, not by distance.**
+A gap is welded only when the ground between the two boundaries is inside the
+province — that is, when it is land. Distance cannot tell a border from a
+strait: the channel between Lapu-Lapu and Mandaue is 600 m across, narrower than
+several of Cagayan de Oro's genuine land seams. The province outline knows the
+difference, because its edge is the coast and Mactan is a separate ring of it.
+So Metro Cebu keeps its channel while Cagayan de Oro gets welded shut, and
+coastline everywhere is left alone.
 
 ### What is still missing
 
