@@ -60,7 +60,7 @@ function titleCase(word: string): string {
  * An acronym stays an acronym.
  *
  * Philippine universities are known by their initials far more than by the
- * spelled-out name — "SLSU", "UP", "DLSU" — and those are exactly the short
+ * spelled-out name — "MSEUF", "UP", "DLSU" — and those are exactly the short
  * all-letter labels a domain uses. Anything longer reads as a word.
  */
 function formatLabel(label: string): string {
@@ -68,7 +68,7 @@ function formatLabel(label: string): string {
 }
 
 /**
- * "bio.research@slsu.edu.ph" → "SLSU". Null for a personal mailbox, which has
+ * "bio.research@mseuf.edu.ph" → "MSEUF". Null for a personal mailbox, which has
  * no institution to speak of.
  */
 export function institutionFromEmail(email: string): string | null {
@@ -77,7 +77,7 @@ export function institutionFromEmail(email: string): string | null {
   if (PUBLIC_MAIL_HOSTS.has(domain)) return null;
 
   let labels = domain.split(".").filter(Boolean);
-  // Strip the public ending one label at a time — "research.slsu.edu.ph" has
+  // Strip the public ending one label at a time — "research.mseuf.edu.ph" has
   // two of them — but never strip the whole domain away.
   while (labels.length > 1 && PUBLIC_SUFFIXES.includes(labels[labels.length - 1])) {
     labels = labels.slice(0, -1);
@@ -86,7 +86,7 @@ export function institutionFromEmail(email: string): string | null {
   return label ? formatLabel(label) : null;
 }
 
-/** "bio.research@slsu.edu.ph" → "Bio Research". */
+/** "bio.research@mseuf.edu.ph" → "Bio Research". */
 export function personFromEmail(email: string): string {
   const at = email.lastIndexOf("@");
   const local = (at === -1 ? email : email.slice(0, at)).trim().toLowerCase();
@@ -109,7 +109,7 @@ export function accountName(email: string, fallback = "Researcher"): string {
   return institutionFromEmail(email) || personFromEmail(email) || fallback;
 }
 
-/** "SLSU" → "SL"; falls back to the first two characters. */
+/** "MSEUF" → "MS"; falls back to the first two characters. */
 export function getInitials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return "??";

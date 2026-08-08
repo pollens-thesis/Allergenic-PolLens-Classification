@@ -128,7 +128,7 @@ export default function SettingsWorkspace() {
           ) : settings.email ? (
             <>
               This address is not on an institution domain, so the console uses the mailbox&rsquo;s
-              own name. Signing in with an institution address — <code>name@slsu.edu.ph</code> —
+              own name. Signing in with an institution address — <code>name@mseuf.edu.ph</code> —
               files reports under that institution instead.
             </>
           ) : (

@@ -64,7 +64,7 @@ export default function SignInForm() {
           autoFocus
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="pollen.lab@slsu.edu.ph"
+          placeholder="pollen.lab@mseuf.edu.ph"
           className="focus-ring w-full rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink placeholder:text-ink/60"
         />
       </label>
