@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import {
+  CalendarDays,
   ImagePlus,
   X,
   Loader2,
@@ -12,6 +13,7 @@ import {
   Check,
 } from "lucide-react";
 import {
+  formatCollectedAt,
   getSpecies,
   getTotalGrains,
   getWeightedAvgConfidence,
@@ -38,6 +40,16 @@ type BatchItem = {
   saving: boolean;
   savedSampleId: string | null;
 };
+
+/** Local "now", split into the shapes <input type="date"|"time"> expect. */
+function nowParts() {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+    time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+  };
+}
 
 const EMPTY_WEATHER: WeatherConditions = {
   condition: "Sunny",
@@ -216,11 +228,16 @@ export default function AnalyzeWorkspace() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [location, setLocation] = useState("");
   const [researcher, setResearcher] = useState("You");
+  const [collectedDate, setCollectedDate] = useState("");
+  const [collectedTime, setCollectedTime] = useState("");
   const [weather, setWeather] = useState<WeatherConditions>(EMPTY_WEATHER);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [savingAll, setSavingAll] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Time is optional — a researcher who only knows the day can leave it blank.
+  const collectedAt = collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate;
 
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const pendingCount = items.filter((item) => item.status === "pending").length;
@@ -259,6 +276,15 @@ export default function AnalyzeWorkspace() {
 
     setItems((current) => [...current, ...added]);
     setSelectedId((current) => current ?? added[0].id);
+    // Stamp the batch with "now" the first time images arrive. Computed here,
+    // in an event handler, so the server and client render the same empty
+    // fields initially — no hydration mismatch, and the researcher can still
+    // change it to when the slides were actually collected.
+    if (!collectedDate) {
+      const { date, time } = nowParts();
+      setCollectedDate(date);
+      setCollectedTime(time);
+    }
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -275,6 +301,9 @@ export default function AnalyzeWorkspace() {
     setItems([]);
     setSelectedId(null);
     setWeather(EMPTY_WEATHER);
+    const { date, time } = nowParts();
+    setCollectedDate(date);
+    setCollectedTime(time);
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -296,6 +325,7 @@ export default function AnalyzeWorkspace() {
   async function saveItem(item: BatchItem) {
     patchItem(item.id, { saving: true });
     const specimen = await saveSpecimen({
+      collectedAt,
       location,
       researcher,
       notes: item.notes,
@@ -413,7 +443,7 @@ export default function AnalyzeWorkspace() {
             Collection details
           </h3>
           <p className="mb-2.5 text-[11.5px] text-ink/40">
-            Applies to every specimen in this batch.
+            When and where the batch was collected — applies to every specimen in it.
           </p>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -436,7 +466,33 @@ export default function AnalyzeWorkspace() {
                 className={fieldClass}
               />
             </label>
+            <label className="block">
+              <span className="mb-1 block text-[11.5px] text-ink/50">Date collected</span>
+              <input
+                type="date"
+                value={collectedDate}
+                onChange={(e) => setCollectedDate(e.target.value)}
+                className={fieldClass}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[11.5px] text-ink/50">
+                Time collected <span className="text-ink/30">(optional)</span>
+              </span>
+              <input
+                type="time"
+                value={collectedTime}
+                onChange={(e) => setCollectedTime(e.target.value)}
+                className={fieldClass}
+              />
+            </label>
           </div>
+
+          {items.length > 0 && !collectedDate && (
+            <p className="mt-2 text-[11.5px] text-[#b3492f]">
+              Set the collection date before saving.
+            </p>
+          )}
 
           {/* TODO(backend): fetchWeather(location) will pre-fill these. */}
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -501,7 +557,7 @@ export default function AnalyzeWorkspace() {
         {unsavedCount > 1 && (
           <button
             type="button"
-            disabled={savingAll}
+            disabled={savingAll || !collectedDate}
             onClick={handleSaveAll}
             className="focus-ring mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-panel-line bg-white px-4 py-2 text-[13px] text-ink/70 transition hover:text-ink disabled:opacity-50"
           >
@@ -551,10 +607,18 @@ export default function AnalyzeWorkspace() {
               </div>
             </div>
 
-            <p className="mb-3 flex items-center gap-1.5 text-[12px] text-ink/55">
-              <MapPin size={13} strokeWidth={1.75} className="shrink-0 text-ink/35" />
-              <span className="truncate">{location || "Location not specified"}</span>
-            </p>
+            <div className="mb-3 flex flex-col gap-1 text-[12px] text-ink/55">
+              <p className="flex items-center gap-1.5">
+                <MapPin size={13} strokeWidth={1.75} className="shrink-0 text-ink/35" />
+                <span className="truncate">{location || "Location not specified"}</span>
+              </p>
+              <p className="flex items-center gap-1.5">
+                <CalendarDays size={13} strokeWidth={1.75} className="shrink-0 text-ink/35" />
+                <span className="truncate">
+                  {collectedDate ? formatCollectedAt(collectedAt) : "Collection date not set"}
+                </span>
+              </p>
+            </div>
 
             {/* Summary */}
             <div className="mb-4 grid grid-cols-3 gap-3 rounded-md bg-panel/60 px-3 py-3 text-center">
@@ -616,7 +680,7 @@ export default function AnalyzeWorkspace() {
               <button
                 type="button"
                 onClick={() => saveItem(selected)}
-                disabled={selected.saving || selected.savedSampleId !== null}
+                disabled={selected.saving || selected.savedSampleId !== null || !collectedDate}
                 className="focus-ring flex flex-1 items-center justify-center gap-2 rounded-md bg-ink px-3 py-2 text-[13px] font-medium text-parchment transition hover:opacity-90 disabled:cursor-default disabled:opacity-60"
               >
                 {selected.saving ? (

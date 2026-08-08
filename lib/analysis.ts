@@ -14,6 +14,7 @@ import {
   aggregateGrainPredictions,
   speciesCatalog,
   specimens,
+  type CollectedAt,
   type GrainPrediction,
   type Specimen,
   type SpecimenDetection,
@@ -28,6 +29,8 @@ export type AnalysisResult = {
 };
 
 export type NewSpecimenInput = {
+  /** When the specimen was collected in the field, not when it was analyzed. */
+  collectedAt: CollectedAt;
   location: string;
   researcher: string;
   notes: string;
@@ -125,7 +128,7 @@ export async function saveSpecimen(input: NewSpecimenInput): Promise<Specimen> {
 
   return {
     sampleId: nextSampleId(),
-    date: new Date().toISOString().slice(0, 10),
+    collectedAt: input.collectedAt,
     location: input.location.trim(),
     detections: input.detections,
     notes: input.notes.trim(),

@@ -2,13 +2,37 @@
 
 import { useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
-import type { HistoryReport, ReportStatus } from "@/lib/data";
+import {
+  formatCollectedAt,
+  formatTime,
+  getCollectionDate,
+  getCollectionTime,
+  type HistoryReport,
+  type ReportStatus,
+} from "@/lib/data";
 import StatusBadge from "@/components/StatusBadge";
 
 const STATUS_FILTERS: (ReportStatus | "All")[] = ["All", "Completed", "Processing", "Needs review"];
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+function formatDate(collectedAt: string) {
+  // Local midnight — a bare "2026-07-29" parses as UTC and renders a day early
+  // for anyone west of Greenwich.
+  return new Date(`${getCollectionDate(collectedAt)}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/** Collection date, with the recorded time on a quieter second line. */
+function CollectedCell({ collectedAt }: { collectedAt: string }) {
+  const time = getCollectionTime(collectedAt);
+  return (
+    <td className="py-2.5 pr-3 whitespace-nowrap text-ink/70">
+      {formatDate(collectedAt)}
+      {time && <span className="mt-0.5 block text-[11.5px] text-ink/40">{formatTime(time)}</span>}
+    </td>
+  );
 }
 
 export default function HistoryReportsTable({ data }: { data: HistoryReport[] }) {
@@ -24,7 +48,7 @@ export default function HistoryReportsTable({ data }: { data: HistoryReport[] })
         r.sampleId.toLowerCase().includes(q) ||
         r.location.toLowerCase().includes(q) ||
         r.topPollen.toLowerCase().includes(q) ||
-        formatDate(r.date).toLowerCase().includes(q);
+        formatCollectedAt(r.collectedAt).toLowerCase().includes(q);
       return matchesStatus && matchesQuery;
     });
   }, [data, query, status]);
@@ -99,7 +123,7 @@ export default function HistoryReportsTable({ data }: { data: HistoryReport[] })
               style={{ fontFamily: "var(--font-mono)" }}
             >
               <th className="py-2 pr-3 font-medium">Sample ID</th>
-              <th className="py-2 pr-3 font-medium">Date</th>
+              <th className="py-2 pr-3 font-medium">Collected</th>
               <th className="py-2 pr-3 font-medium">Location</th>
               <th className="py-2 pr-3 font-medium">Top pollen detected</th>
               <th className="py-2 pr-0 font-medium">Status</th>
@@ -111,7 +135,7 @@ export default function HistoryReportsTable({ data }: { data: HistoryReport[] })
                 <td className="py-2.5 pr-3 whitespace-nowrap text-ink/85" style={{ fontFamily: "var(--font-mono)" }}>
                   {r.sampleId}
                 </td>
-                <td className="py-2.5 pr-3 whitespace-nowrap text-ink/70">{formatDate(r.date)}</td>
+                <CollectedCell collectedAt={r.collectedAt} />
                 <td className="py-2.5 pr-3 whitespace-nowrap text-ink/70">{r.location}</td>
                 <td className="py-2.5 pr-3 text-ink/85">{r.topPollen}</td>
                 <td className="py-2.5 pr-0">
