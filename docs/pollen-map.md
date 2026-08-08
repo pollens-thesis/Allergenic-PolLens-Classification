@@ -109,6 +109,59 @@ dataset's `City of Tayabas`.
 `PROVINCE_ALIASES` covers names people type that are not the PSGC name — today
 just `"Metro Manila"` and `"National Capital Region"` → `NCR`.
 
+## Zoom and pan
+
+Zooming is a transform on the drawn group — `translate(x, y) scale(k)` — not a
+change of projection. Nothing is re-projected and no geometry is re-fetched:
+the outlines are already at full source precision, they were just drawn small.
+The maths lives in `lib/geo.ts` (`clampView`, `zoomAtPoint`, `fitView`) and the
+gesture handling in `components/useMapZoom.ts`.
+
+Four details are deliberate:
+
+- **Pointer coordinates go through `getScreenCTM()`,** not the element's
+  bounding rect. The SVG is capped at `max-h-[70vh]`, so a tall map is
+  letterboxed inside its box and a rect-relative calculation drifts.
+- **Move and release are tracked on the window, not by capturing the pointer.**
+  Capturing retargets the following `click` to the SVG itself, which would break
+  selecting a province by clicking its outline. A drag that travels more than a
+  few units swallows its own click, so panning never selects.
+- **Borders use `vector-effect="non-scaling-stroke"`** and labels divide their
+  font size by `k`, so both keep their on-screen size at any zoom.
+- **`touch-action` is `pan-y` until zoomed in, then `none`.** At fit there is
+  nothing to pan, so the page keeps its vertical scroll and the map is not a
+  scroll trap on a phone; once zoomed, the map takes the gesture.
+
+Path strings, label anchors and bounds are memoised per projection. Panning
+re-renders at pointer rate, and without that every frame would re-walk every
+coordinate of all 88 provinces.
+
+## Search and filters
+
+Three controls narrow both the shading and the ranked list: a name search, a
+region dropdown, and a Sampled/All toggle. `selectRows` in
+`components/PollenMap.tsx` is the single pure function they all feed.
+
+- **Search** matches on the same normalised form used to match reports to
+  boundaries, so it behaves like the rest of the map — `tayabas` finds
+  `City of Tayabas`.
+- **Region** is offered on the country view only. Municipality files were
+  trimmed to `name` and `psgc`, so towns carry no region code; the filter stops
+  applying once you drill in.
+- **Sampled/All** decides whether the panel is a ranking of hotzones or a
+  gazetteer of every boundary. It defaults to Sampled.
+
+Filtering frames what it found: the map fits to the bounds of the matches, and
+non-matches are dimmed rather than hidden, so a result keeps its context. This
+runs from the control that changed rather than from an effect on the filters —
+changing the pollen type rebuilds the same list, and a view panned by hand
+should stay where it is.
+
+Because Sampled is the default, searching a real province with no reports would
+otherwise read as "no such place". It does not: the empty state says *no
+sampled* provinces match and offers to show the unsampled ones, and a search
+with some sampled hits still reports how many more matched without reports.
+
 ## Extending or replacing the data
 
 To move to a different administrative level, or to refresh against a newer PSGC
