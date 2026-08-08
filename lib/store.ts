@@ -219,6 +219,49 @@ export async function deleteReport(sampleId: string): Promise<void> {
   }
 }
 
+/** Counts and rough size of what this browser is holding, for the Settings page. */
+export async function getStorageSummary(): Promise<{
+  reportCount: number;
+  imageCount: number;
+  approxBytes: number;
+}> {
+  if (!hasIndexedDb()) return { reportCount: 0, imageCount: 0, approxBytes: 0 };
+  const db = await openDb();
+  try {
+    const tx = db.transaction([REPORTS, IMAGES], "readonly");
+    const reports = await promisify(
+      tx.objectStore(REPORTS).getAll() as IDBRequest<Specimen[]>,
+    );
+    const images = await promisify(tx.objectStore(IMAGES).getAll() as IDBRequest<StoredImage[]>);
+    return {
+      reportCount: reports.length,
+      imageCount: images.length,
+      // Images dominate; the JSON metadata is rounding error next to them.
+      approxBytes:
+        images.reduce((sum, i) => sum + i.blob.size, 0) + JSON.stringify(reports).length,
+    };
+  } finally {
+    db.close();
+  }
+}
+
+/** Wipes every locally saved report and image. Seed records are unaffected. */
+export async function clearAllReports(): Promise<void> {
+  if (!hasIndexedDb()) return;
+  const db = await openDb();
+  try {
+    const tx = db.transaction([REPORTS, IMAGES], "readwrite");
+    tx.objectStore(REPORTS).clear();
+    tx.objectStore(IMAGES).clear();
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
 /** True for the read-only records that ship with the app. */
 export function isSeedReport(sampleId: string): boolean {
   return seedSpecimens.some((s) => s.sampleId === sampleId);
