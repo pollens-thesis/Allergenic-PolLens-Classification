@@ -39,12 +39,15 @@ function CollectedCell({ collectedAt }: { collectedAt: string }) {
 export default function HistoryReportsTable({
   data,
   highlightId,
+  initialQuery = "",
 }: {
   data: HistoryReport[];
   /** Sample id to flag as just saved, e.g. after redirecting from Analyze. */
   highlightId?: string | null;
+  /** Prefills the search box — the Pollen map links here filtered by town. */
+  initialQuery?: string;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [status, setStatus] = useState<ReportStatus | "All">("All");
 
   const filtered = useMemo(() => {

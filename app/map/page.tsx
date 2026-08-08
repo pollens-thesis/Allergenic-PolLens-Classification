@@ -1,0 +1,30 @@
+import Sidebar from "@/components/Sidebar";
+import PollenMap from "@/components/PollenMap";
+
+export default function PollenMapPage() {
+  return (
+    <div className="grid min-h-screen w-full grid-cols-1 bg-panel lg:grid-cols-[15rem_1fr]">
+      <Sidebar />
+
+      <main className="min-w-0 px-6 py-8 lg:px-10 lg:py-10">
+        <div className="mb-6">
+          <p
+            className="text-[11px] tracking-[0.25em] text-ink/50 uppercase"
+            style={{ fontFamily: "var(--font-mono)" }}
+          >
+            Research console
+          </p>
+          <h1 className="mt-1 text-3xl text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+            Pollen map
+          </h1>
+          <p className="mt-1 text-sm text-ink/60">
+            Where each pollen type is turning up. Towns are shaded by how many grains have been
+            counted there.
+          </p>
+        </div>
+
+        <PollenMap />
+      </main>
+    </div>
+  );
+}
