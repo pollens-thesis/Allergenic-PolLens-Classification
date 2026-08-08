@@ -37,7 +37,6 @@ import {
   intensityIndex,
   matchesQuery,
   municipalitiesUrl,
-  pointBounds,
   toPath,
   unionBounds,
   type Bounds,
@@ -196,14 +195,11 @@ export default function PollenMap() {
     [places],
   );
 
-  /** Sampled places with no polygon on the current view — drawn as points. */
-  const pointPlaces = useMemo(() => ranked.filter((p) => p.point), [ranked]);
-
-  /** Sampled places we cannot place at all, so the map never silently lies. */
+  /** Sampled places we cannot draw, so the map never silently lies. */
   const unmapped = useMemo(() => {
     if (!projection) return [];
     const drawable = new Set(features.map(featureKey));
-    return ranked.filter((p) => !drawable.has(p.key) && !p.point);
+    return ranked.filter((p) => !drawable.has(p.key));
   }, [ranked, features, projection]);
 
   // Path strings, label anchors and bounds are all derived from the geometry
@@ -224,13 +220,7 @@ export default function PollenMap() {
     return { paths, labelAt, bounds };
   }, [features, projection]);
 
-  function boundsFor(row: PlaceRow): Bounds | null {
-    const fromFeature = geometry.bounds.get(row.key);
-    if (fromFeature) return fromFeature;
-    if (!projection || !row.stats?.point) return null;
-    const [x, y] = projection.project(row.stats.point.lon, row.stats.point.lat);
-    return pointBounds(x, y);
-  }
+  const boundsFor = (row: PlaceRow): Bounds | null => geometry.bounds.get(row.key) ?? null;
 
   /** Every place in view: the boundaries, plus sampled places that have none. */
   const rows: PlaceRow[] = useMemo(() => {
@@ -551,38 +541,6 @@ export default function PollenMap() {
                 );
               })}
 
-              {/* Sampled towns with no polygon in the source (Highly Urbanized
-                  Cities are the systematic case). */}
-              {pointPlaces.map((place) => {
-                const [x, y] = projection.project(place.point!.lon, place.point!.lat);
-                const isActive = selected === place.key || hovered === place.key;
-                const dimmed = filtersActive && !matchedKeys.has(place.key);
-                return (
-                  <g
-                    key={place.key}
-                    className="cursor-pointer"
-                    opacity={dimmed ? 0.35 : 1}
-                    onMouseEnter={() => setHovered(place.key)}
-                    onMouseLeave={() => setHovered(null)}
-                    onClick={() => setSelected(place.key)}
-                  >
-                    <circle
-                      cx={x}
-                      cy={y}
-                      r={(isActive ? 13 : 10) / view.k}
-                      fill={INTENSITY_RAMP[intensityIndex(place.totalGrains, maxGrains)]}
-                      stroke={isActive ? "#23261f" : "#8a8577"}
-                      strokeWidth={isActive ? 2.5 : 1.5}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                    <title>
-                      {place.label} — {place.totalGrains}{" "}
-                      {place.totalGrains === 1 ? "grain" : "grains"}
-                    </title>
-                  </g>
-                );
-              })}
-
               {/* Sampled places are always labelled; the rest once zoomed in. */}
               {features.map((feature) => {
                 const key = featureKey(feature);
@@ -608,22 +566,6 @@ export default function PollenMap() {
                   </text>
                 );
               })}
-              {pointPlaces.map((place) => {
-                if (filtersActive && !matchedKeys.has(place.key)) return null;
-                const [x, y] = projection.project(place.point!.lon, place.point!.lat);
-                return (
-                  <text
-                    key={`label-${place.key}`}
-                    x={x}
-                    y={y + 26 / view.k}
-                    textAnchor="middle"
-                    className="pointer-events-none"
-                    style={{ fontFamily: "var(--font-mono)", fontSize: 14 / view.k, fill: "#23261f" }}
-                  >
-                    {place.label}
-                  </text>
-                );
-              })}
             </g>
           </svg>
         </div>
@@ -645,12 +587,6 @@ export default function PollenMap() {
             ))}
             More
           </span>
-          {pointPlaces.length > 0 && (
-            <span className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded-full border border-[#8a8577]" style={{ background: INTENSITY_RAMP[3] }} />
-              Independent city (no provincial polygon)
-            </span>
-          )}
           <span className="text-ink/40">
             {zoomedIn
               ? `Zoomed ${view.k.toFixed(1)}× — drag to pan`

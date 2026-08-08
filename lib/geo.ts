@@ -4,11 +4,11 @@
 // No geo API is called at runtime. Boundaries ship with the app:
 //
 //   public/geo/provinces.json                 88 provinces/districts, ~260 KB
-//   public/geo/municipalities/<psgc>.json     1,613 towns across 88 files
+//   public/geo/municipalities/<psgc>.json     1,633 towns across 88 files
 //
 // The country view always loads the provinces file; a province's towns are
 // fetched only when you drill into it, so no page load ever pulls more than
-// ~40 KB of town geometry. That keeps the map deterministic, offline-capable,
+// ~45 KB of town geometry. That keeps the map deterministic, offline-capable,
 // rate-limit free and citable — a thesis figure should not depend on a
 // third-party endpoint staying up.
 //
@@ -39,20 +39,6 @@ export type GeoFeature = {
 };
 
 export type GeoCollection = { type: "FeatureCollection"; features: GeoFeature[] };
-
-/**
- * Towns with no polygon in their province's file, placed by coordinate instead.
- *
- * Highly Urbanized Cities are the systematic case: the PSA treats them as
- * administratively independent of the province that surrounds them, so they are
- * absent from the province's municipality set. Lucena City is the one in this
- * dataset. Add an entry here (or record coordinates on the report) for any
- * other HUC that gets sampled — Davao, Cebu, Iloilo and Baguio are all missing
- * for the same reason.
- */
-export const POINT_TOWNS: Record<string, { label: string; lon: number; lat: number }> = {
-  lucena: { label: "Lucena City", lon: 121.617, lat: 13.9314 },
-};
 
 /** Province names a researcher is likely to type that aren't the PSGC name. */
 const PROVINCE_ALIASES: Record<string, string> = {
@@ -113,8 +99,6 @@ export type PlaceStats = {
   lastCollectedAt: string | null;
   /** Province PSGC, set on province-level rows so the map can drill in. */
   psgc?: number;
-  /** Set when a town has no polygon and must be drawn as a point. */
-  point?: { lon: number; lat: number };
 };
 
 function addTo(place: PlaceStats, detections: SpecimenDetection[], collectedAt: string) {
@@ -146,8 +130,8 @@ function addTo(place: PlaceStats, detections: SpecimenDetection[], collectedAt: 
  * ragweed" — the per-pollen hotzone view.
  *
  * Province totals are derived from the province named in the location, so a
- * report collected in a Highly Urbanized City still colours the province around
- * it even though that city has no town polygon.
+ * report collected in a Highly Urbanized City — which the PSA treats as
+ * administratively independent — still colours the province around it.
  */
 export function aggregate(
   reports: Specimen[],
@@ -177,9 +161,6 @@ export function aggregate(
         totalGrains: 0,
         detections: [],
         lastCollectedAt: null,
-        point: scope.level === "province" && POINT_TOWNS[key]
-          ? { lon: POINT_TOWNS[key].lon, lat: POINT_TOWNS[key].lat }
-          : undefined,
       } satisfies PlaceStats);
 
     addTo(place, detections, report.collectedAt);
