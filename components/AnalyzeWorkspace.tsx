@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   ImagePlus,
@@ -10,7 +11,6 @@ import {
   Microscope,
   RotateCcw,
   Save,
-  Check,
 } from "lucide-react";
 import {
   formatCollectedAt,
@@ -24,7 +24,8 @@ import {
   type WeatherCondition,
   type WeatherConditions,
 } from "@/lib/data";
-import { analyzeSpecimen, saveSpecimen } from "@/lib/analysis";
+import { analyzeSpecimen } from "@/lib/analysis";
+import { saveReport } from "@/lib/store";
 
 type ItemStatus = "pending" | "analyzing" | "analyzed";
 
@@ -37,8 +38,6 @@ type BatchItem = {
   status: ItemStatus;
   detections: SpecimenDetection[];
   notes: string;
-  saving: boolean;
-  savedSampleId: string | null;
 };
 
 /** Local "now", split into the shapes <input type="date"|"time"> expect. */
@@ -205,9 +204,6 @@ function SpecimenListRow({
                 {item.detections.length === 1 ? "type" : "types"}
               </span>
             )}
-            {item.savedSampleId && (
-              <Check size={11} strokeWidth={2.25} className="text-[#3f7a4f]" />
-            )}
           </span>
         </span>
       </button>
@@ -232,18 +228,18 @@ export default function AnalyzeWorkspace() {
   const [collectedTime, setCollectedTime] = useState("");
   const [weather, setWeather] = useState<WeatherConditions>(EMPTY_WEATHER);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [savingAll, setSavingAll] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   // Time is optional — a researcher who only knows the day can leave it blank.
   const collectedAt = collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate;
 
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const pendingCount = items.filter((item) => item.status === "pending").length;
-  const unsavedCount = items.filter(
-    (item) => item.status === "analyzed" && !item.savedSampleId,
-  ).length;
+  const analyzedCount = items.filter((item) => item.status === "analyzed").length;
+  const canSave = analyzedCount > 0 && pendingCount === 0 && !isAnalyzing && !!collectedDate;
 
   const detections = selected ? [...selected.detections].sort(sortByAbundance) : [];
   const totalGrains = getTotalGrains(detections);
@@ -270,8 +266,6 @@ export default function AnalyzeWorkspace() {
       status: "pending",
       detections: [],
       notes: "",
-      saving: false,
-      savedSampleId: null,
     }));
 
     setItems((current) => [...current, ...added]);
@@ -322,25 +316,33 @@ export default function AnalyzeWorkspace() {
     setIsAnalyzing(false);
   }
 
-  async function saveItem(item: BatchItem) {
-    patchItem(item.id, { saving: true });
-    const specimen = await saveSpecimen({
-      collectedAt,
-      location,
-      researcher,
-      notes: item.notes,
-      weather,
-      detections: item.detections,
-    });
-    patchItem(item.id, { saving: false, savedSampleId: specimen.sampleId });
-  }
+  /**
+   * The batch is saved as a single report, then we go straight to History —
+   * the saved record, not the scratch workspace, is what the researcher wants
+   * to look at next.
+   */
+  async function handleSaveReport() {
+    if (!canSave) return;
+    setIsSaving(true);
 
-  async function handleSaveAll() {
-    setSavingAll(true);
-    for (const item of items) {
-      if (item.status === "analyzed" && !item.savedSampleId) await saveItem(item);
-    }
-    setSavingAll(false);
+    const analyzed = items.filter((item) => item.status === "analyzed");
+    const report = await saveReport(
+      {
+        collectedAt,
+        location,
+        researcher,
+        weather,
+        slides: analyzed.map((item) => ({
+          fileName: item.file.name,
+          detections: item.detections,
+          notes: item.notes,
+        })),
+      },
+      Object.fromEntries(analyzed.map((item, index) => [String(index), item.file])),
+    );
+
+    items.forEach((item) => URL.revokeObjectURL(item.imageUrl));
+    router.push(`/history?saved=${report.sampleId}`);
   }
 
   return (
@@ -554,26 +556,34 @@ export default function AnalyzeWorkspace() {
           )}
         </button>
 
-        {unsavedCount > 1 && (
-          <button
-            type="button"
-            disabled={savingAll || !collectedDate}
-            onClick={handleSaveAll}
-            className="focus-ring mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-panel-line bg-white px-4 py-2 text-[13px] text-ink/70 transition hover:text-ink disabled:opacity-50"
-          >
-            {savingAll ? (
-              <>
-                <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
-                Saving…
-              </>
-            ) : (
-              <>
-                <Save size={14} strokeWidth={1.75} />
-                Save all {unsavedCount} to history
-              </>
-            )}
-          </button>
+        <button
+          type="button"
+          disabled={!canSave || isSaving}
+          onClick={handleSaveReport}
+          className="focus-ring mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-ink/20 bg-white px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-panel disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {isSaving ? (
+            <>
+              <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
+              Saving report…
+            </>
+          ) : (
+            <>
+              <Save size={16} strokeWidth={1.75} />
+              {analyzedCount > 1
+                ? `Save report (${analyzedCount} slides)`
+                : "Save report to history"}
+            </>
+          )}
+        </button>
+
+        {analyzedCount > 0 && pendingCount > 0 && (
+          <p className="mt-2 text-[11.5px] text-ink/45">
+            Analyze the remaining {pendingCount === 1 ? "slide" : `${pendingCount} slides`} before
+            saving — a report covers the whole batch.
+          </p>
         )}
+
       </div>
 
       {/* Right: result for the selected specimen */}
@@ -676,48 +686,15 @@ export default function AnalyzeWorkspace() {
               />
             </div>
 
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => saveItem(selected)}
-                disabled={selected.saving || selected.savedSampleId !== null || !collectedDate}
-                className="focus-ring flex flex-1 items-center justify-center gap-2 rounded-md bg-ink px-3 py-2 text-[13px] font-medium text-parchment transition hover:opacity-90 disabled:cursor-default disabled:opacity-60"
-              >
-                {selected.saving ? (
-                  <>
-                    <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
-                    Saving…
-                  </>
-                ) : selected.savedSampleId ? (
-                  <>
-                    <Check size={14} strokeWidth={1.75} />
-                    Saved
-                  </>
-                ) : (
-                  <>
-                    <Save size={14} strokeWidth={1.75} />
-                    Save to history
-                  </>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={handleClearAll}
-                className="focus-ring flex items-center justify-center gap-2 rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink/70 transition hover:text-ink"
-              >
-                <RotateCcw size={14} strokeWidth={1.75} />
-                New batch
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="focus-ring flex w-full items-center justify-center gap-2 rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink/70 transition hover:text-ink"
+            >
+              <RotateCcw size={14} strokeWidth={1.75} />
+              Start a new batch
+            </button>
 
-            {selected.savedSampleId && (
-              <p className="mt-3 text-[11.5px] text-ink/40">
-                Saved as{" "}
-                <span style={{ fontFamily: "var(--font-mono)" }}>{selected.savedSampleId}</span>{" "}
-                locally for this session — this will sync to your real History once the backend is
-                connected.
-              </p>
-            )}
           </div>
         )}
       </div>

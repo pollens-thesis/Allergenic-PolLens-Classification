@@ -1,9 +1,10 @@
 // ---------------------------------------------------------------------------
 // ANALYSIS SERVICE — the seam between the UI and the backend.
 //
-// Every call the Analyze screen makes goes through this module, and every
-// function here is already async. Today each one resolves mock data; when the
-// backend lands, only the bodies below change — no component has to be touched.
+// Inference and lookups the Analyze screen performs go through this module, and
+// every function here is already async. Today each one resolves mock data; when
+// the backend lands, only the bodies below change — no component is touched.
+// Persisting a finished report is lib/store.ts's job, not this file's.
 //
 // The mock deliberately produces raw per-grain predictions and runs them
 // through `aggregateGrainPredictions`, the same function real model output will
@@ -13,10 +14,8 @@
 import {
   aggregateGrainPredictions,
   speciesCatalog,
-  specimens,
   type CollectedAt,
   type GrainPrediction,
-  type Specimen,
   type SpecimenDetection,
   type SpeciesId,
   type WeatherConditions,
@@ -28,19 +27,24 @@ export type AnalysisResult = {
   weather: WeatherConditions | null;
 };
 
-export type NewSpecimenInput = {
+/** One slide's reading as it leaves the Analyze screen, before it is saved. */
+export type NewSlideInput = {
+  fileName: string;
+  detections: SpecimenDetection[];
+  notes: string;
+};
+
+export type NewReportInput = {
   /** When the specimen was collected in the field, not when it was analyzed. */
   collectedAt: CollectedAt;
   location: string;
   researcher: string;
-  notes: string;
   weather: WeatherConditions | null;
-  detections: SpecimenDetection[];
+  slides: NewSlideInput[];
 };
 
 /** How long the mock pretends inference takes. */
 const MOCK_INFERENCE_MS = 1400;
-const MOCK_SAVE_MS = 500;
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -118,27 +122,6 @@ export async function analyzeSpecimen(file: File): Promise<AnalysisResult> {
 }
 
 /**
- * Persist a finished reading.
- *
- * TODO(backend): POST to /api/specimens and return the created row, so the
- * sample ID comes from the database instead of being minted client-side.
- */
-export async function saveSpecimen(input: NewSpecimenInput): Promise<Specimen> {
-  await delay(MOCK_SAVE_MS);
-
-  return {
-    sampleId: nextSampleId(),
-    collectedAt: input.collectedAt,
-    location: input.location.trim(),
-    detections: input.detections,
-    notes: input.notes.trim(),
-    weather: input.weather,
-    researcher: input.researcher.trim() || "Unknown",
-    status: "Completed",
-  };
-}
-
-/**
  * Look up the weather for a collection site.
  *
  * TODO(backend): call the weather provider (OpenWeather) for `location` and map
@@ -148,19 +131,4 @@ export async function saveSpecimen(input: NewSpecimenInput): Promise<Specimen> {
 export async function fetchWeather(location: string): Promise<WeatherConditions | null> {
   void location;
   return null;
-}
-
-// --- Helpers ---------------------------------------------------------------
-
-let savedThisSession = 0;
-
-/** Mints the next PLN-YYYY-NNNN id after the highest one already on record. */
-function nextSampleId(): string {
-  const highest = specimens.reduce((max, s) => {
-    const n = parseInt(s.sampleId.split("-").pop() ?? "0", 10);
-    return Number.isNaN(n) ? max : Math.max(max, n);
-  }, 0);
-  savedThisSession += 1;
-  const year = new Date().getFullYear();
-  return `PLN-${year}-${String(highest + savedThisSession).padStart(4, "0")}`;
 }

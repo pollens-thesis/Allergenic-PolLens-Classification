@@ -192,16 +192,60 @@ export function formatCollectedAt(collectedAt: CollectedAt): string {
   return time ? `${formatted} · ${formatTime(time)}` : formatted;
 }
 
+/**
+ * One microscope slide inside a report: its own image, its own reading, and its
+ * own field note. A report may hold several, because a researcher normally
+ * prepares a batch of slides from one collection session.
+ */
+export type SpecimenSlide = {
+  id: string;
+  fileName: string;
+  detections: SpecimenDetection[]; // one row per pollen type found, richest first
+  notes: string; // free-text note about this slide; "" when left blank
+};
+
+/**
+ * A saved report — one collection session. Location, time and weather describe
+ * the session and are shared; the readings and notes live per slide.
+ */
 export type Specimen = {
   sampleId: string;
   collectedAt: CollectedAt;
   location: string;
-  detections: SpecimenDetection[]; // one row per pollen type found, richest first
-  notes: string; // free-text field notes; "" when the researcher left it blank
+  slides: SpecimenSlide[];
   weather: WeatherConditions | null; // null when conditions weren't recorded
   researcher: string;
   status: ReportStatus;
 };
+
+/** Every pollen type across a report's slides, combined and richest first. */
+export function aggregateSlideDetections(slides: SpecimenSlide[]): SpecimenDetection[] {
+  const bySpecies = new Map<SpeciesId, { grainCount: number; confidenceSum: number }>();
+
+  for (const slide of slides) {
+    for (const detection of slide.detections) {
+      const entry = bySpecies.get(detection.speciesId) ?? { grainCount: 0, confidenceSum: 0 };
+      entry.grainCount += detection.grainCount;
+      // Weight each slide's mean by its grain count so the combined average
+      // reflects grains, not slides.
+      entry.confidenceSum += detection.avgConfidence * detection.grainCount;
+      bySpecies.set(detection.speciesId, entry);
+    }
+  }
+
+  return [...bySpecies.entries()]
+    .map(([speciesId, { grainCount, confidenceSum }]) => ({
+      speciesId,
+      grainCount,
+      avgConfidence: confidenceSum / grainCount,
+    }))
+    .sort(sortByAbundance);
+}
+
+/** Total grains counted across every slide in a report. */
+export function getReportGrains(specimen: Specimen): number {
+  return specimen.slides.reduce((sum, slide) => sum + getTotalGrains(slide.detections), 0);
+}
 
 // "Today" for the mock dataset, so "this week" / "recent" calculations are stable.
 export const MOCK_TODAY = "2026-07-29";
@@ -211,102 +255,93 @@ function d(speciesId: SpeciesId, grainCount: number, avgConfidence: number): Spe
   return { speciesId, grainCount, avgConfidence };
 }
 
+/** Wraps a single-slide reading, which is how the seed records are shaped. */
+function slide(sampleId: string, detections: SpecimenDetection[], notes: string): SpecimenSlide {
+  return { id: `${sampleId}-S1`, fileName: `${sampleId.toLowerCase()}-slide-1.jpg`, detections, notes };
+}
+
 export const specimens: Specimen[] = [
   {
     sampleId: "PLN-2026-0142", collectedAt: "2026-07-29T07:15", location: "Lucena City, Quezon",
-    detections: [d("ambrosia", 18, 0.97), d("poaceae", 6, 0.84), d("artemisia", 2, 0.71)],
-    notes: "Dense ragweed load along the roadside transect; slide re-stained once for contrast.",
+    slides: [slide("PLN-2026-0142", [d("ambrosia", 18, 0.97), d("poaceae", 6, 0.84), d("artemisia", 2, 0.71)], "Dense ragweed load along the roadside transect; slide re-stained once for contrast.")],
     weather: { condition: "Sunny", temperatureC: 32, humidityPct: 64, windKph: 11 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0141", collectedAt: "2026-07-28T09:40", location: "Lucban, Quezon",
-    detections: [d("betula", 12, 0.91), d("pinus", 5, 0.8), d("quercus", 3, 0.76)],
-    notes: "Collected upslope of the treeline, mid-morning.",
+    slides: [slide("PLN-2026-0141", [d("betula", 12, 0.91), d("pinus", 5, 0.8), d("quercus", 3, 0.76)], "Collected upslope of the treeline, mid-morning.")],
     weather: { condition: "Partly cloudy", temperatureC: 26, humidityPct: 78, windKph: 8 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0140", collectedAt: "2026-07-28T14:05", location: "Lucena City, Quezon",
-    detections: [d("poaceae", 9, 0.62), d("artemisia", 4, 0.58)],
-    notes: "Several grains partly obscured by debris — flagged for a second reading.",
+    slides: [slide("PLN-2026-0140", [d("poaceae", 9, 0.62), d("artemisia", 4, 0.58)], "Several grains partly obscured by debris — flagged for a second reading.")],
     weather: { condition: "Overcast", temperatureC: 29, humidityPct: 85, windKph: 6 },
     researcher: "M. Reyes", status: "Needs review",
   },
   {
     sampleId: "PLN-2026-0139", collectedAt: "2026-07-27T08:30", location: "Tayabas, Quezon",
-    detections: [d("quercus", 15, 0.94), d("pinus", 4, 0.87), d("poaceae", 2, 0.69)],
-    notes: "",
+    slides: [slide("PLN-2026-0139", [d("quercus", 15, 0.94), d("pinus", 4, 0.87), d("poaceae", 2, 0.69)], "")],
     weather: { condition: "Sunny", temperatureC: 31, humidityPct: 60, windKph: 14 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0138", collectedAt: "2026-07-26", location: "Lucena City, Quezon",
-    detections: [d("ambrosia", 11, 0.79), d("poaceae", 7, 0.73)],
-    notes: "",
+    slides: [slide("PLN-2026-0138", [d("ambrosia", 11, 0.79), d("poaceae", 7, 0.73)], "")],
     weather: null,
     researcher: "M. Reyes", status: "Processing",
   },
   {
     sampleId: "PLN-2026-0137", collectedAt: "2026-07-26T16:20", location: "Sariaya, Quezon",
-    detections: [d("artemisia", 13, 0.86), d("ambrosia", 5, 0.82), d("poaceae", 3, 0.7)],
-    notes: "Fallow field margin; strong afternoon breeze during sampling.",
+    slides: [slide("PLN-2026-0137", [d("artemisia", 13, 0.86), d("ambrosia", 5, 0.82), d("poaceae", 3, 0.7)], "Fallow field margin; strong afternoon breeze during sampling.")],
     weather: { condition: "Windy", temperatureC: 30, humidityPct: 58, windKph: 27 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0136", collectedAt: "2026-07-25T06:50", location: "Lucban, Quezon",
-    detections: [d("pinus", 16, 0.88), d("betula", 4, 0.83)],
-    notes: "",
+    slides: [slide("PLN-2026-0136", [d("pinus", 16, 0.88), d("betula", 4, 0.83)], "")],
     weather: { condition: "Partly cloudy", temperatureC: 25, humidityPct: 80, windKph: 9 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0135", collectedAt: "2026-06-14T10:10", location: "Lucena City, Quezon",
-    detections: [d("poaceae", 21, 0.93), d("quercus", 3, 0.75)],
-    notes: "Peak grass season — highest grain count recorded at this site so far.",
+    slides: [slide("PLN-2026-0135", [d("poaceae", 21, 0.93), d("quercus", 3, 0.75)], "Peak grass season — highest grain count recorded at this site so far.")],
     weather: { condition: "Sunny", temperatureC: 33, humidityPct: 62, windKph: 12 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0134", collectedAt: "2026-05-30", location: "Candelaria, Quezon",
-    detections: [d("corylus", 10, 0.81), d("alnus", 6, 0.78), d("betula", 2, 0.72)],
-    notes: "",
+    slides: [slide("PLN-2026-0134", [d("corylus", 10, 0.81), d("alnus", 6, 0.78), d("betula", 2, 0.72)], "")],
     weather: null,
     researcher: "M. Reyes", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0133", collectedAt: "2026-05-12T07:35", location: "Lucban, Quezon",
-    detections: [d("alnus", 14, 0.9), d("corylus", 5, 0.85)],
-    notes: "Sampled after two dry days; slide was unusually clean.",
+    slides: [slide("PLN-2026-0133", [d("alnus", 14, 0.9), d("corylus", 5, 0.85)], "Sampled after two dry days; slide was unusually clean.")],
     weather: { condition: "Sunny", temperatureC: 27, humidityPct: 70, windKph: 10 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0132", collectedAt: "2026-04-22T11:25", location: "Tayabas, Quezon",
-    detections: [d("betula", 12, 0.85), d("quercus", 6, 0.8), d("pinus", 3, 0.74)],
-    notes: "",
+    slides: [slide("PLN-2026-0132", [d("betula", 12, 0.85), d("quercus", 6, 0.8), d("pinus", 3, 0.74)], "")],
     weather: { condition: "Partly cloudy", temperatureC: 28, humidityPct: 73, windKph: 15 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0131", collectedAt: "2026-03-18T15:45", location: "Lucena City, Quezon",
-    detections: [d("quercus", 8, 0.77), d("poaceae", 6, 0.64), d("alnus", 2, 0.6)],
-    notes: "Low contrast on the oak grains; worth confirming against the reference set.",
+    slides: [slide("PLN-2026-0131", [d("quercus", 8, 0.77), d("poaceae", 6, 0.64), d("alnus", 2, 0.6)], "Low contrast on the oak grains; worth confirming against the reference set.")],
     weather: { condition: "Rainy", temperatureC: 24, humidityPct: 92, windKph: 18 },
     researcher: "M. Reyes", status: "Needs review",
   },
   {
     sampleId: "PLN-2026-0130", collectedAt: "2026-02-09T08:05", location: "Sariaya, Quezon",
-    detections: [d("alnus", 17, 0.89), d("corylus", 7, 0.83), d("betula", 2, 0.76)],
-    notes: "",
+    slides: [slide("PLN-2026-0130", [d("alnus", 17, 0.89), d("corylus", 7, 0.83), d("betula", 2, 0.76)], "")],
     weather: { condition: "Overcast", temperatureC: 23, humidityPct: 88, windKph: 7 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0129", collectedAt: "2026-01-20T05:55", location: "Lucban, Quezon",
-    detections: [d("corylus", 19, 0.92), d("alnus", 8, 0.87)],
-    notes: "Early hazel flush, sampled at dawn.",
+    slides: [slide("PLN-2026-0129", [d("corylus", 19, 0.92), d("alnus", 8, 0.87)], "Early hazel flush, sampled at dawn.")],
     weather: { condition: "Overcast", temperatureC: 22, humidityPct: 90, windKph: 5 },
     researcher: "You", status: "Completed",
   },
@@ -321,20 +356,27 @@ export type HistoryReport = {
   collectedAt: CollectedAt;
   location: string;
   topPollen: string;
+  totalGrains: number;
+  slideCount: number;
   status: ReportStatus;
 };
 
-export const historyReports: HistoryReport[] = specimens.map((s) => {
-  const top = getTopDetection(s.detections);
+/** The row shown in the History table for one saved report. */
+export function toHistoryReport(specimen: Specimen): HistoryReport {
+  const top = getTopDetection(aggregateSlideDetections(specimen.slides));
   const sp = top ? getSpecies(top.speciesId) : null;
   return {
-    sampleId: s.sampleId,
-    collectedAt: s.collectedAt,
-    location: s.location,
+    sampleId: specimen.sampleId,
+    collectedAt: specimen.collectedAt,
+    location: specimen.location,
     topPollen: sp ? `${sp.genus} (${sp.commonName})` : "No pollen detected",
-    status: s.status,
+    totalGrains: getReportGrains(specimen),
+    slideCount: specimen.slides.length,
+    status: specimen.status,
   };
-});
+}
+
+export const historyReports: HistoryReport[] = specimens.map(toHistoryReport);
 
 // ---------------------------------------------------------------------------
 // Derived: recent detections feed (most recent specimens, newest first)
@@ -357,7 +399,7 @@ export const recentDetections: Detection[] = [...specimens]
   .sort((a, b) => b.collectedAt.localeCompare(a.collectedAt))
   .slice(0, 6)
   .flatMap((s) => {
-    const top = getTopDetection(s.detections);
+    const top = getTopDetection(aggregateSlideDetections(s.slides));
     if (!top) return [];
     const sp = getSpecies(top.speciesId);
     const sampleNumber = parseInt(s.sampleId.split("-").pop() ?? "0", 10);
@@ -398,10 +440,16 @@ export const allergenClasses: AllergenClass[] = speciesCatalog.map((sp) => ({
   code: sp.code,
   season: sp.season,
   riskLevel: sp.riskLevel,
-  count: specimens.filter((s) => s.detections.some((det) => det.speciesId === sp.id)).length,
+  count: specimens.filter((s) =>
+    s.slides.some((sl) => sl.detections.some((det) => det.speciesId === sp.id)),
+  ).length,
   grainCount: specimens.reduce(
     (sum, s) =>
-      sum + s.detections.reduce((n, det) => (det.speciesId === sp.id ? n + det.grainCount : n), 0),
+      sum +
+      aggregateSlideDetections(s.slides).reduce(
+        (n, det) => (det.speciesId === sp.id ? n + det.grainCount : n),
+        0,
+      ),
     0,
   ),
 }));
@@ -412,19 +460,44 @@ export const allergenClasses: AllergenClass[] = speciesCatalog.map((sp) => ({
 
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
-export const dashboardStats = {
-  totalSpecimens: specimens.length,
-  classesTracked: speciesCatalog.length,
-  detectionsThisWeek: specimens.filter((s) => {
-    // Compare date parts only, so a recorded time can't shift the week window.
-    const days =
-      new Date(MOCK_TODAY).getTime() - new Date(getCollectionDate(s.collectedAt)).getTime();
-    return days >= 0 && days <= ONE_WEEK_MS;
-  }).length,
-  avgConfidence:
-    specimens.reduce((sum, s) => sum + getWeightedAvgConfidence(s.detections), 0) /
-    specimens.length,
+export type DashboardStats = {
+  totalSpecimens: number;
+  classesTracked: number;
+  detectionsThisWeek: number;
+  avgConfidence: number;
 };
+
+/**
+ * Computed from whatever set of reports is passed in, so the dashboard can show
+ * saved reports alongside the seed records rather than the seed alone.
+ * `today` is a parameter so the mock dataset's fixed "today" stays testable.
+ */
+export function computeDashboardStats(
+  reports: Specimen[],
+  today: string = MOCK_TODAY,
+): DashboardStats {
+  const withGrains = reports.filter((r) => r.slides.length > 0);
+  return {
+    totalSpecimens: reports.length,
+    classesTracked: speciesCatalog.length,
+    detectionsThisWeek: reports.filter((r) => {
+      // Compare date parts only, so a recorded time can't shift the window.
+      const days =
+        new Date(today).getTime() - new Date(getCollectionDate(r.collectedAt)).getTime();
+      return days >= 0 && days <= ONE_WEEK_MS;
+    }).length,
+    avgConfidence:
+      withGrains.length === 0
+        ? 0
+        : withGrains.reduce(
+            (sum, r) => sum + getWeightedAvgConfidence(aggregateSlideDetections(r.slides)),
+            0,
+          ) / withGrains.length,
+  };
+}
+
+/** Seed-only stats, used as the server-rendered starting point. */
+export const dashboardStats: DashboardStats = computeDashboardStats(specimens);
 
 // ---------------------------------------------------------------------------
 // Historical pollen counts: monthly environmental monitoring data.
