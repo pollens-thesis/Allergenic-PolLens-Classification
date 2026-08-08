@@ -10,7 +10,8 @@ import {
   Leaf,
   Settings,
 } from "lucide-react";
-import { getInitials, useSettings } from "@/lib/settings";
+import { accountName, getInitials } from "@/lib/account";
+import { useSettings } from "@/lib/settings";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
@@ -28,15 +29,9 @@ export default function Sidebar() {
   const pathname = usePathname();
   const settings = useSettings();
 
-  // Institution is the most useful second line, then role — but not when role
-  // just repeats the name, which is what the defaults produce. Falling back to
-  // the destination keeps the card from reading "Researcher / Researcher" and
-  // says what it does, now that Settings has no nav entry of its own.
-  const accountSubtitle =
-    settings.institution ||
-    (settings.role && settings.role !== settings.displayName
-      ? settings.role
-      : "Account & settings");
+  // The name is the institution read off the signed-in address, so the second
+  // line says where the card goes rather than repeating it.
+  const name = accountName(settings.email);
 
   return (
     // The column itself stretches the full page height so the dark panel never
@@ -103,15 +98,11 @@ export default function Sidebar() {
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-anther/25 text-[13px] font-medium text-parchment"
               style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
             >
-              {getInitials(settings.displayName)}
+              {getInitials(name)}
             </span>
             <div className="min-w-0 flex-1 leading-tight">
-              <div className="truncate text-[13px] text-parchment/90">
-                {settings.displayName || "Unnamed"}
-              </div>
-              <div className="truncate text-[12px] text-sage">
-                {accountSubtitle}
-              </div>
+              <div className="truncate text-[13px] text-parchment/90">{name}</div>
+              <div className="truncate text-[12px] text-sage">Account &amp; settings</div>
             </div>
             <Settings
               size={15}

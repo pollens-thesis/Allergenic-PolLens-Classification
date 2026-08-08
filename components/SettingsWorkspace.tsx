@@ -4,31 +4,21 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
-  Check,
   Database,
   Download,
   FileJson,
   FileSpreadsheet,
   Loader2,
   LogOut,
-  RotateCcw,
-  SlidersHorizontal,
+  Mail,
   Trash2,
   UserRound,
 } from "lucide-react";
-import { weatherConditionOptions, type Specimen, type WeatherCondition } from "@/lib/data";
-import {
-  DEFAULT_SETTINGS,
-  getInitials,
-  resetSettings,
-  updateSettings,
-  useSettings,
-} from "@/lib/settings";
+import type { Specimen } from "@/lib/data";
+import { accountName, getInitials, institutionFromEmail } from "@/lib/account";
+import { resetSettings, useSettings } from "@/lib/settings";
 import { clearAllReports, getStorageSummary, listReports } from "@/lib/store";
 import { exportReportsCsv, exportReportsJson } from "@/lib/export";
-
-const fieldClass =
-  "focus-ring w-full rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink placeholder:text-ink/70";
 
 function Section({
   icon: Icon,
@@ -59,24 +49,6 @@ function Section({
   );
 }
 
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-[12.5px] text-ink/70">{label}</span>
-      {children}
-      {hint && <span className="mt-1 block text-[12px] text-ink/70">{hint}</span>}
-    </label>
-  );
-}
-
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -95,7 +67,6 @@ export default function SettingsWorkspace() {
   } | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [clearing, setClearing] = useState(false);
-  const [savedFlash, setSavedFlash] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,13 +80,6 @@ export default function SettingsWorkspace() {
     };
   }, []);
 
-  /** Settings persist on every keystroke; the tick is just reassurance. */
-  function patch(next: Partial<typeof settings>) {
-    updateSettings(next);
-    setSavedFlash(true);
-    window.setTimeout(() => setSavedFlash(false), 1200);
-  }
-
   async function handleClearAll() {
     setClearing(true);
     await clearAllReports();
@@ -127,142 +91,53 @@ export default function SettingsWorkspace() {
   }
 
   const savedReportCount = storage?.reportCount ?? 0;
+  const name = accountName(settings.email);
+  const institution = institutionFromEmail(settings.email);
 
   return (
     <div className="flex flex-col gap-6">
-      {savedFlash && (
-        <div
-          role="status"
-          className="fixed top-5 right-5 z-10 flex items-center gap-2 rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink/70 shadow-sm"
-        >
-          <Check size={14} strokeWidth={2} className="text-[#3f7a4f]" />
-          Saved
-        </div>
-      )}
-
       {/* Profile */}
       <Section
         icon={UserRound}
         title="Profile"
-        description="Your name is recorded on every report you save and printed on its PDF."
+        description="Read from the account you signed in with. Reports you save are filed under this name and it is printed on their PDFs."
       >
-        <div className="mb-4 flex items-center gap-3">
+        <div className="flex items-center gap-3.5 rounded-md border border-panel-line bg-white px-3.5 py-3">
           <span
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-anther/15 text-[15px] text-anther-ink"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-anther/15 text-[15px] text-anther-ink"
             style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
           >
-            {getInitials(settings.displayName)}
+            {getInitials(name)}
           </span>
-          <div className="leading-tight">
-            <div className="text-[14px] text-ink">{settings.displayName || "Unnamed"}</div>
-            <div className="text-[13px] text-ink/70">
-              {settings.institution || "No institution set"}
+          <div className="min-w-0 leading-tight">
+            <div className="truncate text-[15px] font-medium text-ink">{name}</div>
+            <div className="mt-0.5 flex items-center gap-1.5 text-[13px] text-ink/70">
+              <Mail size={13} strokeWidth={1.75} className="shrink-0 text-ink/55" />
+              <span className="truncate">{settings.email || "Not signed in"}</span>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Display name">
-            <input
-              type="text"
-              value={settings.displayName}
-              onChange={(e) => patch({ displayName: e.target.value })}
-              placeholder="e.g. Niño Elma"
-              className={fieldClass}
-            />
-          </Field>
-          <Field label="Role">
-            <input
-              type="text"
-              value={settings.role}
-              onChange={(e) => patch({ role: e.target.value })}
-              placeholder="e.g. Undergraduate researcher"
-              className={fieldClass}
-            />
-          </Field>
-          <Field label="Email">
-            <input
-              type="email"
-              value={settings.email}
-              onChange={(e) => patch({ email: e.target.value })}
-              placeholder="you@university.edu"
-              className={fieldClass}
-            />
-          </Field>
-          <Field label="Institution">
-            <input
-              type="text"
-              value={settings.institution}
-              onChange={(e) => patch({ institution: e.target.value })}
-              placeholder="e.g. Southern Luzon State University"
-              className={fieldClass}
-            />
-          </Field>
-        </div>
-      </Section>
-
-      {/* Analysis defaults */}
-      <Section
-        icon={SlidersHorizontal}
-        title="Analysis defaults"
-        description="Applied when you start a new batch, so a repeat site isn't retyped every time. You can still change any of it per batch."
-      >
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Default location" hint="Prefills the Location field on the Analyze screen.">
-            <input
-              type="text"
-              value={settings.defaultLocation}
-              onChange={(e) => patch({ defaultLocation: e.target.value })}
-              placeholder="e.g. Lucena City, Quezon"
-              className={fieldClass}
-            />
-          </Field>
-          <Field label="Default weather condition">
-            <select
-              value={settings.defaultWeatherCondition}
-              onChange={(e) =>
-                patch({ defaultWeatherCondition: e.target.value as WeatherCondition })
-              }
-              className={fieldClass}
-            >
-              {weatherConditionOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-
-        <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-md border border-panel-line bg-white px-3 py-2.5">
-          <input
-            type="checkbox"
-            checked={settings.autoStampCollectionTime}
-            onChange={(e) => patch({ autoStampCollectionTime: e.target.checked })}
-            className="focus-ring mt-0.5 h-4 w-4 shrink-0 accent-[#23261f]"
-          />
-          <span>
-            <span className="block text-[13px] text-ink">Stamp collection time automatically</span>
-            <span className="mt-0.5 block text-[12.5px] text-ink/65">
-              Fills the date and time with &ldquo;now&rdquo; when you add the first image. Turn this
-              off if you usually analyze slides well after collecting them, and would rather enter
-              the real moment yourself.
-            </span>
-          </span>
-        </label>
-
-        <button
-          type="button"
-          onClick={() => {
-            resetSettings();
-            setSavedFlash(true);
-            window.setTimeout(() => setSavedFlash(false), 1200);
-          }}
-          className="focus-ring mt-4 inline-flex items-center gap-1.5 rounded-md border border-panel-line bg-white px-3 py-1.5 text-[13px] text-ink/70 transition hover:text-ink"
-        >
-          <RotateCcw size={13} strokeWidth={1.75} />
-          Reset all settings to defaults
-        </button>
+        <p className="mt-3 text-[12.5px] leading-relaxed text-ink/70">
+          {institution ? (
+            <>
+              <span className="font-medium text-ink">{institution}</span>{" "}
+              comes from the domain of that address, so the name on a report always matches the account that saved it. To
+              file under a different institution, sign in with that institution&rsquo;s mailbox.
+            </>
+          ) : settings.email ? (
+            <>
+              This address is not on an institution domain, so the console uses the mailbox&rsquo;s
+              own name. Signing in with an institution address — <code>name@mseuf.edu.ph</code> —
+              files reports under that institution instead.
+            </>
+          ) : (
+            <>
+              No account is signed in on this browser, so reports fall back to a generic name. Sign
+              in from the landing page to file them under your institution.
+            </>
+          )}
+        </p>
       </Section>
 
       {/* Data and storage */}
@@ -385,17 +260,25 @@ export default function SettingsWorkspace() {
       <Section
         icon={LogOut}
         title="Account"
-        description="Sign-in is not connected to a real provider yet, so this only returns you to the landing page."
+        description="Sign-in is not connected to a real provider yet, so signing out just forgets the account stored in this browser. Your saved reports stay."
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-[13px] text-ink/70">
-            Signed in as{" "}
-            <span className="text-ink">{settings.displayName || DEFAULT_SETTINGS.displayName}</span>
-            {settings.email && <span className="text-ink/70"> · {settings.email}</span>}
+            {settings.email ? (
+              <>
+                Signed in as <span className="text-ink">{name}</span>
+                <span className="text-ink/70"> · {settings.email}</span>
+              </>
+            ) : (
+              "No account signed in on this browser."
+            )}
           </div>
           <button
             type="button"
-            onClick={() => router.push("/")}
+            onClick={() => {
+              resetSettings();
+              router.push("/");
+            }}
             className="focus-ring inline-flex items-center justify-center gap-1.5 rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink/70 transition hover:text-ink"
           >
             <LogOut size={14} strokeWidth={1.75} />
