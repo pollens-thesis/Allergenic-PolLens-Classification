@@ -1,10 +1,11 @@
+import { Suspense } from "react";
 import Link from "next/link";
-import { Leaf, ScanLine, Microscope, Percent, ArrowRight } from "lucide-react";
+import { ArrowRight, Loader2, ScanLine } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
-import StatCard from "@/components/StatCard";
+import DashboardStats from "@/components/DashboardStats";
 import PollenCountChart from "@/components/PollenCountChart";
-import HistoryReportsTable from "@/components/HistoryReportsTable";
-import { dashboardStats, historicalPollenCounts, historyReports } from "@/lib/data";
+import HistoryWorkspace from "@/components/HistoryWorkspace";
+import { dashboardStats, historicalPollenCounts } from "@/lib/data";
 
 export default function DashboardPage() {
   return (
@@ -48,40 +49,24 @@ export default function DashboardPage() {
         </Link>
 
         {/* Quick stats */}
-        <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatCard
-            label="Specimens analyzed"
-            value={dashboardStats.totalSpecimens.toLocaleString()}
-            sublabel="All time"
-            icon={Microscope}
-          />
-          <StatCard
-            label="Allergen classes"
-            value={String(dashboardStats.classesTracked)}
-            sublabel="In reference set"
-            icon={Leaf}
-          />
-          <StatCard
-            label="This week"
-            value={String(dashboardStats.detectionsThisWeek)}
-            sublabel="New identifications"
-            icon={ScanLine}
-          />
-          <StatCard
-            label="Avg. confidence"
-            value={`${Math.round(dashboardStats.avgConfidence * 100)}%`}
-            sublabel="Across all classes"
-            icon={Percent}
-          />
-        </div>
+        <DashboardStats initial={dashboardStats} />
 
         {/* Historical pollen counts */}
         <div className="mb-6">
           <PollenCountChart data={historicalPollenCounts} />
         </div>
 
-        {/* History reports */}
-        <HistoryReportsTable data={historyReports} />
+        {/* History reports — same live list as the History page. */}
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center gap-2 rounded-lg border border-panel-line bg-white/60 px-6 py-16 text-[13px] text-ink/45">
+              <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
+              Loading reports…
+            </div>
+          }
+        >
+          <HistoryWorkspace />
+        </Suspense>
       </main>
     </div>
   );
