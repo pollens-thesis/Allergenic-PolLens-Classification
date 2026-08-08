@@ -109,8 +109,8 @@ export default function PollenField() {
           </svg>
           {g.tag && (
             <span
-              className="absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap text-[9px] tracking-widest text-sage/70"
-              style={{ fontFamily: "var(--font-mono)" }}
+              className="absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap text-[11px] tracking-widest text-sage/90"
+              style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
             >
               {g.tag}
             </span>

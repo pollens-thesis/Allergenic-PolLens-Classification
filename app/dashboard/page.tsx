@@ -16,12 +16,12 @@ export default function DashboardPage() {
         {/* Top bar */}
         <div className="mb-6">
           <p
-            className="text-[11px] tracking-[0.25em] text-ink/50 uppercase"
-            style={{ fontFamily: "var(--font-mono)" }}
+            className="text-[12px] tracking-[0.25em] text-ink/70 uppercase"
+            style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
           >
             Research console
           </p>
-          <h1 className="mt-1 text-3xl text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+          <h1 className="mt-1 text-3xl text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
             Welcome back, Researcher
           </h1>
         </div>
@@ -37,7 +37,7 @@ export default function DashboardPage() {
             </span>
             <div>
               <div className="text-[15px] font-medium text-parchment">Start new analysis</div>
-              <div className="text-[13px] text-parchment/60">
+              <div className="text-[13px] text-parchment/85">
                 Upload a microscope image to count and identify the pollen grains it contains
               </div>
             </div>
@@ -59,7 +59,7 @@ export default function DashboardPage() {
         {/* History reports — same live list as the History page. */}
         <Suspense
           fallback={
-            <div className="flex items-center justify-center gap-2 rounded-lg border border-panel-line bg-white/60 px-6 py-16 text-[13px] text-ink/45">
+            <div className="flex items-center justify-center gap-2 rounded-lg border border-panel-line bg-white/60 px-6 py-16 text-[13px] text-ink/65">
               <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
               Loading reports…
             </div>

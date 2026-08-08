@@ -29,9 +29,9 @@ import { downloadReportPdf } from "@/lib/pdf";
 import StatusBadge from "@/components/StatusBadge";
 
 function riskBadgeClass(level: "High" | "Moderate" | "Low") {
-  if (level === "High") return "bg-[#b3492f]/10 text-[#b3492f]";
-  if (level === "Moderate") return "bg-anther/10 text-anther";
-  return "bg-[#3f7a4f]/10 text-[#3f7a4f]";
+  if (level === "High") return "bg-ember-ink/10 text-ember-ink";
+  if (level === "Moderate") return "bg-anther/10 text-anther-ink";
+  return "bg-leaf-ink/10 text-leaf-ink";
 }
 
 function DetectionRow({ detection }: { detection: SpecimenDetection }) {
@@ -49,19 +49,19 @@ function DetectionRow({ detection }: { detection: SpecimenDetection }) {
           />
           <div className="min-w-0">
             <span
-              className="mr-2 text-[10.5px] tracking-widest text-ink/45 uppercase"
-              style={{ fontFamily: "var(--font-mono)" }}
+              className="mr-2 text-[11.5px] tracking-widest text-ink/65 uppercase"
+              style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
             >
               {species.code}
             </span>
-            <span className="text-[14px] text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+            <span className="text-[14px] text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
               {species.genus}
             </span>
-            <span className="ml-1.5 text-[12.5px] text-ink/55">{species.commonName}</span>
+            <span className="ml-1.5 text-[13px] text-ink/70">{species.commonName}</span>
           </div>
           <span
-            className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap sm:inline-flex ${riskBadgeClass(species.riskLevel)}`}
-            style={{ fontFamily: "var(--font-mono)" }}
+            className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap sm:inline-flex ${riskBadgeClass(species.riskLevel)}`}
+            style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
           >
             {species.riskLevel} risk
           </span>
@@ -69,17 +69,17 @@ function DetectionRow({ detection }: { detection: SpecimenDetection }) {
 
         <div className="flex shrink-0 items-center gap-4">
           <div className="text-right">
-            <div className="text-[14px] text-ink" style={{ fontFamily: "var(--font-mono)" }}>
+            <div className="text-[14px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
               {detection.grainCount}
             </div>
-            <div className="text-[10.5px] text-ink/45">
+            <div className="text-[11.5px] text-ink/65">
               {detection.grainCount === 1 ? "grain" : "grains"}
             </div>
           </div>
           <div className="w-24">
-            <div className="mb-1 flex items-center justify-between text-[10.5px] text-ink/50">
+            <div className="mb-1 flex items-center justify-between text-[11.5px] text-ink/70">
               <span>conf.</span>
-              <span style={{ fontFamily: "var(--font-mono)" }}>{confidencePct}%</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{confidencePct}%</span>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-panel-line">
               <div className="h-full rounded-full bg-anther" style={{ width: `${confidencePct}%` }} />
@@ -102,9 +102,9 @@ function MetaItem({
 }) {
   return (
     <div className="flex items-start gap-2.5">
-      <Icon size={15} strokeWidth={1.75} className="mt-0.5 shrink-0 text-ink/35" />
+      <Icon size={15} strokeWidth={1.75} className="mt-0.5 shrink-0 text-ink/55" />
       <div className="min-w-0">
-        <div className="text-[11px] tracking-widest text-ink/45 uppercase" style={{ fontFamily: "var(--font-mono)" }}>
+        <div className="text-[12px] tracking-widest text-ink/65 uppercase" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
           {label}
         </div>
         <div className="text-[13px] text-ink/85">{value}</div>
@@ -154,7 +154,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
 
   if (report === undefined) {
     return (
-      <div className="flex items-center justify-center gap-2 rounded-lg border border-panel-line bg-white/60 px-6 py-16 text-[13px] text-ink/45">
+      <div className="flex items-center justify-center gap-2 rounded-lg border border-panel-line bg-white/60 px-6 py-16 text-[13px] text-ink/65">
         <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
         Loading report…
       </div>
@@ -164,10 +164,10 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
   if (report === null) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-lg border border-panel-line bg-white/60 px-6 py-16 text-center">
-        <FileText size={22} strokeWidth={1.5} className="text-ink/25" />
-        <p className="text-[13.5px] text-ink/60">
+        <FileText size={22} strokeWidth={1.5} className="text-ink/55" />
+        <p className="text-[13.5px] text-ink/70">
           No report found for{" "}
-          <span style={{ fontFamily: "var(--font-mono)" }}>{sampleId}</span>.
+          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{sampleId}</span>.
         </p>
         <Link
           href="/history"
@@ -191,14 +191,14 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div
-              className="text-[11px] tracking-widest text-ink/45 uppercase"
-              style={{ fontFamily: "var(--font-mono)" }}
+              className="text-[12px] tracking-widest text-ink/65 uppercase"
+              style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
             >
               {report.sampleId}
             </div>
             <h2
               className="mt-1 text-2xl text-ink"
-              style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}
+              style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
             >
               Full report
             </h2>
@@ -237,41 +237,41 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
 
       {/* Combined results */}
       <div className="rounded-lg border border-panel-line bg-white/60 p-5">
-        <h3 className="mb-4 text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+        <h3 className="mb-4 text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
           Results
         </h3>
 
         <div className="mb-4 grid grid-cols-2 gap-3 rounded-md bg-panel/60 px-3 py-3 text-center sm:grid-cols-4">
           <div>
-            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)" }}>
+            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
               {totalGrains}
             </div>
-            <div className="text-[11px] text-ink/45">Total grains</div>
+            <div className="text-[12px] text-ink/65">Total grains</div>
           </div>
           <div>
-            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)" }}>
+            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
               {aggregated.length}
             </div>
-            <div className="text-[11px] text-ink/45">Pollen types</div>
+            <div className="text-[12px] text-ink/65">Pollen types</div>
           </div>
           <div>
-            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)" }}>
+            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
               {Math.round(overallConfidence * 100)}%
             </div>
-            <div className="text-[11px] text-ink/45">Avg. confidence</div>
+            <div className="text-[12px] text-ink/65">Avg. confidence</div>
           </div>
           <div>
-            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)" }}>
+            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
               {report.slides.length}
             </div>
-            <div className="text-[11px] text-ink/45">
+            <div className="text-[12px] text-ink/65">
               {report.slides.length === 1 ? "Slide" : "Slides"}
             </div>
           </div>
         </div>
 
         {aggregated.length === 0 ? (
-          <p className="rounded-md border border-panel-line bg-white px-3 py-4 text-center text-[12.5px] text-ink/50">
+          <p className="rounded-md border border-panel-line bg-white px-3 py-4 text-center text-[13px] text-ink/70">
             No pollen grains detected in this report.
           </p>
         ) : (
@@ -285,10 +285,10 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
 
       {/* Per slide: image, its own reading, its own note */}
       <div className="rounded-lg border border-panel-line bg-white/60 p-5">
-        <h3 className="mb-1 text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+        <h3 className="mb-1 text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
           Specimen images
         </h3>
-        <p className="mb-4 text-[12.5px] text-ink/50">
+        <p className="mb-4 text-[13px] text-ink/70">
           {report.slides.length === 1
             ? "One slide in this report."
             : `${report.slides.length} slides in this report, each analyzed separately.`}
@@ -312,25 +312,25 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                       />
                     ) : (
                       <div className="flex h-40 w-full flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-panel-line bg-panel/50 text-center">
-                        <ImageOff size={18} strokeWidth={1.5} className="text-ink/25" />
-                        <span className="px-3 text-[11.5px] text-ink/40">
+                        <ImageOff size={18} strokeWidth={1.5} className="text-ink/55" />
+                        <span className="px-3 text-[12.5px] text-ink/70">
                           Image not stored for this record
                         </span>
                       </div>
                     )}
-                    <div className="mt-2 truncate text-[12px] text-ink/50">{slide.fileName}</div>
+                    <div className="mt-2 truncate text-[13px] text-ink/70">{slide.fileName}</div>
                   </div>
 
                   <div className="min-w-0">
-                    <div className="mb-3 flex flex-wrap items-center gap-3 text-[12.5px]">
+                    <div className="mb-3 flex flex-wrap items-center gap-3 text-[13px]">
                       <span
-                        className="rounded-full bg-panel px-2.5 py-1 text-[11px] text-ink/70"
-                        style={{ fontFamily: "var(--font-mono)" }}
+                        className="rounded-full bg-panel px-2.5 py-1 text-[12px] text-ink/70"
+                        style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
                       >
                         Slide {index + 1}
                       </span>
-                      <span className="flex items-center gap-1.5 text-ink/60">
-                        <Microscope size={13} strokeWidth={1.75} className="text-ink/35" />
+                      <span className="flex items-center gap-1.5 text-ink/70">
+                        <Microscope size={13} strokeWidth={1.75} className="text-ink/55" />
                         {slideGrains} {slideGrains === 1 ? "grain" : "grains"} ·{" "}
                         {slide.detections.length}{" "}
                         {slide.detections.length === 1 ? "type" : "types"}
@@ -338,7 +338,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                     </div>
 
                     {slide.detections.length === 0 ? (
-                      <p className="text-[12.5px] text-ink/50">No pollen grains detected.</p>
+                      <p className="text-[13px] text-ink/70">No pollen grains detected.</p>
                     ) : (
                       <ul className="flex flex-col gap-2">
                         {slide.detections.map((detection) => (
@@ -349,15 +349,15 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
 
                     <div className="mt-3">
                       <div
-                        className="mb-1 text-[11px] tracking-widest text-ink/45 uppercase"
-                        style={{ fontFamily: "var(--font-mono)" }}
+                        className="mb-1 text-[12px] tracking-widest text-ink/65 uppercase"
+                        style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
                       >
                         Researcher&apos;s note
                       </div>
                       {slide.notes ? (
                         <p className="text-[13px] whitespace-pre-wrap text-ink/80">{slide.notes}</p>
                       ) : (
-                        <p className="text-[12.5px] text-ink/40">No note recorded.</p>
+                        <p className="text-[13px] text-ink/70">No note recorded.</p>
                       )}
                     </div>
                   </div>

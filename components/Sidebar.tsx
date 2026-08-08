@@ -55,7 +55,7 @@ export default function Sidebar() {
             </span>
             <span
               className="text-sm tracking-[0.25em] text-parchment/90 uppercase"
-              style={{ fontFamily: "var(--font-mono)" }}
+              style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
             >
               PolLens
             </span>
@@ -69,7 +69,7 @@ export default function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`focus-ring flex items-center gap-3 rounded-md px-3 py-2.5 text-[13.5px] transition ${
+                  className={`focus-ring flex items-center gap-3 rounded-md px-3 py-2.5 text-[13.5px] font-medium transition ${
                     active
                       ? "bg-parchment/10 text-parchment"
                       : "text-sage hover:bg-parchment/5 hover:text-parchment/90"
@@ -100,8 +100,8 @@ export default function Sidebar() {
             }`}
           >
             <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-anther/20 text-[12px] text-anther"
-              style={{ fontFamily: "var(--font-mono)" }}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-anther/25 text-[13px] font-medium text-parchment"
+              style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
             >
               {getInitials(settings.displayName)}
             </span>
@@ -109,7 +109,7 @@ export default function Sidebar() {
               <div className="truncate text-[13px] text-parchment/90">
                 {settings.displayName || "Unnamed"}
               </div>
-              <div className="truncate text-[11px] text-sage/70">
+              <div className="truncate text-[12px] text-sage">
                 {accountSubtitle}
               </div>
             </div>
@@ -119,7 +119,7 @@ export default function Sidebar() {
               className={`shrink-0 transition ${
                 pathname === SETTINGS_HREF
                   ? "text-pollen"
-                  : "text-sage/50 group-hover:text-parchment/80"
+                  : "text-sage/85 group-hover:text-parchment/90"
               }`}
             />
           </Link>

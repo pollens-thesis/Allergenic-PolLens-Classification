@@ -31,7 +31,7 @@ function CollectedCell({ collectedAt }: { collectedAt: string }) {
   return (
     <td className="py-2.5 pr-3 whitespace-nowrap text-ink/70">
       {formatDate(collectedAt)}
-      {time && <span className="mt-0.5 block text-[11.5px] text-ink/40">{formatTime(time)}</span>}
+      {time && <span className="mt-0.5 block text-[12.5px] text-ink/70">{formatTime(time)}</span>}
     </td>
   );
 }
@@ -75,10 +75,10 @@ export default function HistoryReportsTable({
     <div className="rounded-lg border border-panel-line bg-white/60 p-5">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+          <h2 className="text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
             History reports
           </h2>
-          <p className="mt-0.5 text-[12.5px] text-ink/50">
+          <p className="mt-0.5 text-[13px] text-ink/70">
             {filtered.length} of {data.length} {data.length === 1 ? "report" : "reports"}
           </p>
         </div>
@@ -88,14 +88,14 @@ export default function HistoryReportsTable({
             <Search
               size={14}
               strokeWidth={1.75}
-              className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink/35"
+              className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink/55"
             />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search sample, location, pollen, date"
-              className="focus-ring w-full rounded-md border border-panel-line bg-white py-1.5 pr-3 pl-8 text-[13px] text-ink placeholder:text-ink/35 sm:w-64"
+              className="focus-ring w-full rounded-md border border-panel-line bg-white py-1.5 pr-3 pl-8 text-[13px] text-ink placeholder:text-ink/70 sm:w-64"
             />
           </label>
 
@@ -105,8 +105,8 @@ export default function HistoryReportsTable({
                 key={option}
                 type="button"
                 onClick={() => setStatus(option)}
-                className={`focus-ring rounded px-2.5 py-1 text-[12px] transition ${
-                  status === option ? "bg-ink text-parchment" : "text-ink/55 hover:text-ink"
+                className={`focus-ring rounded px-2.5 py-1 text-[13px] transition ${
+                  status === option ? "bg-ink text-parchment" : "text-ink/70 hover:text-ink"
                 }`}
               >
                 {option}
@@ -120,8 +120,8 @@ export default function HistoryReportsTable({
         <table className="w-full min-w-[52rem] border-collapse text-left text-[13px]">
           <thead>
             <tr
-              className="border-b border-panel-line text-[11px] tracking-widest text-ink/45 uppercase"
-              style={{ fontFamily: "var(--font-mono)" }}
+              className="border-b border-panel-line text-[12px] tracking-widest text-ink/65 uppercase"
+              style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
             >
               <th className="py-2 pr-3 font-medium">Sample ID</th>
               <th className="py-2 pr-3 font-medium">Collected</th>
@@ -140,12 +140,12 @@ export default function HistoryReportsTable({
                   r.sampleId === highlightId ? "bg-anther/8" : ""
                 }`}
               >
-                <td className="py-2.5 pr-3 whitespace-nowrap text-ink/85" style={{ fontFamily: "var(--font-mono)" }}>
+                <td className="py-2.5 pr-3 whitespace-nowrap text-ink/85" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                   <Link href={`/history/${r.sampleId}`} className="focus-ring rounded hover:underline">
                     {r.sampleId}
                   </Link>
                   {r.sampleId === highlightId && (
-                    <span className="ml-2 rounded-full bg-anther/15 px-2 py-0.5 text-[10px] text-anther">
+                    <span className="ml-2 rounded-full bg-anther/15 px-2 py-0.5 text-[11.5px] text-anther-ink">
                       just saved
                     </span>
                   )}
@@ -155,12 +155,12 @@ export default function HistoryReportsTable({
                 <td className="py-2.5 pr-3 text-ink/85">
                   {r.topPollen}
                   {r.slideCount > 1 && (
-                    <span className="mt-0.5 block text-[11.5px] text-ink/40">
+                    <span className="mt-0.5 block text-[12.5px] text-ink/70">
                       across {r.slideCount} slides
                     </span>
                   )}
                 </td>
-                <td className="py-2.5 pr-3 whitespace-nowrap text-ink/85" style={{ fontFamily: "var(--font-mono)" }}>
+                <td className="py-2.5 pr-3 whitespace-nowrap text-ink/85" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                   {r.totalGrains}
                 </td>
                 <td className="py-2.5 pr-3">
@@ -170,7 +170,7 @@ export default function HistoryReportsTable({
                   <Link
                     href={`/history/${r.sampleId}`}
                     aria-label={`Open full report ${r.sampleId}`}
-                    className="focus-ring inline-flex items-center gap-1 rounded px-1.5 py-1 text-[12px] text-ink/45 transition group-hover:text-ink"
+                    className="focus-ring inline-flex items-center gap-1 rounded px-1.5 py-1 text-[13px] text-ink/65 transition group-hover:text-ink"
                   >
                     View
                     <ChevronRight size={13} strokeWidth={1.75} />
@@ -183,7 +183,7 @@ export default function HistoryReportsTable({
 
         {filtered.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-10 text-center">
-            <p className="text-[13px] text-ink/50">
+            <p className="text-[13px] text-ink/70">
               {hasActiveFilters
                 ? "No reports match those filters."
                 : "No reports yet — analyze a specimen to create one."}
@@ -192,7 +192,7 @@ export default function HistoryReportsTable({
               <button
                 type="button"
                 onClick={clearFilters}
-                className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-panel-line bg-white px-2.5 py-1.5 text-[12px] text-ink/70 transition hover:text-ink"
+                className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-panel-line bg-white px-2.5 py-1.5 text-[13px] text-ink/70 transition hover:text-ink"
               >
                 <X size={13} strokeWidth={1.75} />
                 Clear filters

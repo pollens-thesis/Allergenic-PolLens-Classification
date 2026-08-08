@@ -15,7 +15,7 @@ export default function LoginPage() {
           </span>
           <span
             className="text-sm tracking-[0.25em] text-parchment/90 uppercase"
-            style={{ fontFamily: "var(--font-mono)" }}
+            style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
           >
             PolLens
           </span>
@@ -24,13 +24,13 @@ export default function LoginPage() {
         <div className="relative z-10 max-w-xl">
           <p
             className="mb-4 text-xs tracking-[0.3em] text-pollen uppercase"
-            style={{ fontFamily: "var(--font-mono)" }}
+            style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
           >
             Allergen Identification &middot; Research Console
           </p>
           <h1
             className="text-4xl leading-[1.08] text-parchment sm:text-5xl lg:text-[3.4rem]"
-            style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}
+            style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
           >
             Every grain,{" "}
             <em className="not-italic" style={{ color: "var(--pollen-soft)", fontStyle: "italic" }}>
@@ -48,7 +48,7 @@ export default function LoginPage() {
 
         <div
           className="relative z-10 hidden gap-8 border-t border-parchment/10 pt-5 sm:flex"
-          style={{ fontFamily: "var(--font-mono)" }}
+          style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
         >
           {[
             ["Classes tracked", "12 taxa"],
@@ -56,7 +56,7 @@ export default function LoginPage() {
             ["Access", "Research use"],
           ].map(([label, value]) => (
             <div key={label}>
-              <div className="text-[10px] tracking-widest text-sage/70 uppercase">{label}</div>
+              <div className="text-[11.5px] tracking-widest text-sage/90 uppercase">{label}</div>
               <div className="mt-1 text-sm text-parchment/90">{value}</div>
             </div>
           ))}
@@ -68,18 +68,18 @@ export default function LoginPage() {
         <div className="w-full max-w-sm">
           <div className="mb-8">
             <p
-              className="text-[11px] tracking-[0.25em] text-ink/50 uppercase"
-              style={{ fontFamily: "var(--font-mono)" }}
+              className="text-[12px] tracking-[0.25em] text-ink/70 uppercase"
+              style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
             >
               Researcher access
             </p>
             <h2
               className="mt-2 text-3xl text-ink"
-              style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}
+              style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
             >
               Sign in to continue
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-ink/60">
+            <p className="mt-2 text-sm leading-relaxed text-ink/70">
               Use your Google account to open the console. New accounts are
               registered automatically on first sign-in.
             </p>
@@ -93,15 +93,15 @@ export default function LoginPage() {
             Continue with Google
           </Link>
 
-          <div className="my-7 flex items-center gap-3 text-ink/30">
+          <div className="my-7 flex items-center gap-3 text-ink/65">
             <span className="h-px flex-1 bg-panel-line" />
-            <span className="text-[10px] tracking-widest uppercase" style={{ fontFamily: "var(--font-mono)" }}>
+            <span className="text-[11.5px] tracking-widest uppercase" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
               Field notes
             </span>
             <span className="h-px flex-1 bg-panel-line" />
           </div>
 
-          <ul className="space-y-3 text-[13px] leading-relaxed text-ink/55">
+          <ul className="space-y-3 text-[13px] leading-relaxed text-ink/70">
             <li className="flex gap-2.5">
               <span className="mt-[3px] h-1.5 w-1.5 shrink-0 rounded-full bg-anther" />
               Google sign-in is the only supported entry point for this
@@ -114,7 +114,7 @@ export default function LoginPage() {
             </li>
           </ul>
 
-          <p className="mt-10 text-center text-[11px] text-ink/40">
+          <p className="mt-10 text-center text-[12px] text-ink/70">
             PolLens &middot; Thesis Project &middot; {new Date().getFullYear()}
           </p>
         </div>
