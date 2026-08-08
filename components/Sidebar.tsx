@@ -8,7 +8,9 @@ import {
   Leaf,
   History,
   Info,
+  Settings,
 } from "lucide-react";
+import { getInitials, useSettings } from "@/lib/settings";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
@@ -16,10 +18,12 @@ const NAV_ITEMS = [
   { href: "/dataset", label: "Allergen reference", icon: Leaf },
   { href: "/history", label: "History", icon: History },
   { href: "/about", label: "About the study", icon: Info },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const settings = useSettings();
 
   return (
     <aside className="hidden flex-col justify-between bg-field px-5 py-6 lg:flex">
@@ -59,15 +63,25 @@ export default function Sidebar() {
       </div>
 
       <div className="border-t border-parchment/10 pt-4">
-        <div className="flex items-center gap-2.5 px-1">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-anther/20 text-[12px] text-anther" style={{ fontFamily: "var(--font-mono)" }}>
-            RD
+        <Link
+          href="/settings"
+          className="focus-ring flex items-center gap-2.5 rounded-md px-1 py-1.5 transition hover:bg-parchment/5"
+        >
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-anther/20 text-[12px] text-anther"
+            style={{ fontFamily: "var(--font-mono)" }}
+          >
+            {getInitials(settings.displayName)}
           </span>
-          <div className="leading-tight">
-            <div className="text-[13px] text-parchment/90">Researcher</div>
-            <div className="text-[11px] text-sage/70">Signed in with Google</div>
+          <div className="min-w-0 leading-tight">
+            <div className="truncate text-[13px] text-parchment/90">
+              {settings.displayName || "Unnamed"}
+            </div>
+            <div className="truncate text-[11px] text-sage/70">
+              {settings.institution || settings.role}
+            </div>
           </div>
-        </div>
+        </Link>
       </div>
     </aside>
   );

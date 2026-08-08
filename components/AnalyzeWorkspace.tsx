@@ -26,6 +26,7 @@ import {
 } from "@/lib/data";
 import { analyzeSpecimen } from "@/lib/analysis";
 import { saveReport } from "@/lib/store";
+import { useSettings } from "@/lib/settings";
 
 type ItemStatus = "pending" | "analyzing" | "analyzed";
 
@@ -223,7 +224,7 @@ export default function AnalyzeWorkspace() {
   const [items, setItems] = useState<BatchItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [location, setLocation] = useState("");
-  const [researcher, setResearcher] = useState("You");
+  const [researcher, setResearcher] = useState("");
   const [collectedDate, setCollectedDate] = useState("");
   const [collectedTime, setCollectedTime] = useState("");
   const [weather, setWeather] = useState<WeatherConditions>(EMPTY_WEATHER);
@@ -232,6 +233,7 @@ export default function AnalyzeWorkspace() {
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const settings = useSettings();
 
   // Time is optional — a researcher who only knows the day can leave it blank.
   const collectedAt = collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate;
@@ -270,11 +272,20 @@ export default function AnalyzeWorkspace() {
 
     setItems((current) => [...current, ...added]);
     setSelectedId((current) => current ?? added[0].id);
-    // Stamp the batch with "now" the first time images arrive. Computed here,
-    // in an event handler, so the server and client render the same empty
-    // fields initially — no hydration mismatch, and the researcher can still
-    // change it to when the slides were actually collected.
-    if (!collectedDate) {
+
+    // Defaults are applied here, in an event handler, rather than as initial
+    // state: the server and client then render the same empty fields, so there
+    // is no hydration mismatch, and nothing the researcher has already typed
+    // gets overwritten.
+    const startingBatch = items.length === 0;
+    if (startingBatch) {
+      if (!location) setLocation(settings.defaultLocation);
+      if (!researcher) setResearcher(settings.displayName);
+      setWeather((current) => ({ ...current, condition: settings.defaultWeatherCondition }));
+    }
+    // Stamp the batch with "now" the first time images arrive, unless the
+    // researcher has opted to enter the real collection moment themselves.
+    if (!collectedDate && settings.autoStampCollectionTime) {
       const { date, time } = nowParts();
       setCollectedDate(date);
       setCollectedTime(time);
@@ -294,10 +305,15 @@ export default function AnalyzeWorkspace() {
     items.forEach((item) => URL.revokeObjectURL(item.imageUrl));
     setItems([]);
     setSelectedId(null);
-    setWeather(EMPTY_WEATHER);
-    const { date, time } = nowParts();
-    setCollectedDate(date);
-    setCollectedTime(time);
+    setWeather({ ...EMPTY_WEATHER, condition: settings.defaultWeatherCondition });
+    if (settings.autoStampCollectionTime) {
+      const { date, time } = nowParts();
+      setCollectedDate(date);
+      setCollectedTime(time);
+    } else {
+      setCollectedDate("");
+      setCollectedTime("");
+    }
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -330,7 +346,7 @@ export default function AnalyzeWorkspace() {
       {
         collectedAt,
         location,
-        researcher,
+        researcher: researcher || settings.displayName,
         weather,
         slides: analyzed.map((item) => ({
           fileName: item.file.name,
@@ -465,6 +481,7 @@ export default function AnalyzeWorkspace() {
                 type="text"
                 value={researcher}
                 onChange={(e) => setResearcher(e.target.value)}
+                placeholder={settings.displayName}
                 className={fieldClass}
               />
             </label>
@@ -579,8 +596,9 @@ export default function AnalyzeWorkspace() {
 
         {analyzedCount > 0 && pendingCount > 0 && (
           <p className="mt-2 text-[11.5px] text-ink/45">
-            Analyze the remaining {pendingCount === 1 ? "slide" : `${pendingCount} slides`} before
-            saving — a report covers the whole batch.
+            Analyze the remaining{" "}
+            {pendingCount === 1 ? "slide" : `${pendingCount} slides`} before saving — a report
+            covers the whole batch.
           </p>
         )}
 
