@@ -15,6 +15,7 @@
 import { jsPDF } from "jspdf";
 import {
   aggregateSlideDetections,
+  formatCollectedAt,
   formatTime,
   getCollectionDate,
   getCollectionTime,
@@ -26,6 +27,7 @@ import {
   type Specimen,
   type SpecimenDetection,
 } from "@/lib/data";
+import type { PlaceStats } from "@/lib/geo";
 
 const PAGE = { width: 210, height: 297 }; // A4, millimetres
 const MARGIN = 16;
@@ -105,7 +107,10 @@ function paragraph(cursor: Cursor, text: string, italic = false) {
  * The document's masthead: a dark band carrying the report's identity, so a
  * printed page is recognisable as a PolLens record at a glance.
  */
-function masthead(cursor: Cursor, report: Specimen) {
+function masthead(
+  cursor: Cursor,
+  { title, rightTop, rightBottom }: { title: string; rightTop: string; rightBottom: string },
+) {
   const doc = cursor.doc;
   const height = 26;
 
@@ -120,15 +125,15 @@ function masthead(cursor: Cursor, report: Specimen) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.setTextColor(PARCHMENT);
-  doc.text("Specimen report", MARGIN, 19);
+  doc.text(doc.splitTextToSize(title, CONTENT_WIDTH - 55)[0] ?? title, MARGIN, 19);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.text(report.sampleId, PAGE.width - MARGIN, 12, { align: "right" });
+  doc.text(rightTop, PAGE.width - MARGIN, 12, { align: "right" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor("#8fa396");
-  doc.text(report.status, PAGE.width - MARGIN, 18, { align: "right" });
+  doc.text(rightBottom, PAGE.width - MARGIN, 18, { align: "right" });
 
   cursor.y = height + 10;
 }
@@ -225,7 +230,10 @@ function metaGrid(cursor: Cursor, entries: [string, string][]) {
 
     doc.setFontSize(9.5);
     doc.setTextColor(INK);
-    doc.text(doc.splitTextToSize(value, columnWidth - 34)[0] ?? value, x + 32, y);
+    // One line per field keeps the grid on its rhythm; anything longer is
+    // marked as clipped rather than silently cut mid-word.
+    const lines = doc.splitTextToSize(value, columnWidth - 34);
+    doc.text(lines.length > 1 ? `${String(lines[0]).trimEnd()}…` : (lines[0] ?? value), x + 32, y);
   });
 
   cursor.y += rows * 7 + 3;
@@ -488,7 +496,11 @@ export async function downloadReportPdf(
   const collectionTime = getCollectionTime(report.collectedAt);
   const weather = report.weather;
 
-  masthead(cursor, report);
+  masthead(cursor, {
+    title: "Specimen report",
+    rightTop: report.sampleId,
+    rightBottom: report.status,
+  });
 
   // --- At a glance --------------------------------------------------------
   summaryTiles(cursor, [
@@ -502,14 +514,7 @@ export async function downloadReportPdf(
   // --- What the researcher recorded ---------------------------------------
   heading(cursor, "Collection details");
   metaGrid(cursor, [
-    [
-      "Date collected",
-      new Date(`${getCollectionDate(report.collectedAt)}T00:00:00`).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }),
-    ],
+    ["Date collected", shortDate(report.collectedAt)],
     ["Time collected", collectionTime ? formatTime(collectionTime) : "Not recorded"],
     ["Location", report.location || "Not specified"],
     ["Researcher", report.researcher],
@@ -568,4 +573,243 @@ export async function downloadReportPdf(
 
   footer(doc, report.sampleId, generated);
   doc.save(`PolLens-${report.sampleId}.pdf`);
+}
+
+// ---------------------------------------------------------------------------
+// Location report — what the map is showing, as a document.
+//
+// A specimen report answers "what was on this slide". This answers "what has
+// been found at this place", which is the question the map poses: it rolls up
+// every report from the selected place (or the filtered set of places) into one
+// reading, and lists the records it drew from so the numbers can be traced back.
+// ---------------------------------------------------------------------------
+
+export type LocationReportInput = {
+  /** The place, or a description of the filter that chose several. */
+  title: string;
+  /** "Town in Quezon", "Provinces of the Philippines" — what `title` refers to. */
+  scopeLabel: string;
+  /** A sentence for a selection the two-column scope grid cannot state. */
+  selectionNote?: string;
+  /** Which taxon the figures are filtered to, already resolved to a label. */
+  speciesLabel: string;
+  places: PlaceStats[];
+  /** Every report behind the figures, newest collection first. */
+  reports: Specimen[];
+};
+
+/** "Jul 29, 2026" — the date half of a collection stamp, parsed as local. */
+function shortDate(collectedAt: string): string {
+  return new Date(`${getCollectionDate(collectedAt)}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/** Ranked places, for a report covering more than one. */
+function placesTable(cursor: Cursor, places: PlaceStats[]) {
+  const doc = cursor.doc;
+  const cols = { place: MARGIN, top: MARGIN + 58, reports: MARGIN + 150, grains: MARGIN + CONTENT_WIDTH };
+
+  ensureSpace(cursor, 14);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(MUTED);
+  doc.text("PLACE", cols.place, cursor.y);
+  doc.text("TOP POLLEN", cols.top, cursor.y);
+  doc.text("REPORTS", cols.reports, cursor.y, { align: "right" });
+  doc.text("GRAINS", cols.grains, cursor.y, { align: "right" });
+  cursor.y += 2;
+  rule(cursor);
+
+  places.forEach((place, index) => {
+    ensureSpace(cursor, 7);
+    if (index % 2 === 1) {
+      doc.setFillColor(PANEL);
+      doc.rect(MARGIN - 2, cursor.y - 4.5, CONTENT_WIDTH + 4, 7, "F");
+    }
+    const top = getTopDetection(place.detections);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor(INK);
+    doc.text(doc.splitTextToSize(place.label, 54)[0] ?? place.label, cols.place, cursor.y);
+
+    if (top) {
+      const species = getSpecies(top.speciesId);
+      doc.setFillColor(speciesColor(top.speciesId));
+      doc.circle(cols.top + 1, cursor.y - 1.2, 1.2, "F");
+      doc.text(`${species.genus} (${species.commonName})`, cols.top + 5, cursor.y);
+    } else {
+      doc.setTextColor(MUTED);
+      doc.text("None detected", cols.top + 5, cursor.y);
+      doc.setTextColor(INK);
+    }
+
+    doc.text(String(place.reportCount), cols.reports, cursor.y, { align: "right" });
+    doc.text(String(place.totalGrains), cols.grains, cursor.y, { align: "right" });
+    cursor.y += 7;
+  });
+  cursor.y += 2;
+}
+
+/** The individual records the figures were rolled up from. */
+function sourceReportsTable(cursor: Cursor, reports: Specimen[]) {
+  const doc = cursor.doc;
+  const cols = {
+    id: MARGIN,
+    collected: MARGIN + 34,
+    location: MARGIN + 72,
+    slides: MARGIN + 138,
+    grains: MARGIN + CONTENT_WIDTH,
+  };
+
+  ensureSpace(cursor, 14);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(MUTED);
+  doc.text("SAMPLE ID", cols.id, cursor.y);
+  doc.text("COLLECTED", cols.collected, cursor.y);
+  doc.text("LOCATION", cols.location, cursor.y);
+  doc.text("SLIDES", cols.slides, cursor.y, { align: "right" });
+  doc.text("GRAINS", cols.grains, cursor.y, { align: "right" });
+  cursor.y += 2;
+  rule(cursor);
+
+  reports.forEach((report, index) => {
+    ensureSpace(cursor, 7);
+    if (index % 2 === 1) {
+      doc.setFillColor(PANEL);
+      doc.rect(MARGIN - 2, cursor.y - 4.5, CONTENT_WIDTH + 4, 7, "F");
+    }
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(INK);
+    doc.text(report.sampleId, cols.id, cursor.y);
+    doc.setTextColor(MUTED);
+    doc.text(shortDate(report.collectedAt), cols.collected, cursor.y);
+    doc.setTextColor(INK);
+    doc.text(
+      doc.splitTextToSize(report.location || "Not specified", 62)[0] ?? report.location,
+      cols.location,
+      cursor.y,
+    );
+    doc.text(String(report.slides.length), cols.slides, cursor.y, { align: "right" });
+    doc.text(
+      String(getTotalGrains(aggregateSlideDetections(report.slides))),
+      cols.grains,
+      cursor.y,
+      { align: "right" },
+    );
+    cursor.y += 7;
+  });
+  cursor.y += 2;
+}
+
+/** Combine several places' readings into one, weighting confidence by grains. */
+function combinePlaces(places: PlaceStats[]): SpecimenDetection[] {
+  const bySpecies = new Map<string, SpecimenDetection>();
+  for (const place of places) {
+    for (const detection of place.detections) {
+      const existing = bySpecies.get(detection.speciesId);
+      if (!existing) {
+        bySpecies.set(detection.speciesId, { ...detection });
+        continue;
+      }
+      const grains = existing.grainCount + detection.grainCount;
+      existing.avgConfidence =
+        (existing.avgConfidence * existing.grainCount +
+          detection.avgConfidence * detection.grainCount) /
+        grains;
+      existing.grainCount = grains;
+    }
+  }
+  return [...bySpecies.values()].sort((a, b) => b.grainCount - a.grainCount);
+}
+
+/** Build and download the location summary as a PDF. */
+export async function downloadLocationReportPdf(input: LocationReportInput): Promise<void> {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const cursor: Cursor = { doc, y: MARGIN };
+  const generated = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+
+  doc.setProperties({
+    title: `PolLens — pollen at ${input.title}`,
+    subject: `Pollen recorded at ${input.title} (${input.speciesLabel})`,
+    creator: "PolLens Research Console",
+  });
+
+  const detections = combinePlaces(input.places);
+  const totalGrains = getTotalGrains(detections);
+  const collected = input.reports.map((r) => r.collectedAt).sort();
+  const top = getTopDetection(detections);
+
+  masthead(cursor, {
+    title: input.title,
+    rightTop: "Location report",
+    rightBottom: input.speciesLabel,
+  });
+
+  summaryTiles(cursor, [
+    { value: String(totalGrains), label: "Total grains" },
+    { value: String(detections.length), label: "Pollen types" },
+    { value: String(input.reports.length), label: input.reports.length === 1 ? "Report" : "Reports" },
+    {
+      value: String(input.places.length),
+      label: input.places.length === 1 ? "Place" : "Places",
+    },
+  ]);
+  compositionBar(cursor, detections);
+
+  heading(cursor, "Scope");
+  metaGrid(cursor, [
+    ["Place", input.title],
+    ["Level", input.scopeLabel],
+    ["Pollen filter", input.speciesLabel],
+    [
+      "Collected",
+      // Dates only: a span of months does not need the hour, and the pair has
+      // to fit one line of a two-column grid.
+      collected.length
+        ? getCollectionDate(collected[0]) === getCollectionDate(collected[collected.length - 1])
+          ? formatCollectedAt(collected[0])
+          : `${shortDate(collected[0])} — ${shortDate(collected[collected.length - 1])}`
+        : "No reports",
+    ],
+  ]);
+  if (input.selectionNote) paragraph(cursor, input.selectionNote);
+
+  heading(cursor, "Pollen recorded here");
+  if (top) {
+    const species = getSpecies(top.speciesId);
+    paragraph(
+      cursor,
+      `Most abundant: ${species.genus} (${species.commonName}) — ${top.grainCount} of ${totalGrains} grains, ${species.riskLevel.toLowerCase()} allergenic risk.`,
+    );
+  }
+  detectionTable(cursor, detections);
+
+  if (input.places.length > 1) {
+    heading(cursor, "Places in this selection");
+    placesTable(cursor, input.places);
+  }
+
+  heading(cursor, "Reports behind these figures");
+  if (input.reports.length === 0) {
+    paragraph(cursor, "No saved reports match this selection.", true);
+  } else {
+    sourceReportsTable(cursor, input.reports);
+  }
+
+  footer(doc, input.title, generated);
+  const slug =
+    input.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "location";
+  doc.save(`PolLens-${slug}-pollen-report.pdf`);
 }

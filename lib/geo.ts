@@ -416,15 +416,123 @@ export function fitView(
 
 // --- Colour ----------------------------------------------------------------
 
-/** Light to hot. Index 0 means "sampled but nothing of this taxon found". */
-export const INTENSITY_RAMP = ["#e8e2d4", "#f0dcb4", "#e6c080", "#d69c4a", "#c2703d"];
-export const UNSAMPLED_FILL = "#f3efe6";
+/**
+ * Sand to ember, four steps of sampled intensity.
+ *
+ * The ramp climbs in lightness *and* saturation, so the classes stay apart in
+ * greyscale and for a red-green colour-blind reader — a hue-only ramp would put
+ * the top two classes within a few percent of each other once printed.
+ */
+export const INTENSITY_RAMP = ["#f0dfae", "#e6b466", "#d1803c", "#a83f27"];
 
-export function intensityIndex(grains: number, max: number): number {
+/** Sampled, but none of the selected taxon found here. Distinct from both the
+ *  ramp and the unsampled fill: "we looked and found nothing" is its own answer. */
+export const ZERO_FILL = "#dcd8c8";
+export const UNSAMPLED_FILL = "#f7f4ec";
+
+export type IntensityScale = {
+  /** Upper bound of each class, ascending; `classOf` returns its index. */
+  breaks: number[];
+  classOf: (grains: number) => number;
+  /** Inclusive range of each class, for a legend that states its numbers. */
+  ranges: { from: number; to: number }[];
+  /** The ramp entry for each class — see `rampColors`. */
+  colors: string[];
+  max: number;
+};
+
+/**
+ * The ramp entries to use for `count` classes, spread across the full range.
+ *
+ * Taking the first `count` colours would shade a two-class map in the two
+ * palest sands and leave its hot end unused. A single class is the hot end:
+ * when one place is all the data there is, the map's job is to say "here",
+ * and the coldest colour on the ramp says the opposite.
+ */
+function rampColors(count: number): string[] {
+  if (count <= 0) return [];
+  if (count === 1) return [INTENSITY_RAMP[INTENSITY_RAMP.length - 1]];
+  return Array.from({ length: count }, (_, i) =>
+    INTENSITY_RAMP[Math.round((i * (INTENSITY_RAMP.length - 1)) / (count - 1))],
+  );
+}
+
+/**
+ * Classify places by where they fall among *the other places*, not as a
+ * fraction of the largest.
+ *
+ * Grain counts are heavily skewed — one busy site and a long tail — and
+ * fraction-of-max bins put almost everything in the bottom class, which is
+ * exactly the case where the map should be telling them apart. Quantiles fill
+ * every class by construction, so the hot end stays legible however lopsided
+ * the data is. Duplicate breaks are collapsed, so a dataset with three distinct
+ * values gets three classes rather than four, one of which could never be used.
+ */
+export function buildIntensityScale(values: number[]): IntensityScale {
+  const positive = values.filter((v) => v > 0).sort((a, b) => a - b);
+  const max = positive.length ? positive[positive.length - 1] : 0;
+  if (positive.length === 0) {
+    return { breaks: [], classOf: () => -1, ranges: [], colors: [], max: 0 };
+  }
+
+  const classes = Math.min(INTENSITY_RAMP.length, new Set(positive).size);
+  const breaks: number[] = [];
+  for (let i = 1; i <= classes; i++) {
+    // Upper bound of class i: the value at the i/classes quantile.
+    const index = Math.ceil((positive.length * i) / classes) - 1;
+    const value = positive[Math.min(index, positive.length - 1)];
+    if (breaks[breaks.length - 1] !== value) breaks.push(value);
+  }
+
+  const ranges = breaks.map((to, index) => ({
+    from: index === 0 ? 1 : breaks[index - 1] + 1,
+    to,
+  }));
+
+  return {
+    breaks,
+    ranges,
+    colors: rampColors(breaks.length),
+    max,
+    classOf: (grains: number) => {
+      if (grains <= 0) return -1; // sampled, nothing found — ZERO_FILL
+      const index = breaks.findIndex((upper) => grains <= upper);
+      return index === -1 ? breaks.length - 1 : index;
+    },
+  };
+}
+
+/** Fill for a place: unsampled, sampled-but-empty, or its intensity class. */
+export function intensityFill(scale: IntensityScale, grains: number | null): string {
+  if (grains === null) return UNSAMPLED_FILL;
+  const index = scale.classOf(grains);
+  return index < 0 ? ZERO_FILL : (scale.colors[index] ?? ZERO_FILL);
+}
+
+/**
+ * Radius for the graduated circle drawn over a sampled place.
+ *
+ * Area scales with the count — the eye reads a circle by area, so a radius
+ * proportional to the count would exaggerate the big ones fourfold. Circles are
+ * what make a small province with a heavy load stand out: fill alone rewards
+ * whichever polygon happens to be biggest.
+ */
+export function bubbleRadius(grains: number, max: number, maxRadius: number): number {
   if (grains <= 0 || max <= 0) return 0;
-  const t = grains / max;
-  if (t <= 0.25) return 1;
-  if (t <= 0.5) return 2;
-  if (t <= 0.75) return 3;
-  return 4;
+  return Math.max(maxRadius * 0.28, maxRadius * Math.sqrt(grains / max));
+}
+
+/** The reports behind one place on the map, newest collection first. */
+export function reportsForPlace(
+  reports: Specimen[],
+  key: string,
+  scope: { level: "country" } | { level: "province"; provinceKey: string },
+): Specimen[] {
+  return reports
+    .filter((report) => {
+      const parsed = parseLocation(report.location);
+      if (scope.level === "country") return parsed.provinceKey === key;
+      return parsed.provinceKey === scope.provinceKey && parsed.townKey === key;
+    })
+    .sort((a, b) => b.collectedAt.localeCompare(a.collectedAt));
 }

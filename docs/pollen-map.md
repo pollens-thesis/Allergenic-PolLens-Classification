@@ -194,6 +194,42 @@ Path strings, label anchors and bounds are memoised per projection. Panning
 re-renders at pointer rate, and without that every frame would re-walk every
 coordinate of all 88 provinces.
 
+## Reading the hot zones
+
+Two encodings, because neither is sufficient alone.
+
+**Fill — quantile classes, not fraction-of-max.** Grain counts are heavily
+skewed: one busy site and a long tail. Binning at quarters of the largest value
+puts nearly everything in the bottom class, which is exactly the case where the
+map should be telling places apart. `buildIntensityScale` in `lib/geo.ts`
+classifies each place by where it falls *among the others*, so every class is
+populated by construction. Duplicate breaks collapse, so three distinct values
+give three classes rather than four with one unusable. Classes are computed from
+the places currently in view, which is why the shading re-scales when you drill
+into a province or switch taxon — a town's 9 grains is a hot zone among towns.
+
+Fewer classes than ramp steps take colours spread across the whole ramp rather
+than the first *n*, and a lone class takes the hot end: when one place is all the
+data there is, the map's job is to say *here*, and the palest sand says the
+opposite. The legend states its own numeric breaks, since a quantile scale's
+classes are not guessable from "fewer" and "more".
+
+**Circles — area proportional to grains.** Fill alone rewards whichever polygon
+happens to be biggest: a small province with a heavy load reads as nothing beside
+a large quiet one. A circle over each sampled centroid states the magnitude
+independently of the area it was collected in. Area, not radius, carries the
+value — the eye reads a circle by area, so scaling the radius by the count would
+exaggerate the big ones fourfold. Circles are divided by the zoom factor so they
+keep their size on screen, take the taxon's own colour when one is selected, and
+are drawn with a pale ring: the hottest class is that same colour, and a circle
+outlined in it would vanish over its own fill.
+
+Three fills are distinct on purpose: **not sampled**, **sampled but none of this
+taxon found**, and the intensity classes. "We looked and found nothing" is a
+different answer from "nobody has looked", and the map should not merge them.
+Labels carry a parchment halo (`paint-order: stroke`) so a name stays readable
+where it crosses a hot fill or a circle.
+
 ## Search and filters
 
 Three controls narrow both the shading and the ranked list: a name search, a
@@ -219,6 +255,28 @@ Because Sampled is the default, searching a real province with no reports would
 otherwise read as "no such place". It does not: the empty state says *no
 sampled* provinces match and offers to show the unsampled ones, and a search
 with some sampled hits still reports how many more matched without reports.
+
+## Generating a location report
+
+Filtering the map to a place is choosing a subject, so the map can hand that
+choice straight to a document. Two entry points, one builder
+(`downloadLocationReportPdf` in `lib/pdf.ts`):
+
+- **A selected place** — "Generate report for Lucban" in the detail panel.
+- **The filtered set** — "Generate report for these 5 towns" above the ranked
+  list, so a search does not have to be walked place by place.
+
+Where a specimen report answers *what was on this slide*, a location report
+answers *what has been found at this place*: the rolled-up reading, a stacked
+composition bar, the ranked places when it covers several, and the individual
+records behind the figures so the numbers can be traced back. The pollen-type
+filter carries into it and is stated in the scope block — a Ragweed report says
+so rather than looking like an undercount of everything.
+
+Only sampled places are included, whatever the Sampled/All toggle says: a report
+can only cover places that have reports. Places sampled with none of the selected
+taxon *are* included, at zero — "we looked for ragweed here and found none" is a
+finding.
 
 ## Extending or replacing the data
 
