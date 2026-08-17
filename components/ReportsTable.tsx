@@ -8,7 +8,7 @@ import {
   formatTime,
   getCollectionDate,
   getCollectionTime,
-  type HistoryReport,
+  type ReportRow,
   type ReportStatus,
 } from "@/lib/data";
 import StatusBadge from "@/components/StatusBadge";
@@ -36,12 +36,12 @@ function CollectedCell({ collectedAt }: { collectedAt: string }) {
   );
 }
 
-export default function HistoryReportsTable({
+export default function ReportsTable({
   data,
   highlightId,
   initialQuery = "",
 }: {
-  data: HistoryReport[];
+  data: ReportRow[];
   /** Sample id to flag as just saved, e.g. after redirecting from Analyze. */
   highlightId?: string | null;
   /** Prefills the search box — the Pollen map links here filtered by town. */
@@ -76,7 +76,7 @@ export default function HistoryReportsTable({
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-            History reports
+            Saved reports
           </h2>
           <p className="mt-0.5 text-[13px] text-ink/70">
             {filtered.length} of {data.length} {data.length === 1 ? "report" : "reports"}
@@ -141,7 +141,7 @@ export default function HistoryReportsTable({
                 }`}
               >
                 <td className="py-2.5 pr-3 whitespace-nowrap text-ink/85" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-                  <Link href={`/history/${r.sampleId}`} className="focus-ring rounded hover:underline">
+                  <Link href={`/reports/${r.sampleId}`} className="focus-ring rounded hover:underline">
                     {r.sampleId}
                   </Link>
                   {r.sampleId === highlightId && (
@@ -168,7 +168,7 @@ export default function HistoryReportsTable({
                 </td>
                 <td className="py-2.5 pr-0 text-right">
                   <Link
-                    href={`/history/${r.sampleId}`}
+                    href={`/reports/${r.sampleId}`}
                     aria-label={`Open full report ${r.sampleId}`}
                     className="focus-ring inline-flex items-center gap-1 rounded px-1.5 py-1 text-[13px] text-ink/65 transition group-hover:text-ink"
                   >

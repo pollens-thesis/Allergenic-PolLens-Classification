@@ -3,16 +3,16 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { toHistoryReport, type Specimen } from "@/lib/data";
+import { toReportRow, type Specimen } from "@/lib/data";
 import { listReports } from "@/lib/store";
-import HistoryReportsTable from "@/components/HistoryReportsTable";
+import ReportsTable from "@/components/ReportsTable";
 
 /**
  * Reports live in IndexedDB, which only exists in the browser, so the list is
  * loaded after mount. Fetching per mount (rather than caching at module scope)
  * is what makes a report saved seconds ago appear the moment we land here.
  */
-export default function HistoryWorkspace() {
+export default function ReportsWorkspace() {
   const [reports, setReports] = useState<Specimen[] | null>(null);
   const searchParams = useSearchParams();
   const savedId = searchParams.get("saved");
@@ -38,8 +38,8 @@ export default function HistoryWorkspace() {
   }
 
   return (
-    <HistoryReportsTable
-      data={reports.map(toHistoryReport)}
+    <ReportsTable
+      data={reports.map(toReportRow)}
       highlightId={savedId}
       initialQuery={initialQuery}
     />

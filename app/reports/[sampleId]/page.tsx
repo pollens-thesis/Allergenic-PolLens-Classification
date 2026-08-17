@@ -17,11 +17,11 @@ export default async function ReportDetailPage({
       <main className="min-w-0 px-6 py-8 lg:px-10 lg:py-10">
         <div className="mb-6">
           <Link
-            href="/history"
+            href="/reports"
             className="focus-ring mb-3 inline-flex items-center gap-1.5 rounded text-[13px] text-ink/70 transition hover:text-ink"
           >
             <ArrowLeft size={14} strokeWidth={1.75} />
-            Back to History
+            Back to Reports
           </Link>
           <p
             className="text-[12px] tracking-[0.25em] text-ink/70 uppercase"

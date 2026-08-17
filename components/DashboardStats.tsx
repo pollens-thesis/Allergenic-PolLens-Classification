@@ -8,8 +8,8 @@ import StatCard from "@/components/StatCard";
 
 /**
  * Starts from the server-rendered seed figures, then recomputes once the saved
- * reports are read out of IndexedDB — so the cards agree with what History
- * actually lists instead of counting only the records shipped with the app.
+ * reports are read out of IndexedDB — so the cards agree with what the report
+ * list actually shows instead of counting only the records shipped with the app.
  */
 export default function DashboardStats({ initial }: { initial: Stats }) {
   const [stats, setStats] = useState<Stats>(initial);

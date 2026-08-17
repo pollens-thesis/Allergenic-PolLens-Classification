@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutGrid,
   ScanLine,
-  History,
+  FileText,
   Map,
   Leaf,
   Settings,
@@ -16,7 +16,7 @@ import { useSettings } from "@/lib/settings";
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
   { href: "/upload", label: "Analyze specimen", icon: ScanLine },
-  { href: "/history", label: "History", icon: History },
+  { href: "/reports", label: "Report", icon: FileText },
   { href: "/map", label: "Pollen map", icon: Map },
   { href: "/dataset", label: "Allergen reference", icon: Leaf },
 ];
@@ -58,7 +58,9 @@ export default function Sidebar() {
 
           <nav className="flex flex-col gap-1">
             {NAV_ITEMS.map((item) => {
-              const active = pathname === item.href;
+              // A section's own pages count as that section, so the tab stays
+              // lit on /reports/PLN-2026-0142 and on /upload/result.
+              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
               const ItemIcon = item.icon;
               return (
                 <Link

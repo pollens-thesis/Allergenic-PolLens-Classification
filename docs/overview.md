@@ -60,9 +60,10 @@ component library, and no data-fetching library.
 |---|---|
 | `/` | Sign-in. Darkfield hero on the left, account chooser on the right. |
 | `/dashboard` | Stat tiles, a 12-month pollen chart, and the full report table. |
-| `/upload` | **Analyze specimen** — the working screen. Upload slides, run analysis, save a report. |
-| `/history` | Every saved report, searchable and filterable by status. |
-| `/history/[sampleId]` | One report in full: slides, images, readings, notes, conditions, PDF export. |
+| `/upload` | **Analyze specimen** — the working screen. Upload slides, describe the collection, run the analysis. |
+| `/upload/result` | The reading the analysis produced: pollen detected, the slide, the details entered — plus notes, and the button that saves it as a report. |
+| `/reports` | **Report** — every saved report, searchable and filterable by status. |
+| `/reports/[sampleId]` | One report in full: slides, images, readings, notes, conditions, PDF export. |
 | `/map` | Choropleth of the Philippines, shaded by grains counted. |
 | `/dataset` | **Dead link.** Allergen reference — planned, not built. |
 
@@ -80,14 +81,24 @@ The screen the app exists for.
   slides.
 - Drag-and-drop or browse, multiple files at once. Each slide is analysed in
   turn so progress is visible as results land.
+- **Analysis and review are two screens.** `/upload` is where the batch is
+  assembled and described; pressing *Analyze specimen* runs the readings and
+  opens `/upload/result`, which is where the researcher reads them, writes the
+  notes and saves. Nothing is a report until *Save report* is pressed there.
+- The hand-off is a **draft** in IndexedDB, not a URL parameter — it carries the
+  images themselves, and a draft survives a refresh of the result page. Edits
+  made on that page (notes, and any correction to the collection details) are
+  written back to the draft as they are typed, so a reload returns to the work
+  rather than to the raw reading. Saving or discarding clears it; one draft
+  exists at a time, and `/upload` says so if one is waiting.
 - Collection time is recorded separately from analysis time — a slide is often
-  read days after it was collected, and the map and history care about the
-  former.
+  read days after it was collected, and the map and the report list care about
+  the former.
 - Weather at collection is recorded per session, entered by hand.
 - The researcher name defaults to the signed-in account, and is editable per
   batch.
 
-### History and reports
+### Report
 
 The table searches sample id, location, pollen and date, and filters by status
 (Completed / Processing / Needs review). A report page shows every slide with
@@ -113,7 +124,7 @@ out). There are no analysis defaults and no editable profile fields — see belo
 ## The data model
 
 Everything on every screen derives from `specimens` in `lib/data.ts`. Edit that
-one array and the dashboard, history, map and reference all stay consistent.
+one array and the dashboard, reports, map and reference all stay consistent.
 
 ```ts
 type Specimen = {          // one collection session = one report
@@ -185,9 +196,10 @@ conditions fields manually entered. The Analyze screen already handles both.
 
 ### Persistence — `lib/store.ts`
 
-Reports and their slide images live in IndexedDB (two stores: `reports`,
-`images`), so a saved report survives a refresh. Images are stored as blobs
-alongside their slide.
+Reports and their slide images live in IndexedDB (three stores: `reports`,
+`images`, and `drafts` for the analysis that has been run but not saved yet),
+so a saved report survives a refresh. Images are stored as blobs alongside
+their slide.
 
 **This is per-browser.** Reports saved on one machine are not visible on
 another, and clearing site data deletes them. Settings has JSON/CSV export for
@@ -276,8 +288,10 @@ app/                    routes; each page is a thin shell around a workspace com
   globals.css           design tokens and the base layer
   layout.tsx            fonts and the page shell
 components/             all UI; workspaces hold the state for their screen
-  AnalyzeWorkspace.tsx  the upload → analyse → save flow
+  AnalyzeWorkspace.tsx  upload and describe a batch, then run the analysis
+  AnalysisResultWorkspace.tsx  the reading, the notes, and saving it as a report
   PollenMap.tsx         the map, its zoom/pan and its filters
+  ReportsWorkspace.tsx  the saved-report list behind /reports and the dashboard
   ReportDetail.tsx      a full saved report
   useMapZoom.ts         wheel / drag / pinch zoom for an SVG map
 lib/

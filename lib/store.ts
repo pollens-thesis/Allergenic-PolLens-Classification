@@ -3,7 +3,7 @@
 //
 // There is no backend yet, so reports and their slide images are persisted in
 // the browser's IndexedDB. That is what lets a saved report survive a refresh
-// and still be there when History loads.
+// and still be there when Reports loads.
 //
 // Every function here is async and returns plain domain objects, so replacing
 // the bodies with `fetch` calls is the whole of the backend migration:
@@ -14,19 +14,30 @@
 //
 // The seed records in lib/data.ts are treated as read-only history that always
 // appears alongside anything saved locally.
+//
+// A third store, `drafts`, holds the analysis a researcher has just run but not
+// yet saved. It exists because Analyze and the report page it hands off to are
+// two routes: the readings, the images and the collection details have to
+// outlive the navigation between them, and a draft in IndexedDB also survives a
+// refresh of the report page. Only one draft is kept — a researcher works
+// through one batch at a time.
 // ---------------------------------------------------------------------------
 
 import {
   MOCK_TODAY,
   specimens as seedSpecimens,
+  type CollectedAt,
   type Specimen,
+  type SpecimenDetection,
+  type WeatherConditions,
 } from "@/lib/data";
 import type { NewReportInput } from "@/lib/analysis";
 
 const DB_NAME = "pollens";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const REPORTS = "reports";
 const IMAGES = "images";
+const DRAFTS = "drafts";
 
 /** A slide image kept alongside its report, keyed by the slide's id. */
 type StoredImage = { slideId: string; sampleId: string; blob: Blob };
@@ -42,6 +53,11 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(IMAGES)) {
         const images = db.createObjectStore(IMAGES, { keyPath: "slideId" });
         images.createIndex("bySample", "sampleId", { unique: false });
+      }
+      // Added in v2. Existing browsers hold a v1 database, so this runs as an
+      // upgrade on them and leaves their saved reports untouched.
+      if (!db.objectStoreNames.contains(DRAFTS)) {
+        db.createObjectStore(DRAFTS, { keyPath: "id" });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -155,7 +171,7 @@ function nextSampleId(existing: Specimen[]): string {
  */
 export async function saveReport(
   input: NewReportInput,
-  images: Record<string, File>, // keyed by the index of the slide in input.slides
+  images: Record<string, Blob>, // keyed by the index of the slide in input.slides
 ): Promise<Specimen> {
   const existing = [...(await readStoredReports()), ...seedSpecimens];
   const sampleId = nextSampleId(existing);
@@ -198,6 +214,88 @@ export async function saveReport(
   }
 
   return report;
+}
+
+// ---------------------------------------------------------------------------
+// Draft — the analysis that has been run but not saved yet.
+// ---------------------------------------------------------------------------
+
+/** One analyzed slide waiting to be saved, image included. */
+export type DraftSlide = {
+  id: string;
+  fileName: string;
+  image: Blob;
+  detections: SpecimenDetection[];
+  notes: string;
+};
+
+/**
+ * A finished analysis on its way to becoming a report: the readings, the
+ * images, and the collection details the researcher typed on the Analyze
+ * screen. Every field stays editable on the report page until it is saved.
+ */
+export type ReportDraft = {
+  collectedAt: CollectedAt;
+  location: string;
+  researcher: string;
+  weather: WeatherConditions;
+  slides: DraftSlide[];
+  /** When the analysis was run — not when the specimen was collected. */
+  analyzedAt: string;
+};
+
+// One draft at a time, so it lives under a fixed key rather than an id that
+// would have to be threaded through the URL.
+const DRAFT_KEY = "current";
+
+type StoredDraft = ReportDraft & { id: typeof DRAFT_KEY };
+
+/** Replaces whatever draft was there — a new analysis supersedes the old one. */
+export async function saveDraft(draft: ReportDraft): Promise<void> {
+  if (!hasIndexedDb()) return;
+  const db = await openDb();
+  try {
+    const tx = db.transaction(DRAFTS, "readwrite");
+    tx.objectStore(DRAFTS).put({ ...draft, id: DRAFT_KEY } satisfies StoredDraft);
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+/** The analysis waiting to be saved, or null when there isn't one. */
+export async function getDraft(): Promise<ReportDraft | null> {
+  if (!hasIndexedDb()) return null;
+  const db = await openDb();
+  try {
+    const tx = db.transaction(DRAFTS, "readonly");
+    const found = await promisify(
+      tx.objectStore(DRAFTS).get(DRAFT_KEY) as IDBRequest<StoredDraft | undefined>,
+    );
+    return found ?? null;
+  } finally {
+    db.close();
+  }
+}
+
+/** Drops the pending analysis — after it is saved, or when it is discarded. */
+export async function clearDraft(): Promise<void> {
+  if (!hasIndexedDb()) return;
+  const db = await openDb();
+  try {
+    const tx = db.transaction(DRAFTS, "readwrite");
+    tx.objectStore(DRAFTS).delete(DRAFT_KEY);
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } finally {
+    db.close();
+  }
 }
 
 /** Removes a locally saved report and its images. Seed records are read-only. */
@@ -245,14 +343,19 @@ export async function getStorageSummary(): Promise<{
   }
 }
 
-/** Wipes every locally saved report and image. Seed records are unaffected. */
+/**
+ * Wipes every locally saved report and image, and any unsaved analysis with
+ * them — "clear local data" would otherwise leave a draft's images behind.
+ * Seed records are unaffected.
+ */
 export async function clearAllReports(): Promise<void> {
   if (!hasIndexedDb()) return;
   const db = await openDb();
   try {
-    const tx = db.transaction([REPORTS, IMAGES], "readwrite");
+    const tx = db.transaction([REPORTS, IMAGES, DRAFTS], "readwrite");
     tx.objectStore(REPORTS).clear();
     tx.objectStore(IMAGES).clear();
+    tx.objectStore(DRAFTS).clear();
     await new Promise<void>((resolve, reject) => {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
