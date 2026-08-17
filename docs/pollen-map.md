@@ -196,9 +196,7 @@ coordinate of all 88 provinces.
 
 ## Reading the hot zones
 
-Two encodings, because neither is sufficient alone.
-
-**Fill — quantile classes, not fraction-of-max.** Grain counts are heavily
+**Quantile classes, not fraction-of-max.** Grain counts are heavily
 skewed: one busy site and a long tail. Binning at quarters of the largest value
 puts nearly everything in the bottom class, which is exactly the case where the
 map should be telling places apart. `buildIntensityScale` in `lib/geo.ts`
@@ -214,21 +212,16 @@ data there is, the map's job is to say *here*, and the palest sand says the
 opposite. The legend states its own numeric breaks, since a quantile scale's
 classes are not guessable from "fewer" and "more".
 
-**Circles — area proportional to grains.** Fill alone rewards whichever polygon
-happens to be biggest: a small province with a heavy load reads as nothing beside
-a large quiet one. A circle over each sampled centroid states the magnitude
-independently of the area it was collected in. Area, not radius, carries the
-value — the eye reads a circle by area, so scaling the radius by the count would
-exaggerate the big ones fourfold. Circles are divided by the zoom factor so they
-keep their size on screen, take the taxon's own colour when one is selected, and
-are drawn with a pale ring: the hottest class is that same colour, and a circle
-outlined in it would vanish over its own fill.
+Fill is the only encoding. Graduated circles over each centroid were tried —
+they state magnitude independently of how large a polygon happens to be — but
+with the classes fixed the shading already separates the places, and the circles
+only crowded the towns they sat on.
 
 Three fills are distinct on purpose: **not sampled**, **sampled but none of this
 taxon found**, and the intensity classes. "We looked and found nothing" is a
 different answer from "nobody has looked", and the map should not merge them.
 Labels carry a parchment halo (`paint-order: stroke`) so a name stays readable
-where it crosses a hot fill or a circle.
+where it crosses a hot fill.
 
 ## Search and filters
 

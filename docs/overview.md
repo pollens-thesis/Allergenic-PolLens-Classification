@@ -133,11 +133,9 @@ ragweed". Wheel/drag/pinch zoom with `+`/`−`/reset controls, a name search, a
 region filter and a Sampled/All toggle — searching frames what it found and dims
 the rest.
 
-**Hot zones are shown twice over.** The fill uses quantile classes computed from
-the places in view, so the classes stay populated however skewed the counts are,
-and the legend states its numeric breaks. Over it, a circle whose *area* is
-proportional to grains — fill alone rewards whichever polygon is biggest, and a
-small province with a heavy load should not read as nothing.
+**Hot zones read off the fill.** Quantile classes computed from the places in
+view, so they stay populated however skewed the counts are, and the legend
+states its numeric breaks rather than "fewer" and "more".
 
 **A filtered location can be exported.** Selecting a place, or narrowing to a
 set of them, offers a location report: the rolled-up reading for that place, its
