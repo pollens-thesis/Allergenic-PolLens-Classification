@@ -27,6 +27,7 @@ import {
   MOCK_TODAY,
   specimens as seedSpecimens,
   type CollectedAt,
+  type DetectedGrain,
   type Specimen,
   type SpecimenDetection,
   type WeatherConditions,
@@ -184,6 +185,7 @@ export async function saveReport(
       id: `${sampleId}-S${index + 1}`,
       fileName: slide.fileName,
       detections: slide.detections,
+      grains: slide.grains,
       notes: slide.notes.trim(),
     })),
     weather: input.weather,
@@ -226,6 +228,7 @@ export type DraftSlide = {
   fileName: string;
   image: Blob;
   detections: SpecimenDetection[];
+  grains: DetectedGrain[];
   notes: string;
 };
 

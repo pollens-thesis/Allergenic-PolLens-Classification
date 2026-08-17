@@ -5,28 +5,35 @@ import Link from "next/link";
 import {
   ArrowLeft,
   CalendarDays,
+  Clock,
   CloudSun,
   Download,
+  Droplets,
   FileText,
-  ImageOff,
   Loader2,
   MapPin,
   Microscope,
+  Thermometer,
   User,
+  Wind,
 } from "lucide-react";
 import {
   aggregateSlideDetections,
   formatCollectedAt,
-  formatWeather,
+  formatTime,
+  getCollectionDate,
+  getCollectionTime,
   getSpecies,
   getTotalGrains,
   getWeightedAvgConfidence,
+  type SpeciesId,
   type Specimen,
   type SpecimenDetection,
 } from "@/lib/data";
 import { getReport, getReportImageBlobs, getReportImageUrls } from "@/lib/store";
 import { downloadReportPdf } from "@/lib/pdf";
 import StatusBadge from "@/components/StatusBadge";
+import SpecimenImageViewer from "@/components/SpecimenImageViewer";
 
 function riskBadgeClass(level: "High" | "Moderate" | "Low") {
   if (level === "High") return "bg-ember-ink/10 text-ember-ink";
@@ -34,63 +41,95 @@ function riskBadgeClass(level: "High" | "Moderate" | "Low") {
   return "bg-leaf-ink/10 text-leaf-ink";
 }
 
-function DetectionRow({ detection }: { detection: SpecimenDetection }) {
+/**
+ * One pollen type in a reading. When `onSelect` is given the row doubles as the
+ * control for the slide's overlay: picking a type boxes its grains on the image.
+ */
+function DetectionRow({
+  detection,
+  selected = false,
+  onSelect,
+}: {
+  detection: SpecimenDetection;
+  selected?: boolean;
+  onSelect?: () => void;
+}) {
   const species = getSpecies(detection.speciesId);
   const confidencePct = Math.round(detection.avgConfidence * 100);
 
-  return (
-    <li className="rounded-md border border-panel-line bg-white px-3 py-2.5">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2.5">
+  const body = (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <span
+          aria-hidden
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: species.color }}
+        />
+        <div className="min-w-0 text-left">
           <span
-            aria-hidden
-            className="h-2.5 w-2.5 shrink-0 rounded-full"
-            style={{ backgroundColor: species.color }}
-          />
-          <div className="min-w-0">
-            <span
-              className="mr-2 text-[11.5px] tracking-widest text-ink/65 uppercase"
-              style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-            >
-              {species.code}
-            </span>
-            <span className="text-[14px] text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-              {species.genus}
-            </span>
-            <span className="ml-1.5 text-[13px] text-ink/70">{species.commonName}</span>
-          </div>
-          <span
-            className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap sm:inline-flex ${riskBadgeClass(species.riskLevel)}`}
+            className="mr-2 text-[11.5px] tracking-widest text-ink/65 uppercase"
             style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
           >
-            {species.riskLevel} risk
+            {species.code}
           </span>
+          <span className="text-[14px] text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+            {species.genus}
+          </span>
+          <span className="ml-1.5 text-[13px] text-ink/70">{species.commonName}</span>
         </div>
+        <span
+          className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap sm:inline-flex ${riskBadgeClass(species.riskLevel)}`}
+          style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
+        >
+          {species.riskLevel} risk
+        </span>
+      </div>
 
-        <div className="flex shrink-0 items-center gap-4">
-          <div className="text-right">
-            <div className="text-[14px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-              {detection.grainCount}
-            </div>
-            <div className="text-[11.5px] text-ink/65">
-              {detection.grainCount === 1 ? "grain" : "grains"}
-            </div>
+      <div className="flex shrink-0 items-center gap-4">
+        <div className="text-right">
+          <div className="text-[14px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+            {detection.grainCount}
           </div>
-          <div className="w-24">
-            <div className="mb-1 flex items-center justify-between text-[11.5px] text-ink/70">
-              <span>conf.</span>
-              <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{confidencePct}%</span>
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-panel-line">
-              <div className="h-full rounded-full bg-anther" style={{ width: `${confidencePct}%` }} />
-            </div>
+          <div className="text-[11.5px] text-ink/65">
+            {detection.grainCount === 1 ? "grain" : "grains"}
+          </div>
+        </div>
+        <div className="w-24">
+          <div className="mb-1 flex items-center justify-between text-[11.5px] text-ink/70">
+            <span>conf.</span>
+            <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{confidencePct}%</span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-panel-line">
+            <div className="h-full rounded-full bg-anther" style={{ width: `${confidencePct}%` }} />
           </div>
         </div>
       </div>
+    </div>
+  );
+
+  if (!onSelect) {
+    return <li className="rounded-md border border-panel-line bg-white px-3 py-2.5">{body}</li>;
+  }
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-pressed={selected}
+        className={`focus-ring block w-full rounded-md border px-3 py-2.5 transition ${
+          selected
+            ? "border-ink/25 bg-white shadow-[inset_3px_0_0_0_var(--anther)]"
+            : "border-panel-line bg-white hover:border-ink/20"
+        }`}
+      >
+        {body}
+      </button>
     </li>
   );
 }
 
+/** One recorded field: what it is, and what the researcher entered. */
 function MetaItem({
   icon: Icon,
   label,
@@ -113,9 +152,22 @@ function MetaItem({
   );
 }
 
+function SummaryTile({ value, label }: { value: string | number; label: string }) {
+  return (
+    <div>
+      <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+        {value}
+      </div>
+      <div className="text-[12px] text-ink/65">{label}</div>
+    </div>
+  );
+}
+
 export default function ReportDetail({ sampleId }: { sampleId: string }) {
   const [report, setReport] = useState<Specimen | null | undefined>(undefined);
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
+  // The pollen type each slide's overlay is isolating, keyed by slide id.
+  const [highlighted, setHighlighted] = useState<Record<string, SpeciesId | null>>({});
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
@@ -183,6 +235,8 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
   const aggregated = aggregateSlideDetections(report.slides);
   const totalGrains = getTotalGrains(aggregated);
   const overallConfidence = getWeightedAvgConfidence(aggregated);
+  const collectionTime = getCollectionTime(report.collectedAt);
+  const weather = report.weather;
 
   return (
     <div className="flex flex-col gap-6">
@@ -226,12 +280,56 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
             )}
           </button>
         </div>
+      </div>
 
-        <div className="mt-5 grid grid-cols-1 gap-4 border-t border-panel-line pt-4 sm:grid-cols-2 lg:grid-cols-4">
-          <MetaItem icon={CalendarDays} label="Collected" value={formatCollectedAt(report.collectedAt)} />
+      {/* Everything the researcher entered on the Analyze screen. */}
+      <div className="rounded-lg border border-panel-line bg-white/60 p-5">
+        <h3 className="text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+          Collection details
+        </h3>
+        <p className="mt-0.5 mb-4 text-[13px] text-ink/70">
+          Recorded with the batch when it was analyzed.
+        </p>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetaItem
+            icon={CalendarDays}
+            label="Date collected"
+            value={new Date(`${getCollectionDate(report.collectedAt)}T00:00:00`).toLocaleDateString(
+              "en-US",
+              { month: "short", day: "numeric", year: "numeric" },
+            )}
+          />
+          <MetaItem
+            icon={Clock}
+            label="Time collected"
+            value={collectionTime ? formatTime(collectionTime) : "Not recorded"}
+          />
           <MetaItem icon={MapPin} label="Location" value={report.location || "Not specified"} />
           <MetaItem icon={User} label="Researcher" value={report.researcher} />
-          <MetaItem icon={CloudSun} label="Weather conditions" value={formatWeather(report.weather)} />
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-4 border-t border-panel-line pt-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetaItem
+            icon={CloudSun}
+            label="Weather"
+            value={weather ? weather.condition : "Not recorded"}
+          />
+          <MetaItem
+            icon={Thermometer}
+            label="Temperature"
+            value={weather?.temperatureC !== null && weather ? `${weather.temperatureC}°C` : "—"}
+          />
+          <MetaItem
+            icon={Droplets}
+            label="Humidity"
+            value={weather?.humidityPct !== null && weather ? `${weather.humidityPct}% RH` : "—"}
+          />
+          <MetaItem
+            icon={Wind}
+            label="Wind"
+            value={weather?.windKph !== null && weather ? `${weather.windKph} km/h` : "—"}
+          />
         </div>
       </div>
 
@@ -242,32 +340,13 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
         </h3>
 
         <div className="mb-4 grid grid-cols-2 gap-3 rounded-md bg-panel/60 px-3 py-3 text-center sm:grid-cols-4">
-          <div>
-            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-              {totalGrains}
-            </div>
-            <div className="text-[12px] text-ink/65">Total grains</div>
-          </div>
-          <div>
-            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-              {aggregated.length}
-            </div>
-            <div className="text-[12px] text-ink/65">Pollen types</div>
-          </div>
-          <div>
-            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-              {Math.round(overallConfidence * 100)}%
-            </div>
-            <div className="text-[12px] text-ink/65">Avg. confidence</div>
-          </div>
-          <div>
-            <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-              {report.slides.length}
-            </div>
-            <div className="text-[12px] text-ink/65">
-              {report.slides.length === 1 ? "Slide" : "Slides"}
-            </div>
-          </div>
+          <SummaryTile value={totalGrains} label="Total grains" />
+          <SummaryTile value={aggregated.length} label="Pollen types" />
+          <SummaryTile value={`${Math.round(overallConfidence * 100)}%`} label="Avg. confidence" />
+          <SummaryTile
+            value={report.slides.length}
+            label={report.slides.length === 1 ? "Slide" : "Slides"}
+          />
         </div>
 
         {aggregated.length === 0 ? (
@@ -283,7 +362,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
         )}
       </div>
 
-      {/* Per slide: image, its own reading, its own note */}
+      {/* Per slide: its reading on the left, the boxed image on the right */}
       <div className="rounded-lg border border-panel-line bg-white/60 p-5">
         <h3 className="mb-1 text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
           Specimen images
@@ -291,63 +370,58 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
         <p className="mb-4 text-[13px] text-ink/70">
           {report.slides.length === 1
             ? "One slide in this report."
-            : `${report.slides.length} slides in this report, each analyzed separately.`}
+            : `${report.slides.length} slides in this report, each analyzed separately.`}{" "}
+          Select a pollen type to box its grains on the slide.
         </p>
 
         <div className="flex flex-col gap-4">
           {report.slides.map((slide, index) => {
-            const url = imageUrls[slide.id];
             const slideGrains = getTotalGrains(slide.detections);
+            const selectedSpecies = highlighted[slide.id] ?? null;
+            const select = (speciesId: SpeciesId | null) =>
+              setHighlighted((current) => ({ ...current, [slide.id]: speciesId }));
 
             return (
               <div key={slide.id} className="rounded-lg border border-panel-line bg-white p-4">
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[16rem_1fr]">
-                  <div>
-                    {url ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={url}
-                        alt={`Slide ${index + 1} — ${slide.fileName}`}
-                        className="max-h-56 w-full rounded-md border border-panel-line bg-panel object-contain"
-                      />
-                    ) : (
-                      <div className="flex h-40 w-full flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-panel-line bg-panel/50 text-center">
-                        <ImageOff size={18} strokeWidth={1.5} className="text-ink/55" />
-                        <span className="px-3 text-[12.5px] text-ink/70">
-                          Image not stored for this record
-                        </span>
-                      </div>
-                    )}
-                    <div className="mt-2 truncate text-[13px] text-ink/70">{slide.fileName}</div>
-                  </div>
+                <div className="mb-3 flex flex-wrap items-center gap-3 text-[13px]">
+                  <span
+                    className="rounded-full bg-panel px-2.5 py-1 text-[12px] text-ink/70"
+                    style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
+                  >
+                    Slide {index + 1}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-ink/70">
+                    <Microscope size={13} strokeWidth={1.75} className="text-ink/55" />
+                    {slideGrains} {slideGrains === 1 ? "grain" : "grains"} ·{" "}
+                    {slide.detections.length}{" "}
+                    {slide.detections.length === 1 ? "type" : "types"}
+                  </span>
+                </div>
 
-                  <div className="min-w-0">
-                    <div className="mb-3 flex flex-wrap items-center gap-3 text-[13px]">
-                      <span
-                        className="rounded-full bg-panel px-2.5 py-1 text-[12px] text-ink/70"
-                        style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-                      >
-                        Slide {index + 1}
-                      </span>
-                      <span className="flex items-center gap-1.5 text-ink/70">
-                        <Microscope size={13} strokeWidth={1.75} className="text-ink/55" />
-                        {slideGrains} {slideGrains === 1 ? "grain" : "grains"} ·{" "}
-                        {slide.detections.length}{" "}
-                        {slide.detections.length === 1 ? "type" : "types"}
-                      </span>
-                    </div>
-
+                <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-5">
+                  <div className="min-w-0 xl:col-span-3">
                     {slide.detections.length === 0 ? (
                       <p className="text-[13px] text-ink/70">No pollen grains detected.</p>
                     ) : (
                       <ul className="flex flex-col gap-2">
                         {slide.detections.map((detection) => (
-                          <DetectionRow key={detection.speciesId} detection={detection} />
+                          <DetectionRow
+                            key={detection.speciesId}
+                            detection={detection}
+                            selected={selectedSpecies === detection.speciesId}
+                            onSelect={() =>
+                              select(
+                                selectedSpecies === detection.speciesId
+                                  ? null
+                                  : detection.speciesId,
+                              )
+                            }
+                          />
                         ))}
                       </ul>
                     )}
 
-                    <div className="mt-3">
+                    <div className="mt-4">
                       <div
                         className="mb-1 text-[12px] tracking-widest text-ink/65 uppercase"
                         style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
@@ -361,12 +435,28 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                       )}
                     </div>
                   </div>
+
+                  <div className="min-w-0 xl:col-span-2">
+                    <SpecimenImageViewer
+                      imageUrl={imageUrls[slide.id]}
+                      fileName={slide.fileName}
+                      grains={slide.grains}
+                      detections={slide.detections}
+                      selectedSpeciesId={selectedSpecies}
+                      onSelectSpecies={select}
+                    />
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
       </div>
+
+      <p className="text-[12.5px] text-ink/65">
+        Collected {formatCollectedAt(report.collectedAt)} · saved as{" "}
+        <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{report.sampleId}</span>
+      </p>
     </div>
   );
 }

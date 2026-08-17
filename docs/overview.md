@@ -101,9 +101,29 @@ The screen the app exists for.
 ### Report
 
 The table searches sample id, location, pollen and date, and filters by status
-(Completed / Processing / Needs review). A report page shows every slide with
-its image, per-species grain counts and confidence, the note, and the conditions
-at collection. Export is per-report PDF, or bulk JSON/CSV from Settings.
+(Completed / Processing / Needs review). Clicking anywhere on a row opens that
+report; the sample id and the View chevron stay real links, so keyboard focus,
+middle-click and "open in new tab" all still work.
+
+A report page shows what the researcher recorded — date, time, location,
+researcher, and each weather field on its own — then the combined reading, then
+every slide with its image, per-species counts and confidence, and its note.
+
+**Selecting a pollen type boxes its grains on the slide.** Each species' grains
+are drawn in that species' colour; picking a type (from the row, the chip above
+the image, or a box itself) isolates it and fades the rest, so "where is the
+ragweed on this slide" is one click. Export is per-report PDF, or bulk JSON/CSV
+from Settings.
+
+### The report PDF
+
+Drawn with jsPDF, so it is selectable text at print resolution rather than a
+screenshot: a dark masthead carrying the sample id and status, the figures as
+tiles, a stacked composition bar with a legend, the recorded details in two
+columns, and the combined reading as a table with colour swatches, risk level
+and confidence bars. Each slide then takes its own page — image with the grain
+boxes redrawn as vector rectangles (crisp at any zoom), its table, and the note
+in a tinted block. Pages are numbered and stamped with the generation date.
 
 ### Pollen map
 
@@ -141,6 +161,7 @@ type SpecimenSlide = {
   id: string;
   fileName: string;
   detections: SpecimenDetection[];  // one row per pollen type, richest first
+  grains?: DetectedGrain[];         // every boxed grain; absent on older records
   notes: string;
 };
 
@@ -149,7 +170,21 @@ type SpecimenDetection = {
   grainCount: number;
   avgConfidence: number;
 };
+
+type DetectedGrain = {
+  id: string;
+  speciesId: SpeciesId;
+  confidence: number;
+  box: BoundingBox;        // x/y/width/height as fractions of the image, 0-1
+};
 ```
+
+**Boxes are stored normalised, not in pixels.** A fraction of the image lands
+correctly at any rendered size — a thumbnail, a full-width panel, a placement in
+the PDF — so nothing has to know the file's pixel dimensions or recompute on
+resize. `grains` is optional because the seed records, and any report saved
+before boxes were kept, simply have none; the viewer says so rather than
+implying the slide was empty.
 
 **Two detection shapes, on purpose.** A detection model reports one box per
 grain, so its raw output is a flat `GrainPrediction[]`. The UI and the saved
@@ -185,11 +220,18 @@ not touching components.
 
 ### Inference — `lib/analysis.ts`
 
-`analyzeSpecimen(file)` returns detections after a short delay. The mock is
-**seeded from the file itself**, so re-analysing the same image gives the same
-reading — a thesis figure stays reproducible, and a demo doesn't change under
-you. It generates raw per-grain predictions and runs them through the same
-aggregation the real model output will use.
+`analyzeSpecimen(file)` returns detections and grain boxes after a short delay.
+The mock is **seeded from the file itself**, so re-analysing the same image gives
+the same reading — a thesis figure stays reproducible, and a demo doesn't change
+under you. It generates raw per-grain predictions, each with a plausible box
+nudged away from the ones already placed, and runs them through the same
+aggregation the real model output will use. The mock's boxes are invented
+positions, not features found in the picture; only a real model will put them on
+actual grains.
+
+Roboflow reports a box as a centre point plus a size in pixels, so the mapping
+to the normalised `BoundingBox` this app stores is written out in the
+`analyzeSpecimen` doc comment.
 
 `fetchWeather(location)` returns `null` today, which is what keeps the
 conditions fields manually entered. The Analyze screen already handles both.
@@ -293,6 +335,7 @@ components/             all UI; workspaces hold the state for their screen
   PollenMap.tsx         the map, its zoom/pan and its filters
   ReportsWorkspace.tsx  the saved-report list behind /reports and the dashboard
   ReportDetail.tsx      a full saved report
+  SpecimenImageViewer.tsx  a slide with its grain boxes drawn over it
   useMapZoom.ts         wheel / drag / pinch zoom for an SVG map
 lib/
   data.ts               types, species catalog, seed reports — the source of truth

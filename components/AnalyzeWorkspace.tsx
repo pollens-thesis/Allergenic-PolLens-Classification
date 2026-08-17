@@ -18,7 +18,7 @@ import {
   type WeatherCondition,
   type WeatherConditions,
 } from "@/lib/data";
-import { analyzeSpecimen } from "@/lib/analysis";
+import { analyzeSpecimen, type AnalysisResult } from "@/lib/analysis";
 import { getDraft, saveDraft } from "@/lib/store";
 import { accountName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
@@ -261,14 +261,14 @@ export default function AnalyzeWorkspace() {
     setIsAnalyzing(true);
 
     // One slide at a time, so the list shows progress as each result lands.
-    const analyzed: { item: BatchItem; detections: SpecimenDetection[] }[] = [];
+    const analyzed: { item: BatchItem; analysis: AnalysisResult }[] = [];
     let batchWeather = weather;
 
     for (const item of items) {
       patchItem(item.id, { status: "analyzing" });
       const analysis = await analyzeSpecimen(item.file);
       patchItem(item.id, { status: "analyzed", detections: analysis.detections });
-      analyzed.push({ item, detections: analysis.detections });
+      analyzed.push({ item, analysis });
       if (analysis.weather) {
         batchWeather = analysis.weather;
         setWeather(analysis.weather);
@@ -281,11 +281,12 @@ export default function AnalyzeWorkspace() {
       researcher: researcher || researcherName,
       weather: batchWeather,
       analyzedAt: new Date().toISOString(),
-      slides: analyzed.map(({ item, detections }) => ({
+      slides: analyzed.map(({ item, analysis }) => ({
         id: item.id,
         fileName: item.file.name,
         image: item.file,
-        detections,
+        detections: analysis.detections,
+        grains: analysis.grains,
         notes: "",
       })),
     });

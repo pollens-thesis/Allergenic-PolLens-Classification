@@ -18,6 +18,7 @@ import {
   sortByAbundance,
   weatherConditionOptions,
   type Species,
+  type SpeciesId,
   type SpecimenDetection,
   type WeatherCondition,
   type WeatherConditions,
@@ -25,6 +26,7 @@ import {
 import { clearDraft, getDraft, saveDraft, saveReport, type ReportDraft } from "@/lib/store";
 import { accountName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
+import SpecimenImageViewer from "@/components/SpecimenImageViewer";
 
 const fieldClass =
   "focus-ring w-full rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink placeholder:text-ink/70";
@@ -37,13 +39,35 @@ function riskBadgeClass(level: Species["riskLevel"]) {
   return "bg-leaf-ink/10 text-leaf-ink";
 }
 
-/** One pollen type found on a slide: how many grains, and how sure the model is. */
-function DetectionRow({ detection }: { detection: SpecimenDetection }) {
+/**
+ * One pollen type found on a slide: how many grains, and how sure the model is.
+ * The row is the control for the overlay — selecting it boxes that type's
+ * grains on the image beside it.
+ */
+function DetectionRow({
+  detection,
+  selected,
+  onSelect,
+}: {
+  detection: SpecimenDetection;
+  selected: boolean;
+  onSelect: () => void;
+}) {
   const species = getSpecies(detection.speciesId);
   const confidencePct = Math.round(detection.avgConfidence * 100);
 
   return (
-    <li className="rounded-md border border-panel-line bg-white px-3 py-2.5">
+    <li>
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-pressed={selected}
+        className={`focus-ring block w-full rounded-md border px-3 py-2.5 text-left transition ${
+          selected
+            ? "border-ink/25 bg-white shadow-[inset_3px_0_0_0_var(--anther)]"
+            : "border-panel-line bg-white hover:border-ink/20"
+        }`}
+      >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2.5">
           <span
@@ -90,6 +114,7 @@ function DetectionRow({ detection }: { detection: SpecimenDetection }) {
           <div className="h-full rounded-full bg-anther" style={{ width: `${confidencePct}%` }} />
         </div>
       </div>
+      </button>
     </li>
   );
 }
@@ -148,6 +173,8 @@ export default function AnalysisResultWorkspace() {
   const [draft, setDraft] = useState<ReportDraft | null | undefined>(undefined);
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Which pollen type the image overlay is isolating; null shows every box.
+  const [highlighted, setHighlighted] = useState<SpeciesId | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [location, setLocation] = useState("");
   const [researcher, setResearcher] = useState("");
@@ -234,6 +261,7 @@ export default function AnalysisResultWorkspace() {
         slides: draft.slides.map((slide) => ({
           fileName: slide.fileName,
           detections: slide.detections,
+          grains: slide.grains,
           notes: notes[slide.id] ?? "",
         })),
       },
@@ -378,7 +406,10 @@ export default function AnalysisResultWorkspace() {
                 <button
                   key={slide.id}
                   type="button"
-                  onClick={() => setSelectedId(slide.id)}
+                  onClick={() => {
+                    setSelectedId(slide.id);
+                    setHighlighted(null);
+                  }}
                   aria-current={active}
                   className={`focus-ring flex max-w-[16rem] items-center gap-2 rounded-md border px-2.5 py-1.5 text-[13px] transition ${
                     active
@@ -401,7 +432,7 @@ export default function AnalysisResultWorkspace() {
       </div>
 
       {selected && (
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-5">
           {/* Left: what the analysis found */}
           <div className="rounded-lg border border-panel-line bg-white/60 p-5 xl:col-span-3">
             <div className="mb-4 flex items-baseline justify-between gap-3">
@@ -427,11 +458,25 @@ export default function AnalysisResultWorkspace() {
                 No pollen grains found on this slide.
               </p>
             ) : (
-              <ul className="flex flex-col gap-2">
-                {detections.map((detection) => (
-                  <DetectionRow key={detection.speciesId} detection={detection} />
-                ))}
-              </ul>
+              <>
+                <p className="mb-2 text-[12.5px] text-ink/65">
+                  Select a type to box its grains on the image.
+                </p>
+                <ul className="flex flex-col gap-2">
+                  {detections.map((detection) => (
+                    <DetectionRow
+                      key={detection.speciesId}
+                      detection={detection}
+                      selected={highlighted === detection.speciesId}
+                      onSelect={() =>
+                        setHighlighted((current) =>
+                          current === detection.speciesId ? null : detection.speciesId,
+                        )
+                      }
+                    />
+                  ))}
+                </ul>
+              </>
             )}
           </div>
 
@@ -441,17 +486,14 @@ export default function AnalysisResultWorkspace() {
               <h3 className="mb-4 text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
                 Specimen image
               </h3>
-              <div className="overflow-hidden rounded-md border border-panel-line">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={imageUrls[selected.id]}
-                  alt={`Specimen ${selected.fileName}`}
-                  className="max-h-80 w-full bg-panel object-contain"
-                />
-                <div className="truncate border-t border-panel-line bg-white px-3 py-2 text-[13px] text-ink/70">
-                  {selected.fileName}
-                </div>
-              </div>
+              <SpecimenImageViewer
+                imageUrl={imageUrls[selected.id]}
+                fileName={selected.fileName}
+                grains={selected.grains}
+                detections={detections}
+                selectedSpeciesId={highlighted}
+                onSelectSpecies={setHighlighted}
+              />
             </div>
 
             <div className="rounded-lg border border-panel-line bg-white/60 p-5">

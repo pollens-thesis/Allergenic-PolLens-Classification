@@ -59,10 +59,46 @@ export type ReportStatus = "Completed" | "Processing" | "Needs review";
 // component: only the source of the predictions changes.
 // ---------------------------------------------------------------------------
 
+/**
+ * Where a grain sits on its slide image, as fractions of the image's width and
+ * height with the origin top-left. Normalised rather than pixels so a box lands
+ * correctly whatever size the image is displayed at — a thumbnail, a full-width
+ * panel, or a placement in the PDF.
+ */
+export type BoundingBox = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export type GrainPrediction = {
   speciesId: SpeciesId;
   confidence: number; // 0-1, this single grain's score
+  box: BoundingBox;
 };
+
+/**
+ * One grain kept with its slide, so the box can be drawn over the image long
+ * after the analysis ran. `detections` stays the summary the tables read; this
+ * is the detail behind it.
+ */
+export type DetectedGrain = {
+  id: string;
+  speciesId: SpeciesId;
+  confidence: number;
+  box: BoundingBox;
+};
+
+/** Grain records for one slide, numbered in the order the model reported them. */
+export function toDetectedGrains(predictions: GrainPrediction[]): DetectedGrain[] {
+  return predictions.map((prediction, index) => ({
+    id: `G${index + 1}`,
+    speciesId: prediction.speciesId,
+    confidence: prediction.confidence,
+    box: prediction.box,
+  }));
+}
 
 export type SpecimenDetection = {
   speciesId: SpeciesId;
@@ -201,6 +237,12 @@ export type SpecimenSlide = {
   id: string;
   fileName: string;
   detections: SpecimenDetection[]; // one row per pollen type found, richest first
+  /**
+   * Every grain the model boxed, for drawing over the image. Optional: the seed
+   * records and any report saved before boxes were kept simply have none, and
+   * the viewer says so rather than pretending the slide was empty.
+   */
+  grains?: DetectedGrain[];
   notes: string; // free-text note about this slide; "" when left blank
 };
 
