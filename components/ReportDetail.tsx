@@ -57,8 +57,14 @@ function DetectionRow({
   const species = getSpecies(detection.speciesId);
   const confidencePct = Math.round(detection.avgConfidence * 100);
 
+  /**
+   * One line on a wide row, two on a narrow one. Side by side, the name and the
+   * figures collide below about 480px — the name has no fixed width and the
+   * confidence bar does — so on small screens the figures move underneath
+   * instead of being squeezed into the name.
+   */
   const body = (
-    <div className="flex items-center justify-between gap-3">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
       <div className="flex min-w-0 items-center gap-2.5">
         <span
           aria-hidden
@@ -78,23 +84,26 @@ function DetectionRow({
           <span className="ml-1.5 text-[13px] text-ink/70">{species.commonName}</span>
         </div>
         <span
-          className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap sm:inline-flex ${riskBadgeClass(species.riskLevel)}`}
+          className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap lg:inline-flex ${riskBadgeClass(species.riskLevel)}`}
           style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
         >
           {species.riskLevel} risk
         </span>
       </div>
 
-      <div className="flex shrink-0 items-center gap-4">
-        <div className="text-right">
-          <div className="text-[14px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+      <div className="flex shrink-0 items-center gap-4 pl-5 sm:pl-0">
+        <div className="text-left sm:text-right">
+          <span
+            className="text-[14px] text-ink"
+            style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
+          >
             {detection.grainCount}
-          </div>
-          <div className="text-[11.5px] text-ink/65">
+          </span>
+          <span className="ml-1 text-[11.5px] text-ink/65 sm:ml-0 sm:block">
             {detection.grainCount === 1 ? "grain" : "grains"}
-          </div>
+          </span>
         </div>
-        <div className="w-24">
+        <div className="w-24 flex-1 sm:flex-none">
           <div className="mb-1 flex items-center justify-between text-[11.5px] text-ink/70">
             <span>conf.</span>
             <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{confidencePct}%</span>
