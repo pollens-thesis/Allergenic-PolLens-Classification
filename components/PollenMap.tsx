@@ -548,7 +548,7 @@ export default function PollenMap() {
               onClick={() => zoomBy(1.6)}
               disabled={atMaxZoom}
               aria-label="Zoom in"
-              className="focus-ring flex h-8 w-8 items-center justify-center rounded-md border border-panel-line bg-white/90 text-ink/70 transition hover:text-ink disabled:opacity-35"
+              className="focus-ring flex h-10 w-10 items-center justify-center rounded-md border border-panel-line bg-white/90 text-ink/70 transition hover:text-ink disabled:opacity-35 lg:h-8 lg:w-8"
             >
               <ZoomIn size={15} strokeWidth={1.75} />
             </button>
@@ -557,7 +557,7 @@ export default function PollenMap() {
               onClick={() => zoomBy(1 / 1.6)}
               disabled={!zoomedIn}
               aria-label="Zoom out"
-              className="focus-ring flex h-8 w-8 items-center justify-center rounded-md border border-panel-line bg-white/90 text-ink/70 transition hover:text-ink disabled:opacity-35"
+              className="focus-ring flex h-10 w-10 items-center justify-center rounded-md border border-panel-line bg-white/90 text-ink/70 transition hover:text-ink disabled:opacity-35 lg:h-8 lg:w-8"
             >
               <ZoomOut size={15} strokeWidth={1.75} />
             </button>
@@ -566,7 +566,7 @@ export default function PollenMap() {
               onClick={resetZoom}
               disabled={!zoomedIn}
               aria-label="Reset zoom"
-              className="focus-ring flex h-8 w-8 items-center justify-center rounded-md border border-panel-line bg-white/90 text-ink/70 transition hover:text-ink disabled:opacity-35"
+              className="focus-ring flex h-10 w-10 items-center justify-center rounded-md border border-panel-line bg-white/90 text-ink/70 transition hover:text-ink disabled:opacity-35 lg:h-8 lg:w-8"
             >
               <Maximize2 size={14} strokeWidth={1.75} />
             </button>
@@ -927,7 +927,11 @@ export default function PollenMap() {
                 )}
               </div>
             ) : (
-              <ol className="flex max-h-[68vh] flex-col gap-2 overflow-y-auto">
+              // The inner scroll is a desktop affordance: beside a tall map it
+              // keeps the ranking in view. Stacked under the map on a phone it
+              // would be a scroll area inside a scrolling page, so the list
+              // simply runs on.
+              <ol className="flex flex-col gap-2 lg:max-h-[68vh] lg:overflow-y-auto">
                 {matches.map((row, index) => (
                   <li key={row.key}>
                     <button

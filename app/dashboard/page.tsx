@@ -12,7 +12,7 @@ export default function DashboardPage() {
     <div className="grid min-h-screen w-full grid-cols-1 bg-panel lg:grid-cols-[15rem_1fr]">
       <Sidebar />
 
-      <main className="min-w-0 px-6 py-8 lg:px-10 lg:py-10">
+      <main className="min-w-0 px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
         {/* Top bar */}
         <div className="mb-6">
           <p

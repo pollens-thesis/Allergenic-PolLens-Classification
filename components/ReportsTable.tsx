@@ -212,30 +212,34 @@ export default function ReportsTable({
         </label>
       </div>
 
-      {/* Filters: status, where, and when. */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div className="flex gap-0.5 rounded-md border border-panel-line bg-white p-0.5">
-          {STATUS_FILTERS.map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => patch({ status: option })}
-              aria-pressed={filters.status === option}
-              className={`focus-ring rounded px-2.5 py-1 text-[13px] transition ${
-                filters.status === option ? "bg-ink text-parchment" : "text-ink/70 hover:text-ink"
-              }`}
-            >
-              {option}
-            </button>
-          ))}
+      {/* Filters: status, where, and when. Stacked on a phone, one row from md
+          up — the status chips scroll sideways rather than wrapping into a
+          two-line block that shifts everything below it. */}
+      <div className="mb-3 flex flex-col gap-2 md:flex-row md:flex-wrap md:items-end">
+        <div className="-mx-1 overflow-x-auto px-1 pb-0.5">
+          <div className="flex w-max gap-0.5 rounded-md border border-panel-line bg-white p-0.5">
+            {STATUS_FILTERS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => patch({ status: option })}
+                aria-pressed={filters.status === option}
+                className={`focus-ring rounded px-2 py-1.5 text-[12.5px] whitespace-nowrap transition sm:px-2.5 sm:text-[13px] ${
+                  filters.status === option ? "bg-ink text-parchment" : "text-ink/70 hover:text-ink"
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <label className="flex items-center gap-1.5">
+        <label className="flex flex-col gap-1 md:flex-row md:items-center md:gap-1.5">
           <span className="text-[12.5px] text-ink/70">Location</span>
           <select
             value={filters.location}
             onChange={(e) => patch({ location: e.target.value })}
-            className={controlClass}
+            className={`${controlClass} w-full md:w-auto`}
           >
             <option value={ALL_LOCATIONS}>All locations</option>
             {locations.map((location) => (
@@ -246,32 +250,34 @@ export default function ReportsTable({
           </select>
         </label>
 
-        <label className="flex items-center gap-1.5">
-          <span className="text-[12.5px] text-ink/70">Collected from</span>
-          <input
-            type="date"
-            value={filters.from}
-            max={filters.to || undefined}
-            onChange={(e) => patch({ from: e.target.value })}
-            className={controlClass}
-          />
-        </label>
-        <label className="flex items-center gap-1.5">
-          <span className="text-[12.5px] text-ink/70">to</span>
-          <input
-            type="date"
-            value={filters.to}
-            min={filters.from || undefined}
-            onChange={(e) => patch({ to: e.target.value })}
-            className={controlClass}
-          />
-        </label>
+        <div className="grid grid-cols-2 gap-2 md:flex md:items-end md:gap-2">
+          <label className="flex flex-col gap-1 md:flex-row md:items-center md:gap-1.5">
+            <span className="text-[12.5px] whitespace-nowrap text-ink/70">Collected from</span>
+            <input
+              type="date"
+              value={filters.from}
+              max={filters.to || undefined}
+              onChange={(e) => patch({ from: e.target.value })}
+              className={`${controlClass} w-full md:w-auto`}
+            />
+          </label>
+          <label className="flex flex-col gap-1 md:flex-row md:items-center md:gap-1.5">
+            <span className="text-[12.5px] text-ink/70">to</span>
+            <input
+              type="date"
+              value={filters.to}
+              min={filters.from || undefined}
+              onChange={(e) => patch({ to: e.target.value })}
+              className={`${controlClass} w-full md:w-auto`}
+            />
+          </label>
+        </div>
 
         {hasActiveFilters && (
           <button
             type="button"
             onClick={clearFilters}
-            className="focus-ring flex items-center gap-1 rounded-md px-2 py-1.5 text-[13px] text-ink/65 transition hover:text-ink"
+            className="focus-ring flex items-center justify-center gap-1 rounded-md px-2 py-2 text-[13px] text-ink/65 transition hover:text-ink md:py-1.5"
           >
             <X size={13} strokeWidth={1.75} />
             Clear filters
@@ -318,8 +324,77 @@ export default function ReportsTable({
         </div>
       )}
 
-      <div className="-mx-1 overflow-x-auto px-1">
-        <table className="w-full min-w-[52rem] border-collapse text-left text-[13px]">
+      {/* Phones get cards, not a seven-column table sideways-scrolled through a
+          360px window: every field a row carries stays on screen, and the whole
+          card is the tap target the row is on a desktop. */}
+      <ul className="flex flex-col gap-2 lg:hidden">
+        {filtered.map((r) => {
+          const time = getCollectionTime(r.collectedAt);
+          return (
+            <li key={r.sampleId}>
+              <div
+                className={`flex items-start gap-3 rounded-md border px-3 py-3 transition ${
+                  r.sampleId === highlightId
+                    ? "border-anther/40 bg-anther/8"
+                    : picked.has(r.sampleId)
+                      ? "border-ink/25 bg-panel/70"
+                      : "border-panel-line bg-white"
+                }`}
+              >
+                {/* Negative margin against inner padding: the box stays 16px
+                    but the thing a thumb has to hit is 40. */}
+                <label className="-m-2 shrink-0 cursor-pointer p-2">
+                  <span className="sr-only">Choose report {r.sampleId}</span>
+                  <input
+                    type="checkbox"
+                    checked={picked.has(r.sampleId)}
+                    onChange={() => togglePicked(r.sampleId)}
+                    className="focus-ring mt-1 h-4 w-4 accent-[#23261f]"
+                  />
+                </label>
+                <Link href={`/reports/${r.sampleId}`} className="focus-ring min-w-0 flex-1 rounded">
+                  <div className="flex items-start justify-between gap-2">
+                    <span
+                      className="text-[13px] text-ink"
+                      style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
+                    >
+                      {r.sampleId}
+                    </span>
+                    <StatusBadge status={r.status} />
+                  </div>
+                  <div className="mt-1 text-[13px] text-ink/85">{r.topPollen}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-ink/70">
+                    <span>{r.location}</span>
+                    <span aria-hidden>·</span>
+                    <span>
+                      {formatDate(r.collectedAt)}
+                      {time && ` · ${formatTime(time)}`}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 text-[12.5px] text-ink/70">
+                    <span
+                      className="text-ink"
+                      style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
+                    >
+                      {r.totalGrains}
+                    </span>{" "}
+                    grains
+                    {r.slideCount > 1 && ` · ${r.slideCount} slides`}
+                    {r.sampleId === highlightId && (
+                      <span className="ml-2 rounded-full bg-anther/15 px-2 py-0.5 text-[11.5px] text-anther-ink">
+                        just saved
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="hidden lg:block">
+        <table className="w-full border-collapse text-left text-[13px]">
           <thead>
             <tr
               className="border-b border-panel-line text-[12px] tracking-widest text-ink/65 uppercase"
@@ -397,27 +472,28 @@ export default function ReportsTable({
             ))}
           </tbody>
         </table>
-
-        {filtered.length === 0 && (
-          <div className="flex flex-col items-center gap-2 py-10 text-center">
-            <p className="text-[13px] text-ink/70">
-              {hasActiveFilters
-                ? "No reports match those filters."
-                : "No reports yet — analyze a specimen to create one."}
-            </p>
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-panel-line bg-white px-2.5 py-1.5 text-[13px] text-ink/70 transition hover:text-ink"
-              >
-                <X size={13} strokeWidth={1.75} />
-                Clear filters
-              </button>
-            )}
-          </div>
-        )}
       </div>
+
+      {/* Outside both renderings, so an empty result says so at either size. */}
+      {filtered.length === 0 && (
+        <div className="flex flex-col items-center gap-2 py-10 text-center">
+          <p className="text-[13px] text-ink/70">
+            {hasActiveFilters
+              ? "No reports match those filters."
+              : "No reports yet — analyze a specimen to create one."}
+          </p>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-panel-line bg-white px-2.5 py-1.5 text-[13px] text-ink/70 transition hover:text-ink"
+            >
+              <X size={13} strokeWidth={1.75} />
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
 
       {rows.length > 0 && picked.size === 0 && (
         <p className="mt-3 text-[12.5px] text-ink/65">

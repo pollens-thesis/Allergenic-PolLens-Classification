@@ -341,6 +341,30 @@ Two rules worth knowing before changing colours or type:
   plain alpha compositing predicts. `text-ink/60` computes to 3.9:1, not the 4.1
   the arithmetic gives. Measure in the browser, not on paper.
 
+### On a phone
+
+The console is used in the field, so every screen works down to 360px.
+
+- **Navigation changes shape, not content.** Below `lg` the pinned rail becomes
+  a fixed bar and a drawer; both render the same links from the same list, so a
+  new section is added once. A row of icons at the foot of the screen was the
+  alternative and would have had to drop the labels — "Analyze specimen" and
+  "Allergen reference" are what make the console navigable. The bar is `fixed`
+  rather than `sticky` because as a grid child its row is only as tall as
+  itself, which leaves a sticky element no room to travel; a spacer takes that
+  row so the page starts below the bar.
+- **The report table becomes cards.** Seven columns sideways-scrolled through a
+  360px window is not a table anyone can read. Each card carries every field the
+  row does, and the card is the tap target the row is on a desktop.
+- **Rows that pair a name with figures stack.** A detection row puts its
+  confidence bar under the species below `sm`; side by side, the name has no
+  fixed width and the bar does, so they collided.
+- Touch targets are 40px where a pointer would have made do with less — the map's
+  zoom controls, and the checkbox in each report card.
+- The map already handled touch: `useMapZoom` is built on pointer events, so
+  drag and pinch work without a separate path, and `touch-action` yields
+  vertical scrolling back to the page until the map is zoomed in.
+
 The whole app passes **WCAG AA** contrast — a DOM-level audit over all seven
 pages reports zero text below the threshold. Nothing carrying words sits below
 65% ink; nothing meant to be read is under 11.5px. `antialiased` is deliberately
