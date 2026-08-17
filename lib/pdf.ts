@@ -596,7 +596,101 @@ export type LocationReportInput = {
   places: PlaceStats[];
   /** Every report behind the figures, newest collection first. */
   reports: Specimen[];
+  /** Basename of the saved file, without the extension. */
+  fileSlug: string;
+  /** What the document calls itself, top right. Defaults to "Location report". */
+  documentLabel?: string;
+  /** What `title` is, in the scope grid. Defaults to "Place". */
+  subjectLabel?: string;
 };
+
+/**
+ * Group a set of reports by the location written on them.
+ *
+ * The map hands over places it has already aggregated against a boundary; a
+ * selection made in the report list has no boundary behind it, so the location
+ * string is the grouping. Free text is exactly as reliable as what was typed —
+ * "Lucban, Quezon" and "lucban, quezon" would be two places — which is fine
+ * here because both spellings would also appear as written in the table the
+ * researcher picked from.
+ */
+function placesFromReports(reports: Specimen[]): PlaceStats[] {
+  const places = new Map<string, PlaceStats>();
+
+  for (const report of reports) {
+    const label = report.location.trim() || "Location not specified";
+    const place = places.get(label) ?? {
+      key: label,
+      label,
+      reportCount: 0,
+      totalGrains: 0,
+      detections: [],
+      lastCollectedAt: null,
+    };
+
+    place.reportCount += 1;
+    for (const detection of aggregateSlideDetections(report.slides)) {
+      const existing = place.detections.find((d) => d.speciesId === detection.speciesId);
+      if (existing) {
+        const grains = existing.grainCount + detection.grainCount;
+        existing.avgConfidence =
+          (existing.avgConfidence * existing.grainCount +
+            detection.avgConfidence * detection.grainCount) /
+          grains;
+        existing.grainCount = grains;
+      } else {
+        place.detections.push({ ...detection });
+      }
+      place.totalGrains += detection.grainCount;
+    }
+    if (!place.lastCollectedAt || report.collectedAt > place.lastCollectedAt) {
+      place.lastCollectedAt = report.collectedAt;
+    }
+    places.set(label, place);
+  }
+
+  for (const place of places.values()) {
+    place.detections.sort((a, b) => b.grainCount - a.grainCount);
+  }
+  return [...places.values()].sort((a, b) => b.totalGrains - a.totalGrains);
+}
+
+/**
+ * A summary of reports chosen by hand in the report list.
+ *
+ * Same document as a location report — the question is the same shape, "what do
+ * these readings add up to" — but the subject is a set the researcher picked
+ * rather than a place on the map, so the places are derived from the reports
+ * and the scope says how the set was chosen.
+ */
+export async function downloadSelectionReportPdf({
+  reports,
+}: {
+  reports: Specimen[];
+}): Promise<void> {
+  const places = placesFromReports(reports);
+  const dates = reports.map((r) => r.collectedAt).sort();
+  const span =
+    dates.length && getCollectionDate(dates[0]) !== getCollectionDate(dates[dates.length - 1])
+      ? ` collected between ${shortDate(dates[0])} and ${shortDate(dates[dates.length - 1])}`
+      : dates.length
+        ? ` collected ${shortDate(dates[0])}`
+        : "";
+
+  return downloadLocationReportPdf({
+    // One place is a place; several is a selection, and naming it after the
+    // first would misrepresent the rest.
+    title: places.length === 1 ? places[0].label : "Selected reports",
+    scopeLabel: `${reports.length} ${reports.length === 1 ? "report" : "reports"}`,
+    selectionNote: `Chosen from the report list${span}. Each report's slides, images and notes are in its own specimen PDF.`,
+    speciesLabel: "All pollen",
+    places,
+    reports,
+    fileSlug: "selected-reports",
+    documentLabel: "Report summary",
+    subjectLabel: places.length === 1 ? "Location" : "Selection",
+  });
+}
 
 /** "Jul 29, 2026" — the date half of a collection stamp, parsed as local. */
 function shortDate(collectedAt: string): string {
@@ -737,9 +831,11 @@ export async function downloadLocationReportPdf(input: LocationReportInput): Pro
     day: "numeric",
   });
 
+  const documentLabel = input.documentLabel ?? "Location report";
+
   doc.setProperties({
-    title: `PolLens — pollen at ${input.title}`,
-    subject: `Pollen recorded at ${input.title} (${input.speciesLabel})`,
+    title: `PolLens — ${input.title} (${documentLabel.toLowerCase()})`,
+    subject: `Pollen recorded for ${input.title} (${input.speciesLabel})`,
     creator: "PolLens Research Console",
   });
 
@@ -750,7 +846,7 @@ export async function downloadLocationReportPdf(input: LocationReportInput): Pro
 
   masthead(cursor, {
     title: input.title,
-    rightTop: "Location report",
+    rightTop: documentLabel,
     rightBottom: input.speciesLabel,
   });
 
@@ -767,7 +863,7 @@ export async function downloadLocationReportPdf(input: LocationReportInput): Pro
 
   heading(cursor, "Scope");
   metaGrid(cursor, [
-    ["Place", input.title],
+    [input.subjectLabel ?? "Place", input.title],
     ["Level", input.scopeLabel],
     ["Pollen filter", input.speciesLabel],
     [
@@ -806,10 +902,5 @@ export async function downloadLocationReportPdf(input: LocationReportInput): Pro
   }
 
   footer(doc, input.title, generated);
-  const slug =
-    input.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "") || "location";
-  doc.save(`PolLens-${slug}-pollen-report.pdf`);
+  doc.save(`PolLens-${input.fileSlug}-pollen-report.pdf`);
 }

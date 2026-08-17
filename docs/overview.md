@@ -100,10 +100,20 @@ The screen the app exists for.
 
 ### Report
 
-The table searches sample id, location, pollen and date, and filters by status
-(Completed / Processing / Needs review). Clicking anywhere on a row opens that
-report; the sample id and the View chevron stay real links, so keyboard focus,
-middle-click and "open in new tab" all still work.
+The table searches sample id, location, pollen and date, and narrows by status,
+by location (a list built from the data, so it can only offer places that
+exist), and by a collection-date range. Clicking anywhere on a row opens that
+report; the sample id stays a real link, so keyboard focus, middle-click and
+"open in new tab" all still work.
+
+**Choosing what to export.** Each row has a checkbox and the header one takes
+the whole filtered result, so "every Lucban report from May onwards" is a filter
+plus one click. The chosen set survives a change of filter — search one
+location, pick from it, search another, pick more — because the export works
+from what was ticked rather than from what is on screen. *Generate report*
+produces one summary PDF over the selection: the combined reading, the places it
+spans, and the records behind it. Per-slide images and notes stay in each
+report's own specimen PDF.
 
 A report page shows what the researcher recorded — date, time, location,
 researcher, and each weather field on its own — then the combined reading, then
@@ -114,6 +124,12 @@ are drawn in that species' colour; picking a type (from the row, the chip above
 the image, or a box itself) isolates it and fades the rest, so "where is the
 ragweed on this slide" is one click. Export is per-report PDF, or bulk JSON/CSV
 from Settings.
+
+**Status is not wired up yet.** `saveReport` stamps every saved report
+`Completed`; `Processing` and `Needs review` only appear on seed records, so the
+filter chips for them will find nothing a researcher has produced. The three
+values are a workflow the app does not yet run — see
+[What is not built yet](#what-is-not-built-yet).
 
 ### The report PDF
 
@@ -376,6 +392,16 @@ them.
 written in [`allergen-reference-plan.md`](./allergen-reference-plan.md) and is
 unbuilt. Phase 1 needs no model and no dataset — it only needs the botanical
 fields authored.
+
+**Report status is decorative.** `ReportStatus` has three values and the table
+filters on all three, but nothing in the app ever sets one: `saveReport`
+hardcodes `Completed`, and the `Processing` and `Needs review` records are seed
+data. The intended meanings are that `Processing` covers a reading still being
+computed — which will only exist once inference is a server round-trip rather
+than a function call — and `Needs review` flags one a researcher has marked for
+a second look, which needs a control to mark it with. Until then the value is
+constant for anything a researcher saves, and the two other chips are filters
+over seed records alone.
 
 **Sign-in is mock.** No provider, no session, no server-side authorisation.
 Anyone who can reach the URL can reach every screen.
