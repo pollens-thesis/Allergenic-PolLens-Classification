@@ -53,6 +53,16 @@ import { useMapZoom } from "./useMapZoom";
 const fieldClass =
   "focus-ring rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink";
 
+/** Place name → a filename fragment: "Lucena City" becomes "lucena-city". */
+function slugify(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "location"
+  );
+}
+
 /** Zoom past which unsampled places are labelled too — by then there is room. */
 const LABEL_EVERYTHING_ZOOM = 2.5;
 
@@ -387,6 +397,9 @@ export default function PollenMap() {
         speciesLabel,
         places,
         reports: included,
+        fileSlug: slugify(
+          places.length === 1 ? places[0].label : countryScope ? "philippines" : scope.name,
+        ),
       });
     } finally {
       setBuilding(null);

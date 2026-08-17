@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { toReportRow, type Specimen } from "@/lib/data";
+import { type Specimen } from "@/lib/data";
 import { listReports } from "@/lib/store";
 import ReportsTable from "@/components/ReportsTable";
 
@@ -38,10 +38,6 @@ export default function ReportsWorkspace() {
   }
 
   return (
-    <ReportsTable
-      data={reports.map(toReportRow)}
-      highlightId={savedId}
-      initialQuery={initialQuery}
-    />
+    <ReportsTable reports={reports} highlightId={savedId} initialQuery={initialQuery} />
   );
 }
