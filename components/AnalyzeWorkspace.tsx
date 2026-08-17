@@ -1,45 +1,38 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
-  CalendarDays,
+  ArrowRight,
+  FileText,
   ImagePlus,
   X,
   Loader2,
-  MapPin,
   Microscope,
-  RotateCcw,
-  Save,
 } from "lucide-react";
 import {
-  formatCollectedAt,
-  getSpecies,
   getTotalGrains,
-  getWeightedAvgConfidence,
-  sortByAbundance,
   weatherConditionOptions,
-  type Species,
   type SpecimenDetection,
   type WeatherCondition,
   type WeatherConditions,
 } from "@/lib/data";
 import { analyzeSpecimen } from "@/lib/analysis";
-import { saveReport } from "@/lib/store";
+import { getDraft, saveDraft } from "@/lib/store";
 import { accountName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 
 type ItemStatus = "pending" | "analyzing" | "analyzed";
 
-/** One uploaded slide. Detections and notes are per image; the collection
- *  details (location, researcher, weather) are shared by the whole batch. */
+/** One uploaded slide. Detections are per image; the collection details
+ *  (location, researcher, weather) are shared by the whole batch. */
 type BatchItem = {
   id: string;
   file: File;
   imageUrl: string;
   status: ItemStatus;
   detections: SpecimenDetection[];
-  notes: string;
 };
 
 /** Local "now", split into the shapes <input type="date"|"time"> expect. */
@@ -63,69 +56,6 @@ const fieldClass =
   "focus-ring w-full rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink placeholder:text-ink/70";
 
 const sectionHeadingClass = "mb-2 text-[12px] tracking-[0.2em] text-ink/65 uppercase";
-
-function riskBadgeClass(level: Species["riskLevel"]) {
-  if (level === "High") return "bg-ember-ink/10 text-ember-ink";
-  if (level === "Moderate") return "bg-anther/10 text-anther-ink";
-  return "bg-leaf-ink/10 text-leaf-ink";
-}
-
-/** One pollen type found on a slide: how many grains, and how sure the model is. */
-function DetectionRow({ detection }: { detection: SpecimenDetection }) {
-  const species = getSpecies(detection.speciesId);
-  const confidencePct = Math.round(detection.avgConfidence * 100);
-
-  return (
-    <li className="rounded-md border border-panel-line bg-white px-3 py-2.5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-2.5">
-          <span
-            aria-hidden
-            className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full"
-            style={{ backgroundColor: species.color }}
-          />
-          <div className="min-w-0">
-            <div
-              className="text-[11.5px] tracking-widest text-ink/65 uppercase"
-              style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-            >
-              {species.code}
-            </div>
-            <div className="truncate text-[14px] text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-              {species.genus}
-            </div>
-            <div className="truncate text-[13px] text-ink/70">{species.commonName}</div>
-          </div>
-        </div>
-
-        <div className="shrink-0 text-right">
-          <div className="text-[14px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-            {detection.grainCount}
-          </div>
-          <div className="text-[12px] text-ink/65">
-            {detection.grainCount === 1 ? "grain" : "grains"}
-          </div>
-          <span
-            className={`mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap ${riskBadgeClass(species.riskLevel)}`}
-            style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-          >
-            {species.riskLevel} risk
-          </span>
-        </div>
-      </div>
-
-      <div className="mt-2.5">
-        <div className="mb-1 flex items-center justify-between text-[12.5px] text-ink/70">
-          <span>Avg. confidence</span>
-          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{confidencePct}%</span>
-        </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-panel-line">
-          <div className="h-full rounded-full bg-anther" style={{ width: `${confidencePct}%` }} />
-        </div>
-      </div>
-    </li>
-  );
-}
 
 /** Number input that keeps an empty box as `null` rather than 0. */
 function MeasurementField({
@@ -193,7 +123,7 @@ function SpecimenListRow({
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13px] text-ink">{item.file.name}</span>
           <span className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-ink/70">
-            {item.status === "pending" && "Not analyzed yet"}
+            {item.status === "pending" && "Ready to analyze"}
             {item.status === "analyzing" && (
               <>
                 <Loader2 size={11} strokeWidth={2} className="animate-spin" />
@@ -221,6 +151,11 @@ function SpecimenListRow({
   );
 }
 
+/**
+ * Upload and describe a batch, then run the analysis. The readings themselves
+ * are not shown here: analysis hands the batch to /upload/result, where the
+ * researcher reviews it, writes the notes and saves the report.
+ */
 export default function AnalyzeWorkspace() {
   const [items, setItems] = useState<BatchItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -230,8 +165,8 @@ export default function AnalyzeWorkspace() {
   const [collectedTime, setCollectedTime] = useState("");
   const [weather, setWeather] = useState<WeatherConditions>(EMPTY_WEATHER);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [hasPendingDraft, setHasPendingDraft] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const settings = useSettings();
@@ -241,13 +176,19 @@ export default function AnalyzeWorkspace() {
   const collectedAt = collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate;
 
   const selected = items.find((item) => item.id === selectedId) ?? null;
-  const pendingCount = items.filter((item) => item.status === "pending").length;
-  const analyzedCount = items.filter((item) => item.status === "analyzed").length;
-  const canSave = analyzedCount > 0 && pendingCount === 0 && !isAnalyzing && !!collectedDate;
+  const canAnalyze = items.length > 0 && !!collectedDate && !isAnalyzing;
 
-  const detections = selected ? [...selected.detections].sort(sortByAbundance) : [];
-  const totalGrains = getTotalGrains(detections);
-  const overallConfidence = getWeightedAvgConfidence(detections);
+  // An analysis run in an earlier visit may still be sitting unsaved. Say so
+  // rather than letting the next run quietly replace it.
+  useEffect(() => {
+    let cancelled = false;
+    getDraft().then((draft) => {
+      if (!cancelled) setHasPendingDraft(draft !== null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function patchItem(id: string, patch: Partial<BatchItem>) {
     setItems((current) =>
@@ -269,7 +210,6 @@ export default function AnalyzeWorkspace() {
       imageUrl: URL.createObjectURL(file),
       status: "pending",
       detections: [],
-      notes: "",
     }));
 
     setItems((current) => [...current, ...added]);
@@ -310,404 +250,333 @@ export default function AnalyzeWorkspace() {
     if (inputRef.current) inputRef.current.value = "";
   }
 
+  /**
+   * Analyze every slide in the batch, then hand the whole reading over to the
+   * report page. The batch is written to a draft rather than passed in the URL
+   * because it carries the images themselves — and a draft in IndexedDB also
+   * survives a refresh of the page it lands on.
+   */
   async function handleAnalyze() {
-    const queue = items.filter((item) => item.status === "pending");
-    if (queue.length === 0) return;
-
+    if (!canAnalyze) return;
     setIsAnalyzing(true);
+
     // One slide at a time, so the list shows progress as each result lands.
-    for (const item of queue) {
+    const analyzed: { item: BatchItem; detections: SpecimenDetection[] }[] = [];
+    let batchWeather = weather;
+
+    for (const item of items) {
       patchItem(item.id, { status: "analyzing" });
       const analysis = await analyzeSpecimen(item.file);
       patchItem(item.id, { status: "analyzed", detections: analysis.detections });
-      if (analysis.weather) setWeather(analysis.weather);
+      analyzed.push({ item, detections: analysis.detections });
+      if (analysis.weather) {
+        batchWeather = analysis.weather;
+        setWeather(analysis.weather);
+      }
     }
-    setIsAnalyzing(false);
-  }
 
-  /**
-   * The batch is saved as a single report, then we go straight to History —
-   * the saved record, not the scratch workspace, is what the researcher wants
-   * to look at next.
-   */
-  async function handleSaveReport() {
-    if (!canSave) return;
-    setIsSaving(true);
+    await saveDraft({
+      collectedAt,
+      location,
+      researcher: researcher || researcherName,
+      weather: batchWeather,
+      analyzedAt: new Date().toISOString(),
+      slides: analyzed.map(({ item, detections }) => ({
+        id: item.id,
+        fileName: item.file.name,
+        image: item.file,
+        detections,
+        notes: "",
+      })),
+    });
 
-    const analyzed = items.filter((item) => item.status === "analyzed");
-    const report = await saveReport(
-      {
-        collectedAt,
-        location,
-        researcher: researcher || researcherName,
-        weather,
-        slides: analyzed.map((item) => ({
-          fileName: item.file.name,
-          detections: item.detections,
-          notes: item.notes,
-        })),
-      },
-      Object.fromEntries(analyzed.map((item, index) => [String(index), item.file])),
-    );
-
+    // The draft owns the images from here; these object URLs belong to this
+    // screen and go with it.
     items.forEach((item) => URL.revokeObjectURL(item.imageUrl));
-    router.push(`/history?saved=${report.sampleId}`);
+    router.push("/upload/result");
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
-      {/* Left: batch + collection details */}
-      <div className="rounded-lg border border-panel-line bg-white/60 p-5 xl:col-span-3">
-        <div className="mb-4 flex items-baseline justify-between gap-3">
-          <h2 className="text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-            Specimen images
-          </h2>
-          {items.length > 0 && (
-            <button
-              type="button"
-              onClick={handleClearAll}
-              className="focus-ring rounded text-[13px] text-ink/65 transition hover:text-ink"
-            >
-              Clear all
-            </button>
-          )}
+    <div className="flex flex-col gap-4">
+      {hasPendingDraft && !isAnalyzing && (
+        <div className="flex flex-col gap-3 rounded-lg border border-anther/30 bg-anther/8 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-2.5">
+            <FileText size={15} strokeWidth={1.75} className="mt-0.5 shrink-0 text-anther-ink" />
+            <p className="text-[13px] text-ink/80">
+              You have an analysis that hasn&apos;t been saved yet. Running a new one replaces it.
+            </p>
+          </div>
+          <Link
+            href="/upload/result"
+            className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-md border border-ink/20 bg-white px-3 py-1.5 text-[13px] text-ink transition hover:bg-panel"
+          >
+            Open it
+            <ArrowRight size={13} strokeWidth={1.75} />
+          </Link>
         </div>
+      )}
 
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
-        />
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
+        {/* Left: batch + collection details */}
+        <div className="rounded-lg border border-panel-line bg-white/60 p-5 xl:col-span-3">
+          <div className="mb-4 flex items-baseline justify-between gap-3">
+            <h2 className="text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+              Specimen images
+            </h2>
+            {items.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearAll}
+                className="focus-ring rounded text-[13px] text-ink/65 transition hover:text-ink"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
 
-        {items.length === 0 ? (
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setIsDragging(false);
-              handleFiles(e.dataTransfer.files);
-            }}
-            className={`focus-ring flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-14 text-center transition ${
-              isDragging ? "border-anther bg-anther/5" : "border-panel-line hover:border-ink/30"
-            }`}
-          >
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-panel">
-              <ImagePlus size={20} strokeWidth={1.75} className="text-ink/70" />
-            </span>
-            <span className="text-[13.5px] text-ink/70">
-              Drag and drop microscope images, or click to browse
-            </span>
-            <span className="text-[12.5px] text-ink/70">
-              JPG, PNG — up to 10MB each. Select several to analyze a batch.
-            </span>
-          </button>
-        ) : (
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setIsDragging(false);
-              handleFiles(e.dataTransfer.files);
-            }}
-            className={`rounded-lg border-2 border-dashed p-2 transition ${
-              isDragging ? "border-anther bg-anther/5" : "border-transparent"
-            }`}
-          >
-            <ul className="flex flex-col gap-1.5">
-              {items.map((item) => (
-                <SpecimenListRow
-                  key={item.id}
-                  item={item}
-                  isSelected={item.id === selectedId}
-                  onSelect={() => setSelectedId(item.id)}
-                  onRemove={() => handleRemove(item.id)}
-                />
-              ))}
-            </ul>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => handleFiles(e.target.files)}
+          />
+
+          {items.length === 0 ? (
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
-              className="focus-ring mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-panel-line px-3 py-2 text-[13px] text-ink/70 transition hover:border-ink/25 hover:text-ink"
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                handleFiles(e.dataTransfer.files);
+              }}
+              className={`focus-ring flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-14 text-center transition ${
+                isDragging ? "border-anther bg-anther/5" : "border-panel-line hover:border-ink/30"
+              }`}
             >
-              <ImagePlus size={14} strokeWidth={1.75} />
-              Add more images
-            </button>
-          </div>
-        )}
-
-        {/* Collection details — shared by every slide in the batch. */}
-        <div className="mt-5">
-          <h3 className={sectionHeadingClass} style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-            Collection details
-          </h3>
-          <p className="mb-2.5 text-[12.5px] text-ink/70">
-            When and where the batch was collected — applies to every specimen in it.
-          </p>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-[12.5px] text-ink/70">Location</span>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g. Lucena City, Quezon"
-                className={fieldClass}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-[12.5px] text-ink/70">Researcher</span>
-              <input
-                type="text"
-                value={researcher}
-                onChange={(e) => setResearcher(e.target.value)}
-                placeholder={researcherName}
-                className={fieldClass}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-[12.5px] text-ink/70">Date collected</span>
-              <input
-                type="date"
-                value={collectedDate}
-                onChange={(e) => setCollectedDate(e.target.value)}
-                className={fieldClass}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-[12.5px] text-ink/70">
-                Time collected <span className="text-ink/65">(optional)</span>
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-panel">
+                <ImagePlus size={20} strokeWidth={1.75} className="text-ink/70" />
               </span>
-              <input
-                type="time"
-                value={collectedTime}
-                onChange={(e) => setCollectedTime(e.target.value)}
-                className={fieldClass}
-              />
-            </label>
-          </div>
-
-          {items.length > 0 && !collectedDate && (
-            <p className="mt-2 text-[12.5px] text-[#b3492f]">
-              Set the collection date before saving.
-            </p>
+              <span className="text-[13.5px] text-ink/70">
+                Drag and drop microscope images, or click to browse
+              </span>
+              <span className="text-[12.5px] text-ink/70">
+                JPG, PNG — up to 10MB each. Select several to analyze a batch.
+              </span>
+            </button>
+          ) : (
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                handleFiles(e.dataTransfer.files);
+              }}
+              className={`rounded-lg border-2 border-dashed p-2 transition ${
+                isDragging ? "border-anther bg-anther/5" : "border-transparent"
+              }`}
+            >
+              <ul className="flex flex-col gap-1.5">
+                {items.map((item) => (
+                  <SpecimenListRow
+                    key={item.id}
+                    item={item}
+                    isSelected={item.id === selectedId}
+                    onSelect={() => setSelectedId(item.id)}
+                    onRemove={() => handleRemove(item.id)}
+                  />
+                ))}
+              </ul>
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className="focus-ring mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-panel-line px-3 py-2 text-[13px] text-ink/70 transition hover:border-ink/25 hover:text-ink"
+              >
+                <ImagePlus size={14} strokeWidth={1.75} />
+                Add more images
+              </button>
+            </div>
           )}
 
-          {/* TODO(backend): fetchWeather(location) will pre-fill these. */}
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <label className="col-span-2 block sm:col-span-1">
-              <span className="mb-1 block text-[12.5px] text-ink/70">Weather</span>
-              <select
-                value={weather.condition}
-                onChange={(e) => updateWeather("condition", e.target.value as WeatherCondition)}
-                className={fieldClass}
-              >
-                {weatherConditionOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <MeasurementField
-              label="Temp (°C)"
-              value={weather.temperatureC}
-              onChange={(next) => updateWeather("temperatureC", next)}
-            />
-            <MeasurementField
-              label="Humidity (%)"
-              value={weather.humidityPct}
-              onChange={(next) => updateWeather("humidityPct", next)}
-              min={0}
-              max={100}
-            />
-            <MeasurementField
-              label="Wind (km/h)"
-              value={weather.windKph}
-              onChange={(next) => updateWeather("windKph", next)}
-              min={0}
-            />
+          {/* Collection details — shared by every slide in the batch. */}
+          <div className="mt-5">
+            <h3 className={sectionHeadingClass} style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+              Collection details
+            </h3>
+            <p className="mb-2.5 text-[12.5px] text-ink/70">
+              When and where the batch was collected — applies to every specimen in it. You can
+              still correct any of it on the report page before saving.
+            </p>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1 block text-[12.5px] text-ink/70">Location</span>
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="e.g. Lucena City, Quezon"
+                  className={fieldClass}
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-[12.5px] text-ink/70">Researcher</span>
+                <input
+                  type="text"
+                  value={researcher}
+                  onChange={(e) => setResearcher(e.target.value)}
+                  placeholder={researcherName}
+                  className={fieldClass}
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-[12.5px] text-ink/70">Date collected</span>
+                <input
+                  type="date"
+                  value={collectedDate}
+                  onChange={(e) => setCollectedDate(e.target.value)}
+                  className={fieldClass}
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-[12.5px] text-ink/70">
+                  Time collected <span className="text-ink/65">(optional)</span>
+                </span>
+                <input
+                  type="time"
+                  value={collectedTime}
+                  onChange={(e) => setCollectedTime(e.target.value)}
+                  className={fieldClass}
+                />
+              </label>
+            </div>
+
+            {items.length > 0 && !collectedDate && (
+              <p className="mt-2 text-[12.5px] text-[#b3492f]">
+                Set the collection date before running the analysis.
+              </p>
+            )}
+
+            {/* TODO(backend): fetchWeather(location) will pre-fill these. */}
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <label className="col-span-2 block sm:col-span-1">
+                <span className="mb-1 block text-[12.5px] text-ink/70">Weather</span>
+                <select
+                  value={weather.condition}
+                  onChange={(e) => updateWeather("condition", e.target.value as WeatherCondition)}
+                  className={fieldClass}
+                >
+                  {weatherConditionOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <MeasurementField
+                label="Temp (°C)"
+                value={weather.temperatureC}
+                onChange={(next) => updateWeather("temperatureC", next)}
+              />
+              <MeasurementField
+                label="Humidity (%)"
+                value={weather.humidityPct}
+                onChange={(next) => updateWeather("humidityPct", next)}
+                min={0}
+                max={100}
+              />
+              <MeasurementField
+                label="Wind (km/h)"
+                value={weather.windKph}
+                onChange={(next) => updateWeather("windKph", next)}
+                min={0}
+              />
+            </div>
           </div>
+
+          <button
+            type="button"
+            disabled={!canAnalyze}
+            onClick={handleAnalyze}
+            className="focus-ring mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-ink px-4 py-2.5 text-sm font-medium text-parchment transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
+                Analyzing…
+              </>
+            ) : (
+              <>
+                <Microscope size={16} strokeWidth={1.75} />
+                {items.length > 1 ? `Analyze ${items.length} specimens` : "Analyze specimen"}
+              </>
+            )}
+          </button>
+
+          <p className="mt-2 text-center text-[12.5px] text-ink/65">
+            The results open on their own page, where you add notes and save the report.
+          </p>
         </div>
 
-        <button
-          type="button"
-          disabled={pendingCount === 0 || isAnalyzing}
-          onClick={handleAnalyze}
-          className="focus-ring mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-ink px-4 py-2.5 text-sm font-medium text-parchment transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {isAnalyzing ? (
-            <>
-              <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
-              Analyzing…
-            </>
-          ) : (
-            <>
-              <Microscope size={16} strokeWidth={1.75} />
-              {items.length > 0 && pendingCount === 0
-                ? "All specimens analyzed"
-                : pendingCount > 1
-                  ? `Analyze ${pendingCount} specimens`
-                  : "Analyze specimen"}
-            </>
-          )}
-        </button>
+        {/* Right: what is about to be analyzed */}
+        <div className="rounded-lg border border-panel-line bg-white/60 p-5 xl:col-span-2">
+          <h2 className="mb-4 text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+            Preview
+          </h2>
 
-        <button
-          type="button"
-          disabled={!canSave || isSaving}
-          onClick={handleSaveReport}
-          className="focus-ring mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-ink/20 bg-white px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-panel disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {isSaving ? (
-            <>
-              <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
-              Saving report…
-            </>
-          ) : (
-            <>
-              <Save size={16} strokeWidth={1.75} />
-              {analyzedCount > 1
-                ? `Save report (${analyzedCount} slides)`
-                : "Save report to history"}
-            </>
-          )}
-        </button>
-
-        {analyzedCount > 0 && pendingCount > 0 && (
-          <p className="mt-2 text-[12.5px] text-ink/65">
-            Analyze the remaining{" "}
-            {pendingCount === 1 ? "slide" : `${pendingCount} slides`} before saving — a report
-            covers the whole batch.
-          </p>
-        )}
-
-      </div>
-
-      {/* Right: result for the selected specimen */}
-      <div className="rounded-lg border border-panel-line bg-white/60 p-5 xl:col-span-2">
-        <h2 className="mb-4 text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-          Result
-        </h2>
-
-        {!selected || selected.status !== "analyzed" ? (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-lg bg-panel/60 px-6 py-14 text-center">
-            <Microscope size={22} strokeWidth={1.5} className="text-ink/55" />
-            <p className="text-[13px] text-ink/65">
-              {selected?.status === "analyzing"
-                ? "Counting and identifying pollen grains…"
-                : selected
-                  ? "This specimen hasn't been analyzed yet. Run the analysis to see its pollen breakdown."
-                  : "Upload one or more images and run analysis to see every pollen type detected, with its grain count and average confidence."}
-            </p>
-          </div>
-        ) : (
-          <div>
-            <div className="mb-3 overflow-hidden rounded-md border border-panel-line">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={selected.imageUrl}
-                alt={`Specimen ${selected.file.name}`}
-                className="max-h-44 w-full bg-panel object-contain"
-              />
-              <div className="truncate border-t border-panel-line bg-white px-3 py-2 text-[13px] text-ink/70">
-                {selected.file.name}
-              </div>
-            </div>
-
-            <div className="mb-3 flex flex-col gap-1 text-[13px] text-ink/70">
-              <p className="flex items-center gap-1.5">
-                <MapPin size={13} strokeWidth={1.75} className="shrink-0 text-ink/55" />
-                <span className="truncate">{location || "Location not specified"}</span>
-              </p>
-              <p className="flex items-center gap-1.5">
-                <CalendarDays size={13} strokeWidth={1.75} className="shrink-0 text-ink/55" />
-                <span className="truncate">
-                  {collectedDate ? formatCollectedAt(collectedAt) : "Collection date not set"}
-                </span>
+          {!selected ? (
+            <div className="flex flex-col items-center justify-center gap-2 rounded-lg bg-panel/60 px-6 py-14 text-center">
+              <Microscope size={22} strokeWidth={1.5} className="text-ink/55" />
+              <p className="text-[13px] text-ink/65">
+                Upload one or more microscope images. Pick a slide from the list to see it here
+                before the analysis runs.
               </p>
             </div>
-
-            {/* Summary */}
-            <div className="mb-4 grid grid-cols-3 gap-3 rounded-md bg-panel/60 px-3 py-3 text-center">
-              <div>
-                <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-                  {totalGrains}
-                </div>
-                <div className="text-[12px] text-ink/65">Grains</div>
-              </div>
-              <div>
-                <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-                  {detections.length}
-                </div>
-                <div className="text-[12px] text-ink/65">
-                  {detections.length === 1 ? "Pollen type" : "Pollen types"}
+          ) : (
+            <div>
+              <div className="overflow-hidden rounded-md border border-panel-line">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={selected.imageUrl}
+                  alt={`Specimen ${selected.file.name}`}
+                  className="max-h-64 w-full bg-panel object-contain"
+                />
+                <div className="truncate border-t border-panel-line bg-white px-3 py-2 text-[13px] text-ink/70">
+                  {selected.file.name}
                 </div>
               </div>
-              <div>
-                <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-                  {Math.round(overallConfidence * 100)}%
+
+              <dl className="mt-4 flex flex-col gap-2 text-[13px]">
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-ink/70">Slides in batch</dt>
+                  <dd className="text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                    {items.length}
+                  </dd>
                 </div>
-                <div className="text-[12px] text-ink/65">Avg. confidence</div>
-              </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-ink/70">Report</dt>
+                  <dd className="text-ink/85">One, covering the batch</dd>
+                </div>
+              </dl>
+
+              <p className="mt-4 rounded-md bg-panel/60 px-3 py-2.5 text-[12.5px] text-ink/70">
+                Each slide is counted and identified separately, then the whole batch is saved as a
+                single report.
+              </p>
             </div>
-
-            {/* Detected pollen */}
-            <div className="mb-5">
-              <h3 className={sectionHeadingClass} style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-                Pollen detected
-              </h3>
-              {detections.length === 0 ? (
-                <p className="rounded-md border border-panel-line bg-white px-3 py-4 text-center text-[13px] text-ink/70">
-                  No pollen grains found on this slide.
-                </p>
-              ) : (
-                <ul className="flex flex-col gap-2">
-                  {detections.map((detection) => (
-                    <DetectionRow key={detection.speciesId} detection={detection} />
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            {/* Notes — per specimen, unlike the batch-level collection details. */}
-            <div className="mb-5">
-              <h3 className={sectionHeadingClass} style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-                Notes
-              </h3>
-              <textarea
-                rows={3}
-                value={selected.notes}
-                onChange={(e) => patchItem(selected.id, { notes: e.target.value })}
-                placeholder="Slide preparation, staining, obscured grains, anything unusual…"
-                className={`${fieldClass} resize-y`}
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={handleClearAll}
-              className="focus-ring flex w-full items-center justify-center gap-2 rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink/70 transition hover:text-ink"
-            >
-              <RotateCcw size={14} strokeWidth={1.75} />
-              Start a new batch
-            </button>
-
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

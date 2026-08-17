@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // SINGLE SOURCE OF TRUTH
-// Everything below (allergen classes, history reports, recent detections,
+// Everything below (allergen classes, report rows, recent detections,
 // dashboard stats) is derived from `specimens`. Edit specimens/speciesCatalog
 // and every screen that reads from this file stays consistent automatically.
 // The one exception is `historicalPollenCounts`, which represents a separate
@@ -348,10 +348,10 @@ export const specimens: Specimen[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Derived: history reports table (Sample ID, Date, Location, Top pollen, Status)
+// Derived: reports table (Sample ID, Date, Location, Top pollen, Status)
 // ---------------------------------------------------------------------------
 
-export type HistoryReport = {
+export type ReportRow = {
   sampleId: string;
   collectedAt: CollectedAt;
   location: string;
@@ -361,8 +361,8 @@ export type HistoryReport = {
   status: ReportStatus;
 };
 
-/** The row shown in the History table for one saved report. */
-export function toHistoryReport(specimen: Specimen): HistoryReport {
+/** The row shown in the Reports table for one saved report. */
+export function toReportRow(specimen: Specimen): ReportRow {
   const top = getTopDetection(aggregateSlideDetections(specimen.slides));
   const sp = top ? getSpecies(top.speciesId) : null;
   return {
@@ -376,7 +376,7 @@ export function toHistoryReport(specimen: Specimen): HistoryReport {
   };
 }
 
-export const historyReports: HistoryReport[] = specimens.map(toHistoryReport);
+export const reportRows: ReportRow[] = specimens.map(toReportRow);
 
 // ---------------------------------------------------------------------------
 // Derived: recent detections feed (most recent specimens, newest first)

@@ -706,7 +706,7 @@ export default function PollenMap() {
               </p>
             )}
             <Link
-              href={`/history?q=${encodeURIComponent(selectedPlace.label)}`}
+              href={`/reports?q=${encodeURIComponent(selectedPlace.label)}`}
               className="focus-ring mt-3 flex items-center justify-center gap-2 rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink/70 transition hover:text-ink"
             >
               <Microscope size={14} strokeWidth={1.75} />

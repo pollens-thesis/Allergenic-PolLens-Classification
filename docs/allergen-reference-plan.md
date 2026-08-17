@@ -173,9 +173,9 @@ page for; the model metrics are supporting evidence.
 plus a toggle for "only taxa I've actually found", which quickly separates the reference
 set from the working set.
 
-**Cross-link**: "View 4 reports" goes to `/history` filtered to that taxon. History
-already has a text search — the link can prefill it via a query param
-(`/history?q=Ambrosia`), which is a small change to `HistoryWorkspace`.
+**Cross-link**: "View 4 reports" goes to `/reports` filtered to that taxon. The report
+list already has a text search — the link can prefill it via a query param
+(`/reports?q=Ambrosia`), which `ReportsWorkspace` already accepts.
 
 **Colour**: reuse `species.color` for the swatch. It is already the same colour used in
 the dashboard chart and in every detection row, so a taxon looks the same everywhere.
@@ -188,7 +188,7 @@ Each phase is shippable on its own.
 
 | Phase | Needs | Delivers |
 |---|---|---|
-| **1 — Reference + your data** | Nothing new. Author the botanical fields. | The page, cards, seasonality strips, live stats from saved reports, sort/filter, History cross-link. Model block shows its empty state. |
+| **1 — Reference + your data** | Nothing new. Author the botanical fields. | The page, cards, seasonality strips, live stats from saved reports, sort/filter, Report cross-link. Model block shows its empty state. |
 | **2 — Dataset labelled** | Roboflow project with images labelled | Per-class training-image counts and a class-balance bar. Makes imbalance visible *before* wasting a training run on it. |
 | **3 — Model trained** | A completed Roboflow training run | Model card strip fills in; per-class mAP appears on each card. |
 
@@ -225,7 +225,7 @@ Decisions here are expensive to reverse, so they are worth making deliberately.
 | `components/AllergenReference.tsx` | **New** — client component: cards, sort, filter |
 | `lib/model.ts` | **New** — Roboflow metadata seam, returns `null` today |
 | `lib/data.ts` | Extend `Species` with the fields in §2; author the 8 entries |
-| `components/HistoryWorkspace.tsx` | Accept `?q=` to prefill the search |
+| `components/ReportsWorkspace.tsx` | Accepts `?q=` to prefill the search — already done |
 | `app/page.tsx` | Derive the taxa count from `speciesCatalog.length` |
 
 `allergenClasses` already exists and needs no change — it just needs a consumer.

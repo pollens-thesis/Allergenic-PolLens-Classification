@@ -170,11 +170,11 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
           <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{sampleId}</span>.
         </p>
         <Link
-          href="/history"
+          href="/reports"
           className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-panel-line bg-white px-3 py-1.5 text-[13px] text-ink/70 transition hover:text-ink"
         >
           <ArrowLeft size={14} strokeWidth={1.75} />
-          Back to History
+          Back to Reports
         </Link>
       </div>
     );

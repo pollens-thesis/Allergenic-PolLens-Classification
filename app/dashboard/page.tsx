@@ -4,7 +4,7 @@ import { ArrowRight, Loader2, ScanLine } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import DashboardStats from "@/components/DashboardStats";
 import PollenCountChart from "@/components/PollenCountChart";
-import HistoryWorkspace from "@/components/HistoryWorkspace";
+import ReportsWorkspace from "@/components/ReportsWorkspace";
 import { dashboardStats, historicalPollenCounts } from "@/lib/data";
 
 export default function DashboardPage() {
@@ -56,7 +56,7 @@ export default function DashboardPage() {
           <PollenCountChart data={historicalPollenCounts} />
         </div>
 
-        {/* History reports — same live list as the History page. */}
+        {/* Saved reports — same live list as the Report page. */}
         <Suspense
           fallback={
             <div className="flex items-center justify-center gap-2 rounded-lg border border-panel-line bg-white/60 px-6 py-16 text-[13px] text-ink/65">
@@ -65,7 +65,7 @@ export default function DashboardPage() {
             </div>
           }
         >
-          <HistoryWorkspace />
+          <ReportsWorkspace />
         </Suspense>
       </main>
     </div>
