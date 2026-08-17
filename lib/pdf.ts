@@ -5,16 +5,24 @@
 // output is real selectable text at print resolution instead of a bitmap of the
 // UI. Layout is a single column on A4 with a manual cursor; every block checks
 // the remaining space and starts a new page when it would overflow.
+//
+// The document mirrors what the report page shows, in the same order: a
+// masthead, the figures at a glance, what the researcher recorded, the combined
+// reading, then each slide with its image — grain boxes drawn over it as vector
+// rectangles, so they stay crisp at any zoom — its table and its note.
 // ---------------------------------------------------------------------------
 
 import { jsPDF } from "jspdf";
 import {
   aggregateSlideDetections,
-  formatCollectedAt,
-  formatWeather,
+  formatTime,
+  getCollectionDate,
+  getCollectionTime,
   getSpecies,
+  getTopDetection,
   getTotalGrains,
   getWeightedAvgConfidence,
+  type DetectedGrain,
   type Specimen,
   type SpecimenDetection,
 } from "@/lib/data";
@@ -22,22 +30,45 @@ import {
 const PAGE = { width: 210, height: 297 }; // A4, millimetres
 const MARGIN = 16;
 const CONTENT_WIDTH = PAGE.width - MARGIN * 2;
+const FOOTER_SPACE = 14;
 
 const INK = "#23261f";
 const MUTED = "#6d7268";
 const RULE = "#d9d5c8";
+const PANEL = "#f6f1e4";
+const PARCHMENT = "#f1ede0";
+const FIELD = "#0b1d17";
+const ACCENT = "#d9704a";
 
-type Cursor = { doc: jsPDF; y: number; page: number };
+type Cursor = { doc: jsPDF; y: number };
+
+/**
+ * Species colours are design tokens (`var(--grass)`), which jsPDF cannot read.
+ * Resolve them against the document once per export; anything already literal
+ * passes straight through.
+ */
+function resolveColor(value: string): string {
+  const token = value.match(/^var\((--[\w-]+)\)$/);
+  if (!token) return value;
+  if (typeof document === "undefined") return MUTED;
+  const resolved = getComputedStyle(document.documentElement)
+    .getPropertyValue(token[1])
+    .trim();
+  return resolved || MUTED;
+}
+
+function speciesColor(speciesId: SpecimenDetection["speciesId"]): string {
+  return resolveColor(getSpecies(speciesId).color);
+}
 
 function newPage(cursor: Cursor) {
   cursor.doc.addPage();
-  cursor.page += 1;
   cursor.y = MARGIN;
 }
 
 /** Starts a new page when `needed` millimetres would not fit below the cursor. */
 function ensureSpace(cursor: Cursor, needed: number) {
-  if (cursor.y + needed > PAGE.height - MARGIN - 10) newPage(cursor);
+  if (cursor.y + needed > PAGE.height - MARGIN - FOOTER_SPACE) newPage(cursor);
 }
 
 function rule(cursor: Cursor) {
@@ -48,7 +79,7 @@ function rule(cursor: Cursor) {
 }
 
 function heading(cursor: Cursor, text: string) {
-  ensureSpace(cursor, 14);
+  ensureSpace(cursor, 16);
   cursor.doc.setFont("helvetica", "bold");
   cursor.doc.setFontSize(10);
   cursor.doc.setTextColor(INK);
@@ -57,31 +88,170 @@ function heading(cursor: Cursor, text: string) {
   rule(cursor);
 }
 
-/** Label on the left, value on the right of a fixed gutter. */
-function metaRow(cursor: Cursor, label: string, value: string) {
-  ensureSpace(cursor, 7);
+function paragraph(cursor: Cursor, text: string, italic = false) {
   const doc = cursor.doc;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(MUTED);
-  doc.text(label, MARGIN, cursor.y);
-  doc.setTextColor(INK);
-  const lines = doc.splitTextToSize(value, CONTENT_WIDTH - 36);
-  doc.text(lines, MARGIN + 34, cursor.y);
-  cursor.y += 5 * lines.length + 1;
+  doc.setFont("helvetica", italic ? "italic" : "normal");
+  doc.setFontSize(9.5);
+  doc.setTextColor(italic ? MUTED : INK);
+  for (const line of doc.splitTextToSize(text, CONTENT_WIDTH)) {
+    ensureSpace(cursor, 6);
+    doc.text(line, MARGIN, cursor.y);
+    cursor.y += 5;
+  }
+  cursor.y += 2;
 }
 
+/**
+ * The document's masthead: a dark band carrying the report's identity, so a
+ * printed page is recognisable as a PolLens record at a glance.
+ */
+function masthead(cursor: Cursor, report: Specimen) {
+  const doc = cursor.doc;
+  const height = 26;
+
+  doc.setFillColor(FIELD);
+  doc.rect(0, 0, PAGE.width, height, "F");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor("#8fa396");
+  doc.text("POLLENS  ·  RESEARCH CONSOLE", MARGIN, 10);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(PARCHMENT);
+  doc.text("Specimen report", MARGIN, 19);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text(report.sampleId, PAGE.width - MARGIN, 12, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor("#8fa396");
+  doc.text(report.status, PAGE.width - MARGIN, 18, { align: "right" });
+
+  cursor.y = height + 10;
+}
+
+/** A figure with its label, boxed — the print equivalent of the stat tiles. */
+function summaryTiles(cursor: Cursor, tiles: { value: string; label: string }[]) {
+  const doc = cursor.doc;
+  const gap = 4;
+  const width = (CONTENT_WIDTH - gap * (tiles.length - 1)) / tiles.length;
+  const height = 17;
+
+  ensureSpace(cursor, height + 4);
+  tiles.forEach((tile, index) => {
+    const x = MARGIN + index * (width + gap);
+    doc.setFillColor(PANEL);
+    doc.setDrawColor(RULE);
+    doc.setLineWidth(0.2);
+    doc.roundedRect(x, cursor.y, width, height, 1.5, 1.5, "FD");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(INK);
+    doc.text(tile.value, x + width / 2, cursor.y + 8, { align: "center" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(MUTED);
+    doc.text(tile.label.toUpperCase(), x + width / 2, cursor.y + 13, { align: "center" });
+  });
+
+  cursor.y += height + 6;
+}
+
+/**
+ * Composition of the whole reading as one stacked bar, with a legend beneath.
+ * A table gives the numbers; this gives the proportions at a glance.
+ */
+function compositionBar(cursor: Cursor, detections: SpecimenDetection[]) {
+  if (detections.length === 0) return;
+  const doc = cursor.doc;
+  const total = getTotalGrains(detections);
+  if (total === 0) return;
+
+  const height = 5;
+  ensureSpace(cursor, height + 12);
+
+  let x = MARGIN;
+  detections.forEach((detection) => {
+    const width = (detection.grainCount / total) * CONTENT_WIDTH;
+    doc.setFillColor(speciesColor(detection.speciesId));
+    doc.rect(x, cursor.y, width, height, "F");
+    x += width;
+  });
+  cursor.y += height + 5;
+
+  // Legend: swatch, code and share, wrapping onto a second line if needed.
+  let legendX = MARGIN;
+  doc.setFontSize(7.5);
+  detections.forEach((detection) => {
+    const species = getSpecies(detection.speciesId);
+    const label = `${species.code} ${Math.round((detection.grainCount / total) * 100)}%`;
+    doc.setFont("helvetica", "normal");
+    const width = doc.getTextWidth(label) + 7;
+    if (legendX + width > PAGE.width - MARGIN) {
+      legendX = MARGIN;
+      cursor.y += 5;
+    }
+    doc.setFillColor(speciesColor(detection.speciesId));
+    doc.rect(legendX, cursor.y - 2.2, 2.5, 2.5, "F");
+    doc.setTextColor(MUTED);
+    doc.text(label, legendX + 4, cursor.y);
+    legendX += width;
+  });
+  cursor.y += 9;
+}
+
+/** Recorded fields in two columns, so the details block stays compact. */
+function metaGrid(cursor: Cursor, entries: [string, string][]) {
+  const doc = cursor.doc;
+  const columnWidth = CONTENT_WIDTH / 2;
+  const rows = Math.ceil(entries.length / 2);
+
+  ensureSpace(cursor, rows * 7 + 2);
+  entries.forEach(([label, value], index) => {
+    const column = index % 2;
+    const row = Math.floor(index / 2);
+    const x = MARGIN + column * columnWidth;
+    const y = cursor.y + row * 7;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(MUTED);
+    doc.text(label.toUpperCase(), x, y);
+
+    doc.setFontSize(9.5);
+    doc.setTextColor(INK);
+    doc.text(doc.splitTextToSize(value, columnWidth - 34)[0] ?? value, x + 32, y);
+  });
+
+  cursor.y += rows * 7 + 3;
+}
+
+/**
+ * One row per pollen type: colour swatch, name, code, risk, grains, and the
+ * confidence both as a bar and as a number.
+ */
 function detectionTable(cursor: Cursor, detections: SpecimenDetection[]) {
   const doc = cursor.doc;
-  const cols = { species: MARGIN, grains: MARGIN + 108, confidence: MARGIN + 140 };
+  const col = {
+    species: MARGIN + 5,
+    risk: MARGIN + 96,
+    grains: MARGIN + 124,
+    confidence: MARGIN + CONTENT_WIDTH,
+  };
 
-  ensureSpace(cursor, 12);
+  ensureSpace(cursor, 14);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
   doc.setTextColor(MUTED);
-  doc.text("POLLEN TYPE", cols.species, cursor.y);
-  doc.text("GRAINS", cols.grains, cursor.y, { align: "right" });
-  doc.text("AVG. CONFIDENCE", cols.confidence + 34, cursor.y, { align: "right" });
+  doc.text("POLLEN TYPE", MARGIN, cursor.y);
+  doc.text("RISK", col.risk, cursor.y);
+  doc.text("GRAINS", col.grains, cursor.y, { align: "right" });
+  doc.text("AVG. CONFIDENCE", col.confidence, cursor.y, { align: "right" });
   cursor.y += 2;
   rule(cursor);
 
@@ -94,42 +264,77 @@ function detectionTable(cursor: Cursor, detections: SpecimenDetection[]) {
     return;
   }
 
-  for (const detection of detections) {
-    ensureSpace(cursor, 7);
+  detections.forEach((detection, index) => {
+    ensureSpace(cursor, 8);
     const species = getSpecies(detection.speciesId);
+    const rowHeight = 7;
+
+    // A tint on alternate rows keeps a long table readable across the page.
+    if (index % 2 === 1) {
+      doc.setFillColor(PANEL);
+      doc.rect(MARGIN - 2, cursor.y - 4.5, CONTENT_WIDTH + 4, rowHeight, "F");
+    }
+
+    doc.setFillColor(speciesColor(detection.speciesId));
+    doc.circle(MARGIN + 1, cursor.y - 1.2, 1.2, "F");
+
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9.5);
     doc.setTextColor(INK);
-    doc.text(`${species.genus} (${species.commonName})`, cols.species, cursor.y);
+    doc.text(`${species.genus} (${species.commonName})`, col.species, cursor.y);
+
+    doc.setFontSize(7.5);
     doc.setTextColor(MUTED);
-    doc.setFontSize(8);
-    doc.text(species.code, cols.species + 78, cursor.y);
-    doc.setTextColor(INK);
+    doc.text(species.code, col.species + 62, cursor.y);
+    doc.text(species.riskLevel, col.risk, cursor.y);
+
     doc.setFontSize(9.5);
-    doc.text(String(detection.grainCount), cols.grains, cursor.y, { align: "right" });
-    doc.text(
-      `${Math.round(detection.avgConfidence * 100)}%`,
-      cols.confidence + 34,
-      cursor.y,
-      { align: "right" },
-    );
-    cursor.y += 6;
-  }
+    doc.setTextColor(INK);
+    doc.text(String(detection.grainCount), col.grains, cursor.y, { align: "right" });
+
+    // Confidence bar, with the figure right-aligned after it.
+    const pct = Math.round(detection.avgConfidence * 100);
+    const barWidth = 26;
+    const barX = col.confidence - barWidth - 12;
+    doc.setFillColor(RULE);
+    doc.roundedRect(barX, cursor.y - 2.4, barWidth, 1.8, 0.9, 0.9, "F");
+    doc.setFillColor(ACCENT);
+    doc.roundedRect(barX, cursor.y - 2.4, (barWidth * pct) / 100, 1.8, 0.9, 0.9, "F");
+    doc.setFontSize(9);
+    doc.text(`${pct}%`, col.confidence, cursor.y, { align: "right" });
+
+    cursor.y += rowHeight;
+  });
   cursor.y += 2;
 }
 
-function paragraph(cursor: Cursor, text: string, italic = false) {
+/** The researcher's note, set in a tinted block so it reads as their voice. */
+function noteBlock(cursor: Cursor, note: string) {
   const doc = cursor.doc;
-  doc.setFont("helvetica", italic ? "italic" : "normal");
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
-  doc.setTextColor(italic ? MUTED : INK);
-  const lines = doc.splitTextToSize(text, CONTENT_WIDTH);
-  for (const line of lines) {
-    ensureSpace(cursor, 6);
-    doc.text(line, MARGIN, cursor.y);
-    cursor.y += 5;
-  }
-  cursor.y += 2;
+  const lines = doc.splitTextToSize(note, CONTENT_WIDTH - 10);
+  const height = lines.length * 5 + 12;
+
+  ensureSpace(cursor, height);
+  doc.setFillColor(PANEL);
+  doc.setDrawColor(RULE);
+  doc.setLineWidth(0.2);
+  doc.roundedRect(MARGIN, cursor.y, CONTENT_WIDTH, height, 1.5, 1.5, "FD");
+  doc.setFillColor(ACCENT);
+  doc.rect(MARGIN, cursor.y, 1.2, height, "F");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(MUTED);
+  doc.text("RESEARCHER'S NOTE", MARGIN + 5, cursor.y + 6);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.setTextColor(INK);
+  doc.text(lines, MARGIN + 5, cursor.y + 11);
+
+  cursor.y += height + 4;
 }
 
 type PdfImage = { dataUrl: string; width: number; height: number };
@@ -174,15 +379,79 @@ async function toPdfImage(blob: Blob): Promise<PdfImage | null> {
   };
 }
 
-function footer(doc: jsPDF, sampleId: string) {
+/**
+ * The slide image with every detected grain boxed on top.
+ *
+ * Boxes are stored as fractions of the image, so they scale onto whatever
+ * placement the page has room for. Drawing them as PDF rectangles rather than
+ * burning them into the bitmap keeps the edges sharp when the reader zooms in.
+ */
+function fitImage(image: PdfImage): { width: number; height: number } {
+  const maxWidth = Math.min(CONTENT_WIDTH, 120);
+  const maxHeight = 95;
+  let width = maxWidth;
+  let height = (image.height / image.width) * width;
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = (image.width / image.height) * height;
+  }
+  return { width, height };
+}
+
+function placeSlideImage(
+  cursor: Cursor,
+  image: PdfImage,
+  { width, height }: { width: number; height: number },
+  grains: DetectedGrain[] | undefined,
+) {
+  const doc = cursor.doc;
+  const x = MARGIN;
+  const y = cursor.y;
+  doc.addImage(image.dataUrl, "JPEG", x, y, width, height);
+  doc.setDrawColor(RULE);
+  doc.setLineWidth(0.2);
+  doc.rect(x, y, width, height);
+
+  if (grains && grains.length > 0) {
+    doc.setLineWidth(0.35);
+    for (const grain of grains) {
+      doc.setDrawColor(speciesColor(grain.speciesId));
+      doc.rect(
+        x + grain.box.x * width,
+        y + grain.box.y * height,
+        grain.box.width * width,
+        grain.box.height * height,
+      );
+    }
+  }
+
+  cursor.y += height + 4;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(MUTED);
+  doc.text(
+    grains && grains.length > 0
+      ? `${grains.length} ${grains.length === 1 ? "grain" : "grains"} boxed, coloured by pollen type`
+      : "Grain positions were not recorded for this slide",
+    x,
+    cursor.y,
+  );
+  cursor.y += 6;
+}
+
+function footer(doc: jsPDF, sampleId: string, generated: string) {
   const pages = doc.getNumberOfPages();
   for (let page = 1; page <= pages; page++) {
     doc.setPage(page);
+    doc.setDrawColor(RULE);
+    doc.setLineWidth(0.2);
+    doc.line(MARGIN, PAGE.height - 14, PAGE.width - MARGIN, PAGE.height - 14);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setTextColor(MUTED);
-    doc.text(`PolLens · ${sampleId}`, MARGIN, PAGE.height - 10);
-    doc.text(`Page ${page} of ${pages}`, PAGE.width - MARGIN, PAGE.height - 10, {
+    doc.text(`PolLens · ${sampleId} · generated ${generated}`, MARGIN, PAGE.height - 9.5);
+    doc.text(`Page ${page} of ${pages}`, PAGE.width - MARGIN, PAGE.height - 9.5, {
       align: "right",
     });
   }
@@ -199,95 +468,104 @@ export async function downloadReportPdf(
   images: Record<string, Blob>,
 ): Promise<void> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const cursor: Cursor = { doc, y: MARGIN, page: 1 };
+  const cursor: Cursor = { doc, y: MARGIN };
+  const generated = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 
-  // --- Title -------------------------------------------------------------
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(MUTED);
-  doc.text("POLLENS · RESEARCH CONSOLE", MARGIN, cursor.y);
-  cursor.y += 7;
+  doc.setProperties({
+    title: `PolLens ${report.sampleId} — specimen report`,
+    subject: `Pollen analysis for ${report.location || "an unspecified location"}`,
+    author: report.researcher,
+    creator: "PolLens Research Console",
+  });
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.setTextColor(INK);
-  doc.text("Specimen Report", MARGIN, cursor.y);
-  cursor.y += 7;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  doc.setTextColor(MUTED);
-  doc.text(report.sampleId, MARGIN, cursor.y);
-  cursor.y += 6;
-  rule(cursor);
-
-  // --- Metadata ----------------------------------------------------------
   const aggregated = aggregateSlideDetections(report.slides);
   const totalGrains = getTotalGrains(aggregated);
+  const top = getTopDetection(aggregated);
+  const collectionTime = getCollectionTime(report.collectedAt);
+  const weather = report.weather;
 
+  masthead(cursor, report);
+
+  // --- At a glance --------------------------------------------------------
+  summaryTiles(cursor, [
+    { value: String(totalGrains), label: "Total grains" },
+    { value: String(aggregated.length), label: "Pollen types" },
+    { value: `${Math.round(getWeightedAvgConfidence(aggregated) * 100)}%`, label: "Avg. confidence" },
+    { value: String(report.slides.length), label: report.slides.length === 1 ? "Slide" : "Slides" },
+  ]);
+  compositionBar(cursor, aggregated);
+
+  // --- What the researcher recorded ---------------------------------------
   heading(cursor, "Collection details");
-  metaRow(cursor, "Collected", formatCollectedAt(report.collectedAt));
-  metaRow(cursor, "Location", report.location || "Not specified");
-  metaRow(cursor, "Researcher", report.researcher);
-  metaRow(cursor, "Weather", formatWeather(report.weather));
-  metaRow(cursor, "Status", report.status);
-  metaRow(
-    cursor,
-    "Slides",
-    `${report.slides.length} ${report.slides.length === 1 ? "slide" : "slides"}`,
-  );
-  cursor.y += 3;
+  metaGrid(cursor, [
+    [
+      "Date collected",
+      new Date(`${getCollectionDate(report.collectedAt)}T00:00:00`).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+    ],
+    ["Time collected", collectionTime ? formatTime(collectionTime) : "Not recorded"],
+    ["Location", report.location || "Not specified"],
+    ["Researcher", report.researcher],
+    ["Weather", weather ? weather.condition : "Not recorded"],
+    ["Temperature", weather?.temperatureC != null ? `${weather.temperatureC}°C` : "—"],
+    ["Humidity", weather?.humidityPct != null ? `${weather.humidityPct}% RH` : "—"],
+    ["Wind", weather?.windKph != null ? `${weather.windKph} km/h` : "—"],
+    ["Status", report.status],
+    [
+      "Slides",
+      `${report.slides.length} ${report.slides.length === 1 ? "slide" : "slides"} in this report`,
+    ],
+  ]);
 
-  // --- Combined results --------------------------------------------------
-  heading(cursor, "Results - whole report");
-  metaRow(cursor, "Total grains", String(totalGrains));
-  metaRow(cursor, "Pollen types", String(aggregated.length));
-  metaRow(
-    cursor,
-    "Avg. confidence",
-    `${Math.round(getWeightedAvgConfidence(aggregated) * 100)}%`,
-  );
-  cursor.y += 2;
+  // --- Combined results ---------------------------------------------------
+  heading(cursor, "Results — whole report");
+  if (top) {
+    const species = getSpecies(top.speciesId);
+    paragraph(
+      cursor,
+      `Most abundant: ${species.genus} (${species.commonName}) — ${top.grainCount} of ${totalGrains} grains, ${species.riskLevel.toLowerCase()} allergenic risk.`,
+    );
+  }
   detectionTable(cursor, aggregated);
 
-  // --- Per slide ---------------------------------------------------------
+  // --- Per slide ----------------------------------------------------------
   for (const [index, slide] of report.slides.entries()) {
-    ensureSpace(cursor, 30);
-    heading(cursor, `Slide ${index + 1} - ${slide.fileName}`);
-
     const blob = images[slide.id];
-    if (blob) {
-      const image = await toPdfImage(blob);
-      if (image) {
-        const boxWidth = Math.min(CONTENT_WIDTH, 110);
-        const boxHeight = (image.height / image.width) * boxWidth;
-        ensureSpace(cursor, boxHeight + 4);
-        doc.addImage(image.dataUrl, "JPEG", MARGIN, cursor.y, boxWidth, boxHeight);
-        cursor.y += boxHeight + 5;
-      } else {
-        // An unreadable image must not sink the export.
-        paragraph(cursor, "(image could not be embedded)", true);
-      }
+    const image = blob ? await toPdfImage(blob) : null;
+    const layout = image ? fitImage(image) : null;
+
+    // A slide's image, table and note run to most of a page, and breaking
+    // between them reads badly — so each slide starts its own page. That also
+    // makes the document navigable: slide 2 is the page after slide 1, every
+    // time, however long the readings are.
+    if (cursor.y > MARGIN) newPage(cursor);
+    heading(cursor, `Slide ${index + 1} — ${slide.fileName}`);
+
+    if (image && layout) {
+      placeSlideImage(cursor, image, layout, slide.grains);
+    } else if (blob) {
+      // An unreadable image must not sink the export.
+      paragraph(cursor, "(image could not be embedded)", true);
     }
 
     const slideGrains = getTotalGrains(slide.detections);
-    metaRow(cursor, "Grains", String(slideGrains));
-    metaRow(cursor, "Pollen types", String(slide.detections.length));
-    cursor.y += 1;
+    metaGrid(cursor, [
+      ["Grains", String(slideGrains)],
+      ["Pollen types", String(slide.detections.length)],
+    ]);
     detectionTable(cursor, slide.detections);
 
-    if (slide.notes) {
-      ensureSpace(cursor, 10);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.setTextColor(MUTED);
-      doc.text("RESEARCHER'S NOTE", MARGIN, cursor.y);
-      cursor.y += 5;
-      paragraph(cursor, slide.notes);
-    }
+    if (slide.notes) noteBlock(cursor, slide.notes);
     cursor.y += 2;
   }
 
-  footer(doc, report.sampleId);
-  doc.save(`${report.sampleId}.pdf`);
+  footer(doc, report.sampleId, generated);
+  doc.save(`PolLens-${report.sampleId}.pdf`);
 }

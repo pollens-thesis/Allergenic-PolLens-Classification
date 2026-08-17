@@ -14,7 +14,10 @@
 import {
   aggregateGrainPredictions,
   speciesCatalog,
+  toDetectedGrains,
+  type BoundingBox,
   type CollectedAt,
+  type DetectedGrain,
   type GrainPrediction,
   type SpecimenDetection,
   type SpeciesId,
@@ -23,6 +26,8 @@ import {
 
 export type AnalysisResult = {
   detections: SpecimenDetection[];
+  /** Every grain with its box, so the reading can be shown over the image. */
+  grains: DetectedGrain[];
   /** Filled in when a weather lookup is wired up; null means "ask the researcher". */
   weather: WeatherConditions | null;
 };
@@ -31,6 +36,7 @@ export type AnalysisResult = {
 export type NewSlideInput = {
   fileName: string;
   detections: SpecimenDetection[];
+  grains: DetectedGrain[];
   notes: string;
 };
 
@@ -77,6 +83,47 @@ function makeRandom(seed: number): () => number {
   };
 }
 
+/** Fraction of `a` that lies inside `b`, used to keep mock grains from stacking. */
+function overlapRatio(a: BoundingBox, b: BoundingBox): number {
+  const overlapWidth = Math.max(
+    0,
+    Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x),
+  );
+  const overlapHeight = Math.max(
+    0,
+    Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y),
+  );
+  return (overlapWidth * overlapHeight) / (a.width * a.height);
+}
+
+/**
+ * A plausible grain box: roughly square, a few percent of the frame, and
+ * nudged away from boxes already placed. Real detections do touch, so a light
+ * overlap is allowed — this only stops the mock piling every grain in one spot.
+ */
+function mockBox(random: () => number, placed: BoundingBox[]): BoundingBox {
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const size = 0.05 + random() * 0.06;
+    // Slightly oval, the way a grain sits at an angle under the lens.
+    const height = size * (0.85 + random() * 0.3);
+    const box = {
+      x: 0.02 + random() * (0.96 - size),
+      y: 0.02 + random() * (0.96 - height),
+      width: size,
+      height,
+    };
+    if (placed.every((other) => overlapRatio(box, other) < 0.25)) return box;
+  }
+  // Crowded slide — take the last position rather than loop forever.
+  const size = 0.05 + random() * 0.06;
+  return {
+    x: 0.02 + random() * (0.96 - size),
+    y: 0.02 + random() * (0.96 - size),
+    width: size,
+    height: size,
+  };
+}
+
 function mockGrainPredictions(random: () => number): GrainPrediction[] {
   const pool: SpeciesId[] = speciesCatalog.map((s) => s.id);
 
@@ -88,6 +135,7 @@ function mockGrainPredictions(random: () => number): GrainPrediction[] {
   const speciesOnSlide = pool.slice(0, 2 + Math.floor(random() * 3));
 
   const predictions: GrainPrediction[] = [];
+  const placed: BoundingBox[] = [];
   speciesOnSlide.forEach((speciesId, index) => {
     // The first species is the dominant one; later ones are progressively rarer.
     const grains = Math.max(1, Math.round((1 + random() * 19) / (index + 1)));
@@ -95,7 +143,9 @@ function mockGrainPredictions(random: () => number): GrainPrediction[] {
     const base = 0.62 + random() * 0.33;
     for (let g = 0; g < grains; g++) {
       const confidence = Math.min(0.99, Math.max(0.4, base + (random() - 0.5) * 0.12));
-      predictions.push({ speciesId, confidence });
+      const box = mockBox(random, placed);
+      placed.push(box);
+      predictions.push({ speciesId, confidence, box });
     }
   });
 
@@ -108,15 +158,22 @@ function mockGrainPredictions(random: () => number): GrainPrediction[] {
  * Identify and count the pollen grains on a specimen image.
  *
  * TODO(backend): POST the image to the Roboflow inference endpoint and map
- * `response.predictions` (one entry per detected grain, each with `class` and
- * `confidence`) to `GrainPrediction[]`. Everything downstream is unchanged.
+ * `response.predictions` (one entry per detected grain, each with `class`,
+ * `confidence` and a centre-plus-size box in pixels) to `GrainPrediction[]`.
+ * Roboflow reports `x`/`y` as the box's centre against the image's pixel
+ * dimensions, so the mapping is
+ * `{ x: (p.x - p.width / 2) / imageWidth, y: (p.y - p.height / 2) / imageHeight,
+ *    width: p.width / imageWidth, height: p.height / imageHeight }`.
+ * Everything downstream is unchanged.
  */
 export async function analyzeSpecimen(file: File): Promise<AnalysisResult> {
   await delay(MOCK_INFERENCE_MS);
 
   const random = makeRandom(seedFromFile(file));
+  const predictions = mockGrainPredictions(random);
   return {
-    detections: aggregateGrainPredictions(mockGrainPredictions(random)),
+    detections: aggregateGrainPredictions(predictions),
+    grains: toDetectedGrains(predictions),
     weather: null, // see fetchWeather — researcher fills the fields in by hand for now
   };
 }

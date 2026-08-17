@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Search, X, ChevronRight } from "lucide-react";
 import {
   formatCollectedAt,
@@ -49,6 +50,18 @@ export default function ReportsTable({
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [status, setStatus] = useState<ReportStatus | "All">("All");
+  const router = useRouter();
+
+  /**
+   * The whole row opens the report. The sample id and the View chevron stay
+   * real links — they are what keyboard focus lands on, and what a middle-click
+   * or "open in new tab" needs — so a click that already hit one is left alone
+   * rather than navigated twice.
+   */
+  function openRow(event: React.MouseEvent<HTMLTableRowElement>, sampleId: string) {
+    if (event.target instanceof HTMLElement && event.target.closest("a")) return;
+    router.push(`/reports/${sampleId}`);
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -136,7 +149,8 @@ export default function ReportsTable({
             {filtered.map((r) => (
               <tr
                 key={r.sampleId}
-                className={`group border-b border-panel-line/70 transition last:border-0 hover:bg-panel/40 ${
+                onClick={(event) => openRow(event, r.sampleId)}
+                className={`group cursor-pointer border-b border-panel-line/70 transition last:border-0 hover:bg-panel/40 ${
                   r.sampleId === highlightId ? "bg-anther/8" : ""
                 }`}
               >
