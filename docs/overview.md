@@ -131,7 +131,18 @@ All 88 provinces, shaded by grains counted; open one to see its towns. Filter by
 pollen type to turn "where is there most pollen" into "where is there most
 ragweed". Wheel/drag/pinch zoom with `+`/`−`/reset controls, a name search, a
 region filter and a Sampled/All toggle — searching frames what it found and dims
-the rest. See [`pollen-map.md`](./pollen-map.md) for the boundary data.
+the rest.
+
+**Hot zones are shown twice over.** The fill uses quantile classes computed from
+the places in view, so the classes stay populated however skewed the counts are,
+and the legend states its numeric breaks. Over it, a circle whose *area* is
+proportional to grains — fill alone rewards whichever polygon is biggest, and a
+small province with a heavy load should not read as nothing.
+
+**A filtered location can be exported.** Selecting a place, or narrowing to a
+set of them, offers a location report: the rolled-up reading for that place, its
+composition, and the individual records behind the figures. See
+[`pollen-map.md`](./pollen-map.md) for both, and for the boundary data.
 
 ### Settings
 
@@ -343,8 +354,8 @@ lib/
   store.ts              persistence seam (IndexedDB today)
   account.ts            identity derived from the signed-in address
   settings.ts           the stored account
-  geo.ts                projection, matching, zoom maths, colour ramp
-  pdf.ts                per-report PDF
+  geo.ts                projection, matching, zoom maths, intensity scale
+  pdf.ts                per-report and per-location PDFs
   export.ts             bulk JSON/CSV
 docs/                   this file, the map's data notes, the reference-page plan
 public/geo/             shipped boundary data

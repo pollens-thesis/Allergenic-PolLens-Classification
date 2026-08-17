@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ChevronLeft,
+  FileDown,
   Loader2,
   MapPin,
   Maximize2,
@@ -23,20 +24,23 @@ import {
 } from "@/lib/data";
 import { listReports } from "@/lib/store";
 import {
-  INTENSITY_RAMP,
   PROVINCES_URL,
   REGIONS,
   UNSAMPLED_FILL,
+  ZERO_FILL,
   aggregate,
+  bubbleRadius,
+  buildIntensityScale,
   centroid,
   describeTopPollen,
   displayName,
   featureBounds,
   featureKey,
   fitProjection,
-  intensityIndex,
+  intensityFill,
   matchesQuery,
   municipalitiesUrl,
+  reportsForPlace,
   toPath,
   unionBounds,
   type Bounds,
@@ -44,6 +48,7 @@ import {
   type GeoFeature,
   type PlaceStats,
 } from "@/lib/geo";
+import { downloadLocationReportPdf } from "@/lib/pdf";
 import { useMapZoom } from "./useMapZoom";
 
 const fieldClass =
@@ -115,6 +120,8 @@ export default function PollenMap() {
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [selected, setSelected] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  /** Which report is being built, so only that button shows a spinner. */
+  const [building, setBuilding] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -185,8 +192,11 @@ export default function PollenMap() {
     handlers: zoomHandlers,
   } = useMapZoom(projection?.width ?? 1, projection?.height ?? 1);
 
-  const maxGrains = useMemo(
-    () => Math.max(0, ...[...places.values()].map((p) => p.totalGrains)),
+  // Classes come from the distribution of the places actually in view, so the
+  // shading re-scales when you drill into a province or switch taxon — a town's
+  // 9 grains is a hot zone among towns even though it is nothing nationally.
+  const scale = useMemo(
+    () => buildIntensityScale([...places.values()].map((p) => p.totalGrains)),
     [places],
   );
 
@@ -326,6 +336,71 @@ export default function PollenMap() {
   const activeLabel = species === "all" ? "all pollen" : `${getSpecies(species).genus} pollen`;
   const unitPlural = scope.level === "country" ? "provinces" : "towns";
   const unitSingular = scope.level === "country" ? "province" : "town";
+  // Circles take the taxon's own colour when one is selected, so a per-pollen
+  // map reads in that pollen's colour throughout.
+  const hotColor = species === "all" ? "#a83f27" : getSpecies(species).color;
+  const speciesLabel =
+    species === "all"
+      ? "All pollen"
+      : `${getSpecies(species).genus} (${getSpecies(species).commonName})`;
+
+  /**
+   * How the current filter chose what it chose, for the report's scope line.
+   * The Sampled/All toggle is deliberately not part of it: a report can only
+   * cover places that have reports, so "including unsampled" would describe
+   * the list on screen rather than the document.
+   */
+  const filterDescription = [
+    filters.query.trim() ? `“${filters.query.trim()}”` : null,
+    countryScope && filters.region !== "all"
+      ? REGIONS.find((r) => r.code === filters.region)?.label
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" and ");
+
+  /**
+   * Turn what the map is showing into a document: the selected place, or the
+   * set the filters narrowed to, rolled up with the reports behind it.
+   */
+  async function generateReport(
+    token: string,
+    places: PlaceStats[],
+    scopeLabel: string,
+    selectionNote?: string,
+  ) {
+    if (!reports || places.length === 0) return;
+    setBuilding(token);
+    try {
+      const scopeArg =
+        scope.level === "country"
+          ? ({ level: "country" } as const)
+          : ({ level: "province", provinceKey: scope.key } as const);
+
+      // A report can only belong to one place, but collecting per place and
+      // de-duplicating keeps that an assumption the export doesn't rely on.
+      const seen = new Set<string>();
+      const included = places
+        .flatMap((place) => reportsForPlace(reports, place.key, scopeArg))
+        .filter((report) => !seen.has(report.sampleId) && seen.add(report.sampleId));
+
+      await downloadLocationReportPdf({
+        title: places.length === 1 ? places[0].label : countryScope ? "Philippines" : scope.name,
+        scopeLabel,
+        selectionNote,
+        speciesLabel,
+        places,
+        reports: included,
+      });
+    } finally {
+      setBuilding(null);
+    }
+  }
+
+  /** Sampled places in the current filter — what a filtered report covers. */
+  const filteredPlaces = matches
+    .map((row) => row.stats)
+    .filter((stats): stats is PlaceStats => stats !== null);
 
   /** Clicking a result: drill into a province, or frame and select a town. */
   function focusRow(row: PlaceRow) {
@@ -515,10 +590,10 @@ export default function PollenMap() {
                   <path
                     key={feature.properties.psgc}
                     d={geometry.paths.get(key)}
-                    fill={sampled ? INTENSITY_RAMP[intensityIndex(grains, maxGrains)] : UNSAMPLED_FILL}
-                    fillOpacity={dimmed ? 0.35 : 1}
+                    fill={intensityFill(scale, sampled ? grains : null)}
+                    fillOpacity={dimmed ? 0.3 : 1}
                     stroke={isActive ? "#23261f" : "#cfc9ba"}
-                    strokeOpacity={dimmed ? 0.35 : 1}
+                    strokeOpacity={dimmed ? 0.3 : 1}
                     strokeWidth={isActive ? 2 : 0.6}
                     // Borders keep their on-screen width as the map is zoomed,
                     // rather than growing into slabs with the geometry.
@@ -538,6 +613,44 @@ export default function PollenMap() {
                         : " — not sampled"}
                     </title>
                   </path>
+                );
+              })}
+
+              {/* Graduated circles, area ∝ grains.
+                  Fill alone rewards whichever polygon is biggest — a small
+                  province with a heavy load reads as nothing next to a large
+                  quiet one. A circle over the centroid states the magnitude
+                  independently of the area it was collected in, which is what
+                  makes the hot zones findable at a glance. */}
+              {features.map((feature) => {
+                const key = featureKey(feature);
+                const place = places.get(key);
+                if (!place || place.totalGrains <= 0) return null;
+                if (filtersActive && !matchedKeys.has(key)) return null;
+
+                const [x, y] = geometry.labelAt.get(key) ?? [0, 0];
+                // Divided by the zoom so a circle keeps its size on screen
+                // rather than swelling with the geometry.
+                const r = bubbleRadius(place.totalGrains, scale.max, 26) / view.k;
+                const isActive = selected === key || hovered === key;
+
+                return (
+                  <circle
+                    key={`bubble-${feature.properties.psgc}`}
+                    cx={x}
+                    cy={y}
+                    r={r}
+                    fill={hotColor}
+                    fillOpacity={isActive ? 0.7 : 0.5}
+                    // A pale ring, not a matching outline: the hottest class is
+                    // this same colour, and a circle drawn in it over its own
+                    // fill disappears exactly where it matters most.
+                    stroke="#faf7f0"
+                    strokeOpacity={0.9}
+                    strokeWidth={isActive ? 2.5 : 1.5}
+                    vectorEffect="non-scaling-stroke"
+                    className="pointer-events-none"
+                  />
                 );
               })}
 
@@ -561,6 +674,13 @@ export default function PollenMap() {
                       fontSize: 14 / view.k,
                       fill: "#23261f",
                       fillOpacity: sampled ? 1 : 0.55,
+                      // A halo drawn behind the glyphs, so a name stays
+                      // readable where it crosses a hot fill or a circle.
+                      paintOrder: "stroke",
+                      stroke: "#faf7f0",
+                      strokeWidth: 3 / view.k,
+                      strokeLinejoin: "round",
+                      strokeOpacity: 0.85,
                     }}
                   >
                     {displayName(feature.properties.name)}
@@ -571,22 +691,40 @@ export default function PollenMap() {
           </svg>
         </div>
 
-        {/* Legend */}
+        {/* Legend — the classes are quantiles, so it states its own numbers
+            rather than leaving "more" and "fewer" to be guessed at. */}
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12.5px] text-ink/70">
+          {scale.ranges.length > 0 && (
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-ink/65">Grains</span>
+              {scale.ranges.map((range, index) => (
+                <span key={range.to} className="flex items-center gap-1">
+                  <span
+                    className="h-3 w-4 rounded-sm border border-panel-line"
+                    style={{ background: scale.colors[index] }}
+                  />
+                  <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                    {range.from === range.to ? range.from : `${range.from}–${range.to}`}
+                  </span>
+                </span>
+              ))}
+            </span>
+          )}
+          <span className="flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className="h-3.5 w-3.5 rounded-full"
+              style={{ background: hotColor, opacity: 0.38, border: `1.2px solid ${hotColor}` }}
+            />
+            Circle area = grains
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-3 w-4 rounded-sm border border-panel-line" style={{ background: ZERO_FILL }} />
+            None found
+          </span>
           <span className="flex items-center gap-1.5">
             <span className="h-3 w-4 rounded-sm border border-panel-line" style={{ background: UNSAMPLED_FILL }} />
             Not sampled
-          </span>
-          <span className="flex items-center gap-1.5">
-            Fewer grains
-            {INTENSITY_RAMP.map((colour) => (
-              <span
-                key={colour}
-                className="h-3 w-4 rounded-sm border border-panel-line"
-                style={{ background: colour }}
-              />
-            ))}
-            More
           </span>
           <span className="text-ink/70">
             {zoomedIn
@@ -705,9 +843,39 @@ export default function PollenMap() {
                 Last collected {formatCollectedAt(selectedPlace.lastCollectedAt)}
               </p>
             )}
+            <button
+              type="button"
+              disabled={building !== null}
+              onClick={() =>
+                generateReport(
+                  selectedPlace.key,
+                  [selectedPlace],
+                  countryScope ? "Province of the Philippines" : `Town in ${scope.name}`,
+                )
+              }
+              className="focus-ring mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-ink px-3 py-2.5 text-[13px] font-medium text-parchment transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {building === selectedPlace.key ? (
+                <>
+                  <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
+                  Building report…
+                </>
+              ) : (
+                <>
+                  <FileDown size={14} strokeWidth={1.75} />
+                  Generate report for {selectedPlace.label}
+                </>
+              )}
+            </button>
+            <p className="mt-1.5 text-center text-[12px] text-ink/65">
+              PDF · {selectedPlace.reportCount}{" "}
+              {selectedPlace.reportCount === 1 ? "report" : "reports"} ·{" "}
+              {species === "all" ? "all pollen" : getSpecies(species).genus}
+            </p>
+
             <Link
               href={`/reports?q=${encodeURIComponent(selectedPlace.label)}`}
-              className="focus-ring mt-3 flex items-center justify-center gap-2 rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink/70 transition hover:text-ink"
+              className="focus-ring mt-2 flex items-center justify-center gap-2 rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink/70 transition hover:text-ink"
             >
               <Microscope size={14} strokeWidth={1.75} />
               View reports from {selectedPlace.label}
@@ -718,11 +886,54 @@ export default function PollenMap() {
             <h2 className="text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
               {filtersActive ? (scope.level === "country" ? "Provinces" : "Towns") : "Hotzones"}
             </h2>
-            <p className="mt-0.5 mb-4 text-[13px] text-ink/70">
+            <p className="mt-0.5 mb-3 text-[13px] text-ink/70">
               {filtersActive
                 ? `${matches.length} of ${rows.length} ${unitPlural}, ranked by grains of ${activeLabel}.`
                 : `Sampled ${unitPlural} ranked by grains of ${activeLabel}.`}
             </p>
+
+            {/* Filtering the map to a place is choosing a subject; this turns
+                that choice into a document without having to select each place
+                in turn. */}
+            {filtersActive && filteredPlaces.length > 0 && (
+              <button
+                type="button"
+                disabled={building !== null}
+                onClick={() =>
+                  generateReport(
+                    "filtered",
+                    filteredPlaces,
+                    filteredPlaces.length === 1
+                      ? countryScope
+                        ? "Province of the Philippines"
+                        : `Town in ${scope.name}`
+                      : countryScope
+                        ? "Provinces of the Philippines"
+                        : `Towns in ${scope.name}`,
+                    filteredPlaces.length === 1
+                      ? undefined
+                      : `Covers ${filteredPlaces.length} sampled ${unitPlural}${
+                          filterDescription ? ` matching ${filterDescription}` : ""
+                        }, ranked by grains of ${activeLabel}.`,
+                  )
+                }
+                className="focus-ring mb-4 flex w-full items-center justify-center gap-2 rounded-md bg-ink px-3 py-2.5 text-[13px] font-medium text-parchment transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {building === "filtered" ? (
+                  <>
+                    <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
+                    Building report…
+                  </>
+                ) : (
+                  <>
+                    <FileDown size={14} strokeWidth={1.75} />
+                    {filteredPlaces.length === 1
+                      ? `Generate report for ${filteredPlaces[0].label}`
+                      : `Generate report for these ${filteredPlaces.length} ${unitPlural}`}
+                  </>
+                )}
+              </button>
+            )}
 
             {matches.length === 0 ? (
               <div className="rounded-md border border-panel-line bg-white px-3 py-6 text-center text-[13px] text-ink/70">
@@ -767,7 +978,7 @@ export default function PollenMap() {
                         className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-medium text-ink"
                         style={{
                           background: row.stats
-                            ? `${INTENSITY_RAMP[intensityIndex(row.stats.totalGrains, maxGrains)]}99`
+                            ? intensityFill(scale, row.stats.totalGrains)
                             : UNSAMPLED_FILL,
                           fontFamily: "var(--font-mono)",
                         }}
