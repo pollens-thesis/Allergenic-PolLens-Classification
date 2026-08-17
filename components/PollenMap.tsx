@@ -29,7 +29,6 @@ import {
   UNSAMPLED_FILL,
   ZERO_FILL,
   aggregate,
-  bubbleRadius,
   buildIntensityScale,
   centroid,
   describeTopPollen,
@@ -336,9 +335,6 @@ export default function PollenMap() {
   const activeLabel = species === "all" ? "all pollen" : `${getSpecies(species).genus} pollen`;
   const unitPlural = scope.level === "country" ? "provinces" : "towns";
   const unitSingular = scope.level === "country" ? "province" : "town";
-  // Circles take the taxon's own colour when one is selected, so a per-pollen
-  // map reads in that pollen's colour throughout.
-  const hotColor = species === "all" ? "#a83f27" : getSpecies(species).color;
   const speciesLabel =
     species === "all"
       ? "All pollen"
@@ -616,44 +612,6 @@ export default function PollenMap() {
                 );
               })}
 
-              {/* Graduated circles, area ∝ grains.
-                  Fill alone rewards whichever polygon is biggest — a small
-                  province with a heavy load reads as nothing next to a large
-                  quiet one. A circle over the centroid states the magnitude
-                  independently of the area it was collected in, which is what
-                  makes the hot zones findable at a glance. */}
-              {features.map((feature) => {
-                const key = featureKey(feature);
-                const place = places.get(key);
-                if (!place || place.totalGrains <= 0) return null;
-                if (filtersActive && !matchedKeys.has(key)) return null;
-
-                const [x, y] = geometry.labelAt.get(key) ?? [0, 0];
-                // Divided by the zoom so a circle keeps its size on screen
-                // rather than swelling with the geometry.
-                const r = bubbleRadius(place.totalGrains, scale.max, 26) / view.k;
-                const isActive = selected === key || hovered === key;
-
-                return (
-                  <circle
-                    key={`bubble-${feature.properties.psgc}`}
-                    cx={x}
-                    cy={y}
-                    r={r}
-                    fill={hotColor}
-                    fillOpacity={isActive ? 0.7 : 0.5}
-                    // A pale ring, not a matching outline: the hottest class is
-                    // this same colour, and a circle drawn in it over its own
-                    // fill disappears exactly where it matters most.
-                    stroke="#faf7f0"
-                    strokeOpacity={0.9}
-                    strokeWidth={isActive ? 2.5 : 1.5}
-                    vectorEffect="non-scaling-stroke"
-                    className="pointer-events-none"
-                  />
-                );
-              })}
-
               {/* Sampled places are always labelled; the rest once zoomed in. */}
               {features.map((feature) => {
                 const key = featureKey(feature);
@@ -710,14 +668,6 @@ export default function PollenMap() {
               ))}
             </span>
           )}
-          <span className="flex items-center gap-1.5">
-            <span
-              aria-hidden
-              className="h-3.5 w-3.5 rounded-full"
-              style={{ background: hotColor, opacity: 0.38, border: `1.2px solid ${hotColor}` }}
-            />
-            Circle area = grains
-          </span>
           <span className="flex items-center gap-1.5">
             <span className="h-3 w-4 rounded-sm border border-panel-line" style={{ background: ZERO_FILL }} />
             None found

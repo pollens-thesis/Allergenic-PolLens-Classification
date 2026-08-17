@@ -438,7 +438,6 @@ export type IntensityScale = {
   ranges: { from: number; to: number }[];
   /** The ramp entry for each class — see `rampColors`. */
   colors: string[];
-  max: number;
 };
 
 /**
@@ -470,9 +469,8 @@ function rampColors(count: number): string[] {
  */
 export function buildIntensityScale(values: number[]): IntensityScale {
   const positive = values.filter((v) => v > 0).sort((a, b) => a - b);
-  const max = positive.length ? positive[positive.length - 1] : 0;
   if (positive.length === 0) {
-    return { breaks: [], classOf: () => -1, ranges: [], colors: [], max: 0 };
+    return { breaks: [], classOf: () => -1, ranges: [], colors: [] };
   }
 
   const classes = Math.min(INTENSITY_RAMP.length, new Set(positive).size);
@@ -493,7 +491,6 @@ export function buildIntensityScale(values: number[]): IntensityScale {
     breaks,
     ranges,
     colors: rampColors(breaks.length),
-    max,
     classOf: (grains: number) => {
       if (grains <= 0) return -1; // sampled, nothing found — ZERO_FILL
       const index = breaks.findIndex((upper) => grains <= upper);
@@ -507,19 +504,6 @@ export function intensityFill(scale: IntensityScale, grains: number | null): str
   if (grains === null) return UNSAMPLED_FILL;
   const index = scale.classOf(grains);
   return index < 0 ? ZERO_FILL : (scale.colors[index] ?? ZERO_FILL);
-}
-
-/**
- * Radius for the graduated circle drawn over a sampled place.
- *
- * Area scales with the count — the eye reads a circle by area, so a radius
- * proportional to the count would exaggerate the big ones fourfold. Circles are
- * what make a small province with a heavy load stand out: fill alone rewards
- * whichever polygon happens to be biggest.
- */
-export function bubbleRadius(grains: number, max: number, maxRadius: number): number {
-  if (grains <= 0 || max <= 0) return 0;
-  return Math.max(maxRadius * 0.28, maxRadius * Math.sqrt(grains / max));
 }
 
 /** The reports behind one place on the map, newest collection first. */
