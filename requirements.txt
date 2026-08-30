@@ -9,6 +9,7 @@ djangorestframework==3.18.0
 djangorestframework_simplejwt==5.5.1
 google-auth==2.57.0
 idna==3.19
+pillow==12.3.0
 psycopg2-binary==2.9.12
 pyasn1==0.6.4
 pyasn1_modules==0.4.2

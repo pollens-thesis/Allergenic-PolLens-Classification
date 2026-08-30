@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     'corsheaders',
 
     'accounts',
+    'reports',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
@@ -189,6 +190,20 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+
+
+# Media (uploaded slide images — reports.Slide.image)
+# Dev-only: served from local disk via config/urls.py's static() helper
+# under DEBUG. Production media storage (S3/Cloud Storage) is out of scope
+# for now.
+
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# A multi-slide report batch (several microscope photos in one POST) can
+# exceed Django's 2.5MB default multipart/memory limits.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
