@@ -15,9 +15,10 @@
 // HTML is stable, and React swaps in the stored values after hydration without
 // a mismatch warning or a setState-inside-an-effect.
 //
-// TODO(backend): when Google sign-in is real this becomes the session, and the
-// address comes from the ID token rather than from the sign-in form. Nothing
-// that calls useSettings() has to change.
+// Google sign-in is real (see SignInForm.tsx, lib/auth.ts): the address
+// comes from the verified ID token rather than a typed-in form, and the
+// backend's JWT pair rides alongside it for authenticated requests. Nothing
+// that calls useSettings() for the email had to change.
 // ---------------------------------------------------------------------------
 
 import { useSyncExternalStore } from "react";
@@ -29,6 +30,9 @@ const CHANGE_EVENT = "pollens:settings-changed";
 export type Settings = {
   /** The address this browser is signed in with. Empty means signed out. */
   email: string;
+  /** JWT pair from the backend's Google token exchange (see lib/auth.ts). */
+  accessToken?: string;
+  refreshToken?: string;
 };
 
 export const DEFAULT_SETTINGS: Settings = { email: "" };
