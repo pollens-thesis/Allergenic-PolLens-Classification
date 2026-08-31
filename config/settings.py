@@ -111,6 +111,8 @@ if os.environ.get('DATABASE_NAME'):
             'PASSWORD': os.environ.get('DATABASE_PASSWORD', ''),
             'HOST': os.environ.get('DATABASE_HOST', 'localhost'),
             'PORT': os.environ.get('DATABASE_PORT', '5432'),
+            'OPTIONS': {'sslmode': os.environ.get('DATABASE_SSLMODE', 'require')},
+            'CONN_MAX_AGE': 600,
         }
     }
 else:

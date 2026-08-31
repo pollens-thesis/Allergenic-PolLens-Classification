@@ -11,7 +11,11 @@ between the thesis proposal paper and the frontend.
 ## Stack / Conventions
 
 - **Language/Framework:** Python, Django + Django REST Framework (DRF)
-- **Database:** PostgreSQL
+- **Database:** PostgreSQL. Hosted on Neon as of 2026-08-31 (`config/settings.py`'s
+  Postgres branch sets `sslmode=require` via `DATABASE_SSLMODE`, default
+  `require`, plus `CONN_MAX_AGE=600` for connection reuse over the
+  network). Local dev still falls back to SQLite with `DATABASE_NAME`
+  unset; see `.env.example`.
 - **Auth:** Login is via Google OAuth — the frontend sends a Google ID
   token, the backend verifies it (audience/signature/expiry) and, on
   success, exchanges it for our own JWT pair via
