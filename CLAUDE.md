@@ -87,7 +87,19 @@ between the thesis proposal paper and the frontend.
   - **`GET /api/v1/reports/`** (`reports.views.ReportListCreateView`,
     `IsAuthenticated`): returns a plain JSON array of every report (no
     pagination), each shaped exactly like `Specimen` in
-    `app/PolLens/lib/data.ts`.
+    `app/PolLens/lib/data.ts`. Supports optional query params matching the
+    filter set `app/PolLens/components/ReportsTable.tsx` already
+    implements client-side (added 2026-08-31, not yet wired to the
+    frontend): `q` (case-insensitive substring match, ORed across
+    `sample_id`, `location`, the raw `collected_at` string, and any slide
+    detection's `species_id`), `status` (exact match against
+    `STATUS_CHOICES`; missing/empty/`"All"` = no filter), `location`
+    (exact match; missing/empty/`"all"` = no filter, mirroring the
+    frontend's `ALL_LOCATIONS` sentinel), and `from`/`to` (inclusive
+    `YYYY-MM-DD` bounds compared against the date portion of
+    `collected_at` via `Substr`, matching the frontend's own
+    `collectedAt.split("T")[0]` comparison). Invalid `status` or malformed
+    `from`/`to` → `400 {"detail": "..."}`. All params AND together.
   - **`POST /api/v1/reports/`** (same view): multipart body —
     `collectedAt`/`location`/`researcher` as plain form fields, `weather`
     and `slides` as JSON-encoded strings in form fields (mirroring
@@ -115,14 +127,14 @@ between the thesis proposal paper and the frontend.
     exactly (8 values); `status` choices include `Processing`/`Needs
     review` for schema completeness even though nothing writes them yet.
   - **Test coverage**: `reports/tests.py` covers both views —
-    authentication, list (empty/populated), create (multipart success,
-    missing weather, missing image, invalid species, empty slides,
-    sequential sample-id increments), and detail (found/404). Run with
+    authentication, list (empty/populated, filtering by `q`/`status`/
+    `location`/`from`/`to` individually and combined, invalid `status`/
+    date param errors), create (multipart success, missing weather,
+    missing image, invalid species, empty slides, sequential sample-id
+    increments), and detail (found/404). Run with
     `python manage.py test reports`.
   - **What's still open**: no `PATCH`/`DELETE` (owner is captured for this,
-    unused so far); no filtering/search on the list endpoint (the paper's
-    Report Listing & Filtering feature — see `../docs/system-spec.md`);
-    no monthly-aggregation endpoint for the dashboard's historical pollen
+    unused so far); no monthly-aggregation endpoint for the dashboard's historical pollen
     chart (separate feature); not yet wired into the frontend —
     `lib/store.ts` still persists to IndexedDB, per the root `CLAUDE.md`'s
     narrow frontend-integration exception (wire only once verified, as

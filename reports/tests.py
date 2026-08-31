@@ -8,7 +8,7 @@ from rest_framework.test import APITestCase
 
 from accounts.models import User
 
-from .models import Detection, Grain, Report, Slide
+from .models import Detection, Grain, Report, Slide, next_sample_id
 
 
 def make_test_image(name='slide.png'):
@@ -156,6 +156,141 @@ class ReportListCreateViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
+
+
+def make_report(location='UPLB Campus', status='Completed', collected_at='2026-07-26', species_id='poaceae'):
+    report = Report.objects.create(
+        sample_id=next_sample_id(),
+        collected_at=collected_at,
+        location=location,
+        researcher='Dr. Santos',
+        status=status,
+    )
+    slide = Slide.objects.create(
+        report=report, number=1, file_name='slide-1.png', image=make_test_image(),
+    )
+    Detection.objects.create(slide=slide, species_id=species_id, grain_count=3, avg_confidence=0.9)
+    return report
+
+
+class ReportListFilterTests(APITestCase):
+    url = '/api/v1/reports/'
+
+    def setUp(self):
+        self.user = User.objects.create(email='researcher@up.edu.ph', institution='up.edu.ph')
+        self.client.force_authenticate(user=self.user)
+
+    def test_filters_by_status(self):
+        make_report(status='Completed')
+        make_report(status='Processing')
+
+        response = self.client.get(self.url, {'status': 'Processing'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['status'], 'Processing')
+
+    def test_status_all_returns_everything(self):
+        make_report(status='Completed')
+        make_report(status='Processing')
+
+        response = self.client.get(self.url, {'status': 'All'})
+
+        self.assertEqual(len(response.data), 2)
+
+    def test_invalid_status_returns_400(self):
+        response = self.client.get(self.url, {'status': 'bogus'})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_filters_by_location_exact_match(self):
+        make_report(location='UPLB Campus')
+        make_report(location='Lucena City, Quezon')
+
+        response = self.client.get(self.url, {'location': 'Lucena City, Quezon'})
+
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['location'], 'Lucena City, Quezon')
+
+    def test_location_all_returns_everything(self):
+        make_report(location='UPLB Campus')
+        make_report(location='Lucena City, Quezon')
+
+        response = self.client.get(self.url, {'location': 'all'})
+
+        self.assertEqual(len(response.data), 2)
+
+    def test_filters_by_date_range_inclusive(self):
+        make_report(collected_at='2026-07-20')
+        make_report(collected_at='2026-07-26')
+        make_report(collected_at='2026-08-01')
+
+        response = self.client.get(self.url, {'from': '2026-07-21', 'to': '2026-07-31'})
+
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['collectedAt'], '2026-07-26')
+
+    def test_date_range_upper_bound_includes_same_day_with_time_suffix(self):
+        make_report(collected_at='2026-07-26T14:30')
+
+        response = self.client.get(self.url, {'to': '2026-07-26'})
+
+        self.assertEqual(len(response.data), 1)
+
+    def test_invalid_date_returns_400(self):
+        response = self.client.get(self.url, {'from': 'not-a-date'})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_search_matches_sample_id(self):
+        report = make_report()
+
+        response = self.client.get(self.url, {'q': report.sample_id[-4:]})
+
+        self.assertEqual(len(response.data), 1)
+
+    def test_search_matches_location(self):
+        make_report(location='Lucena City, Quezon')
+        make_report(location='UPLB Campus')
+
+        response = self.client.get(self.url, {'q': 'lucena'})
+
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['location'], 'Lucena City, Quezon')
+
+    def test_search_matches_species(self):
+        make_report(species_id='poaceae')
+        make_report(species_id='betula')
+
+        response = self.client.get(self.url, {'q': 'betula'})
+
+        self.assertEqual(len(response.data), 1)
+
+    def test_search_matches_collected_at(self):
+        make_report(collected_at='2026-07-26')
+        make_report(collected_at='2026-08-01')
+
+        response = self.client.get(self.url, {'q': '2026-07'})
+
+        self.assertEqual(len(response.data), 1)
+
+    def test_search_does_not_duplicate_report_with_multiple_detections(self):
+        report = make_report(species_id='poaceae')
+        slide = report.slides.get()
+        Detection.objects.create(slide=slide, species_id='betula', grain_count=1, avg_confidence=0.5)
+
+        response = self.client.get(self.url, {'q': report.location})
+
+        self.assertEqual(len(response.data), 1)
+
+    def test_combined_filters_are_anded(self):
+        make_report(location='UPLB Campus', status='Completed', collected_at='2026-07-26')
+        make_report(location='UPLB Campus', status='Processing', collected_at='2026-07-26')
+
+        response = self.client.get(self.url, {'location': 'UPLB Campus', 'status': 'Completed'})
+
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['status'], 'Completed')
 
 
 class ReportDetailViewTests(APITestCase):

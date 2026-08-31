@@ -1,5 +1,8 @@
 import json
+import re
 
+from django.db.models import Q
+from django.db.models.functions import Substr
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -7,8 +10,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Report
+from .models import STATUS_CHOICES, Report
 from .serializers import ReportCreateSerializer, ReportSerializer
+
+DATE_PARAM_VALIDATOR = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+VALID_STATUSES = dict(STATUS_CHOICES)
 
 
 class ReportListCreateView(APIView):
@@ -21,7 +27,46 @@ class ReportListCreateView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
-        reports = Report.objects.prefetch_related('slides__detections', 'slides__grains')
+        reports = Report.objects.all()
+
+        status_param = request.query_params.get('status', '').strip()
+        if status_param and status_param.lower() != 'all':
+            if status_param not in VALID_STATUSES:
+                return Response(
+                    {'detail': f'"{status_param}" is not a valid status.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            reports = reports.filter(status=status_param)
+
+        location_param = request.query_params.get('location', '').strip()
+        if location_param and location_param.lower() != 'all':
+            reports = reports.filter(location=location_param)
+
+        date_from = request.query_params.get('from', '').strip()
+        date_to = request.query_params.get('to', '').strip()
+        for label, value in (('from', date_from), ('to', date_to)):
+            if value and not DATE_PARAM_VALIDATOR.match(value):
+                return Response(
+                    {'detail': f'"{label}" must be "YYYY-MM-DD".'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        if date_from or date_to:
+            reports = reports.annotate(collected_date=Substr('collected_at', 1, 10))
+            if date_from:
+                reports = reports.filter(collected_date__gte=date_from)
+            if date_to:
+                reports = reports.filter(collected_date__lte=date_to)
+
+        query = request.query_params.get('q', '').strip()
+        if query:
+            reports = reports.filter(
+                Q(sample_id__icontains=query)
+                | Q(location__icontains=query)
+                | Q(collected_at__icontains=query)
+                | Q(slides__detections__species_id__icontains=query)
+            ).distinct()
+
+        reports = reports.prefetch_related('slides__detections', 'slides__grains')
         return Response(
             ReportSerializer(reports, many=True, context={'request': request}).data
         )
