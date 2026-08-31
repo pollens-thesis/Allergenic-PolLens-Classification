@@ -119,6 +119,26 @@ between the thesis proposal paper and the frontend.
   - **`GET /api/v1/reports/<sample_id>/`** (`reports.views.ReportDetailView`,
     `IsAuthenticated`): single report by `sampleId`. `404 {"detail": "Report
     not found."}` if missing.
+  - **`GET /api/v1/reports/monthly-counts/`** (`reports.views.ReportMonthlyCountsView`,
+    `IsAuthenticated`; registered in `config/urls.py` **before**
+    `<sample_id>/` so that dynamic segment doesn't swallow the literal
+    path). Feeds the dashboard's historical pollen chart
+    (`PollenCountChart`/`historicalPollenCounts` in
+    `app/PolLens/lib/data.ts`). No query params — always returns the
+    trailing 12 calendar months ending at the current month, oldest
+    first, summing `Detection.grain_count` per species per month
+    (`Substr('slide__report__collected_at', 1, 7)` grouping, same pattern
+    as the `from`/`to` filter above), only over `status='Completed'`
+    reports. Response shape matches `MonthlyPollenCount` **exactly** —
+    this is a fixed 5-key struct
+    (`{"month": "Sep", "Poaceae": 0, "Betula": 0, "Alnus": 0, "Corylus": 0,
+    "Quercus": 0}`), not a dynamic per-species map, and only 5 of the 8
+    catalog species appear (`CHART_SPECIES` in `reports/views.py` —
+    Ambrosia/Pinus/Artemisia are excluded, matching the frontend's
+    `CHART_SPECIES_IDS`). `month` is a bare 3-letter abbreviation with no
+    year; the trailing-12-month window makes that unambiguous since no
+    month name repeats within it. Months with no data return `0`, not an
+    omitted entry. Not yet wired into the frontend.
   - **Models** (`reports/models.py`): `Report` (weather flattened onto the
     model as nullable fields, not a separate table; `collected_at` stored
     as a validated `CharField`, not `DateTimeField`, to preserve the
@@ -138,8 +158,7 @@ between the thesis proposal paper and the frontend.
     increments), and detail (found/404). Run with
     `python manage.py test reports`.
   - **What's still open**: no `PATCH`/`DELETE` (owner is captured for this,
-    unused so far); no monthly-aggregation endpoint for the dashboard's historical pollen
-    chart (separate feature); not yet wired into the frontend —
+    unused so far); not yet wired into the frontend —
     `lib/store.ts` still persists to IndexedDB, per the root `CLAUDE.md`'s
     narrow frontend-integration exception (wire only once verified, as
     its own commit).

@@ -1,8 +1,10 @@
+import calendar
 import json
 import re
 
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.db.models.functions import Substr
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -10,11 +12,20 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import STATUS_CHOICES, Report
+from .models import STATUS_CHOICES, Detection, Report
 from .serializers import ReportCreateSerializer, ReportSerializer
 
 DATE_PARAM_VALIDATOR = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 VALID_STATUSES = dict(STATUS_CHOICES)
+
+# Only 5 of the 8 catalog species appear on the dashboard's historical chart
+# — see CHART_SPECIES_IDS in app/PolLens/lib/data.ts. Keys here are the
+# capitalized genus name the frontend's MonthlyPollenCount type expects
+# (Species.genus), not the lowercase species_id.
+CHART_SPECIES = {
+    'poaceae': 'Poaceae', 'betula': 'Betula', 'alnus': 'Alnus',
+    'corylus': 'Corylus', 'quercus': 'Quercus',
+}
 
 
 class ReportListCreateView(APIView):
@@ -109,6 +120,55 @@ class ReportListCreateView(APIView):
             ReportSerializer(report, context={'request': request}).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class ReportMonthlyCountsView(APIView):
+    """
+    GET /api/v1/reports/monthly-counts/ — per-species grain counts for the
+    dashboard's historical pollen chart, bucketed by month.
+
+    Always returns the trailing 12 calendar months ending at the current
+    month (oldest first), one entry per month, every chart species present
+    with a count of 0 when there's no data — matching
+    app/PolLens/lib/data.ts's MonthlyPollenCount exactly (fixed keys, no
+    year, since PollenCountChart trusts array order rather than parsing
+    dates). A rolling 12-month window never repeats a month abbreviation,
+    which is what makes a year-less "month" key unambiguous.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        now = timezone.now()
+        months = []
+        year, month = now.year, now.month
+        for _ in range(12):
+            months.append((year, month))
+            month -= 1
+            if month == 0:
+                month, year = 12, year - 1
+        months.reverse()
+
+        target_year_months = [f'{year:04d}-{month:02d}' for year, month in months]
+        rows = (
+            Detection.objects
+            .filter(species_id__in=CHART_SPECIES, slide__report__status='Completed')
+            .annotate(year_month=Substr('slide__report__collected_at', 1, 7))
+            .filter(year_month__in=target_year_months)
+            .values('year_month', 'species_id')
+            .annotate(total=Sum('grain_count'))
+        )
+        counts = {(row['year_month'], row['species_id']): row['total'] for row in rows}
+
+        result = []
+        for year, month in months:
+            year_month = f'{year:04d}-{month:02d}'
+            entry = {'month': calendar.month_abbr[month]}
+            for species_id, genus in CHART_SPECIES.items():
+                entry[genus] = counts.get((year_month, species_id), 0)
+            result.append(entry)
+
+        return Response(result)
 
 
 class ReportDetailView(APIView):

@@ -1,8 +1,10 @@
+import calendar
 import io
 import json
 
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -323,3 +325,75 @@ class ReportDetailViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(response.data, {'detail': 'Report not found.'})
+
+
+def month_key(offset):
+    """'YYYY-MM-DD' (day 15) for `offset` calendar months before the current one."""
+    year, month = timezone.now().year, timezone.now().month
+    for _ in range(offset):
+        month -= 1
+        if month == 0:
+            month, year = 12, year - 1
+    return f'{year:04d}-{month:02d}-15'
+
+
+class ReportMonthlyCountsViewTests(APITestCase):
+    url = '/api/v1/reports/monthly-counts/'
+
+    def setUp(self):
+        self.user = User.objects.create(email='researcher@up.edu.ph', institution='up.edu.ph')
+
+    def test_requires_authentication(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_empty_state_returns_twelve_months_all_zero(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 12)
+        for entry in response.data:
+            for genus in ('Poaceae', 'Betula', 'Alnus', 'Corylus', 'Quercus'):
+                self.assertEqual(entry[genus], 0)
+        self.assertEqual(response.data[-1]['month'], calendar.month_abbr[timezone.now().month])
+
+    def test_current_month_report_is_counted_by_species(self):
+        self.client.force_authenticate(user=self.user)
+        make_report(collected_at=month_key(0), species_id='betula')
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.data[-1]['Betula'], 3)
+        self.assertEqual(response.data[-1]['Poaceae'], 0)
+
+    def test_reports_in_different_months_are_bucketed_separately(self):
+        self.client.force_authenticate(user=self.user)
+        make_report(collected_at=month_key(0), species_id='poaceae')
+        make_report(collected_at=month_key(1), species_id='poaceae')
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.data[-1]['Poaceae'], 3)
+        self.assertEqual(response.data[-2]['Poaceae'], 3)
+        self.assertEqual(response.data[-3]['Poaceae'], 0)
+
+    def test_report_older_than_window_is_excluded(self):
+        self.client.force_authenticate(user=self.user)
+        make_report(collected_at=month_key(12), species_id='poaceae')
+
+        response = self.client.get(self.url)
+
+        for entry in response.data:
+            self.assertEqual(entry['Poaceae'], 0)
+
+    def test_species_outside_chart_set_is_excluded(self):
+        self.client.force_authenticate(user=self.user)
+        make_report(collected_at=month_key(0), species_id='ambrosia')
+
+        response = self.client.get(self.url)
+
+        for entry in response.data:
+            self.assertNotIn('Ambrosia', entry)
