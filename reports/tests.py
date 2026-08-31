@@ -10,7 +10,9 @@ from rest_framework.test import APITestCase
 
 from accounts.models import User
 
-from .models import Detection, Grain, Report, Slide, next_sample_id
+from .models import SPECIES_CHOICES, Detection, Grain, Report, Slide, next_sample_id
+
+ALL_SPECIES_IDS = [species_id for species_id, _ in SPECIES_CHOICES]
 
 
 def make_test_image(name='slide.png'):
@@ -24,11 +26,11 @@ def make_slide_payload(**overrides):
     slide = {
         'fileName': 'slide-1.png',
         'detections': [
-            {'speciesId': 'poaceae', 'grainCount': 3, 'avgConfidence': 0.9},
+            {'speciesId': 'amaranthus_spinosus', 'grainCount': 3, 'avgConfidence': 0.9},
         ],
         'grains': [
             {
-                'speciesId': 'poaceae', 'confidence': 0.9,
+                'speciesId': 'amaranthus_spinosus', 'confidence': 0.9,
                 'box': {'x': 0.1, 'y': 0.1, 'width': 0.2, 'height': 0.2},
             },
         ],
@@ -160,7 +162,7 @@ class ReportListCreateViewTests(APITestCase):
         self.assertEqual(len(response.data), 1)
 
 
-def make_report(location='UPLB Campus', status='Completed', collected_at='2026-07-26', species_id='poaceae'):
+def make_report(location='UPLB Campus', status='Completed', collected_at='2026-07-26', species_id='amaranthus_spinosus'):
     report = Report.objects.create(
         sample_id=next_sample_id(),
         collected_at=collected_at,
@@ -261,10 +263,10 @@ class ReportListFilterTests(APITestCase):
         self.assertEqual(response.data[0]['location'], 'Lucena City, Quezon')
 
     def test_search_matches_species(self):
-        make_report(species_id='poaceae')
-        make_report(species_id='betula')
+        make_report(species_id='amaranthus_spinosus')
+        make_report(species_id='axonopus_compressus')
 
-        response = self.client.get(self.url, {'q': 'betula'})
+        response = self.client.get(self.url, {'q': 'axonopus'})
 
         self.assertEqual(len(response.data), 1)
 
@@ -277,9 +279,9 @@ class ReportListFilterTests(APITestCase):
         self.assertEqual(len(response.data), 1)
 
     def test_search_does_not_duplicate_report_with_multiple_detections(self):
-        report = make_report(species_id='poaceae')
+        report = make_report(species_id='amaranthus_spinosus')
         slide = report.slides.get()
-        Detection.objects.create(slide=slide, species_id='betula', grain_count=1, avg_confidence=0.5)
+        Detection.objects.create(slide=slide, species_id='axonopus_compressus', grain_count=1, avg_confidence=0.5)
 
         response = self.client.get(self.url, {'q': report.location})
 
@@ -356,44 +358,46 @@ class ReportMonthlyCountsViewTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 12)
         for entry in response.data:
-            for genus in ('Poaceae', 'Betula', 'Alnus', 'Corylus', 'Quercus'):
-                self.assertEqual(entry[genus], 0)
+            self.assertEqual(set(entry['series']), set(ALL_SPECIES_IDS))
+            for count in entry['series'].values():
+                self.assertEqual(count, 0)
         self.assertEqual(response.data[-1]['month'], calendar.month_abbr[timezone.now().month])
 
     def test_current_month_report_is_counted_by_species(self):
         self.client.force_authenticate(user=self.user)
-        make_report(collected_at=month_key(0), species_id='betula')
+        make_report(collected_at=month_key(0), species_id='axonopus_compressus')
 
         response = self.client.get(self.url)
 
-        self.assertEqual(response.data[-1]['Betula'], 3)
-        self.assertEqual(response.data[-1]['Poaceae'], 0)
+        self.assertEqual(response.data[-1]['series']['axonopus_compressus'], 3)
+        self.assertEqual(response.data[-1]['series']['amaranthus_spinosus'], 0)
 
     def test_reports_in_different_months_are_bucketed_separately(self):
         self.client.force_authenticate(user=self.user)
-        make_report(collected_at=month_key(0), species_id='poaceae')
-        make_report(collected_at=month_key(1), species_id='poaceae')
+        make_report(collected_at=month_key(0), species_id='amaranthus_spinosus')
+        make_report(collected_at=month_key(1), species_id='amaranthus_spinosus')
 
         response = self.client.get(self.url)
 
-        self.assertEqual(response.data[-1]['Poaceae'], 3)
-        self.assertEqual(response.data[-2]['Poaceae'], 3)
-        self.assertEqual(response.data[-3]['Poaceae'], 0)
+        self.assertEqual(response.data[-1]['series']['amaranthus_spinosus'], 3)
+        self.assertEqual(response.data[-2]['series']['amaranthus_spinosus'], 3)
+        self.assertEqual(response.data[-3]['series']['amaranthus_spinosus'], 0)
 
     def test_report_older_than_window_is_excluded(self):
         self.client.force_authenticate(user=self.user)
-        make_report(collected_at=month_key(12), species_id='poaceae')
+        make_report(collected_at=month_key(12), species_id='amaranthus_spinosus')
 
         response = self.client.get(self.url)
 
         for entry in response.data:
-            self.assertEqual(entry['Poaceae'], 0)
+            self.assertEqual(entry['series']['amaranthus_spinosus'], 0)
 
-    def test_species_outside_chart_set_is_excluded(self):
+    def test_every_catalog_species_appears_in_series(self):
         self.client.force_authenticate(user=self.user)
-        make_report(collected_at=month_key(0), species_id='ambrosia')
+        make_report(collected_at=month_key(0), species_id='mangifera_indica')
 
         response = self.client.get(self.url)
 
-        for entry in response.data:
-            self.assertNotIn('Ambrosia', entry)
+        # All 23 species are always present (zero-filled), not just ones with data.
+        self.assertEqual(set(response.data[-1]['series']), set(ALL_SPECIES_IDS))
+        self.assertEqual(response.data[-1]['series']['mangifera_indica'], 3)

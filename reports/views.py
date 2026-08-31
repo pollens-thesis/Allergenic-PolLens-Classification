@@ -12,20 +12,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import STATUS_CHOICES, Detection, Report
+from .models import SPECIES_CHOICES, STATUS_CHOICES, Detection, Report
 from .serializers import ReportCreateSerializer, ReportSerializer
 
 DATE_PARAM_VALIDATOR = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 VALID_STATUSES = dict(STATUS_CHOICES)
-
-# Only 5 of the 8 catalog species appear on the dashboard's historical chart
-# — see CHART_SPECIES_IDS in app/PolLens/lib/data.ts. Keys here are the
-# capitalized genus name the frontend's MonthlyPollenCount type expects
-# (Species.genus), not the lowercase species_id.
-CHART_SPECIES = {
-    'poaceae': 'Poaceae', 'betula': 'Betula', 'alnus': 'Alnus',
-    'corylus': 'Corylus', 'quercus': 'Quercus',
-}
+ALL_SPECIES_IDS = [species_id for species_id, _ in SPECIES_CHOICES]
 
 
 class ReportListCreateView(APIView):
@@ -128,12 +120,13 @@ class ReportMonthlyCountsView(APIView):
     dashboard's historical pollen chart, bucketed by month.
 
     Always returns the trailing 12 calendar months ending at the current
-    month (oldest first), one entry per month, every chart species present
-    with a count of 0 when there's no data — matching
-    app/PolLens/lib/data.ts's MonthlyPollenCount exactly (fixed keys, no
-    year, since PollenCountChart trusts array order rather than parsing
-    dates). A rolling 12-month window never repeats a month abbreviation,
-    which is what makes a year-less "month" key unambiguous.
+    month (oldest first), one entry per month, every catalog species present
+    in `series` with a count of 0 when there's no data — matching
+    app/PolLens/lib/data.ts's MonthlyPollenCount: `{month, series: {species_id:
+    count}}`. `series` is keyed dynamically off the full species catalog
+    (not a fixed hardcoded struct), so it scales with SPECIES_CHOICES without
+    a contract change. `month` has no year — a rolling 12-month window never
+    repeats a month abbreviation, which is what makes that unambiguous.
     """
 
     permission_classes = [IsAuthenticated]
@@ -152,7 +145,7 @@ class ReportMonthlyCountsView(APIView):
         target_year_months = [f'{year:04d}-{month:02d}' for year, month in months]
         rows = (
             Detection.objects
-            .filter(species_id__in=CHART_SPECIES, slide__report__status='Completed')
+            .filter(species_id__in=ALL_SPECIES_IDS, slide__report__status='Completed')
             .annotate(year_month=Substr('slide__report__collected_at', 1, 7))
             .filter(year_month__in=target_year_months)
             .values('year_month', 'species_id')
@@ -163,10 +156,11 @@ class ReportMonthlyCountsView(APIView):
         result = []
         for year, month in months:
             year_month = f'{year:04d}-{month:02d}'
-            entry = {'month': calendar.month_abbr[month]}
-            for species_id, genus in CHART_SPECIES.items():
-                entry[genus] = counts.get((year_month, species_id), 0)
-            result.append(entry)
+            series = {
+                species_id: counts.get((year_month, species_id), 0)
+                for species_id in ALL_SPECIES_IDS
+            }
+            result.append({'month': calendar.month_abbr[month], 'series': series})
 
         return Response(result)
 

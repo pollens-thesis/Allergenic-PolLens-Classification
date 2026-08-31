@@ -129,13 +129,12 @@ between the thesis proposal paper and the frontend.
     first, summing `Detection.grain_count` per species per month
     (`Substr('slide__report__collected_at', 1, 7)` grouping, same pattern
     as the `from`/`to` filter above), only over `status='Completed'`
-    reports. Response shape matches `MonthlyPollenCount` **exactly** —
-    this is a fixed 5-key struct
-    (`{"month": "Sep", "Poaceae": 0, "Betula": 0, "Alnus": 0, "Corylus": 0,
-    "Quercus": 0}`), not a dynamic per-species map, and only 5 of the 8
-    catalog species appear (`CHART_SPECIES` in `reports/views.py` —
-    Ambrosia/Pinus/Artemisia are excluded, matching the frontend's
-    `CHART_SPECIES_IDS`). `month` is a bare 3-letter abbreviation with no
+    reports. Response shape matches `MonthlyPollenCount`: `{"month": "Sep",
+    "series": {"amaranthus_spinosus": 0, ...}}` — `series` is keyed
+    dynamically off the full `SPECIES_CHOICES` list (`ALL_SPECIES_IDS` in
+    `reports/views.py`), zero-filled for every catalog species every month,
+    not a hardcoded per-species struct — so it scales automatically if the
+    catalog changes. `month` is a bare 3-letter abbreviation with no
     year; the trailing-12-month window makes that unambiguous since no
     month name repeats within it. Months with no data return `0`, not an
     omitted entry. **Wired into the frontend as of 2026-08-31**:
@@ -151,9 +150,14 @@ between the thesis proposal paper and the frontend.
     disk in dev, guarded by `DEBUG` in `config/urls.py`; no production
     media storage, e.g. S3, configured yet), `Detection` (per-species
     summary row), `Grain` (optional per-grain bounding box — a slide may
-    have zero). `species_id` choices match `SpeciesId` in `lib/data.ts`
-    exactly (8 values); `status` choices include `Processing`/`Needs
-    review` for schema completeness even though nothing writes them yet.
+    have zero). `species_id` choices (`SPECIES_CHOICES`, `max_length=32`)
+    match `SpeciesId` in `lib/data.ts` exactly — the real 23-species UPLB
+    taxonomic scope (full binomial slugs, e.g. `amaranthus_spinosus`), as
+    of 2026-08-31 replacing an earlier 8-species European/temperate
+    placeholder catalog (Poaceae/Betula/Alnus/... — never the real scope,
+    see the Taxonomic Scope row in `../docs/system-spec.md`); `status`
+    choices include `Processing`/`Needs review` for schema completeness
+    even though nothing writes them yet.
   - **Test coverage**: `reports/tests.py` covers both views —
     authentication, list (empty/populated, filtering by `q`/`status`/
     `location`/`from`/`to` individually and combined, invalid `status`/
