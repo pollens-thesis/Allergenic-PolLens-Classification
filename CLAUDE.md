@@ -138,7 +138,11 @@ between the thesis proposal paper and the frontend.
     `CHART_SPECIES_IDS`). `month` is a bare 3-letter abbreviation with no
     year; the trailing-12-month window makes that unambiguous since no
     month name repeats within it. Months with no data return `0`, not an
-    omitted entry. Not yet wired into the frontend.
+    omitted entry. **Wired into the frontend as of 2026-08-31**:
+    `PollenCountChart` (`app/PolLens/components/PollenCountChart.tsx`) fetches
+    this client-side once signed in (`fetchMonthlyPollenCounts` in
+    `app/PolLens/lib/data.ts`), falling back to the `historicalPollenCounts`
+    seed if signed out or the request fails.
   - **Models** (`reports/models.py`): `Report` (weather flattened onto the
     model as nullable fields, not a separate table; `collected_at` stored
     as a validated `CharField`, not `DateTimeField`, to preserve the
