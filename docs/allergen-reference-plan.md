@@ -26,9 +26,10 @@ imports it. That is the cheapest part of the page to light up.
 
 ## 1. The class list is the contract
 
-`speciesCatalog` (8 taxa) is what the app believes the model can detect. Once Roboflow
-training starts, that list and the project's class names must agree exactly, or
-detections will silently fail to map to a species.
+`speciesCatalog` (23 taxa, as of 2026-08-31 — the real UPLB scope, replacing an
+earlier 8-species placeholder) is what the app believes the model can detect.
+Once Roboflow training starts, that list and the project's class names must
+agree exactly, or detections will silently fail to map to a species.
 
 **Decide the final taxa list before labelling starts.** Changing it afterwards means
 re-labelling, not just re-training.
@@ -133,7 +134,7 @@ thesis can cite a fixed version.
 ```
 RESEARCH CONSOLE
 Allergen reference
-The 8 pollen taxa this system is trained to identify.
+The 23 pollen taxa this system is trained to identify.
 
 ┌─ MODEL ─────────────────────────────────────────────────────┐
 │  pollens-detection · v3      trained Aug 14, 2026           │

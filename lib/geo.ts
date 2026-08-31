@@ -21,6 +21,7 @@ import {
   aggregateSlideDetections,
   getSpecies,
   getTopDetection,
+  speciesLabel,
   type Specimen,
   type SpeciesId,
   type SpecimenDetection,
@@ -176,8 +177,7 @@ export function aggregate(
 export function describeTopPollen(detections: SpecimenDetection[]): string {
   const top = getTopDetection(detections);
   if (!top) return "None detected";
-  const species = getSpecies(top.speciesId);
-  return `${species.genus} (${species.commonName})`;
+  return speciesLabel(getSpecies(top.speciesId));
 }
 
 // --- Search & regions ------------------------------------------------------

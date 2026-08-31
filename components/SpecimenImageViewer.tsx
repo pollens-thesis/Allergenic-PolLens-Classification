@@ -4,6 +4,7 @@ import { ImageOff, ScanSearch } from "lucide-react";
 import {
   getSpecies,
   sortByAbundance,
+  speciesLabel,
   type DetectedGrain,
   type SpeciesId,
   type SpecimenDetection,
@@ -105,7 +106,7 @@ export default function SpecimenImageViewer({
                   key={grain.id}
                   type="button"
                   onClick={() => onSelectSpecies(dimmed ? grain.speciesId : null)}
-                  title={`${species.genus} (${species.commonName}) · ${Math.round(grain.confidence * 100)}% confidence`}
+                  title={`${speciesLabel(species)} · ${Math.round(grain.confidence * 100)}% confidence`}
                   className="absolute rounded-[2px] transition-opacity"
                   style={{
                     left: `${grain.box.x * 100}%`,
@@ -118,7 +119,7 @@ export default function SpecimenImageViewer({
                   }}
                 >
                   <span className="sr-only">
-                    {species.genus} grain, {Math.round(grain.confidence * 100)}% confidence
+                    {species.scientificName} grain, {Math.round(grain.confidence * 100)}% confidence
                   </span>
                 </button>
               );

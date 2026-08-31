@@ -83,7 +83,7 @@ function DetectionRow({
               {species.code}
             </div>
             <div className="truncate text-[14px] text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-              {species.genus}
+              {species.scientificName}
             </div>
             <div className="truncate text-[13px] text-ink/70">{species.commonName}</div>
           </div>

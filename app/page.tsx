@@ -1,5 +1,6 @@
 import PollenField from "@/components/PollenField";
 import SignInForm from "@/components/SignInForm";
+import { speciesCatalog } from "@/lib/data";
 
 export default function LoginPage() {
   return (
@@ -50,7 +51,7 @@ export default function LoginPage() {
           style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
         >
           {[
-            ["Classes tracked", "12 taxa"],
+            ["Classes tracked", `${speciesCatalog.length} taxa`],
             ["Model", "Roboflow · v1"],
             ["Access", "Research use"],
           ].map(([label, value]) => (

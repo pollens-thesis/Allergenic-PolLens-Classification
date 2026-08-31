@@ -19,6 +19,7 @@ import {
   getSpecies,
   getWeightedAvgConfidence,
   speciesCatalog,
+  speciesLabel,
   type Specimen,
   type SpeciesId,
 } from "@/lib/data";
@@ -342,13 +343,11 @@ export default function PollenMap() {
     );
   }
 
-  const activeLabel = species === "all" ? "all pollen" : `${getSpecies(species).genus} pollen`;
+  const activeLabel = species === "all" ? "all pollen" : `${getSpecies(species).scientificName} pollen`;
   const unitPlural = scope.level === "country" ? "provinces" : "towns";
   const unitSingular = scope.level === "country" ? "province" : "town";
-  const speciesLabel =
-    species === "all"
-      ? "All pollen"
-      : `${getSpecies(species).genus} (${getSpecies(species).commonName})`;
+  const speciesFilterLabel =
+    species === "all" ? "All pollen" : speciesLabel(getSpecies(species));
 
   /**
    * How the current filter chose what it chose, for the report's scope line.
@@ -394,7 +393,7 @@ export default function PollenMap() {
         title: places.length === 1 ? places[0].label : countryScope ? "Philippines" : scope.name,
         scopeLabel,
         selectionNote,
-        speciesLabel,
+        speciesLabel: speciesFilterLabel,
         places,
         reports: included,
         fileSlug: slugify(
@@ -457,7 +456,7 @@ export default function PollenMap() {
               <option value="all">All pollen</option>
               {speciesCatalog.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.genus} ({s.commonName})
+                  {speciesLabel(s)}
                 </option>
               ))}
             </select>
@@ -782,7 +781,7 @@ export default function PollenMap() {
                             className="h-2.5 w-2.5 shrink-0 rounded-full"
                             style={{ backgroundColor: s.color }}
                           />
-                          <span className="truncate text-[13.5px] text-ink">{s.genus}</span>
+                          <span className="truncate text-[13.5px] text-ink">{s.scientificName}</span>
                           <span className="truncate text-[13px] text-ink/70">{s.commonName}</span>
                         </span>
                         <span className="shrink-0 text-[13px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
@@ -833,7 +832,7 @@ export default function PollenMap() {
             <p className="mt-1.5 text-center text-[12px] text-ink/65">
               PDF · {selectedPlace.reportCount}{" "}
               {selectedPlace.reportCount === 1 ? "report" : "reports"} ·{" "}
-              {species === "all" ? "all pollen" : getSpecies(species).genus}
+              {species === "all" ? "all pollen" : getSpecies(species).scientificName}
             </p>
 
             <Link

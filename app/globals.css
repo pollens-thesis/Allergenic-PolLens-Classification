@@ -11,9 +11,6 @@
   --pollen: #e8b93f;      /* pollen-grain gold, primary accent */
   --pollen-soft: #f3d27a;
   --anther: #d9704a;      /* secondary accent, used sparingly */
-  --grass: #3f8f5c;       /* Poaceae (Grass) line */
-  --birch: #4f7bb0;       /* Betula (Birch) line */
-  --hazel: #8a6fb0;       /* Corylus (Hazel) line */
 
   /*
    * Accents darkened for use as text. The display versions above are tuned to
@@ -39,9 +36,6 @@
   --color-sage: var(--sage);
   --color-pollen: var(--pollen);
   --color-anther: var(--anther);
-  --color-grass: var(--grass);
-  --color-birch: var(--birch);
-  --color-hazel: var(--hazel);
   --color-anther-ink: var(--anther-ink);
   --color-leaf-ink: var(--leaf-ink);
   --color-ember-ink: var(--ember-ink);

@@ -79,7 +79,7 @@ function DetectionRow({
             {species.code}
           </span>
           <span className="text-[14px] text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-            {species.genus}
+            {species.scientificName}
           </span>
           <span className="ml-1.5 text-[13px] text-ink/70">{species.commonName}</span>
         </div>

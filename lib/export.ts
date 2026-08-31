@@ -113,7 +113,7 @@ export function exportReportsCsv(reports: Specimen[]): void {
           [
             ...shared,
             cell(species.code),
-            cell(species.genus),
+            cell(species.scientificName),
             cell(species.commonName),
             cell(species.riskLevel),
             cell(detection.grainCount),

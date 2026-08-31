@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   LineChart,
   Line,
@@ -19,6 +19,12 @@ const RANGES = [
   { label: "6 months", value: 6 },
   { label: "12 months", value: 12 },
 ] as const;
+
+// No categorical palette stays mutually distinguishable much past 8
+// simultaneous lines (confirmed by the dataviz skill's own validator against
+// this app's colors) — with 23 species now in the catalog, show only the
+// most abundant ones in the visible window rather than all of them at once.
+const MAX_LINES = 8;
 
 function CustomTooltip({
   active,
@@ -75,6 +81,23 @@ export default function PollenCountChart({ initial }: { initial: MonthlyPollenCo
 
   const visible = data.slice(-range);
 
+  // Rank by total within the visible window so the busiest species (not an
+  // arbitrary catalog subset) get the limited line slots; falls back to the
+  // catalog's first MAX_LINES when everything is still zero (e.g. no reports
+  // yet), so the chart isn't blank before any real data exists.
+  const linesToShow = useMemo(() => {
+    const totals = new Map(pollenSeries.map((s) => [s.key, 0]));
+    for (const month of visible) {
+      for (const s of pollenSeries) {
+        totals.set(s.key, (totals.get(s.key) ?? 0) + (month.series[s.key] ?? 0));
+      }
+    }
+    const withData = pollenSeries
+      .filter((s) => (totals.get(s.key) ?? 0) > 0)
+      .sort((a, b) => (totals.get(b.key) ?? 0) - (totals.get(a.key) ?? 0));
+    return (withData.length > 0 ? withData : pollenSeries).slice(0, MAX_LINES);
+  }, [visible]);
+
   return (
     <div className="rounded-lg border border-panel-line bg-white/60 p-5">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
@@ -123,16 +146,16 @@ export default function PollenCountChart({ initial }: { initial: MonthlyPollenCo
               iconType="circle"
               iconSize={8}
               wrapperStyle={{ fontSize: 13, paddingTop: 8 }}
-              // Recharts colours the label to match its line, which puts
-              // Alnus's gold at 1.75:1 on white. The dot already carries the
-              // colour; the words only have to be readable.
+              // Recharts colours the label to match its line, and some line
+              // colors read too light on white for legend text. The dot
+              // already carries the colour; the words only have to be readable.
               formatter={(value) => <span style={{ color: "#1c2a20cc" }}>{value}</span>}
             />
-            {pollenSeries.map((s) => (
+            {linesToShow.map((s) => (
               <Line
                 key={s.key}
                 type="monotone"
-                dataKey={s.key}
+                dataKey={(entry: MonthlyPollenCount) => entry.series[s.key] ?? 0}
                 name={s.label}
                 stroke={s.color}
                 strokeWidth={2.25}

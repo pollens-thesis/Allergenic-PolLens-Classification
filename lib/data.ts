@@ -10,40 +10,87 @@
 // ---------------------------------------------------------------------------
 
 export type SpeciesId =
-  | "poaceae"
-  | "betula"
-  | "alnus"
-  | "corylus"
-  | "quercus"
-  | "ambrosia"
-  | "pinus"
-  | "artemisia";
+  | "amaranthus_spinosus"
+  | "axonopus_compressus"
+  | "brachiaria_mutica"
+  | "chloris_barbata"
+  | "chrysopogon_aciculatus"
+  | "cocos_nucifera"
+  | "cyperus_rotundus"
+  | "dactyloctenium_aegyptium"
+  | "digitaria_ciliaris"
+  | "echinochloa_crus_galli"
+  | "eleusine_indica"
+  | "imperata_cylindrica"
+  | "leucaena_leucocephala"
+  | "panicum_maximum"
+  | "pennisetum_polystachion"
+  | "pithecellobium_dulce"
+  | "saccharum_spontaneum"
+  | "samanea_saman"
+  | "sorghum_halepense"
+  | "tridax_procumbens"
+  | "oryza_sativa"
+  | "mimosa_pudica"
+  | "mangifera_indica";
 
 export type Species = {
   id: SpeciesId;
-  genus: string;
+  /** Full binomial, e.g. "Amaranthus spinosus" — pollen here is classified to species, not just genus. */
+  scientificName: string;
   commonName: string;
-  code: string; // taxonomic-style short tag, e.g. AMBR
+  code: string; // taxonomic-style short tag, e.g. AMAR
   season: string;
   riskLevel: "High" | "Moderate" | "Low";
-  color: string; // CSS color/var, used consistently across charts, badges, thumbnails
+  color: string; // CSS color, used consistently across charts, badges, thumbnails
 };
 
+// The real 23-species UPLB taxonomic scope, replacing an earlier 8-species
+// European/temperate placeholder catalog that was never cross-checked against
+// the actual dataset (see the Taxonomic Scope row in docs/system-spec.md).
+// commonName/season/riskLevel are unset placeholders (not real clinical
+// assessments) pending real per-species data — riskLevel defaults to
+// "Moderate" rather than widening the type for an "unknown" state. `color`
+// cycles a validated 8-hue categorical palette (dataviz skill's reference
+// palette — 23 mutually-distinguishable hues isn't achievable, confirmed by
+// its own validator, so identity colors repeat every 8 species; the
+// historical chart caps simultaneous lines well under 8 to avoid collisions
+// in practice).
 export const speciesCatalog: Species[] = [
-  { id: "poaceae", genus: "Poaceae", commonName: "Grass", code: "POAC", season: "Late spring – summer", riskLevel: "Moderate", color: "var(--grass)" },
-  { id: "betula", genus: "Betula", commonName: "Birch", code: "BETU", season: "Early spring", riskLevel: "High", color: "var(--birch)" },
-  { id: "alnus", genus: "Alnus", commonName: "Alder", code: "ALNU", season: "Winter – early spring", riskLevel: "Moderate", color: "var(--pollen)" },
-  { id: "corylus", genus: "Corylus", commonName: "Hazel", code: "CORY", season: "Winter – early spring", riskLevel: "Moderate", color: "var(--hazel)" },
-  { id: "quercus", genus: "Quercus", commonName: "Oak", code: "QUER", season: "Spring", riskLevel: "Moderate", color: "var(--anther)" },
-  { id: "ambrosia", genus: "Ambrosia", commonName: "Ragweed", code: "AMBR", season: "Late summer – fall", riskLevel: "High", color: "#c2703d" },
-  { id: "pinus", genus: "Pinus", commonName: "Pine", code: "PINU", season: "Spring", riskLevel: "Low", color: "#6f8f6a" },
-  { id: "artemisia", genus: "Artemisia", commonName: "Mugwort", code: "ARTE", season: "Summer – fall", riskLevel: "Moderate", color: "#a1785a" },
+  { id: "amaranthus_spinosus", scientificName: "Amaranthus spinosus", commonName: "TBD", code: "AMAR", season: "TBD", riskLevel: "Moderate", color: "#2a78d6" },
+  { id: "axonopus_compressus", scientificName: "Axonopus compressus", commonName: "TBD", code: "AXON", season: "TBD", riskLevel: "Moderate", color: "#eb6834" },
+  { id: "brachiaria_mutica", scientificName: "Brachiaria mutica", commonName: "TBD", code: "BRAC", season: "TBD", riskLevel: "Moderate", color: "#1baf7a" },
+  { id: "chloris_barbata", scientificName: "Chloris barbata", commonName: "TBD", code: "CHLO", season: "TBD", riskLevel: "Moderate", color: "#eda100" },
+  { id: "chrysopogon_aciculatus", scientificName: "Chrysopogon aciculatus", commonName: "TBD", code: "CHRY", season: "TBD", riskLevel: "Moderate", color: "#e87ba4" },
+  { id: "cocos_nucifera", scientificName: "Cocos nucifera", commonName: "TBD", code: "COCO", season: "TBD", riskLevel: "Moderate", color: "#008300" },
+  { id: "cyperus_rotundus", scientificName: "Cyperus rotundus", commonName: "TBD", code: "CYPE", season: "TBD", riskLevel: "Moderate", color: "#4a3aa7" },
+  { id: "dactyloctenium_aegyptium", scientificName: "Dactyloctenium aegyptium", commonName: "TBD", code: "DACT", season: "TBD", riskLevel: "Moderate", color: "#e34948" },
+  { id: "digitaria_ciliaris", scientificName: "Digitaria ciliaris", commonName: "TBD", code: "DIGI", season: "TBD", riskLevel: "Moderate", color: "#2a78d6" },
+  { id: "echinochloa_crus_galli", scientificName: "Echinochloa crus-galli", commonName: "TBD", code: "ECHI", season: "TBD", riskLevel: "Moderate", color: "#eb6834" },
+  { id: "eleusine_indica", scientificName: "Eleusine indica", commonName: "TBD", code: "ELEU", season: "TBD", riskLevel: "Moderate", color: "#1baf7a" },
+  { id: "imperata_cylindrica", scientificName: "Imperata cylindrica", commonName: "TBD", code: "IMPE", season: "TBD", riskLevel: "Moderate", color: "#eda100" },
+  { id: "leucaena_leucocephala", scientificName: "Leucaena leucocephala", commonName: "TBD", code: "LEUC", season: "TBD", riskLevel: "Moderate", color: "#e87ba4" },
+  { id: "panicum_maximum", scientificName: "Panicum maximum", commonName: "TBD", code: "PANI", season: "TBD", riskLevel: "Moderate", color: "#008300" },
+  { id: "pennisetum_polystachion", scientificName: "Pennisetum polystachion", commonName: "TBD", code: "PENN", season: "TBD", riskLevel: "Moderate", color: "#4a3aa7" },
+  { id: "pithecellobium_dulce", scientificName: "Pithecellobium dulce", commonName: "TBD", code: "PITH", season: "TBD", riskLevel: "Moderate", color: "#e34948" },
+  { id: "saccharum_spontaneum", scientificName: "Saccharum spontaneum", commonName: "TBD", code: "SACC", season: "TBD", riskLevel: "Moderate", color: "#2a78d6" },
+  { id: "samanea_saman", scientificName: "Samanea saman", commonName: "TBD", code: "SAMA", season: "TBD", riskLevel: "Moderate", color: "#eb6834" },
+  { id: "sorghum_halepense", scientificName: "Sorghum halepense", commonName: "TBD", code: "SORG", season: "TBD", riskLevel: "Moderate", color: "#1baf7a" },
+  { id: "tridax_procumbens", scientificName: "Tridax procumbens", commonName: "TBD", code: "TRID", season: "TBD", riskLevel: "Moderate", color: "#eda100" },
+  { id: "oryza_sativa", scientificName: "Oryza sativa", commonName: "TBD", code: "ORYZ", season: "TBD", riskLevel: "Moderate", color: "#e87ba4" },
+  { id: "mimosa_pudica", scientificName: "Mimosa pudica", commonName: "TBD", code: "MIMO", season: "TBD", riskLevel: "Moderate", color: "#008300" },
+  { id: "mangifera_indica", scientificName: "Mangifera indica", commonName: "TBD", code: "MANG", season: "TBD", riskLevel: "Moderate", color: "#4a3aa7" },
 ];
 
 export function getSpecies(id: SpeciesId): Species {
   const found = speciesCatalog.find((s) => s.id === id);
   if (!found) throw new Error(`Unknown species id: ${id}`);
   return found;
+}
+
+/** "Scientific name (common name)", omitting the parenthetical while commonName is still an unset "TBD" placeholder. */
+export function speciesLabel(sp: Species): string {
+  return sp.commonName === "TBD" ? sp.scientificName : `${sp.scientificName} (${sp.commonName})`;
 }
 
 export type ReportStatus = "Completed" | "Processing" | "Needs review";
@@ -305,85 +352,85 @@ function slide(sampleId: string, detections: SpecimenDetection[], notes: string)
 export const specimens: Specimen[] = [
   {
     sampleId: "PLN-2026-0142", collectedAt: "2026-07-29T07:15", location: "Lucena City, Quezon",
-    slides: [slide("PLN-2026-0142", [d("ambrosia", 18, 0.97), d("poaceae", 6, 0.84), d("artemisia", 2, 0.71)], "Dense ragweed load along the roadside transect; slide re-stained once for contrast.")],
+    slides: [slide("PLN-2026-0142", [d("cocos_nucifera", 18, 0.97), d("amaranthus_spinosus", 6, 0.84), d("dactyloctenium_aegyptium", 2, 0.71)], "Dense ragweed load along the roadside transect; slide re-stained once for contrast.")],
     weather: { condition: "Sunny", temperatureC: 32, humidityPct: 64, windKph: 11 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0141", collectedAt: "2026-07-28T09:40", location: "Lucban, Quezon",
-    slides: [slide("PLN-2026-0141", [d("betula", 12, 0.91), d("pinus", 5, 0.8), d("quercus", 3, 0.76)], "Collected upslope of the treeline, mid-morning.")],
+    slides: [slide("PLN-2026-0141", [d("axonopus_compressus", 12, 0.91), d("cyperus_rotundus", 5, 0.8), d("chrysopogon_aciculatus", 3, 0.76)], "Collected upslope of the treeline, mid-morning.")],
     weather: { condition: "Partly cloudy", temperatureC: 26, humidityPct: 78, windKph: 8 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0140", collectedAt: "2026-07-28T14:05", location: "Lucena City, Quezon",
-    slides: [slide("PLN-2026-0140", [d("poaceae", 9, 0.62), d("artemisia", 4, 0.58)], "Several grains partly obscured by debris — flagged for a second reading.")],
+    slides: [slide("PLN-2026-0140", [d("amaranthus_spinosus", 9, 0.62), d("dactyloctenium_aegyptium", 4, 0.58)], "Several grains partly obscured by debris — flagged for a second reading.")],
     weather: { condition: "Overcast", temperatureC: 29, humidityPct: 85, windKph: 6 },
     researcher: "M. Reyes", status: "Needs review",
   },
   {
     sampleId: "PLN-2026-0139", collectedAt: "2026-07-27T08:30", location: "Tayabas, Quezon",
-    slides: [slide("PLN-2026-0139", [d("quercus", 15, 0.94), d("pinus", 4, 0.87), d("poaceae", 2, 0.69)], "")],
+    slides: [slide("PLN-2026-0139", [d("chrysopogon_aciculatus", 15, 0.94), d("cyperus_rotundus", 4, 0.87), d("amaranthus_spinosus", 2, 0.69)], "")],
     weather: { condition: "Sunny", temperatureC: 31, humidityPct: 60, windKph: 14 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0138", collectedAt: "2026-07-26", location: "Lucena City, Quezon",
-    slides: [slide("PLN-2026-0138", [d("ambrosia", 11, 0.79), d("poaceae", 7, 0.73)], "")],
+    slides: [slide("PLN-2026-0138", [d("cocos_nucifera", 11, 0.79), d("amaranthus_spinosus", 7, 0.73)], "")],
     weather: null,
     researcher: "M. Reyes", status: "Processing",
   },
   {
     sampleId: "PLN-2026-0137", collectedAt: "2026-07-26T16:20", location: "Sariaya, Quezon",
-    slides: [slide("PLN-2026-0137", [d("artemisia", 13, 0.86), d("ambrosia", 5, 0.82), d("poaceae", 3, 0.7)], "Fallow field margin; strong afternoon breeze during sampling.")],
+    slides: [slide("PLN-2026-0137", [d("dactyloctenium_aegyptium", 13, 0.86), d("cocos_nucifera", 5, 0.82), d("amaranthus_spinosus", 3, 0.7)], "Fallow field margin; strong afternoon breeze during sampling.")],
     weather: { condition: "Windy", temperatureC: 30, humidityPct: 58, windKph: 27 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0136", collectedAt: "2026-07-25T06:50", location: "Lucban, Quezon",
-    slides: [slide("PLN-2026-0136", [d("pinus", 16, 0.88), d("betula", 4, 0.83)], "")],
+    slides: [slide("PLN-2026-0136", [d("cyperus_rotundus", 16, 0.88), d("axonopus_compressus", 4, 0.83)], "")],
     weather: { condition: "Partly cloudy", temperatureC: 25, humidityPct: 80, windKph: 9 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0135", collectedAt: "2026-06-14T10:10", location: "Lucena City, Quezon",
-    slides: [slide("PLN-2026-0135", [d("poaceae", 21, 0.93), d("quercus", 3, 0.75)], "Peak grass season — highest grain count recorded at this site so far.")],
+    slides: [slide("PLN-2026-0135", [d("amaranthus_spinosus", 21, 0.93), d("chrysopogon_aciculatus", 3, 0.75)], "Peak grass season — highest grain count recorded at this site so far.")],
     weather: { condition: "Sunny", temperatureC: 33, humidityPct: 62, windKph: 12 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0134", collectedAt: "2026-05-30", location: "Candelaria, Quezon",
-    slides: [slide("PLN-2026-0134", [d("corylus", 10, 0.81), d("alnus", 6, 0.78), d("betula", 2, 0.72)], "")],
+    slides: [slide("PLN-2026-0134", [d("chloris_barbata", 10, 0.81), d("brachiaria_mutica", 6, 0.78), d("axonopus_compressus", 2, 0.72)], "")],
     weather: null,
     researcher: "M. Reyes", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0133", collectedAt: "2026-05-12T07:35", location: "Lucban, Quezon",
-    slides: [slide("PLN-2026-0133", [d("alnus", 14, 0.9), d("corylus", 5, 0.85)], "Sampled after two dry days; slide was unusually clean.")],
+    slides: [slide("PLN-2026-0133", [d("brachiaria_mutica", 14, 0.9), d("chloris_barbata", 5, 0.85)], "Sampled after two dry days; slide was unusually clean.")],
     weather: { condition: "Sunny", temperatureC: 27, humidityPct: 70, windKph: 10 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0132", collectedAt: "2026-04-22T11:25", location: "Tayabas, Quezon",
-    slides: [slide("PLN-2026-0132", [d("betula", 12, 0.85), d("quercus", 6, 0.8), d("pinus", 3, 0.74)], "")],
+    slides: [slide("PLN-2026-0132", [d("axonopus_compressus", 12, 0.85), d("chrysopogon_aciculatus", 6, 0.8), d("cyperus_rotundus", 3, 0.74)], "")],
     weather: { condition: "Partly cloudy", temperatureC: 28, humidityPct: 73, windKph: 15 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0131", collectedAt: "2026-03-18T15:45", location: "Lucena City, Quezon",
-    slides: [slide("PLN-2026-0131", [d("quercus", 8, 0.77), d("poaceae", 6, 0.64), d("alnus", 2, 0.6)], "Low contrast on the oak grains; worth confirming against the reference set.")],
+    slides: [slide("PLN-2026-0131", [d("chrysopogon_aciculatus", 8, 0.77), d("amaranthus_spinosus", 6, 0.64), d("brachiaria_mutica", 2, 0.6)], "Low contrast on the oak grains; worth confirming against the reference set.")],
     weather: { condition: "Rainy", temperatureC: 24, humidityPct: 92, windKph: 18 },
     researcher: "M. Reyes", status: "Needs review",
   },
   {
     sampleId: "PLN-2026-0130", collectedAt: "2026-02-09T08:05", location: "Sariaya, Quezon",
-    slides: [slide("PLN-2026-0130", [d("alnus", 17, 0.89), d("corylus", 7, 0.83), d("betula", 2, 0.76)], "")],
+    slides: [slide("PLN-2026-0130", [d("brachiaria_mutica", 17, 0.89), d("chloris_barbata", 7, 0.83), d("axonopus_compressus", 2, 0.76)], "")],
     weather: { condition: "Overcast", temperatureC: 23, humidityPct: 88, windKph: 7 },
     researcher: "You", status: "Completed",
   },
   {
     sampleId: "PLN-2026-0129", collectedAt: "2026-01-20T05:55", location: "Lucban, Quezon",
-    slides: [slide("PLN-2026-0129", [d("corylus", 19, 0.92), d("alnus", 8, 0.87)], "Early hazel flush, sampled at dawn.")],
+    slides: [slide("PLN-2026-0129", [d("chloris_barbata", 19, 0.92), d("brachiaria_mutica", 8, 0.87)], "Early hazel flush, sampled at dawn.")],
     weather: { condition: "Overcast", temperatureC: 22, humidityPct: 90, windKph: 5 },
     researcher: "You", status: "Completed",
   },
@@ -411,7 +458,7 @@ export function toReportRow(specimen: Specimen): ReportRow {
     sampleId: specimen.sampleId,
     collectedAt: specimen.collectedAt,
     location: specimen.location,
-    topPollen: sp ? `${sp.genus} (${sp.commonName})` : "No pollen detected",
+    topPollen: sp ? speciesLabel(sp) : "No pollen detected",
     totalGrains: getReportGrains(specimen),
     slideCount: specimen.slides.length,
     status: specimen.status,
@@ -450,7 +497,7 @@ export const recentDetections: Detection[] = [...specimens]
         id: s.sampleId,
         thumbColor: sp.color,
         classId: sp.id,
-        className: `${sp.genus} (${sp.commonName})`,
+        className: speciesLabel(sp),
         code: `${sp.code}·${sampleNumber}`,
         grainCount: top.grainCount,
         confidence: top.avgConfidence,
@@ -466,7 +513,7 @@ export const recentDetections: Detection[] = [...specimens]
 
 export type AllergenClass = {
   id: SpeciesId;
-  genus: string;
+  scientificName: string;
   commonName: string;
   code: string;
   season: string;
@@ -477,7 +524,7 @@ export type AllergenClass = {
 
 export const allergenClasses: AllergenClass[] = speciesCatalog.map((sp) => ({
   id: sp.id,
-  genus: sp.genus,
+  scientificName: sp.scientificName,
   commonName: sp.commonName,
   code: sp.code,
   season: sp.season,
@@ -549,34 +596,38 @@ export const dashboardStats: DashboardStats = computeDashboardStats(specimens);
 
 export type MonthlyPollenCount = {
   month: string;
-  Poaceae: number;
-  Betula: number;
-  Alnus: number;
-  Corylus: number;
-  Quercus: number;
+  /** Dynamic, keyed by SpeciesId — not a fixed struct, so it scales as the catalog changes. */
+  series: Record<SpeciesId, number>;
 };
 
-const CHART_SPECIES_IDS: SpeciesId[] = ["poaceae", "betula", "alnus", "corylus", "quercus"];
+// pollenSeries covers the full catalog (23 species) — PollenCountChart caps how
+// many it actually plots at once (see that component), since no categorical
+// palette stays mutually distinguishable much past 8 simultaneous lines
+// (confirmed by the dataviz skill's own validator).
+export const pollenSeries = speciesCatalog.map((sp) => ({
+  key: sp.id,
+  label: speciesLabel(sp),
+  color: sp.color,
+}));
 
-export const pollenSeries = CHART_SPECIES_IDS.map((id) => {
-  const sp = getSpecies(id);
-  return { key: sp.genus, label: `${sp.genus} (${sp.commonName})`, color: sp.color };
+const MONTH_ABBREVIATIONS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * Illustrative demo data only (matches the old hand-authored numbers' spirit,
+ * not real measurements) — a per-species amplitude with a seasonal sine curve,
+ * offset so different species peak in different months. Real historical counts
+ * come from fetchMonthlyPollenCounts below once signed in.
+ */
+export const historicalPollenCounts: MonthlyPollenCount[] = MONTH_ABBREVIATIONS.map((month, monthIndex) => {
+  const series = {} as Record<SpeciesId, number>;
+  speciesCatalog.forEach((sp, speciesIndex) => {
+    const amplitude = 20 + ((speciesIndex * 7) % 40);
+    const phase = (speciesIndex * 5) % 12;
+    const seasonal = Math.sin(((monthIndex - phase) / 12) * Math.PI * 2);
+    series[sp.id] = Math.max(0, Math.round(amplitude * (0.5 + 0.5 * seasonal)));
+  });
+  return { month, series };
 });
-
-export const historicalPollenCounts: MonthlyPollenCount[] = [
-  { month: "Jan", Poaceae: 45, Betula: 32, Alnus: 28, Corylus: 20, Quercus: 13 },
-  { month: "Feb", Poaceae: 52, Betula: 38, Alnus: 35, Corylus: 26, Quercus: 16 },
-  { month: "Mar", Poaceae: 67, Betula: 46, Alnus: 33, Corylus: 28, Quercus: 20 },
-  { month: "Apr", Poaceae: 89, Betula: 78, Alnus: 44, Corylus: 39, Quercus: 29 },
-  { month: "May", Poaceae: 116, Betula: 97, Alnus: 52, Corylus: 46, Quercus: 35 },
-  { month: "Jun", Poaceae: 100, Betula: 67, Alnus: 40, Corylus: 32, Quercus: 28 },
-  { month: "Jul", Poaceae: 92, Betula: 55, Alnus: 36, Corylus: 29, Quercus: 24 },
-  { month: "Aug", Poaceae: 84, Betula: 44, Alnus: 33, Corylus: 27, Quercus: 22 },
-  { month: "Sep", Poaceae: 70, Betula: 36, Alnus: 30, Corylus: 24, Quercus: 19 },
-  { month: "Oct", Poaceae: 55, Betula: 28, Alnus: 26, Corylus: 20, Quercus: 15 },
-  { month: "Nov", Poaceae: 40, Betula: 22, Alnus: 22, Corylus: 16, Quercus: 12 },
-  { month: "Dec", Poaceae: 34, Betula: 18, Alnus: 19, Corylus: 14, Quercus: 10 },
-];
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 

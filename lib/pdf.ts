@@ -23,6 +23,7 @@ import {
   getTopDetection,
   getTotalGrains,
   getWeightedAvgConfidence,
+  speciesLabel,
   type DetectedGrain,
   type Specimen,
   type SpecimenDetection,
@@ -45,9 +46,9 @@ const ACCENT = "#d9704a";
 type Cursor = { doc: jsPDF; y: number };
 
 /**
- * Species colours are design tokens (`var(--grass)`), which jsPDF cannot read.
- * Resolve them against the document once per export; anything already literal
- * passes straight through.
+ * Some design tokens are CSS vars (e.g. `var(--anther)`), which jsPDF cannot
+ * read. Resolve them against the document once per export; anything already
+ * literal (all current species colours) passes straight through.
  */
 function resolveColor(value: string): string {
   const token = value.match(/^var\((--[\w-]+)\)$/);
@@ -289,7 +290,7 @@ function detectionTable(cursor: Cursor, detections: SpecimenDetection[]) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9.5);
     doc.setTextColor(INK);
-    doc.text(`${species.genus} (${species.commonName})`, col.species, cursor.y);
+    doc.text(speciesLabel(species), col.species, cursor.y);
 
     doc.setFontSize(7.5);
     doc.setTextColor(MUTED);
@@ -535,7 +536,7 @@ export async function downloadReportPdf(
     const species = getSpecies(top.speciesId);
     paragraph(
       cursor,
-      `Most abundant: ${species.genus} (${species.commonName}) — ${top.grainCount} of ${totalGrains} grains, ${species.riskLevel.toLowerCase()} allergenic risk.`,
+      `Most abundant: ${speciesLabel(species)} — ${top.grainCount} of ${totalGrains} grains, ${species.riskLevel.toLowerCase()} allergenic risk.`,
     );
   }
   detectionTable(cursor, aggregated);
@@ -733,7 +734,7 @@ function placesTable(cursor: Cursor, places: PlaceStats[]) {
       const species = getSpecies(top.speciesId);
       doc.setFillColor(speciesColor(top.speciesId));
       doc.circle(cols.top + 1, cursor.y - 1.2, 1.2, "F");
-      doc.text(`${species.genus} (${species.commonName})`, cols.top + 5, cursor.y);
+      doc.text(speciesLabel(species), cols.top + 5, cursor.y);
     } else {
       doc.setTextColor(MUTED);
       doc.text("None detected", cols.top + 5, cursor.y);
@@ -884,7 +885,7 @@ export async function downloadLocationReportPdf(input: LocationReportInput): Pro
     const species = getSpecies(top.speciesId);
     paragraph(
       cursor,
-      `Most abundant: ${species.genus} (${species.commonName}) — ${top.grainCount} of ${totalGrains} grains, ${species.riskLevel.toLowerCase()} allergenic risk.`,
+      `Most abundant: ${speciesLabel(species)} — ${top.grainCount} of ${totalGrains} grains, ${species.riskLevel.toLowerCase()} allergenic risk.`,
     );
   }
   detectionTable(cursor, detections);

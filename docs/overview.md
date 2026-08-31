@@ -220,10 +220,13 @@ touching a component — only the source of the predictions changes.
 Combining slides is weighted by grain count, not by slide, so a report's average
 confidence reflects grains rather than how the batch happened to be split.
 
-Eight species ship in `speciesCatalog` — Poaceae, Betula, Alnus, Corylus,
-Quercus, Ambrosia, Pinus, Artemisia — each with a genus, common name, code,
-season, risk level and a colour used consistently across charts, badges and the
-map.
+23 species ship in `speciesCatalog` — the real UPLB taxonomic scope (Amaranthus
+spinosus, Axonopus compressus, ... Mangifera indica; full list in the type
+itself), replacing an earlier 8-species European/temperate placeholder catalog
+that was never cross-checked against the actual dataset. Each entry has a
+scientific name, common name, code, season, risk level and a colour used
+consistently across charts, badges and the map — common name/season/risk level
+are still unset "TBD" placeholders pending real per-species data.
 
 Fourteen seed reports ship with the app, all from Quezon province. They are
 treated as read-only history and always appear alongside anything saved locally.
