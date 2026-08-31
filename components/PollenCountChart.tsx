@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   LineChart,
   Line,
@@ -12,7 +12,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { MonthlyPollenCount } from "@/lib/data";
-import { pollenSeries } from "@/lib/data";
+import { fetchMonthlyPollenCounts, pollenSeries } from "@/lib/data";
+import { useSettings } from "@/lib/settings";
 
 const RANGES = [
   { label: "6 months", value: 6 },
@@ -46,8 +47,32 @@ function CustomTooltip({
   );
 }
 
-export default function PollenCountChart({ data }: { data: MonthlyPollenCount[] }) {
+/**
+ * Starts from the server-rendered seed months, then swaps in the real
+ * per-species counts once fetched — mirrors DashboardStats's `initial` +
+ * background-refresh pattern. Keeps showing the seed if the fetch fails
+ * (e.g. signed out, backend unreachable) rather than clearing the chart.
+ */
+export default function PollenCountChart({ initial }: { initial: MonthlyPollenCount[] }) {
   const [range, setRange] = useState<number>(12);
+  const [data, setData] = useState<MonthlyPollenCount[]>(initial);
+  const { accessToken } = useSettings();
+
+  useEffect(() => {
+    if (!accessToken) return;
+    let cancelled = false;
+    fetchMonthlyPollenCounts(accessToken)
+      .then((counts) => {
+        if (!cancelled) setData(counts);
+      })
+      .catch(() => {
+        // Keep showing the seed data — a failed refresh shouldn't blank the chart.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken]);
+
   const visible = data.slice(-range);
 
   return (

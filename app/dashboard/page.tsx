@@ -53,7 +53,7 @@ export default function DashboardPage() {
 
         {/* Historical pollen counts */}
         <div className="mb-6">
-          <PollenCountChart data={historicalPollenCounts} />
+          <PollenCountChart initial={historicalPollenCounts} />
         </div>
 
         {/* Saved reports — same live list as the Report page. */}

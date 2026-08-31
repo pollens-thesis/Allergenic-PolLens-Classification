@@ -577,3 +577,22 @@ export const historicalPollenCounts: MonthlyPollenCount[] = [
   { month: "Nov", Poaceae: 40, Betula: 22, Alnus: 22, Corylus: 16, Quercus: 12 },
   { month: "Dec", Poaceae: 34, Betula: 18, Alnus: 19, Corylus: 14, Quercus: 10 },
 ];
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+
+/**
+ * Real trailing-12-month counts from the backend
+ * (GET /api/v1/reports/monthly-counts/), shaped identically to
+ * `historicalPollenCounts` above so a caller can swap the seed for this once
+ * signed in. Throws on a non-2xx response; callers should keep the seed data
+ * on display rather than let a failed refresh clear the chart.
+ */
+export async function fetchMonthlyPollenCounts(accessToken: string): Promise<MonthlyPollenCount[]> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/reports/monthly-counts/`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    throw new Error("Failed to fetch monthly pollen counts.");
+  }
+  return (await res.json()) as MonthlyPollenCount[];
+}
