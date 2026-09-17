@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   LayoutGrid,
   ScanLine,
@@ -32,11 +33,11 @@ const SETTINGS_HREF = "/settings";
 function Wordmark() {
   return (
     <>
-      <span className="flex h-8 w-8 items-center justify-center rounded-full border border-pollen/40">
-        <span className="h-2 w-2 rounded-full bg-pollen" />
+      <span className="flex h-8 w-8 items-center justify-center rounded-full border border-accent/30">
+        <span className="h-2 w-2 rounded-full bg-accent" />
       </span>
       <span
-        className="text-sm tracking-[0.25em] text-parchment/90 uppercase"
+        className="text-sm tracking-[0.18em] text-text uppercase"
         style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
       >
         PolLens
@@ -58,6 +59,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const settings = useSettings();
   const [menuOpen, setMenuOpen] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
 
   // The name is the institution read off the signed-in address, so the second
   // line says where the card goes rather than repeating it.
@@ -93,13 +95,13 @@ export default function Sidebar() {
             // Choosing a destination is the end of navigating, so the drawer
             // goes with the click rather than waiting on the route to change.
             onClick={() => setMenuOpen(false)}
-            className={`focus-ring flex items-center gap-3 rounded-md px-3 py-2.5 text-[13.5px] font-medium transition ${
+            className={`focus-ring flex items-center gap-3 rounded-md border-l-2 py-2.5 pr-3 text-[13.5px] font-medium transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
               active
-                ? "bg-parchment/10 text-parchment"
-                : "text-sage hover:bg-parchment/5 hover:text-parchment/90"
+                ? "border-accent bg-accent-muted pl-[10px] text-text"
+                : "border-transparent pl-3 text-text-muted hover:bg-surface-sunken hover:text-text"
             }`}
           >
-            <ItemIcon size={16} strokeWidth={1.75} className={active ? "text-pollen" : ""} />
+            <ItemIcon size={16} strokeWidth={1.75} className={active ? "text-accent" : ""} />
             {item.label}
           </Link>
         );
@@ -114,25 +116,25 @@ export default function Sidebar() {
       aria-label="Account and settings"
       aria-current={pathname === SETTINGS_HREF ? "page" : undefined}
       onClick={() => setMenuOpen(false)}
-      className={`focus-ring group flex items-center gap-2.5 rounded-md px-2 py-2 transition ${
-        pathname === SETTINGS_HREF ? "bg-parchment/10" : "hover:bg-parchment/5"
+      className={`focus-ring group flex items-center gap-2.5 rounded-md px-2 py-2 transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
+        pathname === SETTINGS_HREF ? "bg-accent-muted" : "hover:bg-surface-sunken"
       }`}
     >
       <span
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-anther/25 text-[13px] font-medium text-parchment"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-muted text-[13px] font-medium text-accent"
         style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
       >
         {getInitials(name)}
       </span>
       <div className="min-w-0 flex-1 leading-tight">
-        <div className="truncate text-[13px] text-parchment/90">{name}</div>
-        <div className="truncate text-[12px] text-sage">Account &amp; settings</div>
+        <div className="truncate text-[13px] text-text">{name}</div>
+        <div className="truncate text-[12px] text-text-muted">Account &amp; settings</div>
       </div>
       <Settings
         size={15}
         strokeWidth={1.75}
-        className={`shrink-0 transition ${
-          pathname === SETTINGS_HREF ? "text-pollen" : "text-sage/85 group-hover:text-parchment/90"
+        className={`shrink-0 transition-colors ${
+          pathname === SETTINGS_HREF ? "text-accent" : "text-text-faint group-hover:text-text-muted"
         }`}
       />
     </Link>
@@ -146,7 +148,7 @@ export default function Sidebar() {
        * travel. The spacer underneath takes that row, so the page begins below
        * the bar instead of behind it.
        */}
-      <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between gap-3 border-b border-parchment/10 bg-field px-4 lg:hidden">
+      <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between gap-3 border-b border-border bg-surface px-4 lg:hidden">
         <Link href="/dashboard" className="focus-ring flex items-center gap-2.5 rounded">
           <Wordmark />
         </Link>
@@ -155,55 +157,75 @@ export default function Sidebar() {
           onClick={() => setMenuOpen(true)}
           aria-label="Open navigation"
           aria-expanded={menuOpen}
-          className="focus-ring flex h-10 w-10 items-center justify-center rounded-md text-parchment/90 transition hover:bg-parchment/10"
+          className="focus-ring flex h-10 w-10 items-center justify-center rounded-md text-text transition-colors duration-[var(--duration-fast)] hover:bg-surface-sunken active:scale-[0.97]"
         >
           <Menu size={20} strokeWidth={1.75} />
         </button>
       </header>
       <div className="h-14 lg:hidden" aria-hidden />
 
-      {menuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button
-            type="button"
-            aria-label="Close navigation"
-            onClick={() => setMenuOpen(false)}
-            className="absolute inset-0 h-full w-full bg-field/60"
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Navigation"
-            className="absolute inset-y-0 right-0 flex w-[17rem] max-w-[85vw] flex-col justify-between bg-field px-5 py-5 shadow-xl"
-          >
-            <div className="min-h-0 overflow-y-auto">
-              <div className="mb-6 flex items-center justify-between gap-3">
-                <span className="flex items-center gap-2.5">
-                  <Wordmark />
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setMenuOpen(false)}
-                  aria-label="Close navigation"
-                  className="focus-ring flex h-10 w-10 items-center justify-center rounded-md text-parchment/90 transition hover:bg-parchment/10"
-                >
-                  <X size={18} strokeWidth={1.75} />
-                </button>
+      <AnimatePresence>
+        {menuOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <motion.button
+              type="button"
+              aria-label="Close navigation"
+              onClick={() => setMenuOpen(false)}
+              className="absolute inset-0 h-full w-full bg-black/30 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.18, ease: [0.16, 1, 0.3, 1] }}
+            />
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Navigation"
+              drag={prefersReducedMotion ? false : "x"}
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={{ left: 0, right: 0.15 }}
+              onDragEnd={(_, info) => {
+                if (info.offset.x > 80 || info.velocity.x > 400) setMenuOpen(false);
+              }}
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={
+                prefersReducedMotion
+                  ? { duration: 0 }
+                  : { type: "spring", stiffness: 400, damping: 40 }
+              }
+              className="absolute inset-y-0 right-0 flex w-[17rem] max-w-[85vw] flex-col justify-between border-l border-border bg-surface px-5 py-5 shadow-xl"
+            >
+              <div className="min-h-0 overflow-y-auto">
+                <div className="mb-6 flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2.5">
+                    <Wordmark />
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setMenuOpen(false)}
+                    aria-label="Close navigation"
+                    className="focus-ring flex h-10 w-10 items-center justify-center rounded-md text-text transition-colors duration-[var(--duration-fast)] hover:bg-surface-sunken active:scale-[0.97]"
+                  >
+                    <X size={18} strokeWidth={1.75} />
+                  </button>
+                </div>
+                {navLinks}
               </div>
-              {navLinks}
-            </div>
-            <div className="shrink-0 border-t border-parchment/10 pt-4">{accountCard}</div>
+              <div className="shrink-0 border-t border-border pt-4">{accountCard}</div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/*
-       * The rail stretches the full page height so the dark panel never stops
+       * The rail stretches the full page height so the panel never stops
        * mid-page; the content inside is what is pinned to the viewport and
        * never scrolls, so nav and the account card stay reachable however long
        * a page gets.
        */}
-      <aside className="hidden bg-field lg:block">
+      <aside className="hidden border-r border-border bg-surface lg:block">
         <div className="sticky top-0 flex h-screen flex-col justify-between overflow-hidden px-5 py-6">
           <div className="min-h-0">
             <Link href="/dashboard" className="mb-9 flex items-center gap-2.5 px-1">
@@ -211,7 +233,7 @@ export default function Sidebar() {
             </Link>
             {navLinks}
           </div>
-          <div className="shrink-0 border-t border-parchment/10 pt-4">{accountCard}</div>
+          <div className="shrink-0 border-t border-border pt-4">{accountCard}</div>
         </div>
       </aside>
     </>

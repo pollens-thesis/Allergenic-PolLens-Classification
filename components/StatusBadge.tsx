@@ -1,15 +1,23 @@
+import { cva } from "class-variance-authority";
 import type { ReportStatus } from "@/lib/data";
 
-const STYLES: Record<ReportStatus, string> = {
-  Completed: "bg-leaf-ink/10 text-leaf-ink",
-  Processing: "bg-anther/10 text-anther-ink",
-  "Needs review": "bg-ember-ink/10 text-ember-ink",
-};
+const badgeVariants = cva(
+  "inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium",
+  {
+    variants: {
+      status: {
+        Completed: "bg-success-bg text-success",
+        Processing: "bg-processing-bg text-processing",
+        "Needs review": "bg-danger-bg text-danger",
+      } as Record<ReportStatus, string>,
+    },
+  },
+);
 
 export default function StatusBadge({ status }: { status: ReportStatus }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium ${STYLES[status]}`}
+      className={badgeVariants({ status })}
       style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
     >
       {status}

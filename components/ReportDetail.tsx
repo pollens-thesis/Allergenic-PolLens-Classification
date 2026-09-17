@@ -34,11 +34,12 @@ import { getReport, getReportImageBlobs, getReportImageUrls } from "@/lib/store"
 import { downloadReportPdf } from "@/lib/pdf";
 import StatusBadge from "@/components/StatusBadge";
 import SpecimenImageViewer from "@/components/SpecimenImageViewer";
+import { Button } from "@/components/Button";
 
 function riskBadgeClass(level: "High" | "Moderate" | "Low") {
-  if (level === "High") return "bg-ember-ink/10 text-ember-ink";
-  if (level === "Moderate") return "bg-anther/10 text-anther-ink";
-  return "bg-leaf-ink/10 text-leaf-ink";
+  if (level === "High") return "bg-danger-bg text-danger";
+  if (level === "Moderate") return "bg-processing-bg text-processing";
+  return "bg-success-bg text-success";
 }
 
 /**
@@ -73,15 +74,15 @@ function DetectionRow({
         />
         <div className="min-w-0 text-left">
           <span
-            className="mr-2 text-[11.5px] tracking-widest text-ink/65 uppercase"
+            className="mr-2 text-[11.5px] tracking-widest text-text-faint uppercase"
             style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
           >
             {species.code}
           </span>
-          <span className="text-[14px] text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+          <span className="text-[14px] text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
             {species.scientificName}
           </span>
-          <span className="ml-1.5 text-[13px] text-ink/70">{species.commonName}</span>
+          <span className="ml-1.5 text-[13px] text-text-muted">{species.commonName}</span>
         </div>
         <span
           className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap lg:inline-flex ${riskBadgeClass(species.riskLevel)}`}
@@ -94,22 +95,22 @@ function DetectionRow({
       <div className="flex shrink-0 items-center gap-4 pl-5 sm:pl-0">
         <div className="text-left sm:text-right">
           <span
-            className="text-[14px] text-ink"
+            className="text-[14px] text-text"
             style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
           >
             {detection.grainCount}
           </span>
-          <span className="ml-1 text-[11.5px] text-ink/65 sm:ml-0 sm:block">
+          <span className="ml-1 text-[11.5px] text-text-faint sm:ml-0 sm:block">
             {detection.grainCount === 1 ? "grain" : "grains"}
           </span>
         </div>
         <div className="w-24 flex-1 sm:flex-none">
-          <div className="mb-1 flex items-center justify-between text-[11.5px] text-ink/70">
+          <div className="mb-1 flex items-center justify-between text-[11.5px] text-text-muted">
             <span>conf.</span>
             <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{confidencePct}%</span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-panel-line">
-            <div className="h-full rounded-full bg-anther" style={{ width: `${confidencePct}%` }} />
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-sunken">
+            <div className="h-full rounded-full bg-accent" style={{ width: `${confidencePct}%` }} />
           </div>
         </div>
       </div>
@@ -117,7 +118,7 @@ function DetectionRow({
   );
 
   if (!onSelect) {
-    return <li className="rounded-md border border-panel-line bg-white px-3 py-2.5">{body}</li>;
+    return <li className="rounded-md border border-border bg-surface px-3 py-2.5">{body}</li>;
   }
 
   return (
@@ -126,10 +127,10 @@ function DetectionRow({
         type="button"
         onClick={onSelect}
         aria-pressed={selected}
-        className={`focus-ring block w-full rounded-md border px-3 py-2.5 transition ${
+        className={`focus-ring block w-full rounded-md border px-3 py-2.5 transition-colors duration-[var(--duration-fast)] ${
           selected
-            ? "border-ink/25 bg-white shadow-[inset_3px_0_0_0_var(--anther)]"
-            : "border-panel-line bg-white hover:border-ink/20"
+            ? "border-border-strong bg-surface shadow-[inset_3px_0_0_0_var(--accent)]"
+            : "border-border bg-surface hover:border-border-strong"
         }`}
       >
         {body}
@@ -150,12 +151,12 @@ function MetaItem({
 }) {
   return (
     <div className="flex items-start gap-2.5">
-      <Icon size={15} strokeWidth={1.75} className="mt-0.5 shrink-0 text-ink/55" />
+      <Icon size={15} strokeWidth={1.75} className="mt-0.5 shrink-0 text-text-faint" />
       <div className="min-w-0">
-        <div className="text-[12px] tracking-widest text-ink/65 uppercase" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+        <div className="text-[12px] tracking-widest text-text-faint uppercase" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
           {label}
         </div>
-        <div className="text-[13px] text-ink/85">{value}</div>
+        <div className="text-[13px] text-text">{value}</div>
       </div>
     </div>
   );
@@ -164,10 +165,10 @@ function MetaItem({
 function SummaryTile({ value, label }: { value: string | number; label: string }) {
   return (
     <div>
-      <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+      <div className="text-[17px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
         {value}
       </div>
-      <div className="text-[12px] text-ink/65">{label}</div>
+      <div className="text-[12px] text-text-muted">{label}</div>
     </div>
   );
 }
@@ -215,7 +216,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
 
   if (report === undefined) {
     return (
-      <div className="flex items-center justify-center gap-2 rounded-lg border border-panel-line bg-white/60 px-6 py-16 text-[13px] text-ink/65">
+      <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-6 py-16 text-[13px] text-text-muted">
         <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
         Loading report…
       </div>
@@ -224,15 +225,15 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
 
   if (report === null) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-lg border border-panel-line bg-white/60 px-6 py-16 text-center">
-        <FileText size={22} strokeWidth={1.5} className="text-ink/55" />
-        <p className="text-[13.5px] text-ink/70">
+      <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-16 text-center">
+        <FileText size={22} strokeWidth={1.5} className="text-text-faint" />
+        <p className="text-[13.5px] text-text-muted">
           No report found for{" "}
           <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{sampleId}</span>.
         </p>
         <Link
           href="/reports"
-          className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-panel-line bg-white px-3 py-1.5 text-[13px] text-ink/70 transition hover:text-ink"
+          className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 text-[13px] text-text-muted transition-colors hover:text-text"
         >
           <ArrowLeft size={14} strokeWidth={1.75} />
           Back to Reports
@@ -250,17 +251,17 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="rounded-lg border border-panel-line bg-white/60 p-5">
+      <div className="rounded-lg border border-border bg-surface p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div
-              className="text-[12px] tracking-widest text-ink/65 uppercase"
+              className="text-[12px] tracking-widest text-text-faint uppercase"
               style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
             >
               {report.sampleId}
             </div>
             <h2
-              className="mt-1 text-2xl text-ink"
+              className="mt-1 text-2xl text-text"
               style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
             >
               Full report
@@ -270,12 +271,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleDownloadPdf}
-            disabled={downloading}
-            className="focus-ring flex shrink-0 items-center justify-center gap-2 rounded-md bg-ink px-4 py-2.5 text-[13px] font-medium text-parchment transition hover:opacity-90 disabled:opacity-60"
-          >
+          <Button type="button" onClick={handleDownloadPdf} disabled={downloading} className="shrink-0">
             {downloading ? (
               <>
                 <Loader2 size={15} strokeWidth={1.75} className="animate-spin" />
@@ -287,16 +283,16 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                 Download PDF
               </>
             )}
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Everything the researcher entered on the Analyze screen. */}
-      <div className="rounded-lg border border-panel-line bg-white/60 p-5">
-        <h3 className="text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+      <div className="rounded-lg border border-border bg-surface p-5">
+        <h3 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
           Collection details
         </h3>
-        <p className="mt-0.5 mb-4 text-[13px] text-ink/70">
+        <p className="mt-0.5 mb-4 text-[13px] text-text-muted">
           Recorded with the batch when it was analyzed.
         </p>
 
@@ -318,7 +314,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
           <MetaItem icon={User} label="Researcher" value={report.researcher} />
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 border-t border-panel-line pt-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 gap-4 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetaItem
             icon={CloudSun}
             label="Weather"
@@ -343,12 +339,12 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
       </div>
 
       {/* Combined results */}
-      <div className="rounded-lg border border-panel-line bg-white/60 p-5">
-        <h3 className="mb-4 text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+      <div className="rounded-lg border border-border bg-surface p-5">
+        <h3 className="mb-4 text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
           Results
         </h3>
 
-        <div className="mb-4 grid grid-cols-2 gap-3 rounded-md bg-panel/60 px-3 py-3 text-center sm:grid-cols-4">
+        <div className="mb-4 grid grid-cols-2 gap-3 rounded-md bg-surface-sunken px-3 py-3 text-center sm:grid-cols-4">
           <SummaryTile value={totalGrains} label="Total grains" />
           <SummaryTile value={aggregated.length} label="Pollen types" />
           <SummaryTile value={`${Math.round(overallConfidence * 100)}%`} label="Avg. confidence" />
@@ -359,7 +355,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
         </div>
 
         {aggregated.length === 0 ? (
-          <p className="rounded-md border border-panel-line bg-white px-3 py-4 text-center text-[13px] text-ink/70">
+          <p className="rounded-md border border-border bg-surface px-3 py-4 text-center text-[13px] text-text-muted">
             No pollen grains detected in this report.
           </p>
         ) : (
@@ -372,11 +368,11 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
       </div>
 
       {/* Per slide: its reading on the left, the boxed image on the right */}
-      <div className="rounded-lg border border-panel-line bg-white/60 p-5">
-        <h3 className="mb-1 text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+      <div className="rounded-lg border border-border bg-surface p-5">
+        <h3 className="mb-1 text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
           Specimen images
         </h3>
-        <p className="mb-4 text-[13px] text-ink/70">
+        <p className="mb-4 text-[13px] text-text-muted">
           {report.slides.length === 1
             ? "One slide in this report."
             : `${report.slides.length} slides in this report, each analyzed separately.`}{" "}
@@ -391,16 +387,16 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
               setHighlighted((current) => ({ ...current, [slide.id]: speciesId }));
 
             return (
-              <div key={slide.id} className="rounded-lg border border-panel-line bg-white p-4">
+              <div key={slide.id} className="rounded-lg border border-border bg-surface p-4">
                 <div className="mb-3 flex flex-wrap items-center gap-3 text-[13px]">
                   <span
-                    className="rounded-full bg-panel px-2.5 py-1 text-[12px] text-ink/70"
+                    className="rounded-full bg-surface-sunken px-2.5 py-1 text-[12px] text-text-muted"
                     style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
                   >
                     Slide {index + 1}
                   </span>
-                  <span className="flex items-center gap-1.5 text-ink/70">
-                    <Microscope size={13} strokeWidth={1.75} className="text-ink/55" />
+                  <span className="flex items-center gap-1.5 text-text-muted">
+                    <Microscope size={13} strokeWidth={1.75} className="text-text-faint" />
                     {slideGrains} {slideGrains === 1 ? "grain" : "grains"} ·{" "}
                     {slide.detections.length}{" "}
                     {slide.detections.length === 1 ? "type" : "types"}
@@ -410,7 +406,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                 <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-5">
                   <div className="min-w-0 xl:col-span-3">
                     {slide.detections.length === 0 ? (
-                      <p className="text-[13px] text-ink/70">No pollen grains detected.</p>
+                      <p className="text-[13px] text-text-muted">No pollen grains detected.</p>
                     ) : (
                       <ul className="flex flex-col gap-2">
                         {slide.detections.map((detection) => (
@@ -432,15 +428,15 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
 
                     <div className="mt-4">
                       <div
-                        className="mb-1 text-[12px] tracking-widest text-ink/65 uppercase"
+                        className="mb-1 text-[12px] tracking-widest text-text-faint uppercase"
                         style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
                       >
                         Researcher&apos;s note
                       </div>
                       {slide.notes ? (
-                        <p className="text-[13px] whitespace-pre-wrap text-ink/80">{slide.notes}</p>
+                        <p className="text-[13px] whitespace-pre-wrap text-text">{slide.notes}</p>
                       ) : (
-                        <p className="text-[13px] text-ink/70">No note recorded.</p>
+                        <p className="text-[13px] text-text-muted">No note recorded.</p>
                       )}
                     </div>
                   </div>
@@ -462,7 +458,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
         </div>
       </div>
 
-      <p className="text-[12.5px] text-ink/65">
+      <p className="text-[12.5px] text-text-faint">
         Collected {formatCollectedAt(report.collectedAt)} · saved as{" "}
         <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{report.sampleId}</span>
       </p>

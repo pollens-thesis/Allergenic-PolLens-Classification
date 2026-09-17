@@ -30,7 +30,7 @@ export default function ReportsWorkspace() {
 
   if (reports === null) {
     return (
-      <div className="flex items-center justify-center gap-2 rounded-lg border border-panel-line bg-white/60 px-6 py-16 text-[13px] text-ink/65">
+      <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-6 py-16 text-[13px] text-text-muted">
         <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
         Loading reports…
       </div>

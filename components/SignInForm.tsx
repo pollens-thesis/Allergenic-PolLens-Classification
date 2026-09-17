@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { ChevronLeft } from "lucide-react";
+import { toast } from "sonner";
 import GoogleIcon from "@/components/GoogleIcon";
 import { exchangeGoogleCredential, GoogleSignInError } from "@/lib/auth";
 import { updateSettings } from "@/lib/settings";
@@ -59,8 +60,10 @@ export default function SignInForm() {
             router.push("/dashboard");
           })
           .catch((err: unknown) => {
-            setError(err instanceof GoogleSignInError ? err.message : "Google sign-in failed.");
+            const message = err instanceof GoogleSignInError ? err.message : "Google sign-in failed.";
+            setError(message);
             setPending(false);
+            toast.error(message);
           });
       },
     });
@@ -84,33 +87,33 @@ export default function SignInForm() {
         <button
           type="button"
           onClick={() => setChoosing(true)}
-          className="focus-ring flex w-full items-center justify-center gap-3 rounded-md border border-panel-line bg-white px-5 py-3 text-sm font-medium text-ink shadow-sm transition hover:-translate-y-[1px] hover:shadow-md active:translate-y-0"
+          className="focus-ring flex w-full items-center justify-center gap-3 rounded-md border border-border bg-surface px-5 py-3 text-sm font-medium text-text transition-transform duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:border-border-strong active:scale-[0.98]"
         >
           <GoogleIcon />
           Continue with Google
         </button>
       ) : (
-        <div className="rounded-md border border-panel-line bg-white p-4 shadow-sm">
+        <div className="rounded-md border border-border bg-surface p-4">
           <div className="mb-3 flex items-center gap-2.5">
             <GoogleIcon />
-            <span className="text-[13px] font-medium text-ink">Choose an account</span>
+            <span className="text-[13px] font-medium text-text">Choose an account</span>
           </div>
 
           {configured ? (
             <div ref={buttonSlotRef} className="flex min-h-[44px] items-center justify-center" />
           ) : (
-            <p className="text-[12.5px] text-red-600">
+            <p className="text-[12.5px] text-danger">
               Google sign-in is not configured (missing NEXT_PUBLIC_GOOGLE_CLIENT_ID).
             </p>
           )}
 
-          {pending && <p className="mt-2 text-[12.5px] text-ink/70">Signing in…</p>}
-          {error && <p className="mt-2 text-[12.5px] text-red-600">{error}</p>}
+          {pending && <p className="mt-2 text-[12.5px] text-text-muted">Signing in…</p>}
+          {error && <p className="mt-2 text-[12.5px] text-danger">{error}</p>}
 
           <button
             type="button"
             onClick={() => setChoosing(false)}
-            className="focus-ring mt-3.5 inline-flex items-center gap-1 rounded-md px-2 py-2 text-[13px] text-ink/70 transition hover:text-ink"
+            className="focus-ring mt-3.5 inline-flex items-center gap-1 rounded-md px-2 py-2 text-[13px] text-text-muted transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text active:scale-[0.98]"
           >
             <ChevronLeft size={14} strokeWidth={1.75} />
             Back

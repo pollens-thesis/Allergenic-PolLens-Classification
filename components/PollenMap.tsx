@@ -50,9 +50,10 @@ import {
 } from "@/lib/geo";
 import { downloadLocationReportPdf } from "@/lib/pdf";
 import { useMapZoom } from "./useMapZoom";
+import { Button } from "./Button";
 
 const fieldClass =
-  "focus-ring rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink";
+  "focus-ring rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text";
 
 /** Place name → a filename fragment: "Lucena City" becomes "lucena-city". */
 function slugify(name: string): string {
@@ -328,7 +329,7 @@ export default function PollenMap() {
 
   if (failed) {
     return (
-      <div className="rounded-lg border border-panel-line bg-white/60 px-6 py-16 text-center text-[13px] text-ink/70">
+      <div className="rounded-lg border border-border bg-surface px-6 py-16 text-center text-[13px] text-text-muted">
         Could not load the boundary data.
       </div>
     );
@@ -336,7 +337,7 @@ export default function PollenMap() {
 
   if (!reports || !provinces || !projection) {
     return (
-      <div className="flex items-center justify-center gap-2 rounded-lg border border-panel-line bg-white/60 px-6 py-16 text-[13px] text-ink/65">
+      <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-6 py-16 text-[13px] text-text-muted">
         <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
         Loading map…
       </div>
@@ -424,23 +425,23 @@ export default function PollenMap() {
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
       {/* Map */}
-      <div className="rounded-lg border border-panel-line bg-white/60 p-5 xl:col-span-3">
+      <div className="rounded-lg border border-border bg-surface p-5 xl:col-span-3">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             {scope.level === "province" && (
               <button
                 type="button"
                 onClick={backToCountry}
-                className="focus-ring mb-1 inline-flex items-center gap-1 rounded text-[13px] text-ink/70 transition hover:text-ink"
+                className="focus-ring mb-1 inline-flex items-center gap-1 rounded text-[13px] text-text-muted transition hover:text-text"
               >
                 <ChevronLeft size={13} strokeWidth={1.75} />
                 Philippines
               </button>
             )}
-            <h2 className="text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+            <h2 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
               {scope.level === "country" ? "Philippines" : scope.name}
             </h2>
-            <p className="mt-0.5 text-[13px] text-ink/70">
+            <p className="mt-0.5 text-[13px] text-text-muted">
               {scope.level === "country"
                 ? `Provinces shaded by grains of ${activeLabel}. Select one to see its towns.`
                 : `Towns shaded by grains of ${activeLabel}.`}
@@ -470,21 +471,21 @@ export default function PollenMap() {
             <Search
               size={14}
               strokeWidth={1.75}
-              className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink/55"
+              className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-faint"
             />
             <input
               type="text"
               value={filters.query}
               onChange={(e) => applyFilters({ query: e.target.value })}
               placeholder={`Search ${unitPlural}`}
-              className="focus-ring w-full rounded-md border border-panel-line bg-white py-1.5 pr-8 pl-8 text-[13px] text-ink placeholder:text-ink/70"
+              className="focus-ring w-full rounded-md border border-border bg-surface py-1.5 pr-8 pl-8 text-[13px] text-text placeholder:text-text-muted"
             />
             {filters.query && (
               <button
                 type="button"
                 onClick={() => applyFilters({ query: "" })}
                 aria-label="Clear search"
-                className="focus-ring absolute top-1/2 right-1.5 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-ink/70 transition hover:bg-panel hover:text-ink"
+                className="focus-ring absolute top-1/2 right-1.5 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-text-muted transition-[background-color,color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-surface-sunken hover:text-text active:scale-[0.9]"
               >
                 <X size={13} strokeWidth={1.75} />
               </button>
@@ -499,7 +500,7 @@ export default function PollenMap() {
                 onChange={(e) =>
                   applyFilters({ region: e.target.value === "all" ? "all" : Number(e.target.value) })
                 }
-                className="focus-ring rounded-md border border-panel-line bg-white px-2 py-1.5 text-[13px] text-ink"
+                className="focus-ring rounded-md border border-border bg-surface px-2 py-1.5 text-[13px] text-text"
               >
                 <option value="all">All regions</option>
                 {REGIONS.map((r) => (
@@ -512,7 +513,7 @@ export default function PollenMap() {
           )}
 
           <div
-            className="flex shrink-0 gap-0.5 rounded-md border border-panel-line bg-white p-0.5"
+            className="flex shrink-0 gap-0.5 rounded-md border border-border bg-surface p-0.5"
             role="group"
             aria-label={`Which ${unitPlural} to show`}
           >
@@ -522,8 +523,8 @@ export default function PollenMap() {
                 type="button"
                 onClick={() => applyFilters({ show: option })}
                 aria-pressed={filters.show === option}
-                className={`focus-ring rounded px-2.5 py-1 text-[13px] transition ${
-                  filters.show === option ? "bg-ink text-parchment" : "text-ink/70 hover:text-ink"
+                className={`focus-ring rounded px-2.5 py-1 text-[13px] transition active:scale-[0.97] ${
+                  filters.show === option ? "bg-text text-bg" : "text-text-muted hover:text-text"
                 }`}
               >
                 {option === "sampled" ? "Sampled" : "All"}
@@ -532,9 +533,9 @@ export default function PollenMap() {
           </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-lg bg-[#faf7f0] p-2">
+        <div className="relative overflow-hidden rounded-lg bg-surface-sunken p-2">
           {loadingTowns && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-lg bg-[#faf7f0]/80 text-[13px] text-ink/70">
+            <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-lg bg-surface-sunken/80 text-[13px] text-text-muted">
               <Loader2 size={15} strokeWidth={1.75} className="animate-spin" />
               Loading towns…
             </div>
@@ -547,7 +548,7 @@ export default function PollenMap() {
               onClick={() => zoomBy(1.6)}
               disabled={atMaxZoom}
               aria-label="Zoom in"
-              className="focus-ring flex h-10 w-10 items-center justify-center rounded-md border border-panel-line bg-white/90 text-ink/70 transition hover:text-ink disabled:opacity-35 lg:h-8 lg:w-8"
+              className="focus-ring flex h-10 w-10 items-center justify-center rounded-md border border-border bg-surface/90 text-text-muted transition-[color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text active:scale-[0.97] disabled:opacity-35 disabled:active:scale-100 lg:h-8 lg:w-8"
             >
               <ZoomIn size={15} strokeWidth={1.75} />
             </button>
@@ -556,7 +557,7 @@ export default function PollenMap() {
               onClick={() => zoomBy(1 / 1.6)}
               disabled={!zoomedIn}
               aria-label="Zoom out"
-              className="focus-ring flex h-10 w-10 items-center justify-center rounded-md border border-panel-line bg-white/90 text-ink/70 transition hover:text-ink disabled:opacity-35 lg:h-8 lg:w-8"
+              className="focus-ring flex h-10 w-10 items-center justify-center rounded-md border border-border bg-surface/90 text-text-muted transition-[color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text active:scale-[0.97] disabled:opacity-35 disabled:active:scale-100 lg:h-8 lg:w-8"
             >
               <ZoomOut size={15} strokeWidth={1.75} />
             </button>
@@ -565,7 +566,7 @@ export default function PollenMap() {
               onClick={resetZoom}
               disabled={!zoomedIn}
               aria-label="Reset zoom"
-              className="focus-ring flex h-10 w-10 items-center justify-center rounded-md border border-panel-line bg-white/90 text-ink/70 transition hover:text-ink disabled:opacity-35 lg:h-8 lg:w-8"
+              className="focus-ring flex h-10 w-10 items-center justify-center rounded-md border border-border bg-surface/90 text-text-muted transition-[color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text active:scale-[0.97] disabled:opacity-35 disabled:active:scale-100 lg:h-8 lg:w-8"
             >
               <Maximize2 size={14} strokeWidth={1.75} />
             </button>
@@ -600,7 +601,7 @@ export default function PollenMap() {
                     d={geometry.paths.get(key)}
                     fill={intensityFill(scale, sampled ? grains : null)}
                     fillOpacity={dimmed ? 0.3 : 1}
-                    stroke={isActive ? "#23261f" : "#cfc9ba"}
+                    stroke={isActive ? "var(--text)" : "var(--border-strong)"}
                     strokeOpacity={dimmed ? 0.3 : 1}
                     strokeWidth={isActive ? 2 : 0.6}
                     // Borders keep their on-screen width as the map is zoomed,
@@ -642,12 +643,12 @@ export default function PollenMap() {
                       fontFamily: "var(--font-mono)",
                       fontWeight: 500,
                       fontSize: 14 / view.k,
-                      fill: "#23261f",
+                      fill: "var(--text)",
                       fillOpacity: sampled ? 1 : 0.55,
                       // A halo drawn behind the glyphs, so a name stays
                       // readable where it crosses a hot fill or a circle.
                       paintOrder: "stroke",
-                      stroke: "#faf7f0",
+                      stroke: "var(--surface-sunken)",
                       strokeWidth: 3 / view.k,
                       strokeLinejoin: "round",
                       strokeOpacity: 0.85,
@@ -663,14 +664,14 @@ export default function PollenMap() {
 
         {/* Legend — the classes are quantiles, so it states its own numbers
             rather than leaving "more" and "fewer" to be guessed at. */}
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12.5px] text-ink/70">
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12.5px] text-text-muted">
           {scale.ranges.length > 0 && (
             <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="text-ink/65">Grains</span>
+              <span className="text-text-muted">Grains</span>
               {scale.ranges.map((range, index) => (
                 <span key={range.to} className="flex items-center gap-1">
                   <span
-                    className="h-3 w-4 rounded-sm border border-panel-line"
+                    className="h-3 w-4 rounded-sm border border-border"
                     style={{ background: scale.colors[index] }}
                   />
                   <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
@@ -681,14 +682,14 @@ export default function PollenMap() {
             </span>
           )}
           <span className="flex items-center gap-1.5">
-            <span className="h-3 w-4 rounded-sm border border-panel-line" style={{ background: ZERO_FILL }} />
+            <span className="h-3 w-4 rounded-sm border border-border" style={{ background: ZERO_FILL }} />
             None found
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-3 w-4 rounded-sm border border-panel-line" style={{ background: UNSAMPLED_FILL }} />
+            <span className="h-3 w-4 rounded-sm border border-border" style={{ background: UNSAMPLED_FILL }} />
             Not sampled
           </span>
-          <span className="text-ink/70">
+          <span className="text-text-muted">
             {zoomedIn
               ? `Zoomed ${view.k.toFixed(1)}× — drag to pan`
               : "Scroll or use the controls to zoom"}
@@ -696,7 +697,7 @@ export default function PollenMap() {
         </div>
 
         {unmapped.length > 0 && (
-          <p className="mt-2 text-[12.5px] text-ink/65">
+          <p className="mt-2 text-[12.5px] text-text-muted">
             Not shown on this map: {unmapped.map((p) => p.label).join(", ")} — no boundary matched
             that name.
           </p>
@@ -704,19 +705,19 @@ export default function PollenMap() {
       </div>
 
       {/* Selected place / ranking */}
-      <div className="rounded-lg border border-panel-line bg-white/60 p-5 xl:col-span-2">
+      <div className="rounded-lg border border-border bg-surface p-5 xl:col-span-2">
         {selectedPlace ? (
           <div>
             <div className="mb-4 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div
-                  className="text-[12px] tracking-widest text-ink/65 uppercase"
+                  className="text-[12px] tracking-widest text-text-muted uppercase"
                   style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
                 >
                   Selected {unitSingular}
                 </div>
                 <h2
-                  className="truncate text-xl text-ink"
+                  className="truncate text-xl text-text"
                   style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
                 >
                   {selectedPlace.label}
@@ -726,43 +727,43 @@ export default function PollenMap() {
                 type="button"
                 onClick={() => setSelected(null)}
                 aria-label="Clear selection"
-                className="focus-ring flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink/70 transition hover:bg-panel hover:text-ink"
+                className="focus-ring flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-text-muted transition-[background-color,color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-surface-sunken hover:text-text active:scale-[0.9]"
               >
                 <X size={14} strokeWidth={1.75} />
               </button>
             </div>
 
-            <div className="mb-4 grid grid-cols-3 gap-3 rounded-md bg-panel/60 px-3 py-3 text-center">
+            <div className="mb-4 grid grid-cols-3 gap-3 rounded-md bg-surface-sunken px-3 py-3 text-center">
               <div>
-                <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                <div className="text-[17px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                   {selectedPlace.totalGrains}
                 </div>
-                <div className="text-[12px] text-ink/65">Grains</div>
+                <div className="text-[12px] text-text-muted">Grains</div>
               </div>
               <div>
-                <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                <div className="text-[17px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                   {selectedPlace.reportCount}
                 </div>
-                <div className="text-[12px] text-ink/65">
+                <div className="text-[12px] text-text-muted">
                   {selectedPlace.reportCount === 1 ? "Report" : "Reports"}
                 </div>
               </div>
               <div>
-                <div className="text-[17px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                <div className="text-[17px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                   {Math.round(getWeightedAvgConfidence(selectedPlace.detections) * 100)}%
                 </div>
-                <div className="text-[12px] text-ink/65">Avg. conf.</div>
+                <div className="text-[12px] text-text-muted">Avg. conf.</div>
               </div>
             </div>
 
             <h3
-              className="mb-2 text-[12px] tracking-[0.2em] text-ink/65 uppercase"
+              className="mb-2 text-[12px] tracking-[0.2em] text-text-muted uppercase"
               style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
             >
               Most pollen detected here
             </h3>
             {selectedPlace.detections.length === 0 ? (
-              <p className="rounded-md border border-panel-line bg-white px-3 py-4 text-center text-[13px] text-ink/70">
+              <p className="rounded-md border border-border bg-surface px-3 py-4 text-center text-[13px] text-text-muted">
                 No {activeLabel} recorded here.
               </p>
             ) : (
@@ -773,7 +774,7 @@ export default function PollenMap() {
                     ? detection.grainCount / selectedPlace.totalGrains
                     : 0;
                   return (
-                    <li key={detection.speciesId} className="rounded-md border border-panel-line bg-white px-3 py-2">
+                    <li key={detection.speciesId} className="rounded-md border border-border bg-surface px-3 py-2">
                       <div className="flex items-center justify-between gap-3">
                         <span className="flex min-w-0 items-center gap-2">
                           <span
@@ -781,14 +782,14 @@ export default function PollenMap() {
                             className="h-2.5 w-2.5 shrink-0 rounded-full"
                             style={{ backgroundColor: s.color }}
                           />
-                          <span className="truncate text-[13.5px] text-ink">{s.scientificName}</span>
-                          <span className="truncate text-[13px] text-ink/70">{s.commonName}</span>
+                          <span className="truncate text-[13.5px] text-text">{s.scientificName}</span>
+                          <span className="truncate text-[13px] text-text-muted">{s.commonName}</span>
                         </span>
-                        <span className="shrink-0 text-[13px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                        <span className="shrink-0 text-[13px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                           {detection.grainCount}
                         </span>
                       </div>
-                      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-panel-line">
+                      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-border">
                         <div
                           className="h-full rounded-full"
                           style={{ width: `${share * 100}%`, backgroundColor: s.color }}
@@ -801,12 +802,13 @@ export default function PollenMap() {
             )}
 
             {selectedPlace.lastCollectedAt && (
-              <p className="mt-3 text-[12.5px] text-ink/65">
+              <p className="mt-3 text-[12.5px] text-text-muted">
                 Last collected {formatCollectedAt(selectedPlace.lastCollectedAt)}
               </p>
             )}
-            <button
+            <Button
               type="button"
+              intent="accent"
               disabled={building !== null}
               onClick={() =>
                 generateReport(
@@ -815,7 +817,7 @@ export default function PollenMap() {
                   countryScope ? "Province of the Philippines" : `Town in ${scope.name}`,
                 )
               }
-              className="focus-ring mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-ink px-3 py-2.5 text-[13px] font-medium text-parchment transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-4 w-full"
             >
               {building === selectedPlace.key ? (
                 <>
@@ -828,8 +830,8 @@ export default function PollenMap() {
                   Generate report for {selectedPlace.label}
                 </>
               )}
-            </button>
-            <p className="mt-1.5 text-center text-[12px] text-ink/65">
+            </Button>
+            <p className="mt-1.5 text-center text-[12px] text-text-muted">
               PDF · {selectedPlace.reportCount}{" "}
               {selectedPlace.reportCount === 1 ? "report" : "reports"} ·{" "}
               {species === "all" ? "all pollen" : getSpecies(species).scientificName}
@@ -837,7 +839,7 @@ export default function PollenMap() {
 
             <Link
               href={`/reports?q=${encodeURIComponent(selectedPlace.label)}`}
-              className="focus-ring mt-2 flex items-center justify-center gap-2 rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink/70 transition hover:text-ink"
+              className="focus-ring mt-2 flex items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text-muted transition hover:text-text"
             >
               <Microscope size={14} strokeWidth={1.75} />
               View reports from {selectedPlace.label}
@@ -845,10 +847,10 @@ export default function PollenMap() {
           </div>
         ) : (
           <div>
-            <h2 className="text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+            <h2 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
               {filtersActive ? (scope.level === "country" ? "Provinces" : "Towns") : "Hotzones"}
             </h2>
-            <p className="mt-0.5 mb-3 text-[13px] text-ink/70">
+            <p className="mt-0.5 mb-3 text-[13px] text-text-muted">
               {filtersActive
                 ? `${matches.length} of ${rows.length} ${unitPlural}, ranked by grains of ${activeLabel}.`
                 : `Sampled ${unitPlural} ranked by grains of ${activeLabel}.`}
@@ -858,8 +860,9 @@ export default function PollenMap() {
                 that choice into a document without having to select each place
                 in turn. */}
             {filtersActive && filteredPlaces.length > 0 && (
-              <button
+              <Button
                 type="button"
+                intent="accent"
                 disabled={building !== null}
                 onClick={() =>
                   generateReport(
@@ -879,7 +882,7 @@ export default function PollenMap() {
                         }, ranked by grains of ${activeLabel}.`,
                   )
                 }
-                className="focus-ring mb-4 flex w-full items-center justify-center gap-2 rounded-md bg-ink px-3 py-2.5 text-[13px] font-medium text-parchment transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mb-4 w-full"
               >
                 {building === "filtered" ? (
                   <>
@@ -894,11 +897,11 @@ export default function PollenMap() {
                       : `Generate report for these ${filteredPlaces.length} ${unitPlural}`}
                   </>
                 )}
-              </button>
+              </Button>
             )}
 
             {matches.length === 0 ? (
-              <div className="rounded-md border border-panel-line bg-white px-3 py-6 text-center text-[13px] text-ink/70">
+              <div className="rounded-md border border-border bg-surface px-3 py-6 text-center text-[13px] text-text-muted">
                 {filtersActive ? (
                   <>
                     {/* A name that exists but has no reports is a different
@@ -912,7 +915,7 @@ export default function PollenMap() {
                       <button
                         type="button"
                         onClick={() => applyFilters({ show: "all" })}
-                        className="focus-ring mt-2 rounded text-ink underline underline-offset-4 hover:opacity-70"
+                        className="focus-ring mt-2 rounded text-text underline underline-offset-4 hover:opacity-70"
                       >
                         Show {unsampledMatches} unsampled{" "}
                         {unsampledMatches === 1 ? unitSingular : unitPlural}
@@ -938,10 +941,10 @@ export default function PollenMap() {
                       onClick={() => focusRow(row)}
                       onMouseEnter={() => setHovered(row.key)}
                       onMouseLeave={() => setHovered(null)}
-                      className="focus-ring flex w-full items-center gap-3 rounded-md border border-panel-line bg-white px-3 py-2.5 text-left transition hover:border-ink/25"
+                      className="focus-ring flex w-full items-center gap-3 rounded-md border border-border bg-surface px-3 py-2.5 text-left transition hover:border-border-strong"
                     >
                       <span
-                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-medium text-ink"
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-medium text-text"
                         style={{
                           background: row.stats
                             ? intensityFill(scale, row.stats.totalGrains)
@@ -953,18 +956,18 @@ export default function PollenMap() {
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5">
-                          <MapPin size={12} strokeWidth={1.75} className="shrink-0 text-ink/55" />
-                          <span className="truncate text-[13.5px] text-ink">{row.label}</span>
+                          <MapPin size={12} strokeWidth={1.75} className="shrink-0 text-text-faint" />
+                          <span className="truncate text-[13.5px] text-text">{row.label}</span>
                         </span>
-                        <span className="mt-0.5 block truncate text-[12.5px] text-ink/70">
+                        <span className="mt-0.5 block truncate text-[12.5px] text-text-muted">
                           {row.stats ? describeTopPollen(row.stats.detections) : "Not sampled"}
                         </span>
                       </span>
                       <span className="shrink-0 text-right">
-                        <span className="block text-[14px] text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                        <span className="block text-[14px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                           {row.stats ? row.stats.totalGrains : "—"}
                         </span>
-                        <span className="block text-[11.5px] text-ink/65">grains</span>
+                        <span className="block text-[11.5px] text-text-muted">grains</span>
                       </span>
                     </button>
                   </li>
@@ -973,13 +976,13 @@ export default function PollenMap() {
             )}
 
             {searching && matches.length > 0 && unsampledMatches > 0 && (
-              <p className="mt-3 text-[12.5px] text-ink/65">
+              <p className="mt-3 text-[12.5px] text-text-muted">
                 {unsampledMatches} more {unsampledMatches === 1 ? unitSingular : unitPlural} match
                 the search but {unsampledMatches === 1 ? "has" : "have"} no reports yet.{" "}
                 <button
                   type="button"
                   onClick={() => applyFilters({ show: "all" })}
-                  className="focus-ring rounded text-ink underline underline-offset-4 hover:opacity-70"
+                  className="focus-ring rounded text-text underline underline-offset-4 hover:opacity-70"
                 >
                   Show {unsampledMatches === 1 ? "it" : "them"}
                 </button>
@@ -987,7 +990,7 @@ export default function PollenMap() {
             )}
 
             {scope.level === "country" && matches.length > 0 && (
-              <p className="mt-3 text-[12.5px] text-ink/65">
+              <p className="mt-3 text-[12.5px] text-text-muted">
                 Select a province to see which of its towns the pollen came from.
               </p>
             )}

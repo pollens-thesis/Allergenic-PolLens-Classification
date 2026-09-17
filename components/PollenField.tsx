@@ -28,7 +28,7 @@ function GrainShape({ kind }: { kind: Grain["kind"] }) {
   if (kind === "spiny") {
     return (
       <g>
-        <circle r="14" fill="var(--pollen)" opacity="0.9" />
+        <circle r="14" fill="var(--hero-grain)" opacity="0.9" />
         {Array.from({ length: 16 }).map((_, i) => {
           const a = (i / 16) * Math.PI * 2;
           const x1 = Math.cos(a) * 14;
@@ -36,7 +36,7 @@ function GrainShape({ kind }: { kind: Grain["kind"] }) {
           const x2 = Math.cos(a) * 19;
           const y2 = Math.sin(a) * 19;
           return (
-            <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--pollen-soft)" strokeWidth="1.4" strokeLinecap="round" />
+            <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--hero-grain-soft)" strokeWidth="1.4" strokeLinecap="round" />
           );
         })}
       </g>
@@ -45,9 +45,9 @@ function GrainShape({ kind }: { kind: Grain["kind"] }) {
   if (kind === "ribbed") {
     return (
       <g>
-        <ellipse rx="18" ry="11" fill="var(--pollen-soft)" opacity="0.85" />
+        <ellipse rx="18" ry="11" fill="var(--hero-grain-soft)" opacity="0.85" />
         {[-10, -5, 0, 5, 10].map((o, i) => (
-          <line key={i} x1={o} y1={-10} x2={o} y2={10} stroke="var(--field)" strokeWidth="1" opacity="0.5" />
+          <line key={i} x1={o} y1={-10} x2={o} y2={10} stroke="var(--hero-bg)" strokeWidth="1" opacity="0.5" />
         ))}
       </g>
     );
@@ -56,8 +56,8 @@ function GrainShape({ kind }: { kind: Grain["kind"] }) {
     <g>
       <path
         d="M0,-16 C10,-14 16,-4 14,6 C12,14 4,17 -4,15 C-13,13 -17,3 -14,-6 C-11,-14 -6,-17 0,-16 Z"
-        fill="var(--anther)"
-        opacity="0.9"
+        fill="var(--hero-grain)"
+        opacity="0.75"
       />
       {[0, 120, 240].map((deg, i) => (
         <circle
@@ -65,7 +65,7 @@ function GrainShape({ kind }: { kind: Grain["kind"] }) {
           cx={Math.cos((deg * Math.PI) / 180) * 9}
           cy={Math.sin((deg * Math.PI) / 180) * 9}
           r="2.1"
-          fill="var(--field)"
+          fill="var(--hero-bg)"
           opacity="0.6"
         />
       ))}
@@ -76,12 +76,12 @@ function GrainShape({ kind }: { kind: Grain["kind"] }) {
 export default function PollenField() {
   return (
     <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
-      {/* darkfield vignette */}
+      {/* darkfield vignette, recolored to the sign-in hero's teal accent */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at 30% 20%, rgba(232,185,63,0.08), transparent 55%), radial-gradient(ellipse at 80% 70%, rgba(217,112,74,0.07), transparent 50%), var(--field)",
+            "radial-gradient(ellipse at 30% 20%, rgba(45,212,212,0.09), transparent 55%), radial-gradient(ellipse at 80% 70%, rgba(110,231,231,0.06), transparent 50%), var(--hero-bg)",
         }}
       />
       {GRAINS.map((g, i) => (
@@ -103,13 +103,13 @@ export default function PollenField() {
             width={44 * g.scale}
             height={44 * g.scale}
             viewBox="-22 -22 44 44"
-            style={{ transform: `rotate(${g.rotate}deg)`, filter: "drop-shadow(0 0 6px rgba(232,185,63,0.25))" }}
+            style={{ transform: `rotate(${g.rotate}deg)`, filter: "drop-shadow(0 0 6px rgba(45,212,212,0.25))" }}
           >
             <GrainShape kind={g.kind} />
           </svg>
           {g.tag && (
             <span
-              className="absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap text-[11px] tracking-widest text-sage/90"
+              className="absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap text-[11px] tracking-widest text-hero-fg-muted"
               style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
             >
               {g.tag}

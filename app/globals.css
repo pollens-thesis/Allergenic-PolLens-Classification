@@ -1,44 +1,77 @@
 @import "tailwindcss";
 
 :root {
-  --field: #0b1d17;       /* darkfield microscopy background */
-  --field-deep: #081712;
-  --panel: #f6f1e4;       /* herbarium specimen card */
-  --panel-line: #e3d9bf;
-  --ink: #1c2a20;         /* near-black botanical ink for text on panel */
-  --parchment: #f1ede0;   /* text on dark field */
-  --sage: #8fa396;        /* muted text on dark field */
-  --pollen: #e8b93f;      /* pollen-grain gold, primary accent */
-  --pollen-soft: #f3d27a;
-  --anther: #d9704a;      /* secondary accent, used sparingly */
+  /* Surfaces */
+  --bg: #fafafa;              /* page background */
+  --surface: #ffffff;         /* cards, inputs, table rows, sidebar */
+  --surface-sunken: #f4f4f5;  /* tinted wells: stat strips, summary tiles */
+  --border: #e4e4e7;          /* default 1px hairline */
+  --border-strong: #d4d4d8;   /* hover/active/selected borders */
 
-  /*
-   * Accents darkened for use as text. The display versions above are tuned to
-   * be read as colour — a chart line, a progress bar, a tinted badge — and sit
-   * around 2.8:1 on the surfaces this app uses, well under the 4.5:1 a word
-   * needs. These carry the same hue at a weight you can actually read.
-   */
-  --anther-ink: #8f3a1f;  /* anther, for text and badges */
-  --leaf-ink: #2f6340;    /* "Completed" */
-  --ember-ink: #8f3620;   /* "Needs review" */
+  /* Text */
+  --text: #0a0a0a;
+  --text-muted: #52525b;
+  --text-faint: #a1a1aa;
 
-  --font-display: var(--font-fraunces);
+  /* The one accent (teal) */
+  --accent: #0e8a8a;
+  --accent-hover: #0b7373;
+  --accent-active: #095f5f;
+  --accent-muted: #0e8a8a1a; /* ~10% */
+  --accent-fg: #ffffff;
+
+  /* Status */
+  --success: #15803d;
+  --success-bg: #15803d14;
+  --processing: #b45309;      /* distinct amber — never the accent */
+  --processing-bg: #b4530914;
+  --danger: #b91c1c;
+  --danger-bg: #b91c1c14;
+
+  /* Sign-in hero only — a dark, self-contained pre-auth surface */
+  --hero-bg: #0a0a0a;
+  --hero-bg-deep: #050505;
+  --hero-fg: #f4f4f5;
+  --hero-fg-muted: #9a9aa0;
+  --hero-grain: #2dd4d4;      /* teal-tinted grain, replaces the old gold */
+  --hero-grain-soft: #6ee7e7;
+
+  --font-display: var(--font-inter);
   --font-body: var(--font-inter);
   --font-mono: var(--font-plex-mono);
+
+  /* Motion (Emil Kowalski house rules: never ease-in, custom curves, <300ms) */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 260ms;
 }
 
 @theme inline {
-  --color-field: var(--field);
-  --color-panel: var(--panel);
-  --color-panel-line: var(--panel-line);
-  --color-ink: var(--ink);
-  --color-parchment: var(--parchment);
-  --color-sage: var(--sage);
-  --color-pollen: var(--pollen);
-  --color-anther: var(--anther);
-  --color-anther-ink: var(--anther-ink);
-  --color-leaf-ink: var(--leaf-ink);
-  --color-ember-ink: var(--ember-ink);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-active: var(--accent-active);
+  --color-accent-muted: var(--accent-muted);
+  --color-accent-fg: var(--accent-fg);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-processing: var(--processing);
+  --color-processing-bg: var(--processing-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-hero-bg: var(--hero-bg);
+  --color-hero-bg-deep: var(--hero-bg-deep);
+  --color-hero-fg: var(--hero-fg);
+  --color-hero-fg-muted: var(--hero-fg-muted);
   --font-display: var(--font-display);
   --font-body: var(--font-body);
   --font-mono: var(--font-mono);
@@ -63,9 +96,14 @@ body {
 }
 
 body {
-  background: var(--panel);
-  color: var(--ink);
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--font-body);
+  letter-spacing: -0.006em;
+}
+
+h1, h2, h3 {
+  letter-spacing: -0.02em;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -91,6 +129,6 @@ body {
 }
 
 .focus-ring:focus-visible {
-  outline: 2px solid var(--pollen);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }

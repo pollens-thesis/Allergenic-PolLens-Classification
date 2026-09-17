@@ -1,6 +1,8 @@
 "use client";
 
 import { ImageOff, ScanSearch } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
+import clsx from "clsx";
 import {
   getSpecies,
   sortByAbundance,
@@ -39,6 +41,7 @@ export default function SpecimenImageViewer({
   selectedSpeciesId: SpeciesId | null;
   onSelectSpecies: (speciesId: SpeciesId | null) => void;
 }) {
+  const reduceMotion = useReducedMotion();
   const boxes = grains ?? [];
   const hasBoxes = boxes.length > 0;
   const shownCount = selectedSpeciesId
@@ -50,33 +53,51 @@ export default function SpecimenImageViewer({
     <div>
       {hasBoxes && chips.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-1.5">
-          <button
+          <motion.button
             type="button"
             onClick={() => onSelectSpecies(null)}
             aria-pressed={selectedSpeciesId === null}
-            className={`focus-ring rounded-full border px-2.5 py-1 text-[12.5px] transition ${
+            whileTap={reduceMotion ? undefined : { scale: 0.97 }}
+            className={clsx(
+              "focus-ring relative isolate rounded-full border px-2.5 py-1 text-[12.5px] transition-colors",
               selectedSpeciesId === null
-                ? "border-ink/25 bg-white text-ink"
-                : "border-panel-line bg-white/50 text-ink/70 hover:border-ink/20 hover:text-ink"
-            }`}
+                ? "border-border-strong text-text"
+                : "border-border bg-surface/50 text-text-muted hover:border-border-strong hover:text-text",
+            )}
           >
+            {selectedSpeciesId === null && (
+              <motion.span
+                layoutId="species-chip-highlight"
+                className="absolute inset-0 -z-10 rounded-full bg-surface shadow-sm"
+                transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 40 }}
+              />
+            )}
             All types
-          </button>
+          </motion.button>
           {chips.map((detection) => {
             const species = getSpecies(detection.speciesId);
             const active = selectedSpeciesId === detection.speciesId;
             return (
-              <button
+              <motion.button
                 key={detection.speciesId}
                 type="button"
                 onClick={() => onSelectSpecies(active ? null : detection.speciesId)}
                 aria-pressed={active}
-                className={`focus-ring flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12.5px] transition ${
+                whileTap={reduceMotion ? undefined : { scale: 0.97 }}
+                className={clsx(
+                  "focus-ring relative isolate flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12.5px] transition-colors",
                   active
-                    ? "border-ink/25 bg-white text-ink"
-                    : "border-panel-line bg-white/50 text-ink/70 hover:border-ink/20 hover:text-ink"
-                }`}
+                    ? "border-border-strong text-text"
+                    : "border-border bg-surface/50 text-text-muted hover:border-border-strong hover:text-text",
+                )}
               >
+                {active && (
+                  <motion.span
+                    layoutId="species-chip-highlight"
+                    className="absolute inset-0 -z-10 rounded-full bg-surface shadow-sm"
+                    transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 40 }}
+                  />
+                )}
                 <span
                   aria-hidden
                   className="h-2 w-2 shrink-0 rounded-full"
@@ -85,29 +106,29 @@ export default function SpecimenImageViewer({
                 <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                   {species.code}
                 </span>
-                <span className="text-ink/65">{detection.grainCount}</span>
-              </button>
+                <span className="text-text-faint">{detection.grainCount}</span>
+              </motion.button>
             );
           })}
         </div>
       )}
 
-      <div className="overflow-hidden rounded-md border border-panel-line bg-white">
+      <div className="overflow-hidden rounded-md border border-border bg-surface">
         {imageUrl ? (
-          <div className="relative bg-panel">
+          <div className="relative bg-surface-sunken">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={imageUrl} alt={`Specimen ${fileName}`} className="block w-full" />
 
-            {boxes.map((grain) => {
+            {boxes.map((grain, index) => {
               const species = getSpecies(grain.speciesId);
               const dimmed = selectedSpeciesId !== null && grain.speciesId !== selectedSpeciesId;
               return (
-                <button
+                <motion.button
                   key={grain.id}
                   type="button"
                   onClick={() => onSelectSpecies(dimmed ? grain.speciesId : null)}
                   title={`${speciesLabel(species)} · ${Math.round(grain.confidence * 100)}% confidence`}
-                  className="absolute rounded-[2px] transition-opacity"
+                  className="absolute rounded-[2px]"
                   style={{
                     left: `${grain.box.x * 100}%`,
                     top: `${grain.box.y * 100}%`,
@@ -115,26 +136,32 @@ export default function SpecimenImageViewer({
                     height: `${grain.box.height * 100}%`,
                     border: `2px solid ${species.color}`,
                     boxShadow: dimmed ? "none" : `0 0 0 1px rgba(0,0,0,0.25)`,
-                    opacity: dimmed ? 0.2 : 1,
+                  }}
+                  initial={reduceMotion ? false : { opacity: 0, scale: 0.97 }}
+                  animate={{ opacity: dimmed ? 0.2 : 1, scale: 1 }}
+                  transition={{
+                    duration: reduceMotion ? 0 : 0.15,
+                    ease: [0.16, 1, 0.3, 1],
+                    delay: reduceMotion ? 0 : Math.min(index, 10) * 0.03,
                   }}
                 >
                   <span className="sr-only">
                     {species.scientificName} grain, {Math.round(grain.confidence * 100)}% confidence
                   </span>
-                </button>
+                </motion.button>
               );
             })}
           </div>
         ) : (
-          <div className="flex h-40 w-full flex-col items-center justify-center gap-1.5 bg-panel/50 text-center">
-            <ImageOff size={18} strokeWidth={1.5} className="text-ink/55" />
-            <span className="px-3 text-[12.5px] text-ink/70">
+          <div className="flex h-40 w-full flex-col items-center justify-center gap-1.5 bg-surface-sunken text-center">
+            <ImageOff size={18} strokeWidth={1.5} className="text-text-faint" />
+            <span className="px-3 text-[12.5px] text-text-muted">
               Image not stored for this record
             </span>
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-3 border-t border-panel-line px-3 py-2 text-[13px] text-ink/70">
+        <div className="flex items-center justify-between gap-3 border-t border-border px-3 py-2 text-[13px] text-text-muted">
           <span className="truncate">{fileName}</span>
           {hasBoxes && (
             <span
@@ -148,8 +175,8 @@ export default function SpecimenImageViewer({
       </div>
 
       {imageUrl && !hasBoxes && (
-        <p className="mt-2 flex items-start gap-1.5 text-[12.5px] text-ink/65">
-          <ScanSearch size={13} strokeWidth={1.75} className="mt-0.5 shrink-0 text-ink/55" />
+        <p className="mt-2 flex items-start gap-1.5 text-[12.5px] text-text-muted">
+          <ScanSearch size={13} strokeWidth={1.75} className="mt-0.5 shrink-0 text-text-faint" />
           Grain positions weren&apos;t recorded for this slide, so there are no boxes to show.
         </p>
       )}

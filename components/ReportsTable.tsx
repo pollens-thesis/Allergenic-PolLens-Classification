@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "motion/react";
+import clsx from "clsx";
 import { FileDown, Loader2, Search, X } from "lucide-react";
 import {
   formatCollectedAt,
@@ -15,6 +17,7 @@ import {
 } from "@/lib/data";
 import { downloadSelectionReportPdf } from "@/lib/pdf";
 import StatusBadge from "@/components/StatusBadge";
+import { Button } from "@/components/Button";
 
 const STATUS_FILTERS: (ReportStatus | "All")[] = ["All", "Completed", "Processing", "Needs review"];
 
@@ -38,7 +41,9 @@ const NO_FILTERS: Filters = {
 };
 
 const controlClass =
-  "focus-ring rounded-md border border-panel-line bg-white px-2 py-1.5 text-[13px] text-ink";
+  "focus-ring rounded-md border border-border bg-surface px-2 py-1.5 text-[13px] text-text";
+
+const rowTransition = { duration: 0.18, ease: [0.16, 1, 0.3, 1] as const };
 
 function formatDate(collectedAt: string) {
   // Local midnight — a bare "2026-07-29" parses as UTC and renders a day early
@@ -54,9 +59,9 @@ function formatDate(collectedAt: string) {
 function CollectedCell({ collectedAt }: { collectedAt: string }) {
   const time = getCollectionTime(collectedAt);
   return (
-    <td className="py-2.5 pr-3 whitespace-nowrap text-ink/70">
+    <td className="py-2.5 pr-3 whitespace-nowrap text-text-muted">
       {formatDate(collectedAt)}
-      {time && <span className="mt-0.5 block text-[12.5px] text-ink/70">{formatTime(time)}</span>}
+      {time && <span className="mt-0.5 block text-[12.5px] text-text-muted">{formatTime(time)}</span>}
     </td>
   );
 }
@@ -183,13 +188,13 @@ export default function ReportsTable({
   }
 
   return (
-    <div className="rounded-lg border border-panel-line bg-white/60 p-5">
+    <div className="rounded-lg border border-border bg-surface p-5">
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+          <h2 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
             Saved reports
           </h2>
-          <p className="mt-0.5 text-[13px] text-ink/70">
+          <p className="mt-0.5 text-[13px] text-text-muted">
             {filtered.length} of {rows.length} {rows.length === 1 ? "report" : "reports"}
             {picked.size > 0 && ` · ${picked.size} chosen`}
           </p>
@@ -200,14 +205,14 @@ export default function ReportsTable({
           <Search
             size={14}
             strokeWidth={1.75}
-            className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink/55"
+            className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-faint"
           />
           <input
             type="text"
             value={filters.query}
             onChange={(e) => patch({ query: e.target.value })}
             placeholder="Search sample, location, pollen, date"
-            className="focus-ring w-full rounded-md border border-panel-line bg-white py-1.5 pr-3 pl-8 text-[13px] text-ink placeholder:text-ink/70"
+            className="focus-ring w-full rounded-md border border-border bg-surface py-1.5 pr-3 pl-8 text-[13px] text-text placeholder:text-text-faint"
           />
         </label>
       </div>
@@ -217,25 +222,36 @@ export default function ReportsTable({
           two-line block that shifts everything below it. */}
       <div className="mb-3 flex flex-col gap-2 md:flex-row md:flex-wrap md:items-end">
         <div className="-mx-1 overflow-x-auto px-1 pb-0.5">
-          <div className="flex w-max gap-0.5 rounded-md border border-panel-line bg-white p-0.5">
-            {STATUS_FILTERS.map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => patch({ status: option })}
-                aria-pressed={filters.status === option}
-                className={`focus-ring rounded px-2 py-1.5 text-[12.5px] whitespace-nowrap transition sm:px-2.5 sm:text-[13px] ${
-                  filters.status === option ? "bg-ink text-parchment" : "text-ink/70 hover:text-ink"
-                }`}
-              >
-                {option}
-              </button>
-            ))}
+          <div className="flex w-max gap-0.5 rounded-md border border-border bg-surface p-0.5">
+            {STATUS_FILTERS.map((option) => {
+              const active = filters.status === option;
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => patch({ status: option })}
+                  aria-pressed={active}
+                  className={clsx(
+                    "focus-ring relative rounded px-2 py-1.5 text-[12.5px] whitespace-nowrap sm:px-2.5 sm:text-[13px]",
+                    active ? "text-bg" : "text-text-muted transition-colors hover:text-text",
+                  )}
+                >
+                  {active && (
+                    <motion.span
+                      layoutId="status-filter-pill"
+                      className="absolute inset-0 rounded bg-text"
+                      transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                    />
+                  )}
+                  <span className="relative z-10">{option}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         <label className="flex flex-col gap-1 md:flex-row md:items-center md:gap-1.5">
-          <span className="text-[12.5px] text-ink/70">Location</span>
+          <span className="text-[12.5px] text-text-muted">Location</span>
           <select
             value={filters.location}
             onChange={(e) => patch({ location: e.target.value })}
@@ -252,7 +268,7 @@ export default function ReportsTable({
 
         <div className="grid grid-cols-2 gap-2 md:flex md:items-end md:gap-2">
           <label className="flex flex-col gap-1 md:flex-row md:items-center md:gap-1.5">
-            <span className="text-[12.5px] whitespace-nowrap text-ink/70">Collected from</span>
+            <span className="text-[12.5px] whitespace-nowrap text-text-muted">Collected from</span>
             <input
               type="date"
               value={filters.from}
@@ -262,7 +278,7 @@ export default function ReportsTable({
             />
           </label>
           <label className="flex flex-col gap-1 md:flex-row md:items-center md:gap-1.5">
-            <span className="text-[12.5px] text-ink/70">to</span>
+            <span className="text-[12.5px] text-text-muted">to</span>
             <input
               type="date"
               value={filters.to}
@@ -277,7 +293,7 @@ export default function ReportsTable({
           <button
             type="button"
             onClick={clearFilters}
-            className="focus-ring flex items-center justify-center gap-1 rounded-md px-2 py-2 text-[13px] text-ink/65 transition hover:text-ink md:py-1.5"
+            className="focus-ring flex items-center justify-center gap-1 rounded-md px-2 py-2 text-[13px] text-text-muted transition-colors hover:text-text md:py-1.5"
           >
             <X size={13} strokeWidth={1.75} />
             Clear filters
@@ -288,8 +304,8 @@ export default function ReportsTable({
       {/* Only present once something is chosen, so the table is not permanently
           topped by a disabled button. */}
       {picked.size > 0 && (
-        <div className="mb-3 flex flex-col gap-2 rounded-md border border-ink/15 bg-panel/60 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[13px] text-ink/80">
+        <div className="mb-3 flex flex-col gap-2 rounded-md border border-border bg-surface-sunken px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[13px] text-text-muted">
             {picked.size} {picked.size === 1 ? "report" : "reports"} chosen
             {pickedVisible.length !== picked.size &&
               ` · ${picked.size - pickedVisible.length} outside the current filters`}
@@ -298,16 +314,11 @@ export default function ReportsTable({
             <button
               type="button"
               onClick={() => setPicked(new Set())}
-              className="focus-ring rounded-md px-2 py-1.5 text-[13px] text-ink/65 transition hover:text-ink"
+              className="focus-ring rounded-md px-2 py-1.5 text-[13px] text-text-muted transition-colors hover:text-text"
             >
               Clear
             </button>
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={building}
-              className="focus-ring flex items-center justify-center gap-2 rounded-md bg-ink px-3 py-2 text-[13px] font-medium text-parchment transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
+            <Button type="button" onClick={handleGenerate} disabled={building} size="sm">
               {building ? (
                 <>
                   <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
@@ -319,7 +330,7 @@ export default function ReportsTable({
                   Generate report
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -328,76 +339,84 @@ export default function ReportsTable({
           360px window: every field a row carries stays on screen, and the whole
           card is the tap target the row is on a desktop. */}
       <ul className="flex flex-col gap-2 lg:hidden">
-        {filtered.map((r) => {
-          const time = getCollectionTime(r.collectedAt);
-          return (
-            <li key={r.sampleId}>
-              <div
-                className={`flex items-start gap-3 rounded-md border px-3 py-3 transition ${
-                  r.sampleId === highlightId
-                    ? "border-anther/40 bg-anther/8"
-                    : picked.has(r.sampleId)
-                      ? "border-ink/25 bg-panel/70"
-                      : "border-panel-line bg-white"
-                }`}
+        <AnimatePresence initial={false}>
+          {filtered.map((r) => {
+            const time = getCollectionTime(r.collectedAt);
+            return (
+              <motion.li
+                key={r.sampleId}
+                layout
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={rowTransition}
               >
-                {/* Negative margin against inner padding: the box stays 16px
-                    but the thing a thumb has to hit is 40. */}
-                <label className="-m-2 shrink-0 cursor-pointer p-2">
-                  <span className="sr-only">Choose report {r.sampleId}</span>
-                  <input
-                    type="checkbox"
-                    checked={picked.has(r.sampleId)}
-                    onChange={() => togglePicked(r.sampleId)}
-                    className="focus-ring mt-1 h-4 w-4 accent-[#23261f]"
-                  />
-                </label>
-                <Link href={`/reports/${r.sampleId}`} className="focus-ring min-w-0 flex-1 rounded">
-                  <div className="flex items-start justify-between gap-2">
-                    <span
-                      className="text-[13px] text-ink"
-                      style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-                    >
-                      {r.sampleId}
-                    </span>
-                    <StatusBadge status={r.status} />
-                  </div>
-                  <div className="mt-1 text-[13px] text-ink/85">{r.topPollen}</div>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-ink/70">
-                    <span>{r.location}</span>
-                    <span aria-hidden>·</span>
-                    <span>
-                      {formatDate(r.collectedAt)}
-                      {time && ` · ${formatTime(time)}`}
-                    </span>
-                  </div>
-                  <div className="mt-1.5 text-[12.5px] text-ink/70">
-                    <span
-                      className="text-ink"
-                      style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-                    >
-                      {r.totalGrains}
-                    </span>{" "}
-                    grains
-                    {r.slideCount > 1 && ` · ${r.slideCount} slides`}
-                    {r.sampleId === highlightId && (
-                      <span className="ml-2 rounded-full bg-anther/15 px-2 py-0.5 text-[11.5px] text-anther-ink">
-                        just saved
+                <div
+                  className={clsx(
+                    "flex items-start gap-3 rounded-md border px-3 py-3 transition-colors duration-[var(--duration-fast)]",
+                    picked.has(r.sampleId)
+                      ? "border-accent/40 bg-accent-muted"
+                      : "border-border bg-surface",
+                  )}
+                >
+                  {/* Negative margin against inner padding: the box stays 16px
+                      but the thing a thumb has to hit is 40. */}
+                  <label className="-m-2 shrink-0 cursor-pointer p-2">
+                    <span className="sr-only">Choose report {r.sampleId}</span>
+                    <input
+                      type="checkbox"
+                      checked={picked.has(r.sampleId)}
+                      onChange={() => togglePicked(r.sampleId)}
+                      className="focus-ring mt-1 h-4 w-4 accent-[var(--accent)]"
+                    />
+                  </label>
+                  <Link href={`/reports/${r.sampleId}`} className="focus-ring min-w-0 flex-1 rounded">
+                    <div className="flex items-start justify-between gap-2">
+                      <span
+                        className="text-[13px] text-text"
+                        style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
+                      >
+                        {r.sampleId}
                       </span>
-                    )}
-                  </div>
-                </Link>
-              </div>
-            </li>
-          );
-        })}
+                      <StatusBadge status={r.status} />
+                    </div>
+                    <div className="mt-1 text-[13px] text-text">{r.topPollen}</div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-text-muted">
+                      <span>{r.location}</span>
+                      <span aria-hidden>·</span>
+                      <span>
+                        {formatDate(r.collectedAt)}
+                        {time && ` · ${formatTime(time)}`}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 text-[12.5px] text-text-muted">
+                      <span
+                        className="text-text"
+                        style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
+                      >
+                        {r.totalGrains}
+                      </span>{" "}
+                      grains
+                      {r.slideCount > 1 && ` · ${r.slideCount} slides`}
+                      {r.sampleId === highlightId && (
+                        <span className="ml-2 rounded-full bg-accent-muted px-2 py-0.5 text-[11.5px] text-[var(--accent-hover)]">
+                          just saved
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                </div>
+              </motion.li>
+            );
+          })}
+        </AnimatePresence>
       </ul>
 
       <div className="hidden lg:block">
         <table className="w-full border-collapse text-left text-[13px]">
           <thead>
             <tr
-              className="border-b border-panel-line text-[12px] tracking-widest text-ink/65 uppercase"
+              className="border-b border-border text-[12px] tracking-widest text-text-faint uppercase"
               style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
             >
               <th className="w-8 py-2 pr-2">
@@ -413,7 +432,7 @@ export default function ReportsTable({
                   onChange={toggleAllVisible}
                   disabled={visibleIds.length === 0}
                   aria-label="Choose every report matching the filters"
-                  className="focus-ring h-3.5 w-3.5 accent-[#23261f]"
+                  className="focus-ring h-3.5 w-3.5 accent-[var(--accent)]"
                 />
               </th>
               <th className="py-2 pr-3 font-medium">Sample ID</th>
@@ -425,51 +444,61 @@ export default function ReportsTable({
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r) => (
-              <tr
-                key={r.sampleId}
-                onClick={(event) => openRow(event, r.sampleId)}
-                className={`group cursor-pointer border-b border-panel-line/70 transition last:border-0 hover:bg-panel/40 ${
-                  r.sampleId === highlightId ? "bg-anther/8" : ""
-                } ${picked.has(r.sampleId) ? "bg-panel/70" : ""}`}
-              >
-                <td className="py-2.5 pr-2">
-                  <input
-                    type="checkbox"
-                    checked={picked.has(r.sampleId)}
-                    onChange={() => togglePicked(r.sampleId)}
-                    aria-label={`Choose report ${r.sampleId}`}
-                    className="focus-ring h-3.5 w-3.5 accent-[#23261f]"
-                  />
-                </td>
-                <td className="py-2.5 pr-3 whitespace-nowrap text-ink/85" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-                  <Link href={`/reports/${r.sampleId}`} className="focus-ring rounded">
-                    {r.sampleId}
-                  </Link>
-                  {r.sampleId === highlightId && (
-                    <span className="ml-2 rounded-full bg-anther/15 px-2 py-0.5 text-[11.5px] text-anther-ink">
-                      just saved
-                    </span>
+            <AnimatePresence initial={false}>
+              {filtered.map((r) => (
+                <motion.tr
+                  key={r.sampleId}
+                  layout
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={rowTransition}
+                  onClick={(event) => openRow(event, r.sampleId)}
+                  className={clsx(
+                    "group cursor-pointer border-b border-border/70 transition-colors duration-[var(--duration-fast)] last:border-0",
+                    picked.has(r.sampleId)
+                      ? "border-l-2 border-l-accent bg-accent-muted"
+                      : "hover:bg-surface-sunken",
                   )}
-                </td>
-                <CollectedCell collectedAt={r.collectedAt} />
-                <td className="py-2.5 pr-3 whitespace-nowrap text-ink/70">{r.location}</td>
-                <td className="py-2.5 pr-3 text-ink/85">
-                  {r.topPollen}
-                  {r.slideCount > 1 && (
-                    <span className="mt-0.5 block text-[12.5px] text-ink/70">
-                      across {r.slideCount} slides
-                    </span>
-                  )}
-                </td>
-                <td className="py-2.5 pr-3 whitespace-nowrap text-ink/85" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-                  {r.totalGrains}
-                </td>
-                <td className="py-2.5 pr-0">
-                  <StatusBadge status={r.status} />
-                </td>
-              </tr>
-            ))}
+                >
+                  <td className="py-2.5 pr-2">
+                    <input
+                      type="checkbox"
+                      checked={picked.has(r.sampleId)}
+                      onChange={() => togglePicked(r.sampleId)}
+                      aria-label={`Choose report ${r.sampleId}`}
+                      className="focus-ring h-3.5 w-3.5 accent-[var(--accent)]"
+                    />
+                  </td>
+                  <td className="py-2.5 pr-3 whitespace-nowrap text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                    <Link href={`/reports/${r.sampleId}`} className="focus-ring rounded">
+                      {r.sampleId}
+                    </Link>
+                    {r.sampleId === highlightId && (
+                      <span className="ml-2 rounded-full bg-accent-muted px-2 py-0.5 text-[11.5px] text-[var(--accent-hover)]">
+                        just saved
+                      </span>
+                    )}
+                  </td>
+                  <CollectedCell collectedAt={r.collectedAt} />
+                  <td className="py-2.5 pr-3 whitespace-nowrap text-text-muted">{r.location}</td>
+                  <td className="py-2.5 pr-3 text-text">
+                    {r.topPollen}
+                    {r.slideCount > 1 && (
+                      <span className="mt-0.5 block text-[12.5px] text-text-muted">
+                        across {r.slideCount} slides
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-2.5 pr-3 whitespace-nowrap text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                    {r.totalGrains}
+                  </td>
+                  <td className="py-2.5 pr-0">
+                    <StatusBadge status={r.status} />
+                  </td>
+                </motion.tr>
+              ))}
+            </AnimatePresence>
           </tbody>
         </table>
       </div>
@@ -477,7 +506,7 @@ export default function ReportsTable({
       {/* Outside both renderings, so an empty result says so at either size. */}
       {filtered.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-10 text-center">
-          <p className="text-[13px] text-ink/70">
+          <p className="text-[13px] text-text-muted">
             {hasActiveFilters
               ? "No reports match those filters."
               : "No reports yet — analyze a specimen to create one."}
@@ -486,7 +515,7 @@ export default function ReportsTable({
             <button
               type="button"
               onClick={clearFilters}
-              className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-panel-line bg-white px-2.5 py-1.5 text-[13px] text-ink/70 transition hover:text-ink"
+              className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-[13px] text-text-muted transition-colors hover:text-text"
             >
               <X size={13} strokeWidth={1.75} />
               Clear filters
@@ -496,7 +525,7 @@ export default function ReportsTable({
       )}
 
       {rows.length > 0 && picked.size === 0 && (
-        <p className="mt-3 text-[12.5px] text-ink/65">
+        <p className="mt-3 text-[12.5px] text-text-faint">
           Tick the reports you want in a summary PDF, or filter first and use the header checkbox to
           take the whole result.
         </p>

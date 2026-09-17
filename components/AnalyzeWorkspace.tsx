@@ -22,6 +22,7 @@ import { analyzeSpecimen, type AnalysisResult } from "@/lib/analysis";
 import { getDraft, saveDraft } from "@/lib/store";
 import { accountName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
+import { Button } from "@/components/Button";
 
 type ItemStatus = "pending" | "analyzing" | "analyzed";
 
@@ -53,9 +54,9 @@ const EMPTY_WEATHER: WeatherConditions = {
 };
 
 const fieldClass =
-  "focus-ring w-full rounded-md border border-panel-line bg-white px-3 py-2 text-[13px] text-ink placeholder:text-ink/70";
+  "focus-ring w-full rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text placeholder:text-text-faint";
 
-const sectionHeadingClass = "mb-2 text-[12px] tracking-[0.2em] text-ink/65 uppercase";
+const sectionHeadingClass = "mb-2 text-[12px] tracking-[0.2em] text-text-muted uppercase";
 
 /** Number input that keeps an empty box as `null` rather than 0. */
 function MeasurementField({
@@ -73,7 +74,7 @@ function MeasurementField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[12.5px] text-ink/70">{label}</span>
+      <span className="mb-1 block text-[12.5px] text-text-muted">{label}</span>
       <input
         type="number"
         inputMode="decimal"
@@ -91,38 +92,55 @@ function MeasurementField({
 /** One row in the batch list: thumbnail, file name, and a live one-line summary. */
 function SpecimenListRow({
   item,
+  index,
   isSelected,
   onSelect,
   onRemove,
 }: {
   item: BatchItem;
+  index: number;
   isSelected: boolean;
   onSelect: () => void;
   onRemove: () => void;
 }) {
   const grains = getTotalGrains(item.detections);
+  // Entrance is CSS-transition-driven (not @keyframes) so a rapid string of
+  // adds/removes stays interruptible: each row flips from its hidden starting
+  // style to visible on the next frame after mount, staggered by index.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   return (
-    <li className="flex items-stretch gap-1">
+    <li
+      className="flex items-stretch gap-1 transition-[opacity,transform] duration-[var(--duration-base)] ease-[var(--ease-out)]"
+      style={{
+        opacity: mounted ? 1 : 0,
+        transform: mounted ? "translateY(0)" : "translateY(4px)",
+        transitionDelay: mounted ? `${Math.min(index, 10) * 30}ms` : "0ms",
+      }}
+    >
       <button
         type="button"
         onClick={onSelect}
         aria-current={isSelected}
         className={`focus-ring flex min-w-0 flex-1 items-center gap-3 rounded-md border px-2.5 py-2 text-left transition ${
           isSelected
-            ? "border-ink/25 bg-white"
-            : "border-panel-line bg-white/50 hover:border-ink/20"
+            ? "border-border-strong bg-surface"
+            : "border-border bg-surface-sunken hover:border-border-strong"
         }`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={item.imageUrl}
           alt=""
-          className="h-10 w-10 shrink-0 rounded object-cover bg-panel"
+          className="h-10 w-10 shrink-0 rounded object-cover bg-surface-sunken"
         />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] text-ink">{item.file.name}</span>
-          <span className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-ink/70">
+          <span className="block truncate text-[13px] text-text">{item.file.name}</span>
+          <span className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-text-muted">
             {item.status === "pending" && "Ready to analyze"}
             {item.status === "analyzing" && (
               <>
@@ -143,7 +161,7 @@ function SpecimenListRow({
         type="button"
         onClick={onRemove}
         aria-label={`Remove ${item.file.name}`}
-        className="focus-ring flex w-8 shrink-0 items-center justify-center rounded-md border border-panel-line bg-white/50 text-ink/55 transition hover:text-ink"
+        className="focus-ring flex w-8 shrink-0 items-center justify-center rounded-md border border-border bg-surface-sunken text-text-faint transition active:scale-[0.9] hover:text-text"
       >
         <X size={13} strokeWidth={1.75} />
       </button>
@@ -300,16 +318,16 @@ export default function AnalyzeWorkspace() {
   return (
     <div className="flex flex-col gap-4">
       {hasPendingDraft && !isAnalyzing && (
-        <div className="flex flex-col gap-3 rounded-lg border border-anther/30 bg-anther/8 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-lg border border-processing/30 bg-processing-bg px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-2.5">
-            <FileText size={15} strokeWidth={1.75} className="mt-0.5 shrink-0 text-anther-ink" />
-            <p className="text-[13px] text-ink/80">
+            <FileText size={15} strokeWidth={1.75} className="mt-0.5 shrink-0 text-processing" />
+            <p className="text-[13px] text-text/80">
               You have an analysis that hasn&apos;t been saved yet. Running a new one replaces it.
             </p>
           </div>
           <Link
             href="/upload/result"
-            className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-md border border-ink/20 bg-white px-3 py-1.5 text-[13px] text-ink transition hover:bg-panel"
+            className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border-strong bg-surface px-3 py-1.5 text-[13px] text-text transition active:scale-[0.97] hover:bg-surface-sunken"
           >
             Open it
             <ArrowRight size={13} strokeWidth={1.75} />
@@ -319,16 +337,16 @@ export default function AnalyzeWorkspace() {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
         {/* Left: batch + collection details */}
-        <div className="rounded-lg border border-panel-line bg-white/60 p-5 xl:col-span-3">
+        <div className="rounded-lg border border-border bg-surface p-5 xl:col-span-3">
           <div className="mb-4 flex items-baseline justify-between gap-3">
-            <h2 className="text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+            <h2 className="text-lg font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
               Specimen images
             </h2>
             {items.length > 0 && (
               <button
                 type="button"
                 onClick={handleClearAll}
-                className="focus-ring rounded text-[13px] text-ink/65 transition hover:text-ink"
+                className="focus-ring rounded text-[13px] text-text-muted transition hover:text-text"
               >
                 Clear all
               </button>
@@ -358,17 +376,17 @@ export default function AnalyzeWorkspace() {
                 setIsDragging(false);
                 handleFiles(e.dataTransfer.files);
               }}
-              className={`focus-ring flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-14 text-center transition ${
-                isDragging ? "border-anther bg-anther/5" : "border-panel-line hover:border-ink/30"
+              className={`focus-ring flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-14 text-center transition-[transform,border-color,background-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
+                isDragging ? "scale-[1.01] border-accent bg-accent/5" : "border-border hover:border-border-strong"
               }`}
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-panel">
-                <ImagePlus size={20} strokeWidth={1.75} className="text-ink/70" />
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-sunken">
+                <ImagePlus size={20} strokeWidth={1.75} className="text-text-muted" />
               </span>
-              <span className="text-[13.5px] text-ink/70">
+              <span className="text-[13.5px] text-text-muted">
                 Drag and drop microscope images, or click to browse
               </span>
-              <span className="text-[12.5px] text-ink/70">
+              <span className="text-[12.5px] text-text-muted">
                 JPG, PNG — up to 10MB each. Select several to analyze a batch.
               </span>
             </button>
@@ -384,15 +402,16 @@ export default function AnalyzeWorkspace() {
                 setIsDragging(false);
                 handleFiles(e.dataTransfer.files);
               }}
-              className={`rounded-lg border-2 border-dashed p-2 transition ${
-                isDragging ? "border-anther bg-anther/5" : "border-transparent"
+              className={`rounded-lg border-2 border-dashed p-2 transition-[transform,border-color,background-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
+                isDragging ? "scale-[1.01] border-accent bg-accent/5" : "border-transparent"
               }`}
             >
               <ul className="flex flex-col gap-1.5">
-                {items.map((item) => (
+                {items.map((item, index) => (
                   <SpecimenListRow
                     key={item.id}
                     item={item}
+                    index={index}
                     isSelected={item.id === selectedId}
                     onSelect={() => setSelectedId(item.id)}
                     onRemove={() => handleRemove(item.id)}
@@ -402,7 +421,7 @@ export default function AnalyzeWorkspace() {
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
-                className="focus-ring mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-panel-line px-3 py-2 text-[13px] text-ink/70 transition hover:border-ink/25 hover:text-ink"
+                className="focus-ring mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border px-3 py-2 text-[13px] text-text-muted transition active:scale-[0.98] hover:border-border-strong hover:text-text"
               >
                 <ImagePlus size={14} strokeWidth={1.75} />
                 Add more images
@@ -415,14 +434,14 @@ export default function AnalyzeWorkspace() {
             <h3 className={sectionHeadingClass} style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
               Collection details
             </h3>
-            <p className="mb-2.5 text-[12.5px] text-ink/70">
+            <p className="mb-2.5 text-[12.5px] text-text-muted">
               When and where the batch was collected — applies to every specimen in it. You can
               still correct any of it on the report page before saving.
             </p>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="block">
-                <span className="mb-1 block text-[12.5px] text-ink/70">Location</span>
+                <span className="mb-1 block text-[12.5px] text-text-muted">Location</span>
                 <input
                   type="text"
                   value={location}
@@ -432,7 +451,7 @@ export default function AnalyzeWorkspace() {
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[12.5px] text-ink/70">Researcher</span>
+                <span className="mb-1 block text-[12.5px] text-text-muted">Researcher</span>
                 <input
                   type="text"
                   value={researcher}
@@ -442,7 +461,7 @@ export default function AnalyzeWorkspace() {
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[12.5px] text-ink/70">Date collected</span>
+                <span className="mb-1 block text-[12.5px] text-text-muted">Date collected</span>
                 <input
                   type="date"
                   value={collectedDate}
@@ -451,8 +470,8 @@ export default function AnalyzeWorkspace() {
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[12.5px] text-ink/70">
-                  Time collected <span className="text-ink/65">(optional)</span>
+                <span className="mb-1 block text-[12.5px] text-text-muted">
+                  Time collected <span className="text-text-faint">(optional)</span>
                 </span>
                 <input
                   type="time"
@@ -464,7 +483,7 @@ export default function AnalyzeWorkspace() {
             </div>
 
             {items.length > 0 && !collectedDate && (
-              <p className="mt-2 text-[12.5px] text-[#b3492f]">
+              <p className="mt-2 text-[12.5px] text-danger">
                 Set the collection date before running the analysis.
               </p>
             )}
@@ -472,7 +491,7 @@ export default function AnalyzeWorkspace() {
             {/* TODO(backend): fetchWeather(location) will pre-fill these. */}
             <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <label className="col-span-2 block sm:col-span-1">
-                <span className="mb-1 block text-[12.5px] text-ink/70">Weather</span>
+                <span className="mb-1 block text-[12.5px] text-text-muted">Weather</span>
                 <select
                   value={weather.condition}
                   onChange={(e) => updateWeather("condition", e.target.value as WeatherCondition)}
@@ -506,11 +525,12 @@ export default function AnalyzeWorkspace() {
             </div>
           </div>
 
-          <button
+          <Button
             type="button"
+            intent="accent"
             disabled={!canAnalyze}
             onClick={handleAnalyze}
-            className="focus-ring mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-ink px-4 py-2.5 text-sm font-medium text-parchment transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-5 w-full disabled:cursor-not-allowed"
           >
             {isAnalyzing ? (
               <>
@@ -523,55 +543,55 @@ export default function AnalyzeWorkspace() {
                 {items.length > 1 ? `Analyze ${items.length} specimens` : "Analyze specimen"}
               </>
             )}
-          </button>
+          </Button>
 
-          <p className="mt-2 text-center text-[12.5px] text-ink/65">
+          <p className="mt-2 text-center text-[12.5px] text-text-muted">
             The results open on their own page, where you add notes and save the report.
           </p>
         </div>
 
         {/* Right: what is about to be analyzed */}
-        <div className="rounded-lg border border-panel-line bg-white/60 p-5 xl:col-span-2">
-          <h2 className="mb-4 text-lg text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+        <div className="rounded-lg border border-border bg-surface p-5 xl:col-span-2">
+          <h2 className="mb-4 text-lg font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
             Preview
           </h2>
 
           {!selected ? (
-            <div className="flex flex-col items-center justify-center gap-2 rounded-lg bg-panel/60 px-6 py-14 text-center">
-              <Microscope size={22} strokeWidth={1.5} className="text-ink/55" />
-              <p className="text-[13px] text-ink/65">
+            <div className="flex flex-col items-center justify-center gap-2 rounded-lg bg-surface-sunken px-6 py-14 text-center">
+              <Microscope size={22} strokeWidth={1.5} className="text-text-faint" />
+              <p className="text-[13px] text-text-muted">
                 Upload one or more microscope images. Pick a slide from the list to see it here
                 before the analysis runs.
               </p>
             </div>
           ) : (
             <div>
-              <div className="overflow-hidden rounded-md border border-panel-line">
+              <div className="overflow-hidden rounded-md border border-border">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={selected.imageUrl}
                   alt={`Specimen ${selected.file.name}`}
-                  className="max-h-64 w-full bg-panel object-contain"
+                  className="max-h-64 w-full bg-surface-sunken object-contain"
                 />
-                <div className="truncate border-t border-panel-line bg-white px-3 py-2 text-[13px] text-ink/70">
+                <div className="truncate border-t border-border bg-surface px-3 py-2 text-[13px] text-text-muted">
                   {selected.file.name}
                 </div>
               </div>
 
               <dl className="mt-4 flex flex-col gap-2 text-[13px]">
                 <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-ink/70">Slides in batch</dt>
-                  <dd className="text-ink" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                  <dt className="text-text-muted">Slides in batch</dt>
+                  <dd className="text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                     {items.length}
                   </dd>
                 </div>
                 <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-ink/70">Report</dt>
-                  <dd className="text-ink/85">One, covering the batch</dd>
+                  <dt className="text-text-muted">Report</dt>
+                  <dd className="text-text">One, covering the batch</dd>
                 </div>
               </dl>
 
-              <p className="mt-4 rounded-md bg-panel/60 px-3 py-2.5 text-[12.5px] text-ink/70">
+              <p className="mt-4 rounded-md bg-surface-sunken px-3 py-2.5 text-[12.5px] text-text-muted">
                 Each slide is counted and identified separately, then the whole batch is saved as a
                 single report.
               </p>

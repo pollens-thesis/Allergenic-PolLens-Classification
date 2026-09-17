@@ -423,12 +423,12 @@ export function fitView(
  * greyscale and for a red-green colour-blind reader — a hue-only ramp would put
  * the top two classes within a few percent of each other once printed.
  */
-export const INTENSITY_RAMP = ["#f0dfae", "#e6b466", "#d1803c", "#a83f27"];
+export const INTENSITY_RAMP = ["#cdeeee", "#8fd4d4", "#45abab", "#0e6f6f"];
 
 /** Sampled, but none of the selected taxon found here. Distinct from both the
  *  ramp and the unsampled fill: "we looked and found nothing" is its own answer. */
-export const ZERO_FILL = "#dcd8c8";
-export const UNSAMPLED_FILL = "#f7f4ec";
+export const ZERO_FILL = "#e4e4e7";
+export const UNSAMPLED_FILL = "#f4f4f5";
 
 export type IntensityScale = {
   /** Upper bound of each class, ascending; `classOf` returns its index. */

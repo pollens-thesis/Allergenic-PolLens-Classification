@@ -1,18 +1,12 @@
 import type { Metadata } from "next";
-import { Fraunces, Inter, IBM_Plex_Mono } from "next/font/google";
+import { Inter, IBM_Plex_Mono } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
-
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-  axes: ["opsz", "SOFT", "WONK"],
-  style: ["normal", "italic"],
-});
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const plexMono = IBM_Plex_Mono({
@@ -33,14 +27,17 @@ export default function RootLayout({
 }>) {
   // No `antialiased` on <html> on purpose. It maps to -webkit-font-smoothing,
   // which lightens every stroke on macOS — and this console is mostly small
-  // text on cream, where that thinning is the difference between legible and
-  // not.
+  // text on a light background, where that thinning is the difference
+  // between legible and not.
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${inter.variable} ${plexMono.variable} h-full`}
+      className={`${inter.variable} ${plexMono.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <Toaster position="bottom-right" theme="light" />
+      </body>
     </html>
   );
 }

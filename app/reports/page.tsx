@@ -5,7 +5,7 @@ import ReportsWorkspace from "@/components/ReportsWorkspace";
 
 function ReportsFallback() {
   return (
-    <div className="flex items-center justify-center gap-2 rounded-lg border border-panel-line bg-white/60 px-6 py-16 text-[13px] text-ink/65">
+    <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-6 py-16 text-[13px] text-text-muted">
       <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
       Loading reports…
     </div>
@@ -14,21 +14,21 @@ function ReportsFallback() {
 
 export default function ReportsPage() {
   return (
-    <div className="grid min-h-screen w-full grid-cols-1 bg-panel lg:grid-cols-[15rem_1fr]">
+    <div className="grid min-h-screen w-full grid-cols-1 bg-bg lg:grid-cols-[15rem_1fr]">
       <Sidebar />
 
       <main className="min-w-0 px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
-        <div className="mb-6">
+        <div className="sticky top-0 z-10 -mx-4 mb-6 border-b border-border px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10" style={{ background: "color-mix(in srgb, var(--bg) 85%, transparent)" }}>
           <p
-            className="text-[12px] tracking-[0.25em] text-ink/70 uppercase"
+            className="text-[12px] tracking-[0.18em] text-text-muted uppercase"
             style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
           >
             Research console
           </p>
-          <h1 className="mt-1 text-3xl text-ink" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+          <h1 className="mt-1 text-3xl text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
             Reports
           </h1>
-          <p className="mt-1 text-sm text-ink/70">
+          <p className="mt-1 text-sm text-text-muted">
             Every saved analysis. Open a report for its images, full results, notes and conditions.
           </p>
         </div>
