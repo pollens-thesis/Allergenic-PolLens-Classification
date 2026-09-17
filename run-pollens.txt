@@ -1,0 +1,24 @@
+PolLens — start frontend + backend (paste into cmd, not PowerShell)
+====================================================================
+
+OPTION A — one paste, opens two separate cmd windows automatically:
+--------------------------------------------------------------------
+start "PolLens Backend"  cmd /k "cd /d D:\Thesis\api && venv\Scripts\activate && python manage.py runserver"
+start "PolLens Frontend" cmd /k "cd /d D:\Thesis\app\PolLens && npm run dev"
+
+
+OPTION B — manual, paste one block into each of two separately opened cmd windows:
+------------------------------------------------------------------------------------
+Backend (Django API, http://127.0.0.1:8000):
+cd /d D:\Thesis\api
+venv\Scripts\activate
+python manage.py runserver
+
+Frontend (Next.js, http://localhost:3000):
+cd /d D:\Thesis\app\PolLens
+npm run dev
+
+
+Notes:
+- Leave both windows open while you work; closing a window stops that server.
+- Backend needs api\venv already set up (it is) and api\.env present (it is).
