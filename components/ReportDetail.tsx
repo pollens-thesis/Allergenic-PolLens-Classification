@@ -23,13 +23,13 @@ import {
   formatTime,
   getCollectionDate,
   getCollectionTime,
-  getSpecies,
   getTotalGrains,
   getWeightedAvgConfidence,
   type SpeciesId,
   type Specimen,
   type SpecimenDetection,
 } from "@/lib/data";
+import { findSpecies, useSpeciesCatalog } from "@/lib/species-catalog";
 import { getReport, getReportImageBlobs, getReportImageUrls } from "@/lib/store";
 import { downloadReportPdf } from "@/lib/pdf";
 import StatusBadge from "@/components/StatusBadge";
@@ -55,7 +55,8 @@ function DetectionRow({
   selected?: boolean;
   onSelect?: () => void;
 }) {
-  const species = getSpecies(detection.speciesId);
+  const speciesCatalog = useSpeciesCatalog();
+  const species = findSpecies(speciesCatalog, detection.speciesId);
   const confidencePct = Math.round(detection.avgConfidence * 100);
 
   /**

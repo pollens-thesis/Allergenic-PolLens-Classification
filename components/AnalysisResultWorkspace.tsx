@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import {
   formatCollectedAt,
-  getSpecies,
   getTotalGrains,
   getWeightedAvgConfidence,
   sortByAbundance,
@@ -23,6 +22,7 @@ import {
   type WeatherCondition,
   type WeatherConditions,
 } from "@/lib/data";
+import { findSpecies, useSpeciesCatalog } from "@/lib/species-catalog";
 import { clearDraft, getDraft, saveDraft, saveReport, type ReportDraft } from "@/lib/store";
 import { accountName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
@@ -55,7 +55,8 @@ function DetectionRow({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const species = getSpecies(detection.speciesId);
+  const speciesCatalog = useSpeciesCatalog();
+  const species = findSpecies(speciesCatalog, detection.speciesId);
   const confidencePct = Math.round(detection.avgConfidence * 100);
 
   return (

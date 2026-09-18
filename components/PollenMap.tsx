@@ -16,13 +16,12 @@ import {
 } from "lucide-react";
 import {
   formatCollectedAt,
-  getSpecies,
   getWeightedAvgConfidence,
-  speciesCatalog,
   speciesLabel,
   type Specimen,
   type SpeciesId,
 } from "@/lib/data";
+import { findSpecies, useSpeciesCatalog } from "@/lib/species-catalog";
 import { listReports } from "@/lib/store";
 import {
   PROVINCES_URL,
@@ -117,6 +116,7 @@ function selectRows(rows: PlaceRow[], filters: Filters, countryScope: boolean): 
 }
 
 export default function PollenMap() {
+  const speciesCatalog = useSpeciesCatalog();
   const [reports, setReports] = useState<Specimen[] | null>(null);
   const [provinces, setProvinces] = useState<GeoCollection | null>(null);
   const [failed, setFailed] = useState(false);
@@ -344,11 +344,11 @@ export default function PollenMap() {
     );
   }
 
-  const activeLabel = species === "all" ? "all pollen" : `${getSpecies(species).scientificName} pollen`;
+  const activeLabel = species === "all" ? "all pollen" : `${findSpecies(speciesCatalog, species).scientificName} pollen`;
   const unitPlural = scope.level === "country" ? "provinces" : "towns";
   const unitSingular = scope.level === "country" ? "province" : "town";
   const speciesFilterLabel =
-    species === "all" ? "All pollen" : speciesLabel(getSpecies(species));
+    species === "all" ? "All pollen" : speciesLabel(findSpecies(speciesCatalog, species));
 
   /**
    * How the current filter chose what it chose, for the report's scope line.
@@ -769,7 +769,7 @@ export default function PollenMap() {
             ) : (
               <ul className="flex flex-col gap-2">
                 {selectedPlace.detections.map((detection) => {
-                  const s = getSpecies(detection.speciesId);
+                  const s = findSpecies(speciesCatalog, detection.speciesId);
                   const share = selectedPlace.totalGrains
                     ? detection.grainCount / selectedPlace.totalGrains
                     : 0;
@@ -834,7 +834,7 @@ export default function PollenMap() {
             <p className="mt-1.5 text-center text-[12px] text-text-muted">
               PDF · {selectedPlace.reportCount}{" "}
               {selectedPlace.reportCount === 1 ? "report" : "reports"} ·{" "}
-              {species === "all" ? "all pollen" : getSpecies(species).scientificName}
+              {species === "all" ? "all pollen" : findSpecies(speciesCatalog, species).scientificName}
             </p>
 
             <Link

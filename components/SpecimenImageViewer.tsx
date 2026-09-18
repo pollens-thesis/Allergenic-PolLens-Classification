@@ -4,13 +4,13 @@ import { ImageOff, ScanSearch } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import clsx from "clsx";
 import {
-  getSpecies,
   sortByAbundance,
   speciesLabel,
   type DetectedGrain,
   type SpeciesId,
   type SpecimenDetection,
 } from "@/lib/data";
+import { findSpecies, useSpeciesCatalog } from "@/lib/species-catalog";
 
 /**
  * A slide image with the model's boxes drawn over it.
@@ -42,6 +42,7 @@ export default function SpecimenImageViewer({
   onSelectSpecies: (speciesId: SpeciesId | null) => void;
 }) {
   const reduceMotion = useReducedMotion();
+  const speciesCatalog = useSpeciesCatalog();
   const boxes = grains ?? [];
   const hasBoxes = boxes.length > 0;
   const shownCount = selectedSpeciesId
@@ -75,7 +76,7 @@ export default function SpecimenImageViewer({
             All types
           </motion.button>
           {chips.map((detection) => {
-            const species = getSpecies(detection.speciesId);
+            const species = findSpecies(speciesCatalog, detection.speciesId);
             const active = selectedSpeciesId === detection.speciesId;
             return (
               <motion.button
@@ -120,7 +121,7 @@ export default function SpecimenImageViewer({
             <img src={imageUrl} alt={`Specimen ${fileName}`} className="block w-full" />
 
             {boxes.map((grain, index) => {
-              const species = getSpecies(grain.speciesId);
+              const species = findSpecies(speciesCatalog, grain.speciesId);
               const dimmed = selectedSpeciesId !== null && grain.speciesId !== selectedSpeciesId;
               return (
                 <motion.button
