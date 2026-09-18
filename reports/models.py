@@ -5,34 +5,9 @@ from django.core.validators import MaxValueValidator, MinValueValidator, RegexVa
 from django.db import models, transaction
 from django.utils import timezone
 
-SPECIES_CHOICES = [
-    ('amaranthus_spinosus', 'Amaranthus spinosus'),
-    ('axonopus_compressus', 'Axonopus compressus'),
-    ('brachiaria_mutica', 'Brachiaria mutica'),
-    ('chloris_barbata', 'Chloris barbata'),
-    ('chrysopogon_aciculatus', 'Chrysopogon aciculatus'),
-    ('cocos_nucifera', 'Cocos nucifera'),
-    ('cyperus_rotundus', 'Cyperus rotundus'),
-    ('dactyloctenium_aegyptium', 'Dactyloctenium aegyptium'),
-    ('digitaria_ciliaris', 'Digitaria ciliaris'),
-    ('echinochloa_crus_galli', 'Echinochloa crus-galli'),
-    ('eleusine_indica', 'Eleusine indica'),
-    ('imperata_cylindrica', 'Imperata cylindrica'),
-    ('leucaena_leucocephala', 'Leucaena leucocephala'),
-    ('panicum_maximum', 'Panicum maximum'),
-    ('pennisetum_polystachion', 'Pennisetum polystachion'),
-    ('pithecellobium_dulce', 'Pithecellobium dulce'),
-    ('saccharum_spontaneum', 'Saccharum spontaneum'),
-    ('samanea_saman', 'Samanea saman'),
-    ('sorghum_halepense', 'Sorghum halepense'),
-    ('tridax_procumbens', 'Tridax procumbens'),
-    ('oryza_sativa', 'Oryza sativa'),
-    ('mimosa_pudica', 'Mimosa pudica'),
-    ('mangifera_indica', 'Mangifera indica'),
-]  # values match SpeciesId exactly — see app/PolLens/lib/data.ts. Full binomial
-# slugs (genus_species), not genus-only, matching the ML model's per-species
-# classification granularity — the real UPLB taxonomic scope, replacing the
-# earlier 8-species placeholder catalog.
+RISK_LEVEL_CHOICES = [
+    ('High', 'High'), ('Moderate', 'Moderate'), ('Low', 'Low'),
+]  # matches Species['riskLevel'] in app/PolLens/lib/data.ts
 
 STATUS_CHOICES = [
     ('Completed', 'Completed'), ('Processing', 'Processing'), ('Needs review', 'Needs review'),
@@ -139,17 +114,41 @@ class Slide(models.Model):
         return f'{self.report.sample_id}-S{self.number}'
 
 
+class Species(models.Model):
+    """
+    The 23-species UPLB pollen catalog — single source of truth for the
+    species slug used by Detection/Grain (was a hardcoded SPECIES_CHOICES
+    list). Maps to `Species` in app/PolLens/lib/data.ts.
+    """
+
+    id = models.SlugField(max_length=32, primary_key=True)
+    scientific_name = models.CharField(max_length=100, unique=True)
+    common_name = models.CharField(max_length=100, blank=True, default='')
+    code = models.CharField(max_length=4, unique=True)
+    season = models.CharField(max_length=100, blank=True, default='')
+    risk_level = models.CharField(max_length=10, choices=RISK_LEVEL_CHOICES, default='Moderate')
+    color = models.CharField(max_length=7)  # CSS hex, e.g. "#2a78d6"
+    sort_order = models.PositiveSmallIntegerField(unique=True)  # curated display order
+
+    class Meta:
+        ordering = ['sort_order']
+        verbose_name_plural = 'species'
+
+    def __str__(self):
+        return self.scientific_name
+
+
 class Detection(models.Model):
     """Per-species summary row for one slide. Maps to SpecimenDetection."""
 
     slide = models.ForeignKey(Slide, on_delete=models.CASCADE, related_name='detections')
-    species_id = models.CharField(max_length=32, choices=SPECIES_CHOICES)
+    species = models.ForeignKey(Species, on_delete=models.PROTECT)
     grain_count = models.PositiveIntegerField()
     avg_confidence = models.FloatField(validators=[MinValueValidator(0), MaxValueValidator(1)])
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['slide', 'species_id'], name='unique_species_per_slide'),
+            models.UniqueConstraint(fields=['slide', 'species'], name='unique_species_per_slide'),
         ]
 
     def __str__(self):
@@ -161,7 +160,7 @@ class Grain(models.Model):
 
     slide = models.ForeignKey(Slide, on_delete=models.CASCADE, related_name='grains')
     number = models.PositiveIntegerField()  # 1-based; derives id "G{number}"
-    species_id = models.CharField(max_length=32, choices=SPECIES_CHOICES)
+    species = models.ForeignKey(Species, on_delete=models.PROTECT)
     confidence = models.FloatField(validators=[MinValueValidator(0), MaxValueValidator(1)])
     box_x = models.FloatField()
     box_y = models.FloatField()

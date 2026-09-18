@@ -131,39 +131,68 @@ between the thesis proposal paper and the frontend.
     as the `from`/`to` filter above), only over `status='Completed'`
     reports. Response shape matches `MonthlyPollenCount`: `{"month": "Sep",
     "series": {"amaranthus_spinosus": 0, ...}}` — `series` is keyed
-    dynamically off the full `SPECIES_CHOICES` list (`ALL_SPECIES_IDS` in
-    `reports/views.py`), zero-filled for every catalog species every month,
-    not a hardcoded per-species struct — so it scales automatically if the
-    catalog changes. `month` is a bare 3-letter abbreviation with no
-    year; the trailing-12-month window makes that unambiguous since no
-    month name repeats within it. Months with no data return `0`, not an
-    omitted entry. **Wired into the frontend as of 2026-08-31**:
-    `PollenCountChart` (`app/PolLens/components/PollenCountChart.tsx`) fetches
-    this client-side once signed in (`fetchMonthlyPollenCounts` in
+    dynamically off the `Species` table (`all_species_ids()` in
+    `reports/views.py`, ordered by `Species.sort_order`), zero-filled for
+    every catalog species every month, not a hardcoded per-species struct
+    — so it scales automatically if the catalog changes. `month` is a bare
+    3-letter abbreviation with no year; the trailing-12-month window makes
+    that unambiguous since no month name repeats within it. Months with no
+    data return `0`, not an omitted entry. **Wired into the frontend as of
+    2026-08-31**: `PollenCountChart` (`app/PolLens/components/PollenCountChart.tsx`)
+    fetches this client-side once signed in (`fetchMonthlyPollenCounts` in
     `app/PolLens/lib/data.ts`), falling back to the `historicalPollenCounts`
     seed if signed out or the request fails.
+  - **`GET /api/v1/reports/species/`** (`reports.views.SpeciesListView`,
+    `IsAuthenticated`; registered in `config/urls.py` before `<sample_id>/`
+    for the same reason as `monthly-counts/`). Returns the full 23-species
+    catalog as a plain JSON array, ordered by `Species.sort_order` (the
+    curated display order, not alphabetical), camelCase fields matching
+    `Species` in `app/PolLens/lib/data.ts` exactly (`scientificName`,
+    `commonName`, `code`, `season`, `riskLevel`, `color`) — see the Models
+    entry below. **As of 2026-09-18, the frontend still hardcodes its own
+    copy of this catalog** (`app/PolLens/lib/data.ts`'s `speciesCatalog`);
+    nothing calls this endpoint yet — wiring that up is a separate,
+    not-yet-done follow-up, same pattern as `lib/store.ts` under "What's
+    still open" below.
   - **Models** (`reports/models.py`): `Report` (weather flattened onto the
     model as nullable fields, not a separate table; `collected_at` stored
     as a validated `CharField`, not `DateTimeField`, to preserve the
     frontend's opaque ISO-date-or-datetime string exactly), `Slide` (one
     `ImageField` per slide, served via `MEDIA_URL`/`MEDIA_ROOT` — local
     disk in dev, guarded by `DEBUG` in `config/urls.py`; no production
-    media storage, e.g. S3, configured yet), `Detection` (per-species
-    summary row), `Grain` (optional per-grain bounding box — a slide may
-    have zero). `species_id` choices (`SPECIES_CHOICES`, `max_length=32`)
-    match `SpeciesId` in `lib/data.ts` exactly — the real 23-species UPLB
-    taxonomic scope (full binomial slugs, e.g. `amaranthus_spinosus`), as
-    of 2026-08-31 replacing an earlier 8-species European/temperate
-    placeholder catalog (Poaceae/Betula/Alnus/... — never the real scope,
-    see the Taxonomic Scope row in `../docs/system-spec.md`); `status`
-    choices include `Processing`/`Needs review` for schema completeness
-    even though nothing writes them yet.
-  - **Test coverage**: `reports/tests.py` covers both views —
-    authentication, list (empty/populated, filtering by `q`/`status`/
-    `location`/`from`/`to` individually and combined, invalid `status`/
-    date param errors), create (multipart success, missing weather,
-    missing image, invalid species, empty slides, sequential sample-id
-    increments), and detail (found/404). Run with
+    media storage, e.g. S3, configured yet), `Species` (the 23-species
+    UPLB taxonomic catalog — PK is the slug itself, e.g.
+    `amaranthus_spinosus`, plus `scientific_name`, `common_name`, `code`,
+    `season`, `risk_level`, `color`, and an explicit `sort_order` since
+    Postgres doesn't preserve insertion order; admin-editable via
+    `reports.admin.SpeciesAdmin`, `list_editable` on the still-hand-maintained
+    metadata fields), `Detection` (per-species summary row), `Grain`
+    (optional per-grain bounding box — a slide may have zero).
+    `Detection.species`/`Grain.species` are a real `ForeignKey(Species,
+    on_delete=PROTECT)` — **as of 2026-09-18**, replacing what used to be a
+    plain `CharField(choices=SPECIES_CHOICES)`; `PROTECT` (not `CASCADE`)
+    so deleting a `Species` row from admin can't silently wipe out
+    historical detections/grains that reference it. The underlying
+    `species_id` database column is unchanged (Django's default FK column
+    naming for a field named `species` happens to coincide with the old
+    CharField's column name), so this was a zero-data-loss, same-column
+    migration (`reports/migrations/0003_species.py` creates the table,
+    `0004_seed_species.py` seeds the 23 rows, `0005_species_id_to_fk.py`
+    — hand-written, since Django's `makemigrations` autodetector proposed
+    a drop-and-recreate for the type change rather than an in-place
+    rename — converts the column). `common_name`/`season` are seeded as
+    empty strings, still pending real data (same status as before, just
+    DB-backed now instead of a `"TBD"` literal — see the Taxonomic Scope
+    row in `../docs/system-spec.md`). `status` choices include
+    `Processing`/`Needs review` for schema completeness even though
+    nothing writes them yet.
+  - **Test coverage**: `reports/tests.py` covers all views — authentication,
+    list (empty/populated, filtering by `q`/`status`/`location`/`from`/`to`
+    individually and combined, invalid `status`/date param errors), create
+    (multipart success, missing weather, missing image, invalid species on
+    both `detections[]` and `grains[]`, empty slides, sequential sample-id
+    increments), detail (found/404), monthly-counts, and the species list
+    endpoint (auth-required, curated order, camelCase shape). Run with
     `python manage.py test reports`.
   - **What's still open**: no `PATCH`/`DELETE` (owner is captured for this,
     unused so far); not yet wired into the frontend —

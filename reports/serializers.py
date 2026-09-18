@@ -2,12 +2,12 @@ from django.db import transaction
 from rest_framework import serializers
 
 from .models import (
-    SPECIES_CHOICES,
     WEATHER_CONDITION_CHOICES,
     Detection,
     Grain,
     Report,
     Slide,
+    Species,
     next_sample_id,
 )
 
@@ -29,13 +29,17 @@ class BoundingBoxInputSerializer(serializers.Serializer):
 
 
 class DetectionInputSerializer(serializers.Serializer):
-    speciesId = serializers.ChoiceField(choices=SPECIES_CHOICES, source='species_id')
+    speciesId = serializers.SlugRelatedField(
+        slug_field='id', queryset=Species.objects.all(), source='species',
+    )
     grainCount = serializers.IntegerField(min_value=0, source='grain_count')
     avgConfidence = serializers.FloatField(min_value=0, max_value=1, source='avg_confidence')
 
 
 class GrainInputSerializer(serializers.Serializer):
-    speciesId = serializers.ChoiceField(choices=SPECIES_CHOICES, source='species_id')
+    speciesId = serializers.SlugRelatedField(
+        slug_field='id', queryset=Species.objects.all(), source='species',
+    )
     confidence = serializers.FloatField(min_value=0, max_value=1)
     box = BoundingBoxInputSerializer()
 
@@ -103,7 +107,7 @@ class ReportCreateSerializer(serializers.Serializer):
                 )
                 Grain.objects.bulk_create(
                     Grain(
-                        slide=slide, number=i + 1, species_id=grain['species_id'],
+                        slide=slide, number=i + 1, species=grain['species'],
                         confidence=grain['confidence'],
                         box_x=grain['box']['x'], box_y=grain['box']['y'],
                         box_width=grain['box']['width'], box_height=grain['box']['height'],
@@ -117,6 +121,16 @@ class ReportCreateSerializer(serializers.Serializer):
 # Output (read-only) — shaped exactly like the frontend's `Specimen` type,
 # camelCase throughout via explicit `source=`.
 # ---------------------------------------------------------------------------
+
+
+class SpeciesSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    scientificName = serializers.CharField(source='scientific_name')
+    commonName = serializers.CharField(source='common_name')
+    code = serializers.CharField()
+    season = serializers.CharField()
+    riskLevel = serializers.CharField(source='risk_level')
+    color = serializers.CharField()
 
 
 class BoundingBoxSerializer(serializers.Serializer):

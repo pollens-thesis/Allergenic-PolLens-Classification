@@ -10,9 +10,8 @@ from rest_framework.test import APITestCase
 
 from accounts.models import User
 
-from .models import SPECIES_CHOICES, Detection, Grain, Report, Slide, next_sample_id
-
-ALL_SPECIES_IDS = [species_id for species_id, _ in SPECIES_CHOICES]
+from .models import Detection, Grain, Report, Slide, next_sample_id
+from .views import all_species_ids
 
 
 def make_test_image(name='slide.png'):
@@ -120,6 +119,22 @@ class ReportListCreateViewTests(APITestCase):
         payload = make_report_payload(
             slides=json.dumps([make_slide_payload(
                 detections=[{'speciesId': 'not-a-species', 'grainCount': 1, 'avgConfidence': 0.5}],
+            )]),
+        )
+        payload['0'] = make_test_image()
+
+        response = self.client.post(self.url, payload, format='multipart')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_invalid_grain_species_id_returns_400(self):
+        self.client.force_authenticate(user=self.user)
+        payload = make_report_payload(
+            slides=json.dumps([make_slide_payload(
+                grains=[{
+                    'speciesId': 'not-a-species', 'confidence': 0.5,
+                    'box': {'x': 0.1, 'y': 0.1, 'width': 0.2, 'height': 0.2},
+                }],
             )]),
         )
         payload['0'] = make_test_image()
@@ -358,7 +373,7 @@ class ReportMonthlyCountsViewTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 12)
         for entry in response.data:
-            self.assertEqual(set(entry['series']), set(ALL_SPECIES_IDS))
+            self.assertEqual(set(entry['series']), set(all_species_ids()))
             for count in entry['series'].values():
                 self.assertEqual(count, 0)
         self.assertEqual(response.data[-1]['month'], calendar.month_abbr[timezone.now().month])
@@ -399,5 +414,41 @@ class ReportMonthlyCountsViewTests(APITestCase):
         response = self.client.get(self.url)
 
         # All 23 species are always present (zero-filled), not just ones with data.
-        self.assertEqual(set(response.data[-1]['series']), set(ALL_SPECIES_IDS))
+        self.assertEqual(set(response.data[-1]['series']), set(all_species_ids()))
         self.assertEqual(response.data[-1]['series']['mangifera_indica'], 3)
+
+
+class SpeciesListViewTests(APITestCase):
+    url = '/api/v1/reports/species/'
+
+    def setUp(self):
+        self.user = User.objects.create(email='researcher@up.edu.ph', institution='up.edu.ph')
+
+    def test_requires_authentication(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_returns_all_species_in_curated_order(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ids = all_species_ids()
+        self.assertEqual(len(response.data), len(ids))
+        self.assertEqual([row['id'] for row in response.data], ids)
+        self.assertEqual(response.data[0]['id'], 'amaranthus_spinosus')
+        self.assertEqual(response.data[-1]['id'], 'mangifera_indica')
+
+    def test_species_shape_is_camelcase(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self.url)
+
+        first = response.data[0]
+        self.assertEqual(
+            set(first), {'id', 'scientificName', 'commonName', 'code', 'season', 'riskLevel', 'color'},
+        )
+        self.assertEqual(first['scientificName'], 'Amaranthus spinosus')
+        self.assertEqual(first['code'], 'AMAR')

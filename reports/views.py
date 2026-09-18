@@ -12,12 +12,19 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import SPECIES_CHOICES, STATUS_CHOICES, Detection, Report
-from .serializers import ReportCreateSerializer, ReportSerializer
+from .models import STATUS_CHOICES, Detection, Report, Species
+from .serializers import ReportCreateSerializer, ReportSerializer, SpeciesSerializer
 
 DATE_PARAM_VALIDATOR = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 VALID_STATUSES = dict(STATUS_CHOICES)
-ALL_SPECIES_IDS = [species_id for species_id, _ in SPECIES_CHOICES]
+
+
+def all_species_ids():
+    # Queried per call, not cached at import time — a module-level query
+    # would run during management commands (makemigrations, check) before
+    # the table necessarily exists. Species.Meta.ordering = ['sort_order']
+    # already applies, .order_by() here is just for readability at the call site.
+    return list(Species.objects.order_by('sort_order').values_list('id', flat=True))
 
 
 class ReportListCreateView(APIView):
@@ -66,7 +73,7 @@ class ReportListCreateView(APIView):
                 Q(sample_id__icontains=query)
                 | Q(location__icontains=query)
                 | Q(collected_at__icontains=query)
-                | Q(slides__detections__species_id__icontains=query)
+                | Q(slides__detections__species__id__icontains=query)
             ).distinct()
 
         reports = reports.prefetch_related('slides__detections', 'slides__grains')
@@ -123,15 +130,16 @@ class ReportMonthlyCountsView(APIView):
     month (oldest first), one entry per month, every catalog species present
     in `series` with a count of 0 when there's no data — matching
     app/PolLens/lib/data.ts's MonthlyPollenCount: `{month, series: {species_id:
-    count}}`. `series` is keyed dynamically off the full species catalog
-    (not a fixed hardcoded struct), so it scales with SPECIES_CHOICES without
-    a contract change. `month` has no year — a rolling 12-month window never
+    count}}`. `series` is keyed dynamically off the full Species table (not
+    a fixed hardcoded struct), so it scales automatically as species are
+    added/removed. `month` has no year — a rolling 12-month window never
     repeats a month abbreviation, which is what makes that unambiguous.
     """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        all_species = all_species_ids()
         now = timezone.now()
         months = []
         year, month = now.year, now.month
@@ -145,7 +153,7 @@ class ReportMonthlyCountsView(APIView):
         target_year_months = [f'{year:04d}-{month:02d}' for year, month in months]
         rows = (
             Detection.objects
-            .filter(species_id__in=ALL_SPECIES_IDS, slide__report__status='Completed')
+            .filter(species_id__in=all_species, slide__report__status='Completed')
             .annotate(year_month=Substr('slide__report__collected_at', 1, 7))
             .filter(year_month__in=target_year_months)
             .values('year_month', 'species_id')
@@ -158,11 +166,20 @@ class ReportMonthlyCountsView(APIView):
             year_month = f'{year:04d}-{month:02d}'
             series = {
                 species_id: counts.get((year_month, species_id), 0)
-                for species_id in ALL_SPECIES_IDS
+                for species_id in all_species
             }
             result.append({'month': calendar.month_abbr[month], 'series': series})
 
         return Response(result)
+
+
+class SpeciesListView(APIView):
+    """GET /api/v1/reports/species/ — the full pollen species catalog, curated order."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(SpeciesSerializer(Species.objects.all(), many=True).data)
 
 
 class ReportDetailView(APIView):

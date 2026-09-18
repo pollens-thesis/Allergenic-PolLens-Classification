@@ -24,7 +24,12 @@ from rest_framework_simplejwt.views import (
 )
 
 from accounts.views import GoogleLoginView, LogoutView, MeView
-from reports.views import ReportDetailView, ReportListCreateView, ReportMonthlyCountsView
+from reports.views import (
+    ReportDetailView,
+    ReportListCreateView,
+    ReportMonthlyCountsView,
+    SpeciesListView,
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -39,6 +44,7 @@ urlpatterns = [
     # Must come before <str:sample_id>/ or that dynamic segment swallows
     # "monthly-counts" as a sample id — Django matches patterns in order.
     path('api/v1/reports/monthly-counts/', ReportMonthlyCountsView.as_view(), name='report_monthly_counts'),
+    path('api/v1/reports/species/', SpeciesListView.as_view(), name='species_list'),
     path('api/v1/reports/<str:sample_id>/', ReportDetailView.as_view(), name='report_detail'),
 ]
 
