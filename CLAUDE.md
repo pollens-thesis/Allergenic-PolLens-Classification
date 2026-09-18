@@ -149,11 +149,15 @@ between the thesis proposal paper and the frontend.
     curated display order, not alphabetical), camelCase fields matching
     `Species` in `app/PolLens/lib/data.ts` exactly (`scientificName`,
     `commonName`, `code`, `season`, `riskLevel`, `color`) — see the Models
-    entry below. **As of 2026-09-18, the frontend still hardcodes its own
-    copy of this catalog** (`app/PolLens/lib/data.ts`'s `speciesCatalog`);
-    nothing calls this endpoint yet — wiring that up is a separate,
-    not-yet-done follow-up, same pattern as `lib/store.ts` under "What's
-    still open" below.
+    entry below. **Wired into the frontend as of 2026-09-18**: a new
+    `useSpeciesCatalog()` hook (`app/PolLens/lib/species-catalog.ts`) fetches
+    this endpoint once signed in and swaps it in for the bundled
+    `speciesCatalog` fallback (`app/PolLens/lib/data.ts`) — same
+    fetch-once-and-silently-swap pattern as `fetchMonthlyPollenCounts`/
+    `PollenCountChart` above. The bundled catalog stays in place as the
+    fallback and as the data source for PDF/CSV export and the mock
+    analysis generator, which don't benefit from live data the way
+    on-screen labels do.
   - **Models** (`reports/models.py`): `Report` (weather flattened onto the
     model as nullable fields, not a separate table; `collected_at` stored
     as a validated `CharField`, not `DateTimeField`, to preserve the
