@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowRight, Loader2, ScanLine } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
+import DashboardGreeting from "@/components/DashboardGreeting";
 import DashboardStats from "@/components/DashboardStats";
 import PollenCountChart from "@/components/PollenCountChart";
 import ReportsWorkspace from "@/components/ReportsWorkspace";
@@ -21,22 +22,14 @@ export default function DashboardPage() {
             background: "color-mix(in srgb, var(--bg) 85%, transparent)",
           }}
         >
-          <p
-            className="text-[12px] tracking-[0.18em] text-text-muted uppercase"
-            style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-          >
-            Research console
-          </p>
-          <h1 className="mt-1 text-3xl text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-            Welcome back, Researcher
-          </h1>
+          <DashboardGreeting />
         </div>
 
         <div className="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
           {/* Primary action: Start New Analysis */}
           <Link
             href="/upload"
-            className="focus-ring group mb-6 flex flex-col gap-4 rounded-lg border border-border bg-text px-6 py-5 transition-[opacity,transform] duration-[var(--duration-base)] ease-[var(--ease-out)] hover:opacity-95 active:scale-[0.99] sm:flex-row sm:items-center sm:justify-between"
+            className="focus-ring group mb-6 flex flex-col gap-4 rounded-md border border-border bg-text px-6 py-5 transition-[background-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-text/85 active:scale-[0.97] active:bg-text/90 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex items-center gap-4">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent/20">

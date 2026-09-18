@@ -23,13 +23,7 @@ export default async function ReportDetailPage({
             <ArrowLeft size={14} strokeWidth={1.75} />
             Back to Reports
           </Link>
-          <p
-            className="text-[12px] tracking-[0.18em] text-text-muted uppercase"
-            style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-          >
-            Research console
-          </p>
-          <h1 className="mt-1 text-3xl text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+          <h1 className="text-3xl text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
             Full report detail
           </h1>
         </div>

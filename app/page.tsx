@@ -22,12 +22,6 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 max-w-xl">
-          <p
-            className="mb-4 text-xs tracking-[0.28em] text-accent uppercase"
-            style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-          >
-            Allergen Identification &middot; Research Console
-          </p>
           <h1 className="text-4xl leading-[1.08] font-semibold tracking-tight text-hero-fg sm:text-5xl lg:text-[3.4rem]">
             Every grain,{" "}
             <span className="text-[var(--hero-grain-soft)]">read</span> and
@@ -62,13 +56,7 @@ export default function LoginPage() {
       <section className="flex w-full flex-1 items-center justify-center bg-bg px-6 py-14 lg:w-[42%] lg:px-12">
         <div className="w-full max-w-sm">
           <div className="mb-8">
-            <p
-              className="text-[12px] tracking-[0.2em] text-text-muted uppercase"
-              style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-            >
-              Researcher access
-            </p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-text">
+            <h2 className="text-3xl font-semibold tracking-tight text-text">
               Sign in to continue
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-text-muted">

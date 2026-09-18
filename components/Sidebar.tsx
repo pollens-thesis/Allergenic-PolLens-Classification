@@ -95,10 +95,10 @@ export default function Sidebar() {
             // Choosing a destination is the end of navigating, so the drawer
             // goes with the click rather than waiting on the route to change.
             onClick={() => setMenuOpen(false)}
-            className={`focus-ring flex items-center gap-3 rounded-md border-l-2 py-2.5 pr-3 text-[13.5px] font-medium transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
+            className={`focus-ring flex items-center gap-3 rounded-md px-3 py-2.5 text-[13.5px] font-medium transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
               active
-                ? "border-accent bg-accent-muted pl-[10px] text-text"
-                : "border-transparent pl-3 text-text-muted hover:bg-surface-sunken hover:text-text"
+                ? "bg-accent-muted text-text"
+                : "text-text-muted hover:bg-surface-sunken hover:text-text"
             }`}
           >
             <ItemIcon size={16} strokeWidth={1.75} className={active ? "text-accent" : ""} />

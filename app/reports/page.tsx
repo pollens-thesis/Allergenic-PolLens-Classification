@@ -19,13 +19,7 @@ export default function ReportsPage() {
 
       <main className="min-w-0 px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
         <div className="sticky top-0 z-10 -mx-4 mb-6 border-b border-border px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10" style={{ background: "color-mix(in srgb, var(--bg) 85%, transparent)" }}>
-          <p
-            className="text-[12px] tracking-[0.18em] text-text-muted uppercase"
-            style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-          >
-            Research console
-          </p>
-          <h1 className="mt-1 text-3xl text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+          <h1 className="text-3xl text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
             Reports
           </h1>
           <p className="mt-1 text-sm text-text-muted">

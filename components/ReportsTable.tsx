@@ -456,9 +456,7 @@ export default function ReportsTable({
                   onClick={(event) => openRow(event, r.sampleId)}
                   className={clsx(
                     "group cursor-pointer border-b border-border/70 transition-colors duration-[var(--duration-fast)] last:border-0",
-                    picked.has(r.sampleId)
-                      ? "border-l-2 border-l-accent bg-accent-muted"
-                      : "hover:bg-surface-sunken",
+                    picked.has(r.sampleId) ? "bg-accent-muted" : "hover:bg-surface-sunken",
                   )}
                 >
                   <td className="py-2.5 pr-2">

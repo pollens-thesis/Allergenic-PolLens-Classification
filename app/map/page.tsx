@@ -14,13 +14,7 @@ export default function PollenMapPage() {
             backdropFilter: "blur(12px)",
           }}
         >
-          <p
-            className="text-[12px] tracking-[0.18em] text-text-muted uppercase"
-            style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-          >
-            Research console
-          </p>
-          <h1 className="mt-1 text-3xl text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+          <h1 className="text-3xl text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
             Pollen map
           </h1>
           <p className="mt-1 text-sm text-text-muted">
