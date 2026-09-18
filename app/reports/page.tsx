@@ -22,7 +22,7 @@ export default function ReportsPage() {
           <h1 className="text-3xl text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
             Reports
           </h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <p className="mt-1 max-w-prose text-sm text-text-muted">
             Every saved analysis. Open a report for its images, full results, notes and conditions.
           </p>
         </div>

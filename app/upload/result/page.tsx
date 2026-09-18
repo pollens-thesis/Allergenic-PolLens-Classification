@@ -23,7 +23,7 @@ export default function AnalysisResultPage() {
           <h1 className="text-3xl font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
             Analysis result
           </h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <p className="mt-1 max-w-prose text-sm text-text-muted">
             Everything the analysis found, beside the slide it came from. Add your notes and save
             it as a report.
           </p>

@@ -11,7 +11,7 @@
   /* Text */
   --text: #0a0a0a;
   --text-muted: #52525b;
-  --text-faint: #a1a1aa;
+  --text-faint: #6f6f79; /* passes WCAG AA (4.5:1+) against bg/surface/surface-sunken */
 
   /* The one accent (teal) */
   --accent: #0e8a8a;
@@ -36,7 +36,7 @@
   --hero-grain: #2dd4d4;      /* teal-tinted grain, replaces the old gold */
   --hero-grain-soft: #6ee7e7;
 
-  --font-display: var(--font-inter);
+  --font-display: var(--font-plex-serif);
   --font-body: var(--font-inter);
   --font-mono: var(--font-plex-mono);
 

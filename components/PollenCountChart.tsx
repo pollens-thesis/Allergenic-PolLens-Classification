@@ -11,9 +11,20 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { AlertTriangle, Inbox } from "lucide-react";
 import type { MonthlyPollenCount } from "@/lib/data";
 import { fetchMonthlyPollenCounts, pollenSeries } from "@/lib/data";
 import { useSettings } from "@/lib/settings";
+
+/**
+ * "seed" — signed out, never fetched, showing the bundled illustrative data.
+ * "live" — fetch succeeded with real, non-zero totals.
+ * "empty-live" — fetch succeeded but there's genuinely nothing to plot yet.
+ * "error" — fetch failed; still showing the last-known (seed or live) data.
+ * Distinguishing these is the point: a flat zero-line chart looked identical
+ * to "broken" and to "no data yet" before this existed.
+ */
+type Status = "seed" | "live" | "empty-live" | "error";
 
 const RANGES = [
   { label: "6 months", value: 6 },
@@ -62,17 +73,27 @@ function CustomTooltip({
 export default function PollenCountChart({ initial }: { initial: MonthlyPollenCount[] }) {
   const [range, setRange] = useState<number>(12);
   const [data, setData] = useState<MonthlyPollenCount[]>(initial);
+  const [status, setStatus] = useState<Status>("seed");
   const { accessToken } = useSettings();
 
   useEffect(() => {
+    // Default state is already "seed" — nothing to set for the signed-out
+    // case, just skip fetching.
     if (!accessToken) return;
     let cancelled = false;
     fetchMonthlyPollenCounts(accessToken)
       .then((counts) => {
-        if (!cancelled) setData(counts);
+        if (cancelled) return;
+        setData(counts);
+        const total = counts.reduce(
+          (sum, month) => sum + Object.values(month.series).reduce((a, b) => a + b, 0),
+          0,
+        );
+        setStatus(total > 0 ? "live" : "empty-live");
       })
       .catch(() => {
-        // Keep showing the seed data — a failed refresh shouldn't blank the chart.
+        // Keep showing the last-known data — a failed refresh shouldn't blank the chart.
+        if (!cancelled) setStatus("error");
       });
     return () => {
       cancelled = true;
@@ -125,49 +146,100 @@ export default function PollenCountChart({ initial }: { initial: MonthlyPollenCo
         </div>
       </div>
 
-      <div className="mt-3" style={{ width: "100%", height: 320 }}>
-        <ResponsiveContainer width="100%" height="100%" debounce={1}>
-          <LineChart data={visible} margin={{ top: 10, right: 12, left: -12, bottom: 0 }}>
-            <CartesianGrid stroke="var(--border)" vertical={false} />
-            <XAxis
-              dataKey="month"
-              tick={{ fontSize: 12, fill: "#52525bb3", fontWeight: 500 }}
-              tickLine={false}
-              axisLine={{ stroke: "var(--border)" }}
-            />
-            <YAxis
-              tick={{ fontSize: 12, fill: "#52525bb3", fontWeight: 500 }}
-              tickLine={false}
-              axisLine={false}
-              width={44}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend
-              verticalAlign="bottom"
-              height={32}
-              iconType="circle"
-              iconSize={8}
-              wrapperStyle={{ fontSize: 13, paddingTop: 8 }}
-              // Recharts colours the label to match its line, and some line
-              // colors read too light on white for legend text. The dot
-              // already carries the colour; the words only have to be readable.
-              formatter={(value) => <span style={{ color: "#0a0a0acc" }}>{value}</span>}
-            />
-            {linesToShow.map((s) => (
-              <Line
-                key={s.key}
-                type="monotone"
-                dataKey={(entry: MonthlyPollenCount) => entry.series[s.key] ?? 0}
-                name={s.label}
-                stroke={s.color}
-                strokeWidth={2.25}
-                dot={{ r: 3, fill: s.color, strokeWidth: 0 }}
-                activeDot={{ r: 5 }}
-              />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+      {status === "seed" && (
+        <p className="mt-2 text-[12.5px] text-text-muted">
+          Preview data — sign in to see your real counts.
+        </p>
+      )}
+      {status === "error" && (
+        <p className="mt-2 flex items-center gap-1.5 text-[12.5px] text-text-muted">
+          <AlertTriangle size={13} strokeWidth={1.75} className="shrink-0 text-processing" />
+          Couldn&apos;t refresh — showing last known data.
+        </p>
+      )}
+
+      {status === "empty-live" ? (
+        <div className="mt-3 flex h-56 flex-col items-center justify-center gap-1.5 rounded-md bg-surface-sunken text-center">
+          <Inbox size={18} strokeWidth={1.5} className="text-text-faint" />
+          <span className="px-3 text-[12.5px] text-text-muted">
+            No pollen counts recorded yet for this window.
+          </span>
+        </div>
+      ) : (
+        <>
+          {/* The SVG below conveys nothing to assistive tech on its own; the
+              sr-only table beside it is the real accessible data. */}
+          <div className="mt-3" style={{ width: "100%", height: 320 }} aria-hidden="true">
+            <ResponsiveContainer width="100%" height="100%" debounce={1}>
+              <LineChart data={visible} margin={{ top: 10, right: 12, left: -12, bottom: 0 }}>
+                <CartesianGrid stroke="var(--border)" vertical={false} />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 12, fill: "#52525bb3", fontWeight: 500 }}
+                  tickLine={false}
+                  axisLine={{ stroke: "var(--border)" }}
+                />
+                <YAxis
+                  tick={{ fontSize: 12, fill: "#52525bb3", fontWeight: 500 }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={44}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend
+                  verticalAlign="bottom"
+                  height={32}
+                  iconType="circle"
+                  iconSize={8}
+                  wrapperStyle={{ fontSize: 13, paddingTop: 8 }}
+                  // Recharts colours the label to match its line, and some line
+                  // colors read too light on white for legend text. The dot
+                  // already carries the colour; the words only have to be readable.
+                  formatter={(value) => <span style={{ color: "#0a0a0acc" }}>{value}</span>}
+                />
+                {linesToShow.map((s) => (
+                  <Line
+                    key={s.key}
+                    type="monotone"
+                    dataKey={(entry: MonthlyPollenCount) => entry.series[s.key] ?? 0}
+                    name={s.label}
+                    stroke={s.color}
+                    strokeWidth={2.25}
+                    dot={{ r: 3, fill: s.color, strokeWidth: 0 }}
+                    activeDot={{ r: 5 }}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <table className="sr-only">
+            <caption>
+              Monthly pollen grain counts per species, trailing {range} months
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Month</th>
+                {linesToShow.map((s) => (
+                  <th scope="col" key={s.key}>
+                    {s.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((month) => (
+                <tr key={month.month}>
+                  <th scope="row">{month.month}</th>
+                  {linesToShow.map((s) => (
+                    <td key={s.key}>{month.series[s.key] ?? 0} grains per cubic meter</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
     </div>
   );
 }

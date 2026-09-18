@@ -22,7 +22,10 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 max-w-xl">
-          <h1 className="text-4xl leading-[1.08] font-semibold tracking-tight text-hero-fg sm:text-5xl lg:text-[3.4rem]">
+          <h1
+            className="text-4xl leading-[1.08] font-semibold tracking-tight text-hero-fg sm:text-5xl lg:text-[3.4rem]"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
             Every grain,{" "}
             <span className="text-[var(--hero-grain-soft)]">read</span> and
             classified.

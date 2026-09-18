@@ -17,7 +17,7 @@ export default function PollenMapPage() {
           <h1 className="text-3xl text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
             Pollen map
           </h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <p className="mt-1 max-w-prose text-sm text-text-muted">
             Where each pollen type is turning up. Provinces are shaded by how many grains have been
             counted in them — open one to see which of its towns the pollen came from.
           </p>

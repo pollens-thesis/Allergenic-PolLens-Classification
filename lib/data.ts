@@ -53,9 +53,15 @@ export type Species = {
 // "Moderate" rather than widening the type for an "unknown" state. `color`
 // cycles a validated 8-hue categorical palette (dataviz skill's reference
 // palette — 23 mutually-distinguishable hues isn't achievable, confirmed by
-// its own validator, so identity colors repeat every 8 species; the
-// historical chart caps simultaneous lines well under 8 to avoid collisions
-// in practice).
+// its own validator, so identity colors repeat every 8 species), except
+// pithecellobium_dulce, deliberately pulled off the cycle: it and
+// dactyloctenium_aegyptium shared the exact same red (#e34948), a guaranteed
+// collision if both land in the historical chart's top-8-by-volume selection
+// at once (confirmed live). Cycle-mates sharing a *similar but distinct* hue
+// (e.g. the two greens, or orange vs. red) remain — that's the palette's own
+// validated limit at 8 hues, not something this fix attempts to solve.
+// IMPORTANT: this color is duplicated in api/reports/migrations — keep both
+// in sync (see 0006_recolor_species.py).
 export const speciesCatalog: Species[] = [
   { id: "amaranthus_spinosus", scientificName: "Amaranthus spinosus", commonName: "TBD", code: "AMAR", season: "TBD", riskLevel: "Moderate", color: "#2a78d6" },
   { id: "axonopus_compressus", scientificName: "Axonopus compressus", commonName: "TBD", code: "AXON", season: "TBD", riskLevel: "Moderate", color: "#eb6834" },
@@ -72,7 +78,7 @@ export const speciesCatalog: Species[] = [
   { id: "leucaena_leucocephala", scientificName: "Leucaena leucocephala", commonName: "TBD", code: "LEUC", season: "TBD", riskLevel: "Moderate", color: "#e87ba4" },
   { id: "panicum_maximum", scientificName: "Panicum maximum", commonName: "TBD", code: "PANI", season: "TBD", riskLevel: "Moderate", color: "#008300" },
   { id: "pennisetum_polystachion", scientificName: "Pennisetum polystachion", commonName: "TBD", code: "PENN", season: "TBD", riskLevel: "Moderate", color: "#4a3aa7" },
-  { id: "pithecellobium_dulce", scientificName: "Pithecellobium dulce", commonName: "TBD", code: "PITH", season: "TBD", riskLevel: "Moderate", color: "#e34948" },
+  { id: "pithecellobium_dulce", scientificName: "Pithecellobium dulce", commonName: "TBD", code: "PITH", season: "TBD", riskLevel: "Moderate", color: "#0891b2" },
   { id: "saccharum_spontaneum", scientificName: "Saccharum spontaneum", commonName: "TBD", code: "SACC", season: "TBD", riskLevel: "Moderate", color: "#2a78d6" },
   { id: "samanea_saman", scientificName: "Samanea saman", commonName: "TBD", code: "SAMA", season: "TBD", riskLevel: "Moderate", color: "#eb6834" },
   { id: "sorghum_halepense", scientificName: "Sorghum halepense", commonName: "TBD", code: "SORG", season: "TBD", riskLevel: "Moderate", color: "#1baf7a" },

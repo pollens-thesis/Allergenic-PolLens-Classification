@@ -1,11 +1,10 @@
-import { Suspense } from "react";
 import Link from "next/link";
-import { ArrowRight, Loader2, ScanLine } from "lucide-react";
+import { ArrowRight, ScanLine } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import DashboardGreeting from "@/components/DashboardGreeting";
 import DashboardStats from "@/components/DashboardStats";
+import DashboardRecentReports from "@/components/DashboardRecentReports";
 import PollenCountChart from "@/components/PollenCountChart";
-import ReportsWorkspace from "@/components/ReportsWorkspace";
 import { dashboardStats, historicalPollenCounts } from "@/lib/data";
 
 export default function DashboardPage() {
@@ -56,17 +55,8 @@ export default function DashboardPage() {
             <PollenCountChart initial={historicalPollenCounts} />
           </div>
 
-          {/* Saved reports — same live list as the Report page. */}
-          <Suspense
-            fallback={
-              <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-6 py-16 text-[13px] text-text-muted">
-                <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
-                Loading reports…
-              </div>
-            }
-          >
-            <ReportsWorkspace />
-          </Suspense>
+          {/* A quick preview, not the full filterable workspace — see /reports for that. */}
+          <DashboardRecentReports />
         </div>
       </main>
     </div>
