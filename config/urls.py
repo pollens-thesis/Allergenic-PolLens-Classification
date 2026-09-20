@@ -29,6 +29,7 @@ from reports.views import (
     ReportListCreateView,
     ReportMonthlyCountsView,
     SpeciesListView,
+    WeatherView,
 )
 
 urlpatterns = [
@@ -45,6 +46,7 @@ urlpatterns = [
     # "monthly-counts" as a sample id — Django matches patterns in order.
     path('api/v1/reports/monthly-counts/', ReportMonthlyCountsView.as_view(), name='report_monthly_counts'),
     path('api/v1/reports/species/', SpeciesListView.as_view(), name='species_list'),
+    path('api/v1/reports/weather/', WeatherView.as_view(), name='report_weather'),
     path('api/v1/reports/<str:sample_id>/', ReportDetailView.as_view(), name='report_detail'),
 ]
 

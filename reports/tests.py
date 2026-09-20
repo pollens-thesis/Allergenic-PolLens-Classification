@@ -1,9 +1,12 @@
 import calendar
 import io
 import json
+from unittest.mock import Mock, patch
 
+import requests
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -452,3 +455,127 @@ class SpeciesListViewTests(APITestCase):
         )
         self.assertEqual(first['scientificName'], 'Amaranthus spinosus')
         self.assertEqual(first['code'], 'AMAR')
+
+
+def make_openweather_payload(**overrides):
+    payload = {
+        'weather': [{'main': 'Clear', 'description': 'clear sky'}],
+        'main': {'temp': 30.5, 'humidity': 60},
+        'wind': {'speed': 3.5},
+        'clouds': {'all': 10},
+    }
+    payload.update(overrides)
+    return payload
+
+
+@override_settings(OPENWEATHER_API_KEY='test-key')
+class WeatherViewTests(APITestCase):
+    url = '/api/v1/reports/weather/'
+
+    def setUp(self):
+        self.user = User.objects.create(email='researcher@up.edu.ph', institution='up.edu.ph')
+
+    def test_requires_authentication(self):
+        response = self.client.get(self.url, {'location': 'Los Baños, Laguna'})
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_missing_location_returns_400(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @override_settings(OPENWEATHER_API_KEY='')
+    def test_not_configured_returns_503(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self.url, {'location': 'Los Baños, Laguna'})
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    @patch('reports.views.requests.get')
+    def test_location_not_found_returns_404(self, mock_get):
+        mock_get.return_value = Mock(status_code=404, json=lambda: {'cod': '404', 'message': 'city not found'})
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self.url, {'location': 'Nowhere, Nowhere'})
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @patch('reports.views.requests.get')
+    def test_upstream_error_status_returns_502(self, mock_get):
+        mock_get.return_value = Mock(status_code=500, json=lambda: {})
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self.url, {'location': 'Los Baños, Laguna'})
+
+        self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
+
+    @patch('reports.views.requests.get')
+    def test_upstream_connection_error_returns_502(self, mock_get):
+        mock_get.side_effect = requests.ConnectionError('boom')
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self.url, {'location': 'Los Baños, Laguna'})
+
+        self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
+
+    @patch('reports.views.requests.get')
+    def test_clear_sky_maps_to_sunny(self, mock_get):
+        mock_get.return_value = Mock(status_code=200, json=lambda: make_openweather_payload())
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self.url, {'location': 'Los Baños, Laguna'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data, {
+            'condition': 'Sunny', 'temperatureC': 30.5, 'humidityPct': 60, 'windKph': 12.6,
+        })
+        self.assertEqual(mock_get.call_args.kwargs['params']['q'], 'Los Baños, Laguna')
+
+    @patch('reports.views.requests.get')
+    def test_light_clouds_map_to_partly_cloudy(self, mock_get):
+        mock_get.return_value = Mock(status_code=200, json=lambda: make_openweather_payload(
+            weather=[{'main': 'Clouds', 'description': 'few clouds'}], clouds={'all': 20},
+        ))
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self.url, {'location': 'Los Baños, Laguna'})
+
+        self.assertEqual(response.data['condition'], 'Partly cloudy')
+
+    @patch('reports.views.requests.get')
+    def test_heavy_clouds_map_to_overcast(self, mock_get):
+        mock_get.return_value = Mock(status_code=200, json=lambda: make_openweather_payload(
+            weather=[{'main': 'Clouds', 'description': 'overcast clouds'}], clouds={'all': 90},
+        ))
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self.url, {'location': 'Los Baños, Laguna'})
+
+        self.assertEqual(response.data['condition'], 'Overcast')
+
+    @patch('reports.views.requests.get')
+    def test_rain_maps_to_rainy(self, mock_get):
+        mock_get.return_value = Mock(status_code=200, json=lambda: make_openweather_payload(
+            weather=[{'main': 'Rain', 'description': 'moderate rain'}],
+        ))
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self.url, {'location': 'Los Baños, Laguna'})
+
+        self.assertEqual(response.data['condition'], 'Rainy')
+
+    @patch('reports.views.requests.get')
+    def test_high_wind_overrides_sky_condition(self, mock_get):
+        mock_get.return_value = Mock(status_code=200, json=lambda: make_openweather_payload(
+            weather=[{'main': 'Clear', 'description': 'clear sky'}], wind={'speed': 10.0},
+        ))
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self.url, {'location': 'Los Baños, Laguna'})
+
+        self.assertEqual(response.data['condition'], 'Windy')
+        self.assertEqual(response.data['windKph'], 36.0)

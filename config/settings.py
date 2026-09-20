@@ -176,6 +176,12 @@ CORS_ALLOWED_ORIGINS = env_list(
 GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '')
 
 
+# OpenWeather
+# Weather lookup for the Analyze screen — see reports.views.WeatherView.
+
+OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY', '')
+
+
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
