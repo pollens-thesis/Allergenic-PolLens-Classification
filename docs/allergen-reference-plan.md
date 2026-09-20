@@ -1,8 +1,22 @@
 # Allergen reference page — plan
 
-`/dataset` is a dead link in the sidebar today. This is the plan for what goes on it,
-written so the page can be built now and filled in as the Roboflow dataset and model
-come together.
+> **Status (2026-09-19): a first version shipped** — `app/dataset/page.tsx` +
+> `components/AllergenReference.tsx` (commit `21666ac`), `/dataset` is no longer a dead
+> link. What's real today: the live 23-species catalog via `useSpeciesCatalog()`
+> (scientific name, code, color swatch, risk level) and a genuine per-species "grains
+> detected in your reports" count computed client-side from local report data — deliberately
+> *not* the unused mock `allergenClasses` this doc originally pointed at. What's **not**
+> built yet, still exactly as described below: the extended `Species` fields in §2
+> (`roboflowClass`, `peakMonths`, `description`, `morphology`, `allergenicity`,
+> `referenceImage`, `sources`), the `lib/model.ts` model-metadata seam in §3, the
+> seasonality strips/sort/filter/reports-cross-link layout in §4, and all of Phases 2-3 in
+> §5. Treat the rest of this document as forward guidance for that remaining work, not a
+> description of what exists — and note `genus` (§2's snippet) and the "8 taxa" reference
+> in §1 are themselves stale; the real scope is 23 species and the field is `scientificName`.
+
+`/dataset` was a dead link in the sidebar until a first version shipped (see the status
+note above). This is the plan the rest of the page should grow into, filled in as the
+Roboflow dataset and model come together.
 
 ## The idea
 
@@ -222,11 +236,11 @@ Decisions here are expensive to reverse, so they are worth making deliberately.
 
 | File | Change |
 |---|---|
-| `app/dataset/page.tsx` | **New** — route shell, matching the other pages |
-| `components/AllergenReference.tsx` | **New** — client component: cards, sort, filter |
+| `app/dataset/page.tsx` | **Shipped 2026-09-19** — route shell, matching the other pages |
+| `components/AllergenReference.tsx` | **Shipped 2026-09-19**, but as a plain table (identity + risk level + real report count) — still needs cards, sort, filter from §4 |
 | `lib/model.ts` | **New** — Roboflow metadata seam, returns `null` today |
-| `lib/data.ts` | Extend `Species` with the fields in §2; author the 8 entries |
+| `lib/data.ts` | Extend `Species` with the fields in §2; author the 23 entries |
 | `components/ReportsWorkspace.tsx` | Accepts `?q=` to prefill the search — already done |
-| `app/page.tsx` | Derive the taxa count from `speciesCatalog.length` |
+| `app/page.tsx` | Already derives the taxa count from `speciesCatalog.length` — done |
 
 `allergenClasses` already exists and needs no change — it just needs a consumer.
