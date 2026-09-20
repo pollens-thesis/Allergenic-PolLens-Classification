@@ -158,6 +158,31 @@ between the thesis proposal paper and the frontend.
     fallback and as the data source for PDF/CSV export and the mock
     analysis generator, which don't benefit from live data the way
     on-screen labels do.
+  - **`POST /api/v1/reports/detect/`** (`reports.views.DetectView`,
+    `IsAuthenticated`; registered in `config/urls.py` before
+    `<sample_id>/` for the same reason as `monthly-counts/`/`species/`).
+    Stateless proxy for grain detection — called once per uploaded image
+    at Analyze-time, before a report/sample id exists, so nothing here is
+    persisted (see `POST /api/v1/reports/` above for where an
+    already-analyzed batch is later saved). Accepts one `image` file part
+    (multipart); forwards it to the Roboflow-hosted model (config-driven
+    via `ROBOFLOW_API_KEY`/`ROBOFLOW_MODEL_ID`/`ROBOFLOW_MODEL_VERSION`,
+    same `os.environ.get` pattern as `GOOGLE_OAUTH_CLIENT_ID`) and passes
+    through Roboflow's native `{"predictions": [{"class", "confidence",
+    "x", "y", "width", "height"}]}` shape unchanged (pixel coordinates,
+    box centre-based) — the pixel→normalized `BoundingBox` mapping stays
+    client-side per `app/PolLens/lib/analysis.ts`'s own `TODO(backend)`
+    comment; this view exists only to hold the Roboflow API key
+    server-side, not to reshape the response. Missing image → `400`.
+    Unconfigured (any of the three env vars blank) → `503 {"detail":
+    "Detection service is not configured."}`. Any upstream failure
+    (non-200, timeout, connection error) → `502 {"detail": "Detection
+    service is unavailable."}`. **The Roboflow model itself is not
+    deployed yet** (as of 2026-09-21 — the ML/dataset side is still
+    pending), so this endpoint can't produce real detections until a real
+    model and credentials exist; not yet wired into the frontend either —
+    `app/PolLens/lib/analysis.ts`'s `analyzeSpecimen()` still uses its
+    mock generator.
   - **Models** (`reports/models.py`): `Report` (weather flattened onto the
     model as nullable fields, not a separate table; `collected_at` stored
     as a validated `CharField`, not `DateTimeField`, to preserve the
@@ -198,9 +223,11 @@ between the thesis proposal paper and the frontend.
     individually and combined, invalid `status`/date param errors), create
     (multipart success, missing weather, missing image, invalid species on
     both `detections[]` and `grains[]`, empty slides, sequential sample-id
-    increments), detail (found/404), monthly-counts, and the species list
-    endpoint (auth-required, curated order, camelCase shape). Run with
-    `python manage.py test reports`.
+    increments), detail (found/404), monthly-counts, the species list
+    endpoint (auth-required, curated order, camelCase shape), and detect
+    (auth required, missing image, unconfigured → 503, successful
+    passthrough with extraneous Roboflow fields stripped, upstream
+    failure → 502). Run with `python manage.py test reports`.
   - **What's still open**: no `PATCH`/`DELETE` (owner is captured for this,
     unused so far); not yet wired into the frontend —
     `lib/store.ts` still persists to IndexedDB, per the root `CLAUDE.md`'s
