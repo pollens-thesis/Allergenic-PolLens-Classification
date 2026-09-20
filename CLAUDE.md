@@ -158,6 +158,30 @@ between the thesis proposal paper and the frontend.
     fallback and as the data source for PDF/CSV export and the mock
     analysis generator, which don't benefit from live data the way
     on-screen labels do.
+  - **`GET /api/v1/reports/weather/?location=...`** (`reports.views.WeatherView`,
+    `IsAuthenticated`; registered in `config/urls.py` before
+    `<sample_id>/` for the same reason as `monthly-counts/`/`species/`).
+    Stateless proxy — current conditions for a collection site, called at
+    Analyze-time to pre-fill the manually-entered weather fields
+    (`app/PolLens/lib/analysis.ts`'s `fetchWeather` `TODO(backend)`), not
+    persisted here. `location` is the same free-text "Town, Province"
+    string the frontend already collects, passed through to OpenWeather
+    as-is (config-driven via `OPENWEATHER_API_KEY`, same `os.environ.get`
+    pattern as the other provider keys). Maps OpenWeather's response onto
+    `WeatherConditions { condition, temperatureC, humidityPct, windKph }`
+    — since OpenWeather's ~10 weather groups don't map 1:1 onto the app's
+    5-value `WeatherCondition` enum, this is a deliberate approximation:
+    wind speed ≥30 kph (`WINDY_THRESHOLD_KPH` in `reports/views.py`) is
+    classified `"Windy"` ahead of sky condition, then Clear→`"Sunny"`,
+    Clouds→`"Partly cloudy"`/`"Overcast"` by cloud-cover percentage, the
+    rain family (Thunderstorm/Drizzle/Rain)→`"Rainy"`, and anything else
+    falls back to `"Overcast"` as the closest available value. Missing
+    `location` → `400`. Unconfigured (`OPENWEATHER_API_KEY` blank) → `503
+    {"detail": "Weather lookup is not configured."}`. OpenWeather can't
+    resolve the location → `404 {"detail": "Location not found."}` (not a
+    service failure). Any other upstream failure → `502 {"detail":
+    "Weather service is unavailable."}`. Not yet wired into the frontend
+    — `fetchWeather()` still returns `null`.
   - **Models** (`reports/models.py`): `Report` (weather flattened onto the
     model as nullable fields, not a separate table; `collected_at` stored
     as a validated `CharField`, not `DateTimeField`, to preserve the
@@ -198,14 +222,20 @@ between the thesis proposal paper and the frontend.
     individually and combined, invalid `status`/date param errors), create
     (multipart success, missing weather, missing image, invalid species on
     both `detections[]` and `grains[]`, empty slides, sequential sample-id
-    increments), detail (found/404), monthly-counts, and the species list
-    endpoint (auth-required, curated order, camelCase shape). Run with
+    increments), detail (found/404), monthly-counts, the species list
+    endpoint (auth-required, curated order, camelCase shape), and weather
+    (auth required, missing location, unconfigured → 503, location not
+    found → 404, upstream failure → 502, condition-mapping cases for
+    clear/light-clouds/heavy-clouds/rain/high-wind). Run with
     `python manage.py test reports`.
-  - **What's still open**: no `PATCH`/`DELETE` (owner is captured for this,
-    unused so far); not yet wired into the frontend —
-    `lib/store.ts` still persists to IndexedDB, per the root `CLAUDE.md`'s
-    narrow frontend-integration exception (wire only once verified, as
-    its own commit).
+  - **What's still open**: no `PATCH`/`DELETE` (owner is captured for
+    this, unused so far). **As of 2026-09-21, `GET`/`POST
+    /api/v1/reports/` and `GET /api/v1/reports/<sample_id>/` are wired
+    into the frontend** — `app/PolLens/lib/store.ts`'s
+    `listReports`/`getReport`/`saveReport` now call these endpoints
+    (falling back to seed history when signed out or on failure) instead
+    of persisting to IndexedDB, per the root `CLAUDE.md`'s narrow
+    frontend-integration exception.
 - **API style:** REST, DRF ViewSets/Serializers unless a specific endpoint
   needs something custom.
 - **Folder structure:** Django project scaffolded at `api/` with settings
