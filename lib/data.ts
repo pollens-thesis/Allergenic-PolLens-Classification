@@ -297,6 +297,11 @@ export type SpecimenSlide = {
    */
   grains?: DetectedGrain[];
   notes: string; // free-text note about this slide; "" when left blank
+  /**
+   * The slide's server-hosted image, for reports fetched from the backend.
+   * Optional: seed/demo records have no real photographed slide.
+   */
+  imageUrl?: string;
 };
 
 /**
@@ -635,7 +640,7 @@ export const historicalPollenCounts: MonthlyPollenCount[] = MONTH_ABBREVIATIONS.
   return { month, series };
 });
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 /**
  * Real trailing-12-month counts from the backend

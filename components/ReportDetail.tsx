@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -176,39 +176,28 @@ function SummaryTile({ value, label }: { value: string | number; label: string }
 
 export default function ReportDetail({ sampleId }: { sampleId: string }) {
   const [report, setReport] = useState<Specimen | null | undefined>(undefined);
-  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   // The pollen type each slide's overlay is isolating, keyed by slide id.
   const [highlighted, setHighlighted] = useState<Record<string, SpeciesId | null>>({});
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    let created: string[] = [];
-
-    getReport(sampleId).then(async (found) => {
-      if (cancelled) return;
-      setReport(found);
-      if (!found) return;
-      const urls = await getReportImageUrls(sampleId);
-      if (cancelled) {
-        Object.values(urls).forEach((url) => URL.revokeObjectURL(url));
-        return;
-      }
-      created = Object.values(urls);
-      setImageUrls(urls);
+    getReport(sampleId).then((found) => {
+      if (!cancelled) setReport(found);
     });
-
     return () => {
       cancelled = true;
-      created.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [sampleId]);
+
+  // Server-hosted URLs, straight off the report — no object-URL lifecycle needed.
+  const imageUrls = useMemo(() => (report ? getReportImageUrls(report) : {}), [report]);
 
   async function handleDownloadPdf() {
     if (!report) return;
     setDownloading(true);
     try {
-      const blobs = await getReportImageBlobs(report.sampleId);
+      const blobs = await getReportImageBlobs(report);
       await downloadReportPdf(report, blobs);
     } finally {
       setDownloading(false);

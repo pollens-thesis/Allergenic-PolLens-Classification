@@ -1,38 +1,39 @@
 // ---------------------------------------------------------------------------
 // REPORT STORE — where saved reports live.
 //
-// There is no backend yet, so reports and their slide images are persisted in
-// the browser's IndexedDB. That is what lets a saved report survive a refresh
-// and still be there when Reports loads.
+// Saved reports and their slide images live on the backend now
+// (GET/POST /api/v1/reports/, GET /api/v1/reports/:sampleId/) — see
+// listReports/getReport/saveReport below. Reports are a shared corpus, so
+// reads/writes require a signed-in accessToken; signed out (or on a failed
+// request) falls back to the seed history alone, matching the pattern
+// already used for the species catalog and monthly pollen counts in
+// lib/data.ts.
 //
-// Every function here is async and returns plain domain objects, so replacing
-// the bodies with `fetch` calls is the whole of the backend migration:
-//
-//   listReports()      → GET  /api/reports
-//   getReport(id)      → GET  /api/reports/:id
-//   saveReport(input)  → POST /api/reports   (multipart, images included)
-//
-// The seed records in lib/data.ts are treated as read-only history that always
-// appears alongside anything saved locally.
+// The seed records in lib/data.ts are treated as read-only history that
+// always appears alongside anything fetched from the backend.
 //
 // A third store, `drafts`, holds the analysis a researcher has just run but not
 // yet saved. It exists because Analyze and the report page it hands off to are
 // two routes: the readings, the images and the collection details have to
 // outlive the navigation between them, and a draft in IndexedDB also survives a
 // refresh of the report page. Only one draft is kept — a researcher works
-// through one batch at a time.
+// through one batch at a time. Drafts stay local-only — they're pre-save,
+// pre-report-existence state, not part of the backend migration above.
 // ---------------------------------------------------------------------------
 
 import {
+  API_BASE_URL,
   MOCK_TODAY,
   specimens as seedSpecimens,
   type CollectedAt,
   type DetectedGrain,
   type Specimen,
   type SpecimenDetection,
+  type SpecimenSlide,
   type WeatherConditions,
 } from "@/lib/data";
 import type { NewReportInput } from "@/lib/analysis";
+import { getSnapshot as getSettingsSnapshot } from "@/lib/settings";
 
 const DB_NAME = "pollens";
 const DB_VERSION = 2;
@@ -81,141 +82,116 @@ function hasIndexedDb(): boolean {
   return typeof indexedDB !== "undefined";
 }
 
-async function readStoredReports(): Promise<Specimen[]> {
-  if (!hasIndexedDb()) return [];
-  const db = await openDb();
-  try {
-    const tx = db.transaction(REPORTS, "readonly");
-    return await promisify(tx.objectStore(REPORTS).getAll() as IDBRequest<Specimen[]>);
-  } finally {
-    db.close();
-  }
+function sortByRecency(a: Specimen, b: Specimen): number {
+  // ISO timestamps sort chronologically as text; sampleId breaks same-instant
+  // ties so the order never flickers between renders.
+  return b.collectedAt.localeCompare(a.collectedAt) || b.sampleId.localeCompare(a.sampleId);
 }
 
-/** Saved reports and seed history together, newest collection first. */
+// The backend's SlideSerializer emits `image_url` (snake_case — an
+// inconsistency against its own camelCase convention elsewhere), mapped to
+// `imageUrl` below rather than fixed server-side.
+type BackendSlide = Omit<SpecimenSlide, "imageUrl"> & { image_url: string };
+type BackendReport = Omit<Specimen, "slides"> & { slides: BackendSlide[] };
+
+function mapBackendReport(row: BackendReport): Specimen {
+  return {
+    ...row,
+    slides: row.slides.map(({ image_url, ...slide }) => ({ ...slide, imageUrl: image_url })),
+  };
+}
+
+/** Saved reports (from the backend, once signed in) and seed history together, newest collection first. */
 export async function listReports(): Promise<Specimen[]> {
-  const stored = await readStoredReports();
-  return [...stored, ...seedSpecimens].sort((a, b) => {
-    // ISO timestamps sort chronologically as text; sampleId breaks same-instant
-    // ties so the order never flickers between renders.
-    return b.collectedAt.localeCompare(a.collectedAt) || b.sampleId.localeCompare(a.sampleId);
-  });
+  const { accessToken } = getSettingsSnapshot();
+  let fetched: Specimen[] = [];
+  if (accessToken) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/reports/`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (res.ok) {
+        const rows = (await res.json()) as BackendReport[];
+        fetched = rows.map(mapBackendReport);
+      }
+    } catch {
+      // Network failure — fall back to seed history below.
+    }
+  }
+  return [...fetched, ...seedSpecimens].sort(sortByRecency);
 }
 
 export async function getReport(sampleId: string): Promise<Specimen | null> {
-  if (hasIndexedDb()) {
-    const db = await openDb();
+  const { accessToken } = getSettingsSnapshot();
+  if (accessToken) {
     try {
-      const tx = db.transaction(REPORTS, "readonly");
-      const found = await promisify(
-        tx.objectStore(REPORTS).get(sampleId) as IDBRequest<Specimen | undefined>,
-      );
-      if (found) return found;
-    } finally {
-      db.close();
+      const res = await fetch(`${API_BASE_URL}/api/v1/reports/${sampleId}/`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (res.ok) return mapBackendReport((await res.json()) as BackendReport);
+    } catch {
+      // Fall through to the seed lookup below.
     }
   }
   return seedSpecimens.find((s) => s.sampleId === sampleId) ?? null;
 }
 
-/** Object URLs for a report's slide images, keyed by slide id. */
-export async function getReportImageUrls(sampleId: string): Promise<Record<string, string>> {
-  if (!hasIndexedDb()) return {};
-  const db = await openDb();
-  try {
-    const tx = db.transaction(IMAGES, "readonly");
-    const index = tx.objectStore(IMAGES).index("bySample");
-    const images = await promisify(
-      index.getAll(IDBKeyRange.only(sampleId)) as IDBRequest<StoredImage[]>,
-    );
-    return Object.fromEntries(images.map((i) => [i.slideId, URL.createObjectURL(i.blob)]));
-  } finally {
-    db.close();
+/** Direct <img src> URLs for a report's slide images — server-hosted, no object-URL lifecycle needed. */
+export function getReportImageUrls(report: Specimen): Record<string, string> {
+  const urls: Record<string, string> = {};
+  for (const slide of report.slides) {
+    if (slide.imageUrl) urls[slide.id] = slide.imageUrl;
   }
+  return urls;
 }
 
 /** Blobs for a report's slides — used when building the PDF. */
-export async function getReportImageBlobs(sampleId: string): Promise<Record<string, Blob>> {
-  if (!hasIndexedDb()) return {};
-  const db = await openDb();
-  try {
-    const tx = db.transaction(IMAGES, "readonly");
-    const index = tx.objectStore(IMAGES).index("bySample");
-    const images = await promisify(
-      index.getAll(IDBKeyRange.only(sampleId)) as IDBRequest<StoredImage[]>,
-    );
-    return Object.fromEntries(images.map((i) => [i.slideId, i.blob]));
-  } finally {
-    db.close();
-  }
-}
-
-/**
- * Mints the next PLN-YYYY-NNNN id, counting both seed and saved reports so ids
- * keep climbing across sessions instead of colliding after a refresh.
- */
-function nextSampleId(existing: Specimen[]): string {
-  const highest = existing.reduce((max, s) => {
-    const n = parseInt(s.sampleId.split("-").pop() ?? "0", 10);
-    return Number.isNaN(n) ? max : Math.max(max, n);
-  }, 0);
-  const year = new Date().getFullYear();
-  return `PLN-${year}-${String(highest + 1).padStart(4, "0")}`;
+export async function getReportImageBlobs(report: Specimen): Promise<Record<string, Blob>> {
+  const entries = await Promise.all(
+    report.slides
+      .filter((slide) => Boolean(slide.imageUrl))
+      .map(async (slide) => [slide.id, await (await fetch(slide.imageUrl!)).blob()] as const),
+  );
+  return Object.fromEntries(entries);
 }
 
 /**
  * Persist a finished batch as one report, storing each slide's image with it.
- *
- * TODO(backend): POST the report and its images to /api/reports and return the
- * created row, so the sample ID comes from the database instead of being minted
+ * The sample id comes back from the backend rather than being minted
  * client-side.
  */
 export async function saveReport(
   input: NewReportInput,
   images: Record<string, Blob>, // keyed by the index of the slide in input.slides
 ): Promise<Specimen> {
-  const existing = [...(await readStoredReports()), ...seedSpecimens];
-  const sampleId = nextSampleId(existing);
-
-  const report: Specimen = {
-    sampleId,
-    collectedAt: input.collectedAt,
-    location: input.location.trim(),
-    slides: input.slides.map((slide, index) => ({
-      id: `${sampleId}-S${index + 1}`,
-      fileName: slide.fileName,
-      detections: slide.detections,
-      grains: slide.grains,
-      notes: slide.notes.trim(),
-    })),
-    weather: input.weather,
-    researcher: input.researcher.trim() || "Unknown",
-    status: "Completed",
-  };
-
-  if (!hasIndexedDb()) return report;
-
-  const db = await openDb();
-  try {
-    const tx = db.transaction([REPORTS, IMAGES], "readwrite");
-    tx.objectStore(REPORTS).put(report);
-
-    const imageStore = tx.objectStore(IMAGES);
-    report.slides.forEach((slide, index) => {
-      const file = images[String(index)];
-      if (file) imageStore.put({ slideId: slide.id, sampleId, blob: file } satisfies StoredImage);
-    });
-
-    await new Promise<void>((resolve, reject) => {
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error);
-    });
-  } finally {
-    db.close();
+  const { accessToken } = getSettingsSnapshot();
+  if (!accessToken) {
+    throw new Error("You must be signed in to save a report.");
   }
 
-  return report;
+  const formData = new FormData();
+  formData.append("collectedAt", input.collectedAt);
+  formData.append("location", input.location.trim());
+  formData.append("researcher", input.researcher.trim());
+  if (input.weather) formData.append("weather", JSON.stringify(input.weather));
+  formData.append("slides", JSON.stringify(input.slides));
+  input.slides.forEach((slide, index) => {
+    const file = images[String(index)];
+    if (file) formData.append(String(index), file, slide.fileName);
+  });
+
+  // No Content-Type header here — the browser sets the multipart boundary
+  // itself from a FormData body.
+  const res = await fetch(`${API_BASE_URL}/api/v1/reports/`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { detail?: string } | null;
+    throw new Error(body?.detail ?? "Failed to save report.");
+  }
+  return mapBackendReport((await res.json()) as BackendReport);
 }
 
 // ---------------------------------------------------------------------------

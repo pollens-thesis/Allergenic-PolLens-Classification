@@ -51,7 +51,8 @@ function readRaw(): string | null {
   }
 }
 
-function getSnapshot(): Settings {
+/** Non-hook access to the current settings — for plain async functions outside React. */
+export function getSnapshot(): Settings {
   const raw = readRaw();
   if (raw === cachedRaw) return cachedValue;
 
