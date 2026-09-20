@@ -184,7 +184,10 @@ between the thesis proposal paper and the frontend.
     `0004_seed_species.py` seeds the 23 rows, `0005_species_id_to_fk.py`
     — hand-written, since Django's `makemigrations` autodetector proposed
     a drop-and-recreate for the type change rather than an in-place
-    rename — converts the column). `common_name`/`season` are seeded as
+    rename — converts the column; `0006_recolor_species.py` fixes a chart
+    color collision, `pithecellobium_dulce` was sharing a hex with
+    `dactyloctenium_aegyptium` — see `app/PolLens/lib/data.ts` for the
+    matching frontend-side change). `common_name`/`season` are seeded as
     empty strings, still pending real data (same status as before, just
     DB-backed now instead of a `"TBD"` literal — see the Taxonomic Scope
     row in `../docs/system-spec.md`). `status` choices include
