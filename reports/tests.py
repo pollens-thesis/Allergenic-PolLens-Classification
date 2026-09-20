@@ -1,9 +1,12 @@
 import calendar
 import io
 import json
+from unittest.mock import Mock, patch
 
+import requests
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -452,3 +455,79 @@ class SpeciesListViewTests(APITestCase):
         )
         self.assertEqual(first['scientificName'], 'Amaranthus spinosus')
         self.assertEqual(first['code'], 'AMAR')
+
+
+@override_settings(
+    ROBOFLOW_API_KEY='test-key', ROBOFLOW_MODEL_ID='workspace/model', ROBOFLOW_MODEL_VERSION='1',
+)
+class DetectViewTests(APITestCase):
+    url = '/api/v1/reports/detect/'
+
+    def setUp(self):
+        self.user = User.objects.create(email='researcher@up.edu.ph', institution='up.edu.ph')
+
+    def test_requires_authentication(self):
+        response = self.client.post(self.url, {'image': make_test_image()}, format='multipart')
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_missing_image_returns_400(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(self.url, {}, format='multipart')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @override_settings(ROBOFLOW_API_KEY='')
+    def test_not_configured_returns_503(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(self.url, {'image': make_test_image()}, format='multipart')
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    @patch('reports.views.requests.post')
+    def test_successful_detection_passes_through_predictions(self, mock_post):
+        mock_post.return_value = Mock(status_code=200, json=lambda: {
+            'predictions': [
+                {
+                    'class': 'amaranthus_spinosus', 'confidence': 0.92,
+                    'x': 50.0, 'y': 60.0, 'width': 20.0, 'height': 20.0,
+                    'class_id': 3, 'detection_id': 'abc123',
+                },
+            ],
+        })
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(self.url, {'image': make_test_image()}, format='multipart')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data, {
+            'predictions': [
+                {
+                    'class': 'amaranthus_spinosus', 'confidence': 0.92,
+                    'x': 50.0, 'y': 60.0, 'width': 20.0, 'height': 20.0,
+                },
+            ],
+        })
+        called_url = mock_post.call_args.args[0]
+        self.assertEqual(called_url, 'https://detect.roboflow.com/workspace/model/1')
+        self.assertEqual(mock_post.call_args.kwargs['params'], {'api_key': 'test-key'})
+
+    @patch('reports.views.requests.post')
+    def test_upstream_error_status_returns_502(self, mock_post):
+        mock_post.return_value = Mock(status_code=500, json=lambda: {})
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(self.url, {'image': make_test_image()}, format='multipart')
+
+        self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
+
+    @patch('reports.views.requests.post')
+    def test_upstream_connection_error_returns_502(self, mock_post):
+        mock_post.side_effect = requests.ConnectionError('boom')
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(self.url, {'image': make_test_image()}, format='multipart')
+
+        self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)

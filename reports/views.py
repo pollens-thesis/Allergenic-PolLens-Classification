@@ -2,6 +2,8 @@ import calendar
 import json
 import re
 
+import requests
+from django.conf import settings
 from django.db.models import Q, Sum
 from django.db.models.functions import Substr
 from django.utils import timezone
@@ -119,6 +121,78 @@ class ReportListCreateView(APIView):
             ReportSerializer(report, context={'request': request}).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+ROBOFLOW_DETECT_URL = 'https://detect.roboflow.com/{model_id}/{version}'
+ROBOFLOW_PREDICTION_FIELDS = ('class', 'confidence', 'x', 'y', 'width', 'height')
+
+
+class DetectView(APIView):
+    """
+    POST /api/v1/reports/detect/ — proxy a single specimen image to the
+    Roboflow-hosted grain detection model.
+
+    Stateless: called once per uploaded image at Analyze-time, before a
+    report/sample id exists, so nothing here is persisted — see
+    ReportListCreateView.post for where an already-analyzed batch is later
+    saved. Response shape passes through Roboflow's native
+    `{"predictions": [{"class", "confidence", "x", "y", "width", "height"}]}`
+    (pixel coordinates, box centre-based) unchanged — app/PolLens/lib/
+    analysis.ts's own TODO(backend) comment already maps this into the
+    app's normalized top-left BoundingBox client-side, so this view exists
+    only to hold the Roboflow API key server-side rather than shipping it
+    to the browser, not to reshape the response.
+    """
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        image = request.FILES.get('image')
+        if not image:
+            return Response(
+                {'detail': 'An image file is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not (
+            settings.ROBOFLOW_API_KEY
+            and settings.ROBOFLOW_MODEL_ID
+            and settings.ROBOFLOW_MODEL_VERSION
+        ):
+            return Response(
+                {'detail': 'Detection service is not configured.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        url = ROBOFLOW_DETECT_URL.format(
+            model_id=settings.ROBOFLOW_MODEL_ID, version=settings.ROBOFLOW_MODEL_VERSION,
+        )
+        try:
+            upstream = requests.post(
+                url,
+                params={'api_key': settings.ROBOFLOW_API_KEY},
+                files={'file': (image.name, image.read(), image.content_type)},
+                timeout=30,
+            )
+            payload = upstream.json()
+        except (requests.RequestException, ValueError):
+            return Response(
+                {'detail': 'Detection service is unavailable.'},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        if upstream.status_code != 200:
+            return Response(
+                {'detail': 'Detection service is unavailable.'},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        predictions = [
+            {field: p[field] for field in ROBOFLOW_PREDICTION_FIELDS if field in p}
+            for p in payload.get('predictions', [])
+        ]
+        return Response({'predictions': predictions})
 
 
 class ReportMonthlyCountsView(APIView):

@@ -176,6 +176,15 @@ CORS_ALLOWED_ORIGINS = env_list(
 GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '')
 
 
+# Roboflow
+# Grain detection proxy — see reports.views.DetectView. The model isn't
+# deployed yet as of this writing; these are left blank until it is.
+
+ROBOFLOW_API_KEY = os.environ.get('ROBOFLOW_API_KEY', '')
+ROBOFLOW_MODEL_ID = os.environ.get('ROBOFLOW_MODEL_ID', '')  # e.g. "workspace-slug/model-slug"
+ROBOFLOW_MODEL_VERSION = os.environ.get('ROBOFLOW_MODEL_VERSION', '')
+
+
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
