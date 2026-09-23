@@ -1,5 +1,21 @@
 # Login / Session Handoff — Frontend
 
+> **Update 2026-09-24 — built.** All four gaps below are closed in
+> `app/PolLens/` (user-requested): `lib/api.ts` `apiFetch` attaches the
+> Bearer token, refreshes shortly before expiry and once on a 401 (then
+> retries), single-flights refresh per tab and across tabs (Web Locks,
+> re-reading storage so rotation can't race), and on a rejected refresh
+> clears the session and sends the user to `/?next=<page>&reason=expired`.
+> Every backend call goes through it. Protected routes live in the
+> `app/(app)/` route group whose layout renders `components/SessionGuard.tsx`
+> — client-side (option **b** below) because the session is in localStorage,
+> with a placeholder until hydration so nothing flashes. Sign-out
+> (`lib/session.ts` `signOut()`) revokes the refresh token via `/logout/`
+> (best-effort, 4 s timeout) before clearing locally. The sign-in page
+> honours a local-path-only `?next=`. Still optional/unbuilt: surfacing
+> `institution` from `/me/`. The rest of this doc is the original handoff,
+> kept for the rationale.
+
 **Status as of 2026-08-30.** The Google OAuth login *handshake* is fully
 built and tested on the backend. What's missing is everything that turns a
 successful login into an actual **session** — route protection, using the
