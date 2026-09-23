@@ -16,11 +16,14 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useSyncExternalStore } from "react";
-import { fetchSpeciesCatalog, getSpecies, speciesCatalog, type Species, type SpeciesId } from "./data";
+import { getSpecies, speciesCatalog, type Species, type SpeciesId } from "./data";
+import { fetchSpeciesCatalog } from "./backend";
 import { useSettings } from "./settings";
 
 let currentCatalog: Species[] = speciesCatalog;
-let fetchedForToken: string | null = null;
+// Who the live catalog was fetched for — keyed on the account, not the access
+// token, which rotates every 15 minutes.
+let fetchedFor: string | null = null;
 const listeners = new Set<() => void>();
 
 function getSnapshot(): Species[] {
@@ -40,32 +43,32 @@ function notify(): void {
   for (const listener of listeners) listener();
 }
 
-async function refreshCatalog(accessToken: string): Promise<void> {
-  if (fetchedForToken === accessToken) return;
-  fetchedForToken = accessToken;
+async function refreshCatalog(account: string): Promise<void> {
+  if (fetchedFor === account) return;
+  fetchedFor = account;
   try {
-    currentCatalog = await fetchSpeciesCatalog(accessToken);
+    currentCatalog = await fetchSpeciesCatalog();
     notify();
   } catch {
     // Keep showing the fallback catalog — a failed refresh shouldn't blank
     // out species labels. Clear the guard so a later render can retry.
-    fetchedForToken = null;
+    fetchedFor = null;
   }
 }
 
 /**
  * The species catalog, preferring live backend data over the bundled
- * fallback once signed in. Fetches at most once per access token no matter
+ * fallback once signed in. Fetches at most once per signed-in account no matter
  * how many components call this hook.
  */
 export function useSpeciesCatalog(): Species[] {
-  const { accessToken } = useSettings();
+  const { email } = useSettings();
   const catalog = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   useEffect(() => {
-    if (!accessToken) return;
-    void refreshCatalog(accessToken);
-  }, [accessToken]);
+    if (!email) return;
+    void refreshCatalog(email);
+  }, [email]);
 
   return catalog;
 }

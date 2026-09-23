@@ -15,7 +15,6 @@
 // ---------------------------------------------------------------------------
 
 import {
-  API_BASE_URL,
   aggregateGrainPredictions,
   speciesCatalog,
   toDetectedGrains,
@@ -27,7 +26,7 @@ import {
   type SpeciesId,
   type WeatherConditions,
 } from "@/lib/data";
-import { getSnapshot as getSettingsSnapshot } from "@/lib/settings";
+import { apiFetch, hasSession, SessionExpiredError } from "@/lib/api";
 
 export type AnalysisResult = {
   detections: SpecimenDetection[];
@@ -211,18 +210,16 @@ function fromRoboflow({ image, predictions }: DetectResponse): GrainPrediction[]
   return grains;
 }
 
-async function detectGrains(file: File, accessToken: string): Promise<GrainPrediction[] | null> {
+async function detectGrains(file: File): Promise<GrainPrediction[] | null> {
   const body = new FormData();
   body.append("image", file);
   try {
-    const res = await fetch(`${API_BASE_URL}/api/v1/reports/detect/`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}` },
-      body,
-    });
+    const res = await apiFetch("/api/v1/reports/detect/", { method: "POST", body });
     if (!res.ok) return null;
     return fromRoboflow((await res.json()) as DetectResponse);
-  } catch {
+  } catch (error) {
+    // A lost session is on its way to sign-in; don't dress it up as a reading.
+    if (error instanceof SessionExpiredError) throw error;
     return null;
   }
 }
@@ -234,10 +231,10 @@ async function detectGrains(file: File, accessToken: string): Promise<GrainPredi
  * Roboflow proxy when signed in, the local mock otherwise or if that fails.
  */
 export async function analyzeSpecimen(file: File): Promise<AnalysisResult> {
-  const { accessToken } = getSettingsSnapshot();
-  let predictions = accessToken ? await detectGrains(file, accessToken) : null;
+  const signedIn = hasSession();
+  let predictions = signedIn ? await detectGrains(file) : null;
   if (!predictions) {
-    if (accessToken) console.warn("Detection request failed; using the local mock reading.");
+    if (signedIn) console.warn("Detection request failed; using the local mock reading.");
     await delay(MOCK_INFERENCE_MS);
     predictions = mockGrainPredictions(makeRandom(seedFromFile(file)));
   }
@@ -258,8 +255,7 @@ export async function analyzeSpecimen(file: File): Promise<AnalysisResult> {
 export async function fetchWeather(
   site: string | { lat: number; lon: number },
 ): Promise<WeatherConditions | null> {
-  const { accessToken } = getSettingsSnapshot();
-  if (!accessToken) return null;
+  if (!hasSession()) return null;
   const params =
     typeof site === "string"
       ? site.trim()
@@ -268,9 +264,7 @@ export async function fetchWeather(
       : new URLSearchParams({ lat: String(site.lat), lon: String(site.lon) });
   if (!params) return null;
   try {
-    const res = await fetch(`${API_BASE_URL}/api/v1/reports/weather/?${params}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    const res = await apiFetch(`/api/v1/reports/weather/?${params}`);
     if (!res.ok) return null;
     return (await res.json()) as WeatherConditions;
   } catch {

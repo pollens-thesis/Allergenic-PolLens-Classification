@@ -13,7 +13,8 @@ import {
 } from "recharts";
 import { AlertTriangle, Inbox } from "lucide-react";
 import type { MonthlyPollenCount } from "@/lib/data";
-import { fetchMonthlyPollenCounts, pollenSeries } from "@/lib/data";
+import { pollenSeries } from "@/lib/data";
+import { fetchMonthlyPollenCounts } from "@/lib/backend";
 import { useSettings } from "@/lib/settings";
 
 /**
@@ -74,14 +75,16 @@ export default function PollenCountChart({ initial }: { initial: MonthlyPollenCo
   const [range, setRange] = useState<number>(12);
   const [data, setData] = useState<MonthlyPollenCount[]>(initial);
   const [status, setStatus] = useState<Status>("seed");
-  const { accessToken } = useSettings();
+  // Keyed on who is signed in, not the access token — that rotates every 15
+  // minutes and would refetch for nothing.
+  const { email } = useSettings();
 
   useEffect(() => {
     // Default state is already "seed" — nothing to set for the signed-out
     // case, just skip fetching.
-    if (!accessToken) return;
+    if (!email) return;
     let cancelled = false;
-    fetchMonthlyPollenCounts(accessToken)
+    fetchMonthlyPollenCounts()
       .then((counts) => {
         if (cancelled) return;
         setData(counts);
@@ -98,7 +101,7 @@ export default function PollenCountChart({ initial }: { initial: MonthlyPollenCo
     return () => {
       cancelled = true;
     };
-  }, [accessToken]);
+  }, [email]);
 
   const visible = data.slice(-range);
 

@@ -9,7 +9,8 @@
 // rest of the app already expects (see lib/account.ts, lib/settings.ts).
 // ---------------------------------------------------------------------------
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+import { API_BASE_URL } from "@/lib/config";
+import { decodeJwtPayload } from "@/lib/jwt";
 
 export type GoogleTokenPair = {
   access: string;
@@ -17,13 +18,6 @@ export type GoogleTokenPair = {
 };
 
 export class GoogleSignInError extends Error {}
-
-/** Reads a JWT's payload without verifying it — the backend already did that. */
-function decodeJwtPayload(token: string): Record<string, unknown> {
-  const payload = token.split(".")[1] ?? "";
-  const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
-  return JSON.parse(json);
-}
 
 /**
  * Exchanges a Google ID token (the `credential` from GIS's callback) for our

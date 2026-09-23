@@ -22,7 +22,6 @@
 // ---------------------------------------------------------------------------
 
 import {
-  API_BASE_URL,
   MOCK_TODAY,
   specimens as seedSpecimens,
   type CollectedAt,
@@ -33,7 +32,7 @@ import {
   type WeatherConditions,
 } from "@/lib/data";
 import type { NewReportInput } from "@/lib/analysis";
-import { getSnapshot as getSettingsSnapshot } from "@/lib/settings";
+import { apiFetch, hasSession } from "@/lib/api";
 
 const DB_NAME = "pollens";
 const DB_VERSION = 2;
@@ -103,31 +102,26 @@ function mapBackendReport(row: BackendReport): Specimen {
 
 /** Saved reports (from the backend, once signed in) and seed history together, newest collection first. */
 export async function listReports(): Promise<Specimen[]> {
-  const { accessToken } = getSettingsSnapshot();
   let fetched: Specimen[] = [];
-  if (accessToken) {
+  if (hasSession()) {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/reports/`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const res = await apiFetch("/api/v1/reports/");
       if (res.ok) {
         const rows = (await res.json()) as BackendReport[];
         fetched = rows.map(mapBackendReport);
       }
     } catch {
-      // Network failure — fall back to seed history below.
+      // Network failure (or a lost session, which apiFetch has already sent to
+      // sign-in) — fall back to seed history below.
     }
   }
   return [...fetched, ...seedSpecimens].sort(sortByRecency);
 }
 
 export async function getReport(sampleId: string): Promise<Specimen | null> {
-  const { accessToken } = getSettingsSnapshot();
-  if (accessToken) {
+  if (hasSession()) {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/reports/${sampleId}/`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const res = await apiFetch(`/api/v1/reports/${encodeURIComponent(sampleId)}/`);
       if (res.ok) return mapBackendReport((await res.json()) as BackendReport);
     } catch {
       // Fall through to the seed lookup below.
@@ -164,11 +158,6 @@ export async function saveReport(
   input: NewReportInput,
   images: Record<string, Blob>, // keyed by the index of the slide in input.slides
 ): Promise<Specimen> {
-  const { accessToken } = getSettingsSnapshot();
-  if (!accessToken) {
-    throw new Error("You must be signed in to save a report.");
-  }
-
   const formData = new FormData();
   formData.append("collectedAt", input.collectedAt);
   formData.append("location", input.location.trim());
@@ -182,11 +171,7 @@ export async function saveReport(
 
   // No Content-Type header here — the browser sets the multipart boundary
   // itself from a FormData body.
-  const res = await fetch(`${API_BASE_URL}/api/v1/reports/`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}` },
-    body: formData,
-  });
+  const res = await apiFetch("/api/v1/reports/", { method: "POST", body: formData });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { detail?: string } | null;
     throw new Error(body?.detail ?? "Failed to save report.");

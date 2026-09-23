@@ -25,6 +25,7 @@ import {
 } from "@/lib/data";
 import { findSpecies, useSpeciesCatalog } from "@/lib/species-catalog";
 import { clearDraft, getDraft, saveDraft, saveReport, type ReportDraft } from "@/lib/store";
+import { SessionExpiredError } from "@/lib/api";
 import { accountName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import SpecimenImageViewer from "@/components/SpecimenImageViewer";
@@ -281,9 +282,22 @@ export default function AnalysisResultWorkspace() {
     toast.promise(savePromise, {
       loading: "Saving report…",
       success: "Report saved",
-      error: "Couldn't save report",
+      error: (error) =>
+        error instanceof SessionExpiredError
+          ? "Session expired — your draft is kept; sign in and save again."
+          : `Couldn't save report${error instanceof Error && error.message ? `: ${error.message}` : ""}`,
     });
-    const report = await savePromise;
+
+    let report;
+    try {
+      report = await savePromise;
+    } catch {
+      // Nothing was saved: keep the draft (and its autosave) alive and let the
+      // researcher try again rather than leaving the button stuck on "Saving".
+      finished.current = false;
+      setIsSaving(false);
+      return;
+    }
 
     await clearDraft();
     router.push(`/reports?saved=${report.sampleId}`);
