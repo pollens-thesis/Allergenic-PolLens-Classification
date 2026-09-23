@@ -1,27 +1,28 @@
 import type { Metadata } from "next";
-import { Inter, IBM_Plex_Mono, IBM_Plex_Serif } from "next/font/google";
+import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+// Typefaces chosen for legibility evidence, not style (see
+// docs/design-system.md): Atkinson Hyperlegible was designed and tested by the
+// Braille Institute to keep easily-confused characters (0/O, 1/l/I, 5/S, 8/B)
+// distinct — which is exactly what sample IDs, species codes and readings are
+// made of. One superfamily for text and data, so the console reads as one
+// system; italic is loaded for scientific names.
+const atkinson = Atkinson_Hyperlegible_Next({
+  variable: "--font-atkinson",
+  subsets: ["latin", "latin-ext"],
+  style: ["normal", "italic"],
+  // next/font has no metrics for Atkinson to size-match a fallback; name one.
+  adjustFontFallback: false,
+  fallback: ["system-ui", "Segoe UI", "Arial", "sans-serif"],
 });
 
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
+const atkinsonMono = Atkinson_Hyperlegible_Mono({
+  variable: "--font-atkinson-mono",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
-
-// Page-identity headings only — same Plex superfamily as the mono face
-// above, so data/labels (mono) and headings (serif) read as one system
-// instead of a third, unrelated typeface. Body copy stays on Inter.
-const plexSerif = IBM_Plex_Serif({
-  variable: "--font-plex-serif",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  adjustFontFallback: false,
+  fallback: ["ui-monospace", "Consolas", "monospace"],
 });
 
 export const metadata: Metadata = {
@@ -41,7 +42,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${plexMono.variable} ${plexSerif.variable} h-full`}
+      className={`${atkinson.variable} ${atkinsonMono.variable} h-full`}
     >
       <body className="min-h-full flex flex-col">
         {children}

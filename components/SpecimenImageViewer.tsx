@@ -49,7 +49,9 @@ export default function SpecimenImageViewer({
 }) {
   const reduceMotion = useReducedMotion();
   const speciesCatalog = useSpeciesCatalog();
-  const [showLabels, setShowLabels] = useState(true);
+  // Off by default at this size, where labels crowd the slide; the colour
+  // legend above carries the same information. On in the full-screen inspector.
+  const [showLabels, setShowLabels] = useState(false);
   // Tagged with the grains array it belongs to, so switching slides (a new
   // array) drops a selection that would otherwise match a same-numbered grain.
   const [grainSelection, setGrainSelection] = useState<{

@@ -110,7 +110,7 @@ function DetectionRow({
             className={`mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap ${riskBadgeClass(species.riskLevel)}`}
             style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
           >
-            {species.riskLevel} risk
+            {species.riskLevel} Risk
           </span>
         </div>
       </div>

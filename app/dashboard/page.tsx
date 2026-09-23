@@ -40,7 +40,7 @@ export default function DashboardPage() {
                 <ScanLine size={20} strokeWidth={1.75} className="text-accent" />
               </span>
               <div>
-                <div className="text-[15px] font-medium text-bg">Start new analysis</div>
+                <div className="text-[15px] font-medium text-bg">Start New Analysis</div>
                 <div className="text-[13px] text-bg/75">
                   Upload a microscope image to count and identify the pollen grains it contains
                 </div>

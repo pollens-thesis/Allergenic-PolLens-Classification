@@ -94,7 +94,7 @@ function DetectionRow({
           className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap lg:inline-flex ${riskBadgeClass(species.riskLevel)}`}
           style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
         >
-          {species.riskLevel} risk
+          {species.riskLevel} Risk
         </span>
       </div>
 

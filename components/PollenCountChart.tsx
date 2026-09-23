@@ -213,7 +213,9 @@ export default function PollenCountChart({ initial }: { initial: MonthlyPollenCo
             </ResponsiveContainer>
           </div>
 
-          <table className="sr-only">
+          {/* Wrapped: a <table> ignores sr-only's 1px width and widened the page. */}
+          <div className="sr-only">
+          <table>
             <caption>
               Monthly pollen grain counts per species, trailing {range} months
             </caption>
@@ -238,6 +240,7 @@ export default function PollenCountChart({ initial }: { initial: MonthlyPollenCo
               ))}
             </tbody>
           </table>
+          </div>
         </>
       )}
     </div>

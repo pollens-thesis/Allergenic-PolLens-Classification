@@ -1,30 +1,37 @@
 @import "tailwindcss";
 
 :root {
-  /* Surfaces */
-  --bg: #fafafa;              /* page background */
-  --surface: #ffffff;         /* cards, inputs, table rows, sidebar */
-  --surface-sunken: #f4f4f5;  /* tinted wells: stat strips, summary tiles */
-  --border: #e4e4e7;          /* default 1px hairline */
-  --border-strong: #d4d4d8;   /* hover/active/selected borders */
+  /*
+   * Laboratory palette, after ISA-101 "high-performance" HMI practice: a
+   * neutral, low-saturation interface, so the only strong colour on screen
+   * carries meaning — the species boxes on a slide, and status. See
+   * docs/design-system.md for the sources.
+   */
 
-  /* Text */
-  --text: #0a0a0a;
-  --text-muted: #52525b;
-  --text-faint: #6f6f79; /* passes WCAG AA (4.5:1+) against bg/surface/surface-sunken */
+  /* Surfaces — cool neutral gray canvas, white work panels */
+  --bg: #eef0f2;              /* page background */
+  --surface: #ffffff;         /* panels, inputs, table rows, sidebar */
+  --surface-sunken: #f4f5f7;  /* wells: stat strips, summary tiles */
+  --border: #d8dce0;          /* default 1px rule */
+  --border-strong: #b9c0c7;   /* hover/active/selected borders */
 
-  /* The one accent (teal) */
-  --accent: #0e8a8a;
-  --accent-hover: #0b7373;
-  --accent-active: #095f5f;
-  --accent-muted: #0e8a8a1a; /* ~10% */
+  /* Text — all pass WCAG AA (4.5:1+) on bg, surface and surface-sunken */
+  --text: #111418;
+  --text-muted: #48505a;
+  --text-faint: #5f6873;
+
+  /* The one accent (teal) — actions, focus and selection only, never decoration */
+  --accent: #0a7070;
+  --accent-hover: #085c5c;
+  --accent-active: #064a4a;
+  --accent-muted: #0a70701a; /* ~10% */
   --accent-fg: #ffffff;
 
-  /* Status */
-  --success: #15803d;
-  --success-bg: #15803d14;
-  --processing: #b45309;      /* distinct amber — never the accent */
-  --processing-bg: #b4530914;
+  /* Status — kept apart from the species overlay palette (Okabe–Ito) */
+  --success: #126b33;
+  --success-bg: #126b3314;
+  --processing: #a14a06;      /* amber — never the accent */
+  --processing-bg: #a14a0614;
   --danger: #b91c1c;
   --danger-bg: #b91c1c14;
 
@@ -40,9 +47,10 @@
   --hero-grain: #2dd4d4;      /* teal-tinted grain, replaces the old gold */
   --hero-grain-soft: #6ee7e7;
 
-  --font-display: var(--font-plex-serif);
-  --font-body: var(--font-inter);
-  --font-mono: var(--font-plex-mono);
+  /* One typeface for headings and text; its mono sibling for data */
+  --font-display: var(--font-atkinson);
+  --font-body: var(--font-atkinson);
+  --font-mono: var(--font-atkinson-mono);
 
   /* Motion (Emil Kowalski house rules: never ease-in, custom curves, <300ms) */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -80,6 +88,12 @@
   --font-display: var(--font-display);
   --font-body: var(--font-body);
   --font-mono: var(--font-mono);
+
+  /* Tighter corners than a consumer app — instrument-software density */
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
 }
 
 * {
@@ -104,11 +118,12 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
-  letter-spacing: -0.006em;
+  /* Readings, counts and ids line up in columns and don't jitter as they change */
+  font-variant-numeric: tabular-nums;
 }
 
 h1, h2, h3 {
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 @media (prefers-reduced-motion: reduce) {
