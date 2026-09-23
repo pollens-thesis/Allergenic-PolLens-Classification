@@ -25,7 +25,7 @@ const plexSerif = IBM_Plex_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "PolLens — Sign in",
+  title: { default: "PolLens", template: "%s · PolLens" },
   description: "Helping researchers identify pollen allergens from microscope imagery. Sign in to the PolLens research console.",
 };
 

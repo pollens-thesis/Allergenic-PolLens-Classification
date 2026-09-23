@@ -1,7 +1,17 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import ReportDetail from "@/components/ReportDetail";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ sampleId: string }>;
+}): Promise<Metadata> {
+  const { sampleId } = await params;
+  return { title: `Report ${sampleId}` };
+}
 
 export default async function ReportDetailPage({
   params,
@@ -24,7 +34,7 @@ export default async function ReportDetailPage({
             Back to Reports
           </Link>
           <h1 className="text-3xl text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-            Full report detail
+            Full Report Detail
           </h1>
         </div>
 

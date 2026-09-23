@@ -263,7 +263,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
               className="mt-1 text-2xl text-text"
               style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
             >
-              Full report
+              Full Report
             </h2>
             <div className="mt-2">
               <StatusBadge status={report.status} />
@@ -289,7 +289,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
       {/* Everything the researcher entered on the Analyze screen. */}
       <div className="rounded-lg border border-border bg-surface p-5">
         <h3 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-          Collection details
+          Collection Details
         </h3>
         <p className="mt-0.5 mb-4 text-[13px] text-text-muted">
           Recorded with the batch when it was analyzed.
@@ -298,7 +298,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetaItem
             icon={CalendarDays}
-            label="Date collected"
+            label="Date Collected"
             value={new Date(`${getCollectionDate(report.collectedAt)}T00:00:00`).toLocaleDateString(
               "en-US",
               { month: "short", day: "numeric", year: "numeric" },
@@ -306,7 +306,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
           />
           <MetaItem
             icon={Clock}
-            label="Time collected"
+            label="Time Collected"
             value={collectionTime ? formatTime(collectionTime) : "Not recorded"}
           />
           <MetaItem icon={MapPin} label="Location" value={report.location || "Not specified"} />
@@ -344,9 +344,9 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
         </h3>
 
         <div className="mb-4 grid grid-cols-2 gap-3 rounded-md bg-surface-sunken px-3 py-3 text-center sm:grid-cols-4">
-          <SummaryTile value={totalGrains} label="Total grains" />
-          <SummaryTile value={aggregated.length} label="Pollen types" />
-          <SummaryTile value={`${Math.round(overallConfidence * 100)}%`} label="Avg. confidence" />
+          <SummaryTile value={totalGrains} label="Total Grains" />
+          <SummaryTile value={aggregated.length} label="Pollen Types" />
+          <SummaryTile value={`${Math.round(overallConfidence * 100)}%`} label="Avg. Confidence" />
           <SummaryTile
             value={report.slides.length}
             label={report.slides.length === 1 ? "Slide" : "Slides"}
@@ -369,7 +369,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
       {/* Per slide: its reading on the left, the boxed image on the right */}
       <div className="rounded-lg border border-border bg-surface p-5">
         <h3 className="mb-1 text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-          Specimen images
+          Specimen Images
         </h3>
         <p className="mb-4 text-[13px] text-text-muted">
           {report.slides.length === 1
@@ -431,7 +431,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                         className="mb-1 text-[12px] tracking-widest text-text-faint uppercase"
                         style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
                       >
-                        Researcher&apos;s note
+                        Researcher&apos;s Note
                       </div>
                       {slide.notes ? (
                         <p className="text-[13px] whitespace-pre-wrap text-text">{slide.notes}</p>

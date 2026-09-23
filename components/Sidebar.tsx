@@ -19,10 +19,10 @@ import { useSettings } from "@/lib/settings";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
-  { href: "/upload", label: "Analyze specimen", icon: ScanLine },
-  { href: "/reports", label: "Report", icon: FileText },
-  { href: "/map", label: "Pollen map", icon: Map },
-  { href: "/dataset", label: "Allergen reference", icon: Leaf },
+  { href: "/upload", label: "Analyze Specimen", icon: ScanLine },
+  { href: "/reports", label: "Reports", icon: FileText },
+  { href: "/map", label: "Pollen Map", icon: Map },
+  { href: "/dataset", label: "Allergen Reference", icon: Leaf },
 ];
 
 // Settings is deliberately absent from the nav: the account card at the bottom

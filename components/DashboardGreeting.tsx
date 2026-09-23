@@ -10,7 +10,7 @@ export default function DashboardGreeting() {
 
   return (
     <h1 className="text-3xl text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-      Welcome back, {name}
+      Welcome Back, {name}
     </h1>
   );
 }

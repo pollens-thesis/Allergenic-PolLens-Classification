@@ -116,7 +116,7 @@ function DetectionRow({
 
       <div className="mt-2.5">
         <div className="mb-1 flex items-center justify-between text-[12.5px] text-text-muted">
-          <span>Avg. confidence</span>
+          <span>Avg. Confidence</span>
           <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{confidencePct}%</span>
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-sunken">
@@ -317,13 +317,13 @@ export default function AnalysisResultWorkspace() {
             className="focus-ring inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-accent-fg transition active:scale-[0.97] hover:bg-[var(--accent-hover)]"
           >
             <Microscope size={14} strokeWidth={1.75} />
-            Analyze a specimen
+            Analyze a Specimen
           </Link>
           <Link
             href="/reports"
             className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 text-[13px] text-text-muted transition active:scale-[0.97] hover:text-text"
           >
-            Saved reports
+            Saved Reports
           </Link>
         </div>
       </div>
@@ -352,12 +352,12 @@ export default function AnalysisResultWorkspace() {
               className="text-[12px] tracking-widest text-text-muted uppercase"
               style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
             >
-              Not saved yet
+              Not Saved Yet
             </div>
             <h2 className="mt-1 text-2xl font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
               {draft.slides.length === 1
-                ? "1 slide analyzed"
-                : `${draft.slides.length} slides analyzed`}
+                ? "1 Slide Analyzed"
+                : `${draft.slides.length} Slides Analyzed`}
             </h2>
             <p className="mt-1 text-[13px] text-text-muted">
               {batchGrains} {batchGrains === 1 ? "grain" : "grains"} counted across the batch ·
@@ -374,14 +374,14 @@ export default function AnalysisResultWorkspace() {
                   onClick={handleDiscard}
                   className="focus-ring rounded-md border border-danger/30 bg-surface px-3 py-2 text-[13px] font-medium text-danger transition active:scale-[0.97] hover:bg-danger-bg"
                 >
-                  Yes, discard
+                  Yes, Discard
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmingDiscard(false)}
                   className="focus-ring rounded-md px-2 py-2 text-[13px] text-text-muted transition active:scale-[0.97] hover:text-text"
                 >
-                  Keep it
+                  Keep It
                 </button>
               </>
             ) : (
@@ -411,7 +411,7 @@ export default function AnalysisResultWorkspace() {
               ) : (
                 <>
                   <Save size={15} strokeWidth={1.75} />
-                  Save report
+                  Save Report
                 </>
               )}
             </Button>
@@ -458,7 +458,7 @@ export default function AnalysisResultWorkspace() {
           <div className="rounded-lg border border-border bg-surface p-5 xl:col-span-3">
             <div className="mb-4 flex items-baseline justify-between gap-3">
               <h3 className="text-lg font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
-                Pollen detected
+                Pollen Detected
               </h3>
               {draft.slides.length > 1 && (
                 <span className="text-[13px] text-text-muted">Slide {slideIndex + 1}</span>
@@ -469,9 +469,9 @@ export default function AnalysisResultWorkspace() {
               <SummaryTile value={totalGrains} label="Grains" />
               <SummaryTile
                 value={detections.length}
-                label={detections.length === 1 ? "Pollen type" : "Pollen types"}
+                label={detections.length === 1 ? "Pollen Type" : "Pollen Types"}
               />
-              <SummaryTile value={`${Math.round(confidence * 100)}%`} label="Avg. confidence" />
+              <SummaryTile value={`${Math.round(confidence * 100)}%`} label="Avg. Confidence" />
             </div>
 
             {detections.length === 0 ? (
@@ -506,7 +506,7 @@ export default function AnalysisResultWorkspace() {
           <div className="flex flex-col gap-6 xl:col-span-2">
             <div className="rounded-lg border border-border bg-surface p-5">
               <h3 className="mb-4 text-lg font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
-                Specimen image
+                Specimen Image
               </h3>
               <SpecimenImageViewer
                 imageUrl={imageUrls[selected.id]}
@@ -560,7 +560,7 @@ export default function AnalysisResultWorkspace() {
       {/* The details entered on Analyze, still editable until the report is saved. */}
       <div className="rounded-lg border border-border bg-surface p-5">
         <h3 className="text-lg font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
-          Collection details
+          Collection Details
         </h3>
         <p className="mt-0.5 mb-4 text-[13px] text-text-muted">
           What you entered before analyzing — correct anything here and it is saved with the
@@ -589,7 +589,7 @@ export default function AnalysisResultWorkspace() {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[12.5px] text-text-muted">Date collected</span>
+            <span className="mb-1 block text-[12.5px] text-text-muted">Date Collected</span>
             <input
               type="date"
               value={collectedDate}
@@ -626,7 +626,7 @@ export default function AnalysisResultWorkspace() {
         {weather && (
           <div className="mt-4">
             <h4 className={sectionHeadingClass} style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-              Conditions at collection
+              Conditions at Collection
             </h4>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <label className="col-span-2 block sm:col-span-1">
@@ -672,7 +672,7 @@ export default function AnalysisResultWorkspace() {
           className="focus-ring inline-flex items-center gap-1.5 rounded text-[13px] text-text-muted transition hover:text-text"
         >
           <ArrowLeft size={14} strokeWidth={1.75} />
-          Back to Analyze specimen
+          Back to Analyze Specimen
         </Link>
 
         <Button
@@ -690,7 +690,7 @@ export default function AnalysisResultWorkspace() {
           ) : (
             <>
               <Save size={16} strokeWidth={1.75} />
-              Save report
+              Save Report
             </>
           )}
         </Button>

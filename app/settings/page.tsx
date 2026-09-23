@@ -1,5 +1,10 @@
+import type { Metadata } from "next";
 import Sidebar from "@/components/Sidebar";
 import SettingsWorkspace from "@/components/SettingsWorkspace";
+
+export const metadata: Metadata = {
+  title: "Settings",
+};
 
 export default function SettingsPage() {
   return (

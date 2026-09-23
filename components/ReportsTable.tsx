@@ -192,7 +192,7 @@ export default function ReportsTable({
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-            Saved reports
+            Saved Reports
           </h2>
           <p className="mt-0.5 text-[13px] text-text-muted">
             {filtered.length} of {rows.length} {rows.length === 1 ? "report" : "reports"}
@@ -257,7 +257,7 @@ export default function ReportsTable({
             onChange={(e) => patch({ location: e.target.value })}
             className={`${controlClass} w-full md:w-auto`}
           >
-            <option value={ALL_LOCATIONS}>All locations</option>
+            <option value={ALL_LOCATIONS}>All Locations</option>
             {locations.map((location) => (
               <option key={location} value={location}>
                 {location}
@@ -296,7 +296,7 @@ export default function ReportsTable({
             className="focus-ring flex items-center justify-center gap-1 rounded-md px-2 py-2 text-[13px] text-text-muted transition-colors hover:text-text md:py-1.5"
           >
             <X size={13} strokeWidth={1.75} />
-            Clear filters
+            Clear Filters
           </button>
         )}
       </div>
@@ -327,7 +327,7 @@ export default function ReportsTable({
               ) : (
                 <>
                   <FileDown size={14} strokeWidth={1.75} />
-                  Generate report
+                  Generate Report
                 </>
               )}
             </Button>
@@ -438,8 +438,8 @@ export default function ReportsTable({
               <th className="py-2 pr-3 font-medium">Sample ID</th>
               <th className="py-2 pr-3 font-medium">Collected</th>
               <th className="py-2 pr-3 font-medium">Location</th>
-              <th className="py-2 pr-3 font-medium">Top pollen detected</th>
-              <th className="py-2 pr-3 font-medium">Total grains</th>
+              <th className="py-2 pr-3 font-medium">Top Pollen Detected</th>
+              <th className="py-2 pr-3 font-medium">Total Grains</th>
               <th className="py-2 pr-0 font-medium">Status</th>
             </tr>
           </thead>
@@ -516,7 +516,7 @@ export default function ReportsTable({
               className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-[13px] text-text-muted transition-colors hover:text-text"
             >
               <X size={13} strokeWidth={1.75} />
-              Clear filters
+              Clear Filters
             </button>
           )}
         </div>

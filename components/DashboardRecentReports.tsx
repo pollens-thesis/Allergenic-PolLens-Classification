@@ -33,13 +33,13 @@ export default function DashboardRecentReports() {
     <div className="rounded-lg border border-border bg-surface p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-          Saved reports
+          Saved Reports
         </h2>
         <Link
           href="/reports"
           className="focus-ring flex items-center gap-1 rounded text-[13px] text-text-muted transition-colors hover:text-text"
         >
-          View all
+          View All
           <ArrowRight size={13} strokeWidth={1.75} />
         </Link>
       </div>

@@ -1,5 +1,10 @@
+import type { Metadata } from "next";
 import Sidebar from "@/components/Sidebar";
 import PollenMap from "@/components/PollenMap";
+
+export const metadata: Metadata = {
+  title: "Pollen Map",
+};
 
 export default function PollenMapPage() {
   return (
@@ -15,7 +20,7 @@ export default function PollenMapPage() {
           }}
         >
           <h1 className="text-3xl text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-            Pollen map
+            Pollen Map
           </h1>
           <p className="mt-1 max-w-prose text-sm text-text-muted">
             Where each pollen type is turning up. Provinces are shaded by how many grains have been

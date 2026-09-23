@@ -146,7 +146,7 @@ export default function SettingsWorkspace() {
       {/* Data and storage */}
       <Section
         icon={Database}
-        title="Data & storage"
+        title="Data & Storage"
         description="Reports are saved in this browser. Export them to keep a copy elsewhere or to analyze them in other software."
       >
         <div className="mb-4 grid grid-cols-3 gap-3 rounded-md bg-surface-sunken px-3 py-3 text-center">
@@ -214,7 +214,7 @@ export default function SettingsWorkspace() {
           <div className="flex items-start gap-2.5">
             <AlertTriangle size={15} strokeWidth={1.75} className="mt-0.5 shrink-0 text-danger" />
             <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-medium text-text">Clear locally saved reports</div>
+              <div className="text-[13px] font-medium text-text">Clear Locally Saved Reports</div>
               <p className="mt-0.5 text-[12.5px] text-text-muted">
                 Permanently deletes the {savedReportCount}{" "}
                 {savedReportCount === 1 ? "report" : "reports"}{" "}
@@ -228,13 +228,13 @@ export default function SettingsWorkspace() {
                   className="focus-ring mt-2.5 inline-flex items-center gap-1.5 rounded-md border border-danger/30 bg-surface px-3 py-1.5 text-[13px] text-danger transition-[background-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-danger-bg active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Trash2 size={13} strokeWidth={1.75} />
-                  Clear saved reports
+                  Clear Saved Reports
                 </AlertDialog.Trigger>
                 <AlertDialog.Portal>
                   <AlertDialog.Backdrop className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] transition-opacity duration-[var(--duration-base)] ease-[var(--ease-out)] data-[starting-style]:opacity-0 data-[ending-style]:opacity-0" />
                   <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-50 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-surface p-5 shadow-lg outline-none transition-all duration-[var(--duration-base)] ease-[var(--ease-out)] data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0">
                     <AlertDialog.Title className="text-[15px] font-medium text-text">
-                      Clear all saved reports?
+                      Clear All Saved Reports?
                     </AlertDialog.Title>
                     <AlertDialog.Description className="mt-2 text-[13px] leading-relaxed text-text-muted">
                       This permanently deletes the {savedReportCount}{" "}
@@ -264,7 +264,7 @@ export default function SettingsWorkspace() {
                         ) : (
                           <>
                             <Trash2 size={13} strokeWidth={1.75} />
-                            Yes, delete them
+                            Yes, Delete Them
                           </>
                         )}
                       </Button>
@@ -303,7 +303,7 @@ export default function SettingsWorkspace() {
             className="focus-ring inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text-muted transition-[color,border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text hover:border-border-strong active:scale-[0.97]"
           >
             <LogOut size={14} strokeWidth={1.75} />
-            Sign out
+            Sign Out
           </button>
         </div>
       </Section>

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, ScanLine } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
@@ -6,6 +7,10 @@ import DashboardStats from "@/components/DashboardStats";
 import DashboardRecentReports from "@/components/DashboardRecentReports";
 import PollenCountChart from "@/components/PollenCountChart";
 import { dashboardStats, historicalPollenCounts } from "@/lib/data";
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+};
 
 export default function DashboardPage() {
   return (

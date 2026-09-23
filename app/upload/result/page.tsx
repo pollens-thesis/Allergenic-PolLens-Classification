@@ -1,7 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import AnalysisResultWorkspace from "@/components/AnalysisResultWorkspace";
+
+export const metadata: Metadata = {
+  title: "Analysis Result",
+};
 
 export default function AnalysisResultPage() {
   return (
@@ -18,10 +23,10 @@ export default function AnalysisResultPage() {
             className="focus-ring mb-3 inline-flex items-center gap-1.5 rounded text-[13px] text-text-muted transition hover:text-text"
           >
             <ArrowLeft size={14} strokeWidth={1.75} />
-            Back to Analyze specimen
+            Back to Analyze Specimen
           </Link>
           <h1 className="text-3xl font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
-            Analysis result
+            Analysis Result
           </h1>
           <p className="mt-1 max-w-prose text-sm text-text-muted">
             Everything the analysis found, beside the slide it came from. Add your notes and save

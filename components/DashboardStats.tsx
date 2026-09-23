@@ -27,25 +27,25 @@ export default function DashboardStats({ initial }: { initial: Stats }) {
   return (
     <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
       <StatCard
-        label="Specimens analyzed"
+        label="Specimens Analyzed"
         value={stats.totalSpecimens.toLocaleString()}
         sublabel="All time"
         icon={Microscope}
       />
       <StatCard
-        label="Allergen classes"
+        label="Allergen Classes"
         value={String(stats.classesTracked)}
         sublabel="In reference set"
         icon={Leaf}
       />
       <StatCard
-        label="This week"
+        label="This Week"
         value={String(stats.detectionsThisWeek)}
         sublabel="New identifications"
         icon={ScanLine}
       />
       <StatCard
-        label="Avg. confidence"
+        label="Avg. Confidence"
         value={`${Math.round(stats.avgConfidence * 100)}%`}
         sublabel="Across all classes"
         icon={Percent}

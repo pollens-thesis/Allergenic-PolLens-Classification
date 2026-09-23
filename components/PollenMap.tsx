@@ -348,7 +348,7 @@ export default function PollenMap() {
   const unitPlural = scope.level === "country" ? "provinces" : "towns";
   const unitSingular = scope.level === "country" ? "province" : "town";
   const speciesFilterLabel =
-    species === "all" ? "All pollen" : speciesLabel(findSpecies(speciesCatalog, species));
+    species === "all" ? "All Pollen" : speciesLabel(findSpecies(speciesCatalog, species));
 
   /**
    * How the current filter chose what it chose, for the report's scope line.
@@ -448,13 +448,13 @@ export default function PollenMap() {
             </p>
           </div>
           <label className="shrink-0">
-            <span className="sr-only">Pollen type</span>
+            <span className="sr-only">Pollen Type</span>
             <select
               value={species}
               onChange={(e) => setSpecies(e.target.value as SpeciesId | "all")}
               className={fieldClass}
             >
-              <option value="all">All pollen</option>
+              <option value="all">All Pollen</option>
               {speciesCatalog.map((s) => (
                 <option key={s.id} value={s.id}>
                   {speciesLabel(s)}
@@ -502,7 +502,7 @@ export default function PollenMap() {
                 }
                 className="focus-ring rounded-md border border-border bg-surface px-2 py-1.5 text-[13px] text-text"
               >
-                <option value="all">All regions</option>
+                <option value="all">All Regions</option>
                 {REGIONS.map((r) => (
                   <option key={r.code} value={r.code}>
                     {r.label}
@@ -760,7 +760,7 @@ export default function PollenMap() {
               className="mb-2 text-[12px] tracking-[0.2em] text-text-muted uppercase"
               style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
             >
-              Most pollen detected here
+              Most Pollen Detected Here
             </h3>
             {selectedPlace.detections.length === 0 ? (
               <p className="rounded-md border border-border bg-surface px-3 py-4 text-center text-[13px] text-text-muted">

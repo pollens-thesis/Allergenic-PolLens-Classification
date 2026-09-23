@@ -27,8 +27,8 @@ import { useSettings } from "@/lib/settings";
 type Status = "seed" | "live" | "empty-live" | "error";
 
 const RANGES = [
-  { label: "6 months", value: 6 },
-  { label: "12 months", value: 12 },
+  { label: "6 Months", value: 6 },
+  { label: "12 Months", value: 12 },
 ] as const;
 
 // No categorical palette stays mutually distinguishable much past 8
@@ -124,7 +124,7 @@ export default function PollenCountChart({ initial }: { initial: MonthlyPollenCo
       <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-            Historical pollen counts
+            Historical Pollen Counts
           </h2>
           <p className="text-[13px] text-text-muted">Average grains per m&sup3;, by month</p>
         </div>

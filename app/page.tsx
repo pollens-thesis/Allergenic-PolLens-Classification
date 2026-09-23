@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import PollenField from "@/components/PollenField";
 import SignInForm from "@/components/SignInForm";
 import { speciesCatalog } from "@/lib/data";
+
+export const metadata: Metadata = {
+  title: "Sign In",
+};
 
 export default function LoginPage() {
   return (
@@ -60,7 +65,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm">
           <div className="mb-8">
             <h2 className="text-3xl font-semibold tracking-tight text-text">
-              Sign in to continue
+              Sign In to Continue
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-text-muted">
               Sign in with the account your institution works from. The console

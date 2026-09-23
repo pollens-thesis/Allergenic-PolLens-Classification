@@ -332,7 +332,7 @@ export default function AnalyzeWorkspace() {
             href="/upload/result"
             className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border-strong bg-surface px-3 py-1.5 text-[13px] text-text transition active:scale-[0.97] hover:bg-surface-sunken"
           >
-            Open it
+            Open It
             <ArrowRight size={13} strokeWidth={1.75} />
           </Link>
         </div>
@@ -343,7 +343,7 @@ export default function AnalyzeWorkspace() {
         <div className="rounded-lg border border-border bg-surface p-5 xl:col-span-3">
           <div className="mb-4 flex items-baseline justify-between gap-3">
             <h2 className="text-lg font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
-              Specimen images
+              Specimen Images
             </h2>
             {items.length > 0 && (
               <button
@@ -351,7 +351,7 @@ export default function AnalyzeWorkspace() {
                 onClick={handleClearAll}
                 className="focus-ring rounded text-[13px] text-text-muted transition hover:text-text"
               >
-                Clear all
+                Clear All
               </button>
             )}
           </div>
@@ -427,7 +427,7 @@ export default function AnalyzeWorkspace() {
                 className="focus-ring mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border px-3 py-2 text-[13px] text-text-muted transition active:scale-[0.98] hover:border-border-strong hover:text-text"
               >
                 <ImagePlus size={14} strokeWidth={1.75} />
-                Add more images
+                Add More Images
               </button>
             </div>
           )}
@@ -435,7 +435,7 @@ export default function AnalyzeWorkspace() {
           {/* Collection details — shared by every slide in the batch. */}
           <div className="mt-5">
             <h3 className={sectionHeadingClass} style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-              Collection details
+              Collection Details
             </h3>
             <p className="mb-2.5 text-[12.5px] text-text-muted">
               When and where the batch was collected — applies to every specimen in it. You can
@@ -464,7 +464,7 @@ export default function AnalyzeWorkspace() {
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[12.5px] text-text-muted">Date collected</span>
+                <span className="mb-1 block text-[12.5px] text-text-muted">Date Collected</span>
                 <input
                   type="date"
                   value={collectedDate}
@@ -543,7 +543,7 @@ export default function AnalyzeWorkspace() {
             ) : (
               <>
                 <Microscope size={16} strokeWidth={1.75} />
-                {items.length > 1 ? `Analyze ${items.length} specimens` : "Analyze specimen"}
+                {items.length > 1 ? `Analyze ${items.length} Specimens` : "Analyze Specimen"}
               </>
             )}
           </Button>
@@ -600,7 +600,7 @@ export default function AnalyzeWorkspace() {
 
               <dl className="mt-4 flex flex-col gap-2 text-[13px]">
                 <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-text-muted">Slides in batch</dt>
+                  <dt className="text-text-muted">Slides in Batch</dt>
                   <dd className="text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                     {items.length}
                   </dd>

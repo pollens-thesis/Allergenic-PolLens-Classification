@@ -96,7 +96,7 @@ export default function SignInForm() {
         <div className="rounded-md border border-border bg-surface p-4">
           <div className="mb-3 flex items-center gap-2.5">
             <GoogleIcon />
-            <span className="text-[13px] font-medium text-text">Choose an account</span>
+            <span className="text-[13px] font-medium text-text">Choose an Account</span>
           </div>
 
           {configured ? (

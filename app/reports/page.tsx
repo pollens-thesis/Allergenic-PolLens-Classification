@@ -1,7 +1,12 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import ReportsWorkspace from "@/components/ReportsWorkspace";
+
+export const metadata: Metadata = {
+  title: "Reports",
+};
 
 function ReportsFallback() {
   return (
