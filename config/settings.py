@@ -183,6 +183,11 @@ GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '')
 ROBOFLOW_API_KEY = os.environ.get('ROBOFLOW_API_KEY', '')
 ROBOFLOW_MODEL_ID = os.environ.get('ROBOFLOW_MODEL_ID', '')  # e.g. "workspace-slug/model-slug"
 ROBOFLOW_MODEL_VERSION = os.environ.get('ROBOFLOW_MODEL_VERSION', '')
+# Serve reports/fixtures/roboflow_detect_response.json (Roboflow's real
+# response shape) instead of calling Roboflow, so the Analyze flow works
+# end-to-end before the model exists. Going live: fill the three vars
+# above and set this to false — no code changes.
+ROBOFLOW_MOCK = env_bool('ROBOFLOW_MOCK', False)
 
 
 # OpenWeather

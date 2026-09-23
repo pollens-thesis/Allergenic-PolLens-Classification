@@ -168,21 +168,41 @@ between the thesis proposal paper and the frontend.
     (multipart); forwards it to the Roboflow-hosted model (config-driven
     via `ROBOFLOW_API_KEY`/`ROBOFLOW_MODEL_ID`/`ROBOFLOW_MODEL_VERSION`,
     same `os.environ.get` pattern as `GOOGLE_OAUTH_CLIENT_ID`) and passes
-    through Roboflow's native `{"predictions": [{"class", "confidence",
-    "x", "y", "width", "height"}]}` shape unchanged (pixel coordinates,
-    box centre-based) — the pixel→normalized `BoundingBox` mapping stays
-    client-side per `app/PolLens/lib/analysis.ts`'s own `TODO(backend)`
-    comment; this view exists only to hold the Roboflow API key
-    server-side, not to reshape the response. Missing image → `400`.
-    Unconfigured (any of the three env vars blank) → `503 {"detail":
-    "Detection service is not configured."}`. Any upstream failure
-    (non-200, timeout, connection error) → `502 {"detail": "Detection
-    service is unavailable."}`. **The Roboflow model itself is not
-    deployed yet** (as of 2026-09-21 — the ML/dataset side is still
-    pending), so this endpoint can't produce real detections until a real
-    model and credentials exist; not yet wired into the frontend either —
-    `app/PolLens/lib/analysis.ts`'s `analyzeSpecimen()` still uses its
-    mock generator.
+    through Roboflow's native shape trimmed to `{"image": {"width",
+    "height"}, "predictions": [{"class", "confidence", "x", "y", "width",
+    "height"}]}` (pixel coordinates, box centre-based; `image` is kept so
+    the client needs no image decode to normalize) — the
+    pixel→normalized `BoundingBox` mapping is client-side in
+    `app/PolLens/lib/analysis.ts` (`fromRoboflow`); this view exists only
+    to hold the Roboflow API key server-side, not to reshape the response.
+    Missing image → `400`. Unconfigured (any of the three env vars blank)
+    → `503 {"detail": "Detection service is not configured."}`. Any
+    upstream failure (non-200, timeout, connection error) → `502
+    {"detail": "Detection service is unavailable."}`.
+    - **Mock mode (`ROBOFLOW_MOCK=true`, added 2026-09-23).** The model
+      itself isn't deployed yet (the ML/dataset side is still pending), so
+      with this flag on the upstream call is replaced by
+      `_mock_roboflow_detect`, which serves
+      `reports/fixtures/roboflow_detect_response.json` — a full raw
+      Roboflow hosted-detect response (`inference_id`, `time`, `image`,
+      `predictions[]` with `class_id`/`detection_id`), 16 grains across 4
+      catalog species — rescaled onto the uploaded image's real pixel
+      size (Pillow) with fresh ids. Credentials aren't checked in mock
+      mode. Everything after the payload is obtained is the same code
+      path as live, so the frontend is already running the real mapping.
+      (`reports/fixtures/` is not a `loaddata` fixture dir despite the
+      name.)
+    - **Going live:** set `ROBOFLOW_API_KEY`/`ROBOFLOW_MODEL_ID`/
+      `ROBOFLOW_MODEL_VERSION` and `ROBOFLOW_MOCK=false` — no code
+      changes. **Class-name convention:** the Roboflow dataset's class
+      names must be the `Species` slugs (e.g. `amaranthus_spinosus`);
+      the frontend forgives case and space/hyphen separators but drops
+      any class outside the catalog (with a console warning). If the
+      trained model uses other labels, add an alias map in
+      `toSpeciesId()` in `app/PolLens/lib/analysis.ts`.
+    - **Wired into the frontend as of 2026-09-23**: `analyzeSpecimen()`
+      POSTs each image here once signed in, falling back to its local
+      deterministic mock when signed out or on any failure.
   - **`GET /api/v1/reports/weather/?location=...`** (`reports.views.WeatherView`,
     `IsAuthenticated`; registered in `config/urls.py` before
     `<sample_id>/` for the same reason as `monthly-counts/`/`species/`).
@@ -205,8 +225,11 @@ between the thesis proposal paper and the frontend.
     {"detail": "Weather lookup is not configured."}`. OpenWeather can't
     resolve the location → `404 {"detail": "Location not found."}` (not a
     service failure). Any other upstream failure → `502 {"detail":
-    "Weather service is unavailable."}`. Not yet wired into the frontend
-    — `fetchWeather()` still returns `null`.
+    "Weather service is unavailable."}`. As of 2026-09-23,
+    `app/PolLens/lib/analysis.ts`'s `fetchWeather()` calls this endpoint
+    (null on any failure), but **no component calls `fetchWeather()`
+    yet** — pre-filling the Analyze screen's weather fields is blocked on
+    the open read-only-vs-editable decision in `../docs/system-spec.md`.
   - **Models** (`reports/models.py`): `Report` (weather flattened onto the
     model as nullable fields, not a separate table; `collected_at` stored
     as a validated `CharField`, not `DateTimeField`, to preserve the
@@ -251,7 +274,8 @@ between the thesis proposal paper and the frontend.
     endpoint (auth-required, curated order, camelCase shape), detect
     (auth required, missing image, unconfigured → 503, successful
     passthrough with extraneous Roboflow fields stripped, upstream
-    failure → 502), and weather (auth required, missing location,
+    failure → 502; mock mode: no credentials/network needed, boxes
+    rescaled to the uploaded image, every class a catalog species), and weather (auth required, missing location,
     unconfigured → 503, location not found → 404, upstream failure → 502,
     condition-mapping cases for clear/light-clouds/heavy-clouds/rain/
     high-wind). Run with `python manage.py test reports`.

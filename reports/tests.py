@@ -459,6 +459,7 @@ class SpeciesListViewTests(APITestCase):
 
 @override_settings(
     ROBOFLOW_API_KEY='test-key', ROBOFLOW_MODEL_ID='workspace/model', ROBOFLOW_MODEL_VERSION='1',
+    ROBOFLOW_MOCK=False,
 )
 class DetectViewTests(APITestCase):
     url = '/api/v1/reports/detect/'
@@ -489,6 +490,8 @@ class DetectViewTests(APITestCase):
     @patch('reports.views.requests.post')
     def test_successful_detection_passes_through_predictions(self, mock_post):
         mock_post.return_value = Mock(status_code=200, json=lambda: {
+            'inference_id': 'f00d', 'time': 0.05,
+            'image': {'width': 640, 'height': 480},
             'predictions': [
                 {
                     'class': 'amaranthus_spinosus', 'confidence': 0.92,
@@ -503,6 +506,7 @@ class DetectViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(response.data, {
+            'image': {'width': 640, 'height': 480},
             'predictions': [
                 {
                     'class': 'amaranthus_spinosus', 'confidence': 0.92,
@@ -532,6 +536,56 @@ class DetectViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
 
+
+
+@override_settings(
+    ROBOFLOW_MOCK=True, ROBOFLOW_API_KEY='', ROBOFLOW_MODEL_ID='', ROBOFLOW_MODEL_VERSION='',
+)
+class DetectViewMockModeTests(APITestCase):
+    url = '/api/v1/reports/detect/'
+
+    def setUp(self):
+        self.user = User.objects.create(email='researcher@up.edu.ph', institution='up.edu.ph')
+        self.client.force_authenticate(user=self.user)
+
+    def post_image(self, size=(800, 600)):
+        buffer = io.BytesIO()
+        Image.new('RGB', size, color='white').save(buffer, format='PNG')
+        upload = SimpleUploadedFile('slide.png', buffer.getvalue(), content_type='image/png')
+        return self.client.post(self.url, {'image': upload}, format='multipart')
+
+    @patch('reports.views.requests.post')
+    def test_serves_roboflow_shape_without_credentials_or_network(self, mock_post):
+        response = self.post_image()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        mock_post.assert_not_called()
+        self.assertEqual(set(response.data), {'image', 'predictions'})
+        self.assertTrue(response.data['predictions'])
+        for p in response.data['predictions']:
+            self.assertEqual(set(p), {'class', 'confidence', 'x', 'y', 'width', 'height'})
+            self.assertTrue(0 <= p['confidence'] <= 1)
+
+    def test_boxes_are_rescaled_to_the_uploaded_image(self):
+        response = self.post_image(size=(800, 600))
+
+        self.assertEqual(response.data['image'], {'width': 800, 'height': 600})
+        for p in response.data['predictions']:
+            self.assertGreaterEqual(p['x'] - p['width'] / 2, 0)
+            self.assertGreaterEqual(p['y'] - p['height'] / 2, 0)
+            self.assertLessEqual(p['x'] + p['width'] / 2, 800)
+            self.assertLessEqual(p['y'] + p['height'] / 2, 600)
+
+    def test_every_class_is_a_catalog_species(self):
+        response = self.post_image()
+
+        classes = {p['class'] for p in response.data['predictions']}
+        self.assertTrue(classes <= set(all_species_ids()))
+
+    def test_still_requires_an_image(self):
+        response = self.client.post(self.url, {}, format='multipart')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 def make_openweather_payload(**overrides):
     payload = {

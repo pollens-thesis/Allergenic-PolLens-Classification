@@ -1,8 +1,11 @@
 import calendar
 import json
 import re
+import uuid
+from pathlib import Path
 
 import requests
+from PIL import Image as PILImage
 from django.conf import settings
 from django.db.models import Q, Sum
 from django.db.models.functions import Substr
@@ -125,6 +128,60 @@ class ReportListCreateView(APIView):
 
 ROBOFLOW_DETECT_URL = 'https://detect.roboflow.com/{model_id}/{version}'
 ROBOFLOW_PREDICTION_FIELDS = ('class', 'confidence', 'x', 'y', 'width', 'height')
+# A captured-shape Roboflow response (inference_id/time/image/predictions,
+# class names = Species slugs) served while ROBOFLOW_MOCK is on. Not a
+# Django loaddata fixture despite the directory name.
+ROBOFLOW_MOCK_RESPONSE = Path(__file__).resolve().parent / 'fixtures' / 'roboflow_detect_response.json'
+
+
+class DetectionUnavailable(Exception):
+    """Roboflow couldn't be reached or answered with something unusable."""
+
+
+def _roboflow_detect(image):
+    """Raw Roboflow response for `image`, exactly as the hosted API returns it."""
+    url = ROBOFLOW_DETECT_URL.format(
+        model_id=settings.ROBOFLOW_MODEL_ID, version=settings.ROBOFLOW_MODEL_VERSION,
+    )
+    try:
+        upstream = requests.post(
+            url,
+            params={'api_key': settings.ROBOFLOW_API_KEY},
+            files={'file': (image.name, image.read(), image.content_type)},
+            timeout=30,
+        )
+        payload = upstream.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise DetectionUnavailable from exc
+    if upstream.status_code != 200:
+        raise DetectionUnavailable
+    return payload
+
+
+def _mock_roboflow_detect(image):
+    """
+    The captured response, rescaled onto `image`'s real pixel size so boxes
+    land inside whatever was uploaded, with fresh ids — otherwise
+    indistinguishable from `_roboflow_detect`'s output.
+    """
+    payload = json.loads(ROBOFLOW_MOCK_RESPONSE.read_text(encoding='utf-8'))
+    try:
+        with PILImage.open(image) as img:
+            width, height = img.size
+    except (OSError, ValueError):
+        # Not decodable — keep the fixture's own frame rather than fail.
+        width, height = payload['image']['width'], payload['image']['height']
+    sx = width / payload['image']['width']
+    sy = height / payload['image']['height']
+    for p in payload['predictions']:
+        p['x'] = round(p['x'] * sx, 1)
+        p['y'] = round(p['y'] * sy, 1)
+        p['width'] = round(p['width'] * sx, 1)
+        p['height'] = round(p['height'] * sy, 1)
+        p['detection_id'] = str(uuid.uuid4())
+    payload['image'] = {'width': width, 'height': height}
+    payload['inference_id'] = str(uuid.uuid4())
+    return payload
 
 
 class DetectView(APIView):
@@ -135,13 +192,15 @@ class DetectView(APIView):
     Stateless: called once per uploaded image at Analyze-time, before a
     report/sample id exists, so nothing here is persisted — see
     ReportListCreateView.post for where an already-analyzed batch is later
-    saved. Response shape passes through Roboflow's native
-    `{"predictions": [{"class", "confidence", "x", "y", "width", "height"}]}`
-    (pixel coordinates, box centre-based) unchanged — app/PolLens/lib/
-    analysis.ts's own TODO(backend) comment already maps this into the
-    app's normalized top-left BoundingBox client-side, so this view exists
-    only to hold the Roboflow API key server-side rather than shipping it
-    to the browser, not to reshape the response.
+    saved. Response is Roboflow's native shape with only the fields the
+    client needs: `{"image": {"width", "height"}, "predictions": [{"class",
+    "confidence", "x", "y", "width", "height"}]}` (pixel coordinates, box
+    centre-based). app/PolLens/lib/analysis.ts maps that into the app's
+    normalized top-left BoundingBox client-side, so this view exists only
+    to hold the Roboflow API key server-side, not to reshape the response.
+
+    With ROBOFLOW_MOCK on, the upstream call is swapped for
+    `_mock_roboflow_detect`; everything after it is the same code path.
     """
 
     permission_classes = [IsAuthenticated]
@@ -155,44 +214,35 @@ class DetectView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if not (
-            settings.ROBOFLOW_API_KEY
-            and settings.ROBOFLOW_MODEL_ID
-            and settings.ROBOFLOW_MODEL_VERSION
-        ):
-            return Response(
-                {'detail': 'Detection service is not configured.'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
+        if settings.ROBOFLOW_MOCK:
+            payload = _mock_roboflow_detect(image)
+        else:
+            if not (
+                settings.ROBOFLOW_API_KEY
+                and settings.ROBOFLOW_MODEL_ID
+                and settings.ROBOFLOW_MODEL_VERSION
+            ):
+                return Response(
+                    {'detail': 'Detection service is not configured.'},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            try:
+                payload = _roboflow_detect(image)
+            except DetectionUnavailable:
+                return Response(
+                    {'detail': 'Detection service is unavailable.'},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
 
-        url = ROBOFLOW_DETECT_URL.format(
-            model_id=settings.ROBOFLOW_MODEL_ID, version=settings.ROBOFLOW_MODEL_VERSION,
-        )
-        try:
-            upstream = requests.post(
-                url,
-                params={'api_key': settings.ROBOFLOW_API_KEY},
-                files={'file': (image.name, image.read(), image.content_type)},
-                timeout=30,
-            )
-            payload = upstream.json()
-        except (requests.RequestException, ValueError):
-            return Response(
-                {'detail': 'Detection service is unavailable.'},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        if upstream.status_code != 200:
-            return Response(
-                {'detail': 'Detection service is unavailable.'},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
+        image_size = payload.get('image') or {}
         predictions = [
             {field: p[field] for field in ROBOFLOW_PREDICTION_FIELDS if field in p}
             for p in payload.get('predictions', [])
         ]
-        return Response({'predictions': predictions})
+        return Response({
+            'image': {'width': image_size.get('width'), 'height': image_size.get('height')},
+            'predictions': predictions,
+        })
 
 
 OPENWEATHER_URL = 'https://api.openweathermap.org/data/2.5/weather'
