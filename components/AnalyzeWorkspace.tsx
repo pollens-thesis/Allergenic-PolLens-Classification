@@ -8,8 +8,10 @@ import {
   FileText,
   ImagePlus,
   X,
+  CloudSun,
   Loader2,
   Maximize2,
+  RefreshCw,
   Microscope,
 } from "lucide-react";
 import {
@@ -19,12 +21,13 @@ import {
   type WeatherCondition,
   type WeatherConditions,
 } from "@/lib/data";
-import { analyzeSpecimen, type AnalysisResult } from "@/lib/analysis";
+import { analyzeSpecimen, fetchWeather, type AnalysisResult } from "@/lib/analysis";
 import { getDraft, saveDraft } from "@/lib/store";
 import { accountName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import { Button } from "@/components/Button";
 import ImageLightbox from "@/components/ImageLightbox";
+import LocationSearch, { type Place } from "@/components/LocationSearch";
 
 type ItemStatus = "pending" | "analyzing" | "analyzed";
 
@@ -88,6 +91,66 @@ function MeasurementField({
         className={fieldClass}
       />
     </label>
+  );
+}
+
+/**
+ * Where the weather values came from, so an auto-filled reading is never
+ * mistaken for an observation: OpenWeather's *current* conditions for the
+ * picked place, or the researcher's own entry/override.
+ */
+function WeatherStatusLine({
+  source,
+  status,
+  place,
+  collectedDate,
+  onRefresh,
+}: {
+  source: "manual" | "auto" | "edited";
+  status: "idle" | "loading" | "failed";
+  place: Place | null;
+  collectedDate: string;
+  onRefresh?: () => void;
+}) {
+  const today = nowParts().date;
+  let message: React.ReactNode;
+  if (status === "loading") {
+    message = (
+      <>
+        <Loader2 size={12} strokeWidth={2} className="animate-spin" />
+        Fetching current weather for {place?.label}…
+      </>
+    );
+  } else if (status === "failed") {
+    message = <span className="text-processing">Couldn&apos;t fetch weather for this place — enter it manually.</span>;
+  } else if (source === "auto") {
+    message = (
+      <>
+        <CloudSun size={12} strokeWidth={2} className="text-accent" />
+        Auto-filled from OpenWeather (current conditions
+        {collectedDate && collectedDate !== today ? ", not the collection date" : ""}). Edit any field to override.
+      </>
+    );
+  } else if (source === "edited") {
+    message = <>Edited by researcher — overrides the OpenWeather values.</>;
+  } else {
+    message = <>Pick a place above to auto-fill the weather, or enter it manually.</>;
+  }
+
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-text-muted">
+      <span className="flex items-center gap-1.5">{message}</span>
+      {onRefresh && status !== "loading" && (
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="focus-ring inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-accent hover:bg-accent-muted"
+        >
+          <RefreshCw size={12} strokeWidth={2} />
+          {source === "edited" ? "Replace With OpenWeather" : "Refresh"}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -188,6 +251,13 @@ export default function AnalyzeWorkspace() {
   const [isDragging, setIsDragging] = useState(false);
   const [hasPendingDraft, setHasPendingDraft] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  // Where the weather fields' values came from. "auto" = OpenWeather for
+  // `weatherPlace`; any manual change flips it to "edited" (the researcher's
+  // override), and nothing re-fetches over it unless they ask.
+  const [weatherSource, setWeatherSource] = useState<"manual" | "auto" | "edited">("manual");
+  const [weatherPlace, setWeatherPlace] = useState<Place | null>(null);
+  const [weatherStatus, setWeatherStatus] = useState<"idle" | "loading" | "failed">("idle");
+  const weatherRequest = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const settings = useSettings();
@@ -219,6 +289,29 @@ export default function AnalyzeWorkspace() {
 
   function updateWeather<K extends keyof WeatherConditions>(key: K, value: WeatherConditions[K]) {
     setWeather((current) => ({ ...current, [key]: value }));
+    if (weatherSource === "auto") setWeatherSource("edited");
+  }
+
+  /** Pre-fill the weather fields for a picked place; they stay editable. */
+  async function fillWeather(place: Place) {
+    const request = ++weatherRequest.current;
+    setWeatherPlace(place);
+    setWeatherStatus("loading");
+    const found = await fetchWeather({ lat: place.lat, lon: place.lon });
+    if (request !== weatherRequest.current) return; // a newer pick won
+    if (found) {
+      setWeather(found);
+      setWeatherSource("auto");
+      setWeatherStatus("idle");
+    } else {
+      setWeatherStatus("failed");
+    }
+  }
+
+  function handleLocationChange(text: string) {
+    setLocation(text);
+    // Typing away from the picked place detaches the weather from it.
+    if (weatherPlace && text !== weatherPlace.label) setWeatherPlace(null);
   }
 
   function handleFiles(fileList: FileList | null) {
@@ -265,6 +358,9 @@ export default function AnalyzeWorkspace() {
     setItems([]);
     setSelectedId(null);
     setWeather({ ...EMPTY_WEATHER });
+    setWeatherSource("manual");
+    setWeatherPlace(null);
+    setWeatherStatus("idle");
     const { date, time } = nowParts();
     setCollectedDate(date);
     setCollectedTime(time);
@@ -445,11 +541,11 @@ export default function AnalyzeWorkspace() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="block">
                 <span className="mb-1 block text-[12.5px] text-text-muted">Location</span>
-                <input
-                  type="text"
+                <LocationSearch
                   value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g. Lucena City, Quezon"
+                  onChange={handleLocationChange}
+                  onSelectPlace={fillWeather}
+                  placeholder="Search town or province, e.g. Candelaria"
                   className={fieldClass}
                 />
               </label>
@@ -474,7 +570,7 @@ export default function AnalyzeWorkspace() {
               </label>
               <label className="block">
                 <span className="mb-1 block text-[12.5px] text-text-muted">
-                  Time collected <span className="text-text-faint">(optional)</span>
+                  Time Collected <span className="text-text-faint">(optional)</span>
                 </span>
                 <input
                   type="time"
@@ -491,8 +587,14 @@ export default function AnalyzeWorkspace() {
               </p>
             )}
 
-            {/* TODO(backend): fetchWeather(location) will pre-fill these. */}
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <WeatherStatusLine
+              source={weatherSource}
+              status={weatherStatus}
+              place={weatherPlace}
+              collectedDate={collectedDate}
+              onRefresh={weatherPlace ? () => fillWeather(weatherPlace) : undefined}
+            />
+            <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <label className="col-span-2 block sm:col-span-1">
                 <span className="mb-1 block text-[12.5px] text-text-muted">Weather</span>
                 <select

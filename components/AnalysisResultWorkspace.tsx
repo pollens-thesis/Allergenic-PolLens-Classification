@@ -29,6 +29,7 @@ import { accountName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import SpecimenImageViewer from "@/components/SpecimenImageViewer";
 import SpecimenInspector from "@/components/SpecimenInspector";
+import LocationSearch from "@/components/LocationSearch";
 import { overlayColor, overlayColors, type OverlayColors } from "@/lib/slide-colors";
 import { Button } from "@/components/Button";
 import { toast } from "sonner";
@@ -570,11 +571,10 @@ export default function AnalysisResultWorkspace() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label className="block">
             <span className="mb-1 block text-[12.5px] text-text-muted">Location</span>
-            <input
-              type="text"
+            <LocationSearch
               value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g. Lucena City, Quezon"
+              onChange={setLocation}
+              placeholder="Search town or province"
               className={fieldClass}
             />
           </label>

@@ -244,23 +244,33 @@ export async function analyzeSpecimen(file: File): Promise<AnalysisResult> {
   return {
     detections: aggregateGrainPredictions(predictions),
     grains: toDetectedGrains(predictions),
-    weather: null, // see fetchWeather — the Analyze screen doesn't call it yet
+    weather: null, // filled on the Analyze screen from the location search — see fetchWeather
   };
 }
 
 /**
  * Current weather for a collection site, via the backend's OpenWeather proxy,
- * already mapped onto `WeatherConditions`. Null when signed out, the location
- * can't be resolved, or the lookup fails — the fields then stay manual.
+ * already mapped onto `WeatherConditions`. Takes the coordinates of a place
+ * picked from the location search (preferred — they always resolve) or a
+ * free-text location. Null when signed out, unresolvable, or the lookup fails —
+ * the fields then stay manual.
  */
-export async function fetchWeather(location: string): Promise<WeatherConditions | null> {
+export async function fetchWeather(
+  site: string | { lat: number; lon: number },
+): Promise<WeatherConditions | null> {
   const { accessToken } = getSettingsSnapshot();
-  if (!accessToken || !location.trim()) return null;
+  if (!accessToken) return null;
+  const params =
+    typeof site === "string"
+      ? site.trim()
+        ? new URLSearchParams({ location: site.trim() })
+        : null
+      : new URLSearchParams({ lat: String(site.lat), lon: String(site.lon) });
+  if (!params) return null;
   try {
-    const res = await fetch(
-      `${API_BASE_URL}/api/v1/reports/weather/?location=${encodeURIComponent(location)}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    );
+    const res = await fetch(`${API_BASE_URL}/api/v1/reports/weather/?${params}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     if (!res.ok) return null;
     return (await res.json()) as WeatherConditions;
   } catch {
