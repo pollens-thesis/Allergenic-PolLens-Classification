@@ -16,7 +16,7 @@ services:
         value: "false"
       - key: DJANGO_SECRET_KEY
         generateValue: true
-      # Neon Postgres — copy from the Neon dashboard (or your local api/.env).
+      # Neon Postgres — from the Neon dashboard's Connect panel (non-pooler host).
       - key: DATABASE_NAME
         sync: false
       - key: DATABASE_USER
