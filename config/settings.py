@@ -185,6 +185,12 @@ ROBOFLOW_MODEL_ID = os.environ.get('ROBOFLOW_MODEL_ID', '')  # e.g. "workspace-s
 ROBOFLOW_MODEL_VERSION = os.environ.get('ROBOFLOW_MODEL_VERSION', '')
 
 
+# OpenWeather
+# Weather lookup for the Analyze screen — see reports.views.WeatherView.
+
+OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY', '')
+
+
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
