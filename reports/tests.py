@@ -709,3 +709,38 @@ class WeatherViewTests(APITestCase):
 
         self.assertEqual(response.data['condition'], 'Windy')
         self.assertEqual(response.data['windKph'], 36.0)
+
+    @patch('reports.views.requests.get')
+    def test_coordinates_are_sent_instead_of_a_name(self, mock_get):
+        mock_get.return_value = Mock(status_code=200, json=lambda: make_openweather_payload())
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(
+            self.url, {'lat': '13.93', 'lon': '121.42', 'location': 'Candelaria, Quezon'},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        params = mock_get.call_args.kwargs['params']
+        self.assertEqual((params['lat'], params['lon']), (13.93, 121.42))
+        self.assertNotIn('q', params)
+
+    def test_non_numeric_coordinates_return_400(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self.url, {'lat': 'north', 'lon': '121.42'})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_only_one_coordinate_returns_400(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self.url, {'lat': '13.93'})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_out_of_range_coordinates_return_400(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self.url, {'lat': '95', 'lon': '121.42'})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

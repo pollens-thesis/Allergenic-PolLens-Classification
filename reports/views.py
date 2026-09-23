@@ -286,24 +286,45 @@ def _map_weather_response(payload):
 
 class WeatherView(APIView):
     """
-    GET /api/v1/reports/weather/?location=<free-text location> — current
-    conditions for a collection site, via OpenWeather.
+    GET /api/v1/reports/weather/?lat=<deg>&lon=<deg> (preferred) or
+    ?location=<free-text location> — current conditions for a collection
+    site, via OpenWeather.
 
     Stateless, like DetectView — called at Analyze-time to pre-fill the
     manually-entered weather fields (lib/analysis.ts's fetchWeather TODO),
     not persisted here. `location` is passed through to OpenWeather as-is
     (the same free-text "Town, Province" strings the frontend already
     collects); if OpenWeather can't resolve it, that's a 404, not a service
-    failure.
+    failure. The frontend's place search sends `lat`/`lon` instead (the
+    centre of the chosen PSGC town), which OpenWeather never fails to
+    resolve; when both are given, coordinates win.
     """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        lat = request.query_params.get('lat', '').strip()
+        lon = request.query_params.get('lon', '').strip()
         location = request.query_params.get('location', '').strip()
-        if not location:
+        if lat or lon:
+            try:
+                lat, lon = float(lat), float(lon)
+            except ValueError:
+                return Response(
+                    {'detail': 'lat and lon must both be numbers.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                return Response(
+                    {'detail': 'lat/lon are out of range.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            place = {'lat': lat, 'lon': lon}
+        elif location:
+            place = {'q': location}
+        else:
             return Response(
-                {'detail': 'A location is required.'},
+                {'detail': 'A location or lat/lon is required.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -316,7 +337,7 @@ class WeatherView(APIView):
         try:
             upstream = requests.get(
                 OPENWEATHER_URL,
-                params={'q': location, 'appid': settings.OPENWEATHER_API_KEY, 'units': 'metric'},
+                params={**place, 'appid': settings.OPENWEATHER_API_KEY, 'units': 'metric'},
                 timeout=10,
             )
         except requests.RequestException:

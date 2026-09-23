@@ -203,7 +203,7 @@ between the thesis proposal paper and the frontend.
     - **Wired into the frontend as of 2026-09-23**: `analyzeSpecimen()`
       POSTs each image here once signed in, falling back to its local
       deterministic mock when signed out or on any failure.
-  - **`GET /api/v1/reports/weather/?location=...`** (`reports.views.WeatherView`,
+  - **`GET /api/v1/reports/weather/?lat=..&lon=..` or `?location=...`** (`reports.views.WeatherView`,
     `IsAuthenticated`; registered in `config/urls.py` before
     `<sample_id>/` for the same reason as `monthly-counts/`/`species/`).
     Stateless proxy — current conditions for a collection site, called at
@@ -221,15 +221,15 @@ between the thesis proposal paper and the frontend.
     Clouds→`"Partly cloudy"`/`"Overcast"` by cloud-cover percentage, the
     rain family (Thunderstorm/Drizzle/Rain)→`"Rainy"`, and anything else
     falls back to `"Overcast"` as the closest available value. Missing
-    `location` → `400`. Unconfigured (`OPENWEATHER_API_KEY` blank) → `503
+    `location` and no `lat`/`lon` → `400`. **`lat`/`lon` (added 2026-09-23)** take precedence over `location` when given — the frontend's place search sends the centre of the chosen PSGC town, which OpenWeather always resolves; both must be numbers in range, else `400`. Unconfigured (`OPENWEATHER_API_KEY` blank) → `503
     {"detail": "Weather lookup is not configured."}`. OpenWeather can't
     resolve the location → `404 {"detail": "Location not found."}` (not a
     service failure). Any other upstream failure → `502 {"detail":
     "Weather service is unavailable."}`. As of 2026-09-23,
     `app/PolLens/lib/analysis.ts`'s `fetchWeather()` calls this endpoint
-    (null on any failure), but **no component calls `fetchWeather()`
-    yet** — pre-filling the Analyze screen's weather fields is blocked on
-    the open read-only-vs-editable decision in `../docs/system-spec.md`.
+    (null on any failure). The Analyze screen calls it when a place is
+    picked from its location search and pre-fills the weather fields,
+    which stay editable (researcher override) — decided 2026-09-23.
   - **Models** (`reports/models.py`): `Report` (weather flattened onto the
     model as nullable fields, not a separate table; `collected_at` stored
     as a validated `CharField`, not `DateTimeField`, to preserve the
