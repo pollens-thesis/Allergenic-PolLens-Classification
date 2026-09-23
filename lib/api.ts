@@ -93,7 +93,8 @@ export function refreshSession(staleRefresh: string | undefined): Promise<string
   return refreshInFlight;
 }
 
-async function validAccessToken(): Promise<string> {
+/** A usable access token, refreshing first if it's about to expire. */
+export async function validAccessToken(): Promise<string> {
   const { accessToken, refreshToken } = getSnapshot();
   if (!refreshToken) endSession();
   if (accessToken && !isExpired(accessToken, REFRESH_SKEW_SECONDS)) return accessToken;

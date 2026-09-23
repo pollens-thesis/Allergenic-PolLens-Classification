@@ -7,7 +7,8 @@ import { ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import GoogleIcon from "@/components/GoogleIcon";
 import { exchangeGoogleCredential, GoogleSignInError } from "@/lib/auth";
-import { updateSettings } from "@/lib/settings";
+import { updateSettings, useSettings } from "@/lib/settings";
+import { isSignedIn, safeNext } from "@/lib/session";
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
@@ -27,6 +28,11 @@ declare global {
   }
 }
 
+/** The page to land on after sign-in — `?next=` if it's a safe local path. */
+function nextPage(): string {
+  return safeNext(new URLSearchParams(window.location.search).get("next"));
+}
+
 /**
  * Google's own account chooser, not ours — GIS owns its trust chrome, so the
  * "Continue with Google" button only reveals a slot that the Google
@@ -43,6 +49,13 @@ export default function SignInForm() {
   const [error, setError] = useState<string | null>(null);
   const buttonSlotRef = useRef<HTMLDivElement>(null);
   const configured = Boolean(GOOGLE_CLIENT_ID);
+  const settings = useSettings();
+  const signedIn = isSignedIn(settings);
+
+  // Already signed in (or just signed in from another tab): skip the form.
+  useEffect(() => {
+    if (signedIn) router.replace(nextPage());
+  }, [signedIn, router]);
 
   useEffect(() => {
     if (!choosing || !scriptReady || !configured || !buttonSlotRef.current || !window.google) {
@@ -57,7 +70,7 @@ export default function SignInForm() {
         exchangeGoogleCredential(response.credential)
           .then(({ email, tokens }) => {
             updateSettings({ email, accessToken: tokens.access, refreshToken: tokens.refresh });
-            router.push("/dashboard");
+            router.push(nextPage());
           })
           .catch((err: unknown) => {
             const message = err instanceof GoogleSignInError ? err.message : "Google sign-in failed.";
