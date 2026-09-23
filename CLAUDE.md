@@ -318,6 +318,43 @@ between the thesis proposal paper and the frontend.
   `urls.py`/`include()` yet — introduce one only if that list gets
   unwieldy).
 
+## Deployment (added 2026-09-24)
+
+Target: this repo on **Render** (`render.yaml` Blueprint, free web service),
+database on **Neon** (existing), slide images on **Cloudflare R2**. The
+click-by-click runbook is `../docs/deployment.md`.
+
+- **Build/start:** `build.sh` = `pip install` → `collectstatic` → `migrate`
+  (in the build because Render's free tier has no pre-deploy hook; Neon is
+  reachable at build time). Start: `gunicorn config.wsgi:application
+  --workers 2 --timeout 60`. Health check: `GET /healthz/` (no auth, no DB;
+  exempt from the HTTPS redirect). Python pinned by `.python-version`.
+- **Production-safe defaults:** `DJANGO_DEBUG` now defaults to **false**; with
+  debug off a missing `DJANGO_SECRET_KEY` raises `ImproperlyConfigured` (the
+  committed fallback key is DEBUG-only). Local dev sets `DJANGO_DEBUG=true`
+  in `.env`.
+- **HTTPS (when not DEBUG):** `SECURE_PROXY_SSL_HEADER` trusts Render's
+  `X-Forwarded-Proto` — this is what makes `request.build_absolute_uri` (and
+  so `Slide.image_url`) emit `https://`; SSL redirect, secure cookies, HSTS
+  1 day (`DJANGO_HSTS_SECONDS`). HSTS subdomains/preload checks are silenced
+  on purpose (shared `onrender.com` domain). `manage.py check --deploy` is
+  clean with debug off.
+- **Hosts/origins:** `RENDER_EXTERNAL_HOSTNAME` (set by Render) is appended
+  to `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` automatically.
+  `CORS_ALLOWED_ORIGINS` must list the Vercel URL; optional
+  `CORS_ALLOWED_ORIGIN_REGEXES` for Vercel previews.
+- **Static:** WhiteNoise (`CompressedManifestStaticFilesStorage` when not
+  DEBUG) serves the Django admin's assets from `STATIC_ROOT=staticfiles/`.
+- **Media:** `AWS_STORAGE_BUCKET_NAME` set → `storages.backends.s3.S3Storage`
+  against R2 (`AWS_S3_ENDPOINT_URL`, region `auto`, s3v4, no ACLs). The
+  bucket is **private** and image URLs are **presigned**
+  (`AWS_QUERYSTRING_EXPIRE`, default 3600 s) because slide paths are
+  guessable. Unset → local `FileSystemStorage` as before (tests use this).
+  The frontend's PDF export `fetch()`es image URLs, so the bucket needs a
+  CORS rule for the Vercel origin (in the runbook).
+- `CONN_HEALTH_CHECKS=True` on the Postgres connection; console `LOGGING`
+  so errors reach Render's log viewer.
+
 ## Workflow notes
 
 - Reference `../docs/system-spec.md` before building any module tied to a

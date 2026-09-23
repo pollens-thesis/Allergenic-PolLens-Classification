@@ -132,3 +132,11 @@ class LogoutViewTests(APITestCase):
         response = self.client.post(self.url, {'refresh': 'not-a-token'}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class HealthzTests(APITestCase):
+    def test_health_check_needs_no_auth(self):
+        response = self.client.get('/healthz/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'status': 'ok'})

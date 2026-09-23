@@ -1,0 +1,2 @@
+# Render runs build.sh on Linux; CRLF would break its shebang.
+*.sh text eol=lf

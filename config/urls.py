@@ -17,6 +17,7 @@ Including another URLconf
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import path
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -33,7 +34,13 @@ from reports.views import (
     WeatherView,
 )
 
+def healthz(request):
+    """Liveness probe for the host's health check: no auth, no database."""
+    return JsonResponse({'status': 'ok'})
+
+
 urlpatterns = [
+    path('healthz/', healthz, name='healthz'),
     path('admin/', admin.site.urls),
     # Scaffolding placeholder — there is no username/password login; real
     # login is GoogleLoginView below. See the Auth section of api/CLAUDE.md.

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 from datetime import timedelta
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 import os
 
@@ -32,16 +33,25 @@ def env_list(name, default=''):
     return [item.strip() for item in value.split(',') if item.strip()]
 
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get(
-    'DJANGO_SECRET_KEY',
-    'django-insecure-)y9p7_7dye9f5q*-+e=gowqr3!0ihfhwm@87xs(ks!390a4sv2',
-)
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env_bool('DJANGO_DEBUG', True)
+# Off unless explicitly enabled — a deploy that forgets the variable must not
+# come up in debug mode. Local dev sets DJANGO_DEBUG=true in .env.
+DEBUG = env_bool('DJANGO_DEBUG', False)
+
+# SECURITY WARNING: keep the secret key used in production secret!
+# The committed fallback key is only ever acceptable in DEBUG.
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured('DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is off.')
+    SECRET_KEY = 'django-insecure-)y9p7_7dye9f5q*-+e=gowqr3!0ihfhwm@87xs(ks!390a4sv2'
 
 ALLOWED_HOSTS = env_list('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1')
+# Render sets this to the service's own hostname (xxx.onrender.com), so the
+# deployed API trusts itself without a hand-copied value.
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME', '')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 
 # Application definition
@@ -67,6 +77,8 @@ AUTH_USER_MODEL = 'accounts.User'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Serves collectstatic output (the Django admin's CSS/JS) in production.
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -113,6 +125,9 @@ if os.environ.get('DATABASE_NAME'):
             'PORT': os.environ.get('DATABASE_PORT', '5432'),
             'OPTIONS': {'sslmode': os.environ.get('DATABASE_SSLMODE', 'require')},
             'CONN_MAX_AGE': 600,
+            # A pooled connection Neon has since closed is detected and
+            # replaced instead of failing the request.
+            'CONN_HEALTH_CHECKS': True,
         }
     }
 else:
@@ -168,6 +183,16 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = env_list(
     'CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000'
 )
+# Optional, e.g. r"^https://pollens-[a-z0-9-]+\.vercel\.app$" for Vercel
+# preview deployments, whose URLs change per branch.
+CORS_ALLOWED_ORIGIN_REGEXES = env_list('CORS_ALLOWED_ORIGIN_REGEXES')
+
+# The API itself is token-authenticated (no CSRF), but the Django admin uses
+# sessions and, served over HTTPS, needs its own origin listed here (added
+# automatically on Render, below).
+CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
+if RENDER_EXTERNAL_HOSTNAME:
+    CSRF_TRUSTED_ORIGINS.append(f'https://{RENDER_EXTERNAL_HOSTNAME}')
 
 
 # Google OAuth
@@ -212,15 +237,52 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 
 # Media (uploaded slide images — reports.Slide.image)
-# Dev-only: served from local disk via config/urls.py's static() helper
-# under DEBUG. Production media storage (S3/Cloud Storage) is out of scope
-# for now.
+#
+# Local dev: files on disk under MEDIA_ROOT, served by config/urls.py's
+# static() helper under DEBUG.
+#
+# Production (AWS_STORAGE_BUCKET_NAME set): an S3-compatible bucket —
+# Cloudflare R2 in the deployment runbook (../docs/deployment.md). Hosts like
+# Render wipe local disk on every deploy, so uploads can't live there. The
+# bucket stays private and image URLs are presigned and expire: slide paths
+# are guessable (reports/PLN-2026-0001/slide-1.jpg), so public URLs would
+# expose every specimen. SlideSerializer's build_absolute_uri passes the
+# already-absolute presigned URL through unchanged.
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', '')
+
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {
+        # Plain storage under DEBUG so tests/dev don't need collectstatic's manifest.
+        'BACKEND': (
+            'django.contrib.staticfiles.storage.StaticFilesStorage'
+            if DEBUG
+            else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+        ),
+    },
+}
+
+if AWS_STORAGE_BUCKET_NAME:
+    STORAGES['default'] = {'BACKEND': 'storages.backends.s3.S3Storage'}
+    AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', '')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
+    # R2: https://<account-id>.r2.cloudflarestorage.com
+    AWS_S3_ENDPOINT_URL = os.environ.get('AWS_S3_ENDPOINT_URL', '') or None
+    AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'auto')
+    AWS_S3_SIGNATURE_VERSION = 's3v4'
+    AWS_S3_ADDRESSING_STYLE = 'virtual'
+    AWS_DEFAULT_ACL = None  # R2 has no ACLs; access is the bucket's (private)
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_QUERYSTRING_AUTH = True
+    AWS_QUERYSTRING_EXPIRE = int(os.environ.get('AWS_QUERYSTRING_EXPIRE', '3600'))
 
 # A multi-slide report batch (several microscope photos in one POST) can
 # exceed Django's 2.5MB default multipart/memory limits.
@@ -231,11 +293,34 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
+# HTTPS — production only. Render (like most PaaS) terminates TLS at its proxy
+# and forwards plain HTTP with X-Forwarded-Proto; trusting that header is what
+# makes request.is_secure() — and so the absolute image URLs — say https.
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = env_bool('DJANGO_SECURE_SSL_REDIRECT', True)
+    SECURE_REDIRECT_EXEMPT = [r'^healthz/$']  # the platform health check may probe over HTTP
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # Start short; raise once the deployment is known-good (HSTS is sticky in browsers).
+    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '86400'))
+
+# No email is sent by this app, so Django's default (SMTP) backend is left in
+# place. HSTS includeSubDomains/preload are deliberately off: the API lives on
+# a shared host domain (onrender.com) it doesn't own.
+SILENCED_SYSTEM_CHECKS = ['security.W005', 'security.W021']
+
+
+# Logging — errors to stdout, where Render's log viewer picks them up.
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'console': {'class': 'logging.StreamHandler'}},
+    'root': {'handlers': ['console'], 'level': 'WARNING'},
+    'loggers': {
+        'django': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
     },
 }
+
