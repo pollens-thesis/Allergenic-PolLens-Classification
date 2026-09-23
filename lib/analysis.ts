@@ -2,16 +2,20 @@
 // ANALYSIS SERVICE — the seam between the UI and the backend.
 //
 // Inference and lookups the Analyze screen performs go through this module, and
-// every function here is already async. Today each one resolves mock data; when
-// the backend lands, only the bodies below change — no component is touched.
-// Persisting a finished report is lib/store.ts's job, not this file's.
+// every function here is async. Once signed in, detection goes through the
+// backend's Roboflow proxy (POST /api/v1/reports/detect/) and weather through
+// its OpenWeather proxy (GET /api/v1/reports/weather/). Persisting a finished
+// report is lib/store.ts's job, not this file's.
 //
-// The mock deliberately produces raw per-grain predictions and runs them
-// through `aggregateGrainPredictions`, the same function real model output will
-// go through, so the aggregation path is exercised from day one.
+// Until the Roboflow model is deployed the backend answers /detect/ from a
+// canned, Roboflow-shaped response (ROBOFLOW_MOCK), so this file already runs
+// the real mapping. Signed out, or if the request fails, the local
+// deterministic mock below stands in — it produces the same raw per-grain
+// predictions, so both paths share `aggregateGrainPredictions`.
 // ---------------------------------------------------------------------------
 
 import {
+  API_BASE_URL,
   aggregateGrainPredictions,
   speciesCatalog,
   toDetectedGrains,
@@ -23,6 +27,7 @@ import {
   type SpeciesId,
   type WeatherConditions,
 } from "@/lib/data";
+import { getSnapshot as getSettingsSnapshot } from "@/lib/settings";
 
 export type AnalysisResult = {
   detections: SpecimenDetection[];
@@ -152,40 +157,113 @@ function mockGrainPredictions(random: () => number): GrainPrediction[] {
   return predictions;
 }
 
+// --- Roboflow mapping ------------------------------------------------------
+// The backend passes Roboflow's own response through, trimmed to these fields.
+// Boxes are in pixels with `x`/`y` at the box's centre; the app wants
+// normalized 0–1 boxes from the top-left corner.
+
+type RoboflowPrediction = {
+  class: string;
+  confidence: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+type DetectResponse = {
+  image: { width: number; height: number };
+  predictions: RoboflowPrediction[];
+};
+
+const knownSpecies = new Set<string>(speciesCatalog.map((s) => s.id));
+
+/**
+ * Model class name → catalog id. The dataset is labelled with the species slugs
+ * themselves, so this only forgives case and separators ("Mimosa pudica",
+ * "mimosa-pudica"). Returns null for anything outside the catalog.
+ */
+function toSpeciesId(className: string): SpeciesId | null {
+  const id = className.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return knownSpecies.has(id) ? (id as SpeciesId) : null;
+}
+
+function fromRoboflow({ image, predictions }: DetectResponse): GrainPrediction[] {
+  const grains: GrainPrediction[] = [];
+  for (const p of predictions) {
+    const speciesId = toSpeciesId(p.class);
+    if (!speciesId) {
+      // getSpecies() throws on unknown ids, so an unmapped class can't go further.
+      console.warn(`Skipping detection with unknown class "${p.class}"`);
+      continue;
+    }
+    grains.push({
+      speciesId,
+      confidence: p.confidence,
+      box: {
+        x: (p.x - p.width / 2) / image.width,
+        y: (p.y - p.height / 2) / image.height,
+        width: p.width / image.width,
+        height: p.height / image.height,
+      },
+    });
+  }
+  return grains;
+}
+
+async function detectGrains(file: File, accessToken: string): Promise<GrainPrediction[] | null> {
+  const body = new FormData();
+  body.append("image", file);
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/reports/detect/`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body,
+    });
+    if (!res.ok) return null;
+    return fromRoboflow((await res.json()) as DetectResponse);
+  } catch {
+    return null;
+  }
+}
+
 // --- Public API ------------------------------------------------------------
 
 /**
- * Identify and count the pollen grains on a specimen image.
- *
- * TODO(backend): POST the image to the Roboflow inference endpoint and map
- * `response.predictions` (one entry per detected grain, each with `class`,
- * `confidence` and a centre-plus-size box in pixels) to `GrainPrediction[]`.
- * Roboflow reports `x`/`y` as the box's centre against the image's pixel
- * dimensions, so the mapping is
- * `{ x: (p.x - p.width / 2) / imageWidth, y: (p.y - p.height / 2) / imageHeight,
- *    width: p.width / imageWidth, height: p.height / imageHeight }`.
- * Everything downstream is unchanged.
+ * Identify and count the pollen grains on a specimen image — via the backend's
+ * Roboflow proxy when signed in, the local mock otherwise or if that fails.
  */
 export async function analyzeSpecimen(file: File): Promise<AnalysisResult> {
-  await delay(MOCK_INFERENCE_MS);
-
-  const random = makeRandom(seedFromFile(file));
-  const predictions = mockGrainPredictions(random);
+  const { accessToken } = getSettingsSnapshot();
+  let predictions = accessToken ? await detectGrains(file, accessToken) : null;
+  if (!predictions) {
+    if (accessToken) console.warn("Detection request failed; using the local mock reading.");
+    await delay(MOCK_INFERENCE_MS);
+    predictions = mockGrainPredictions(makeRandom(seedFromFile(file)));
+  }
   return {
     detections: aggregateGrainPredictions(predictions),
     grains: toDetectedGrains(predictions),
-    weather: null, // see fetchWeather — researcher fills the fields in by hand for now
+    weather: null, // see fetchWeather — the Analyze screen doesn't call it yet
   };
 }
 
 /**
- * Look up the weather for a collection site.
- *
- * TODO(backend): call the weather provider (OpenWeather) for `location` and map
- * its response onto `WeatherConditions`. Returning null today is what keeps the
- * conditions fields manually entered — the Analyze screen already handles both.
+ * Current weather for a collection site, via the backend's OpenWeather proxy,
+ * already mapped onto `WeatherConditions`. Null when signed out, the location
+ * can't be resolved, or the lookup fails — the fields then stay manual.
  */
 export async function fetchWeather(location: string): Promise<WeatherConditions | null> {
-  void location;
-  return null;
+  const { accessToken } = getSettingsSnapshot();
+  if (!accessToken || !location.trim()) return null;
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/api/v1/reports/weather/?location=${encodeURIComponent(location)}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    if (!res.ok) return null;
+    return (await res.json()) as WeatherConditions;
+  } catch {
+    return null;
+  }
 }
