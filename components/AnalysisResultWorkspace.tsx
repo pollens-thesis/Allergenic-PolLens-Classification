@@ -11,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import {
+  aggregateSlideDetections,
   formatCollectedAt,
   getTotalGrains,
   getWeightedAvgConfidence,
@@ -27,6 +28,8 @@ import { clearDraft, getDraft, saveDraft, saveReport, type ReportDraft } from "@
 import { accountName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import SpecimenImageViewer from "@/components/SpecimenImageViewer";
+import SpecimenInspector from "@/components/SpecimenInspector";
+import { overlayColor, overlayColors, type OverlayColors } from "@/lib/slide-colors";
 import { Button } from "@/components/Button";
 import { toast } from "sonner";
 
@@ -48,10 +51,13 @@ function riskBadgeClass(level: Species["riskLevel"]) {
  */
 function DetectionRow({
   detection,
+  colors,
   selected,
   onSelect,
 }: {
   detection: SpecimenDetection;
+  /** Overlay colours, so the swatch matches this type's boxes on the image. */
+  colors: OverlayColors;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -75,8 +81,8 @@ function DetectionRow({
         <div className="flex min-w-0 items-start gap-2.5">
           <span
             aria-hidden
-            className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full"
-            style={{ backgroundColor: species.color }}
+            className="mt-1.5 h-3 w-3 shrink-0 rounded-[2px] ring-1 ring-black/20"
+            style={{ backgroundColor: overlayColor(colors, detection.speciesId) }}
           />
           <div className="min-w-0">
             <div
@@ -178,6 +184,7 @@ export default function AnalysisResultWorkspace() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Which pollen type the image overlay is isolating; null shows every box.
   const [highlighted, setHighlighted] = useState<SpeciesId | null>(null);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [location, setLocation] = useState("");
   const [researcher, setResearcher] = useState("");
@@ -332,6 +339,8 @@ export default function AnalysisResultWorkspace() {
     0,
   );
   const slideIndex = selected ? draft.slides.findIndex((slide) => slide.id === selected.id) : -1;
+  // One palette for the whole batch: a type keeps its colour on every slide.
+  const colors = overlayColors(aggregateSlideDetections(draft.slides));
 
   return (
     <div className="flex flex-col gap-6">
@@ -479,6 +488,7 @@ export default function AnalysisResultWorkspace() {
                     <DetectionRow
                       key={detection.speciesId}
                       detection={detection}
+                      colors={colors}
                       selected={highlighted === detection.speciesId}
                       onSelect={() =>
                         setHighlighted((current) =>
@@ -503,8 +513,25 @@ export default function AnalysisResultWorkspace() {
                 fileName={selected.fileName}
                 grains={selected.grains}
                 detections={detections}
+                colors={colors}
                 selectedSpeciesId={highlighted}
                 onSelectSpecies={setHighlighted}
+                onExpand={() => setInspectorOpen(true)}
+              />
+              <SpecimenInspector
+                open={inspectorOpen}
+                onOpenChange={setInspectorOpen}
+                colors={colors}
+                initialSlideId={selected.id}
+                initialSpeciesId={highlighted}
+                slides={draft.slides.map((slide, index) => ({
+                  id: slide.id,
+                  label: `Slide ${index + 1}`,
+                  fileName: slide.fileName,
+                  imageUrl: imageUrls[slide.id],
+                  grains: slide.grains,
+                  detections: slide.detections,
+                }))}
               />
             </div>
 

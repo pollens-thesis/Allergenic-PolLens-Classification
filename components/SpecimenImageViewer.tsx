@@ -1,54 +1,109 @@
 "use client";
 
-import { ImageOff, ScanSearch } from "lucide-react";
+import { useState } from "react";
+import { ImageOff, Maximize2, ScanSearch, Tag } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import clsx from "clsx";
 import {
   sortByAbundance,
-  speciesLabel,
   type DetectedGrain,
   type SpeciesId,
   type SpecimenDetection,
 } from "@/lib/data";
 import { findSpecies, useSpeciesCatalog } from "@/lib/species-catalog";
+import { overlayColor, overlayColors, type OverlayColors } from "@/lib/slide-colors";
+import GrainOverlay from "@/components/GrainOverlay";
 
 /**
- * A slide image with the model's boxes drawn over it.
+ * A slide image with the model's boxes drawn over it, plus the type chips that
+ * filter them.
  *
- * Boxes are stored as fractions of the image (see `BoundingBox`), so they are
- * positioned in percentages and stay correct at any rendered size — no need to
- * know the natural pixel dimensions, and nothing to recompute on resize. The
- * image is laid out at its own aspect ratio rather than `object-contain`ed into
- * a fixed box, which is what keeps the overlay aligned with the picture instead
- * of with the letterboxing around it.
+ * Selecting a type shows only that type's boxes; clicking a box isolates that
+ * single grain (click it again, or "All Types", to go back). The pollen-type
+ * selection is owned by the parent so its detection list stays in sync; the
+ * single-grain selection is local, since only the image shows it.
  *
- * Selecting a pollen type is the point of the overlay: that type's grains are
- * drawn solid, everything else fades back so the slide stays legible.
+ * Clicking the image itself (not a box) opens the full-screen inspector via
+ * `onExpand`.
  */
 export default function SpecimenImageViewer({
   imageUrl,
   fileName,
   grains,
   detections,
+  colors,
   selectedSpeciesId,
   onSelectSpecies,
+  onExpand,
 }: {
   imageUrl?: string;
   fileName: string;
   /** Undefined for records saved before grain boxes were kept. */
   grains?: DetectedGrain[];
   detections: SpecimenDetection[];
+  /** Report-wide overlay colours; derived from `detections` when omitted. */
+  colors?: OverlayColors;
   selectedSpeciesId: SpeciesId | null;
   onSelectSpecies: (speciesId: SpeciesId | null) => void;
+  onExpand?: () => void;
 }) {
   const reduceMotion = useReducedMotion();
   const speciesCatalog = useSpeciesCatalog();
+  const [showLabels, setShowLabels] = useState(true);
+  // Tagged with the grains array it belongs to, so switching slides (a new
+  // array) drops a selection that would otherwise match a same-numbered grain.
+  const [grainSelection, setGrainSelection] = useState<{
+    source: DetectedGrain[] | undefined;
+    id: string;
+  } | null>(null);
+
   const boxes = grains ?? [];
   const hasBoxes = boxes.length > 0;
-  const shownCount = selectedSpeciesId
-    ? boxes.filter((grain) => grain.speciesId === selectedSpeciesId).length
-    : boxes.length;
+  const palette = colors ?? overlayColors(detections);
+  const selectedGrain =
+    grainSelection && grainSelection.source === grains
+      ? boxes.find((grain) => grain.id === grainSelection.id) ?? null
+      : null;
+  // A type picked elsewhere (the detection list) overrides a grain of another type.
+  const activeGrainId =
+    selectedGrain && (selectedSpeciesId === null || selectedGrain.speciesId === selectedSpeciesId)
+      ? selectedGrain.id
+      : null;
+  const shownCount = activeGrainId
+    ? 1
+    : selectedSpeciesId
+      ? boxes.filter((grain) => grain.speciesId === selectedSpeciesId).length
+      : boxes.length;
   const chips = [...detections].sort(sortByAbundance);
+
+  function selectSpecies(speciesId: SpeciesId | null) {
+    setGrainSelection(null);
+    onSelectSpecies(speciesId);
+  }
+
+  function handleGrainClick(grain: DetectedGrain) {
+    if (grain.id === activeGrainId) {
+      setGrainSelection(null);
+      return;
+    }
+    setGrainSelection({ source: grains, id: grain.id });
+    onSelectSpecies(grain.speciesId);
+  }
+
+  const chipClass = (active: boolean) =>
+    clsx(
+      "focus-ring relative isolate flex items-center gap-1.5 rounded border px-2.5 py-1 text-[12.5px] transition-colors",
+      active
+        ? "border-border-strong text-text"
+        : "border-border bg-surface/50 text-text-muted hover:border-border-strong hover:text-text",
+    );
+  const chipHighlight = (
+    <motion.span
+      layoutId="species-chip-highlight"
+      className="absolute inset-0 -z-10 rounded bg-surface shadow-sm"
+      transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 40 }}
+    />
+  );
 
   return (
     <div>
@@ -56,24 +111,13 @@ export default function SpecimenImageViewer({
         <div className="mb-3 flex flex-wrap gap-1.5">
           <motion.button
             type="button"
-            onClick={() => onSelectSpecies(null)}
-            aria-pressed={selectedSpeciesId === null}
+            onClick={() => selectSpecies(null)}
+            aria-pressed={selectedSpeciesId === null && !activeGrainId}
             whileTap={reduceMotion ? undefined : { scale: 0.97 }}
-            className={clsx(
-              "focus-ring relative isolate rounded-full border px-2.5 py-1 text-[12.5px] transition-colors",
-              selectedSpeciesId === null
-                ? "border-border-strong text-text"
-                : "border-border bg-surface/50 text-text-muted hover:border-border-strong hover:text-text",
-            )}
+            className={chipClass(selectedSpeciesId === null && !activeGrainId)}
           >
-            {selectedSpeciesId === null && (
-              <motion.span
-                layoutId="species-chip-highlight"
-                className="absolute inset-0 -z-10 rounded-full bg-surface shadow-sm"
-                transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 40 }}
-              />
-            )}
-            All types
+            {selectedSpeciesId === null && !activeGrainId && chipHighlight}
+            All Types
           </motion.button>
           {chips.map((detection) => {
             const species = findSpecies(speciesCatalog, detection.speciesId);
@@ -82,32 +126,21 @@ export default function SpecimenImageViewer({
               <motion.button
                 key={detection.speciesId}
                 type="button"
-                onClick={() => onSelectSpecies(active ? null : detection.speciesId)}
+                onClick={() => selectSpecies(active && !activeGrainId ? null : detection.speciesId)}
                 aria-pressed={active}
                 whileTap={reduceMotion ? undefined : { scale: 0.97 }}
-                className={clsx(
-                  "focus-ring relative isolate flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12.5px] transition-colors",
-                  active
-                    ? "border-border-strong text-text"
-                    : "border-border bg-surface/50 text-text-muted hover:border-border-strong hover:text-text",
-                )}
+                className={chipClass(active)}
               >
-                {active && (
-                  <motion.span
-                    layoutId="species-chip-highlight"
-                    className="absolute inset-0 -z-10 rounded-full bg-surface shadow-sm"
-                    transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 40 }}
-                  />
-                )}
+                {active && chipHighlight}
                 <span
                   aria-hidden
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: species.color }}
+                  className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                  style={{ backgroundColor: overlayColor(palette, detection.speciesId) }}
                 />
                 <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                   {species.code}
                 </span>
-                <span className="text-text-faint">{detection.grainCount}</span>
+                <span className="text-text-faint tabular-nums">{detection.grainCount}</span>
               </motion.button>
             );
           })}
@@ -116,42 +149,36 @@ export default function SpecimenImageViewer({
 
       <div className="overflow-hidden rounded-md border border-border bg-surface">
         {imageUrl ? (
-          <div className="relative bg-surface-sunken">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageUrl} alt={`Specimen ${fileName}`} className="block w-full" />
-
-            {boxes.map((grain, index) => {
-              const species = findSpecies(speciesCatalog, grain.speciesId);
-              const dimmed = selectedSpeciesId !== null && grain.speciesId !== selectedSpeciesId;
-              return (
-                <motion.button
-                  key={grain.id}
-                  type="button"
-                  onClick={() => onSelectSpecies(dimmed ? grain.speciesId : null)}
-                  title={`${speciesLabel(species)} · ${Math.round(grain.confidence * 100)}% confidence`}
-                  className="absolute rounded-[2px]"
-                  style={{
-                    left: `${grain.box.x * 100}%`,
-                    top: `${grain.box.y * 100}%`,
-                    width: `${grain.box.width * 100}%`,
-                    height: `${grain.box.height * 100}%`,
-                    border: `2px solid ${species.color}`,
-                    boxShadow: dimmed ? "none" : `0 0 0 1px rgba(0,0,0,0.25)`,
-                  }}
-                  initial={reduceMotion ? false : { opacity: 0, scale: 0.97 }}
-                  animate={{ opacity: dimmed ? 0.2 : 1, scale: 1 }}
-                  transition={{
-                    duration: reduceMotion ? 0 : 0.15,
-                    ease: [0.16, 1, 0.3, 1],
-                    delay: reduceMotion ? 0 : Math.min(index, 10) * 0.03,
-                  }}
-                >
-                  <span className="sr-only">
-                    {species.scientificName} grain, {Math.round(grain.confidence * 100)}% confidence
-                  </span>
-                </motion.button>
-              );
-            })}
+          <div
+            className={clsx(
+              "group relative bg-viewer",
+              onExpand && "cursor-zoom-in",
+            )}
+            onClick={onExpand}
+          >
+            <GrainOverlay
+              imageUrl={imageUrl}
+              alt={`Specimen ${fileName}`}
+              grains={boxes}
+              colors={palette}
+              showLabels={showLabels}
+              selectedSpeciesId={selectedSpeciesId}
+              selectedGrainId={activeGrainId}
+              onGrainClick={handleGrainClick}
+            />
+            {onExpand && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onExpand();
+                }}
+                className="focus-ring absolute top-2 right-2 inline-flex items-center gap-1.5 rounded border border-white/20 bg-black/60 px-2 py-1 text-[12px] text-white opacity-90 transition-opacity group-hover:opacity-100 hover:bg-black/75"
+              >
+                <Maximize2 size={12} strokeWidth={2} />
+                Open Inspector
+              </button>
+            )}
           </div>
         ) : (
           <div className="flex h-40 w-full flex-col items-center justify-center gap-1.5 bg-surface-sunken text-center">
@@ -165,11 +192,26 @@ export default function SpecimenImageViewer({
         <div className="flex items-center justify-between gap-3 border-t border-border px-3 py-2 text-[13px] text-text-muted">
           <span className="truncate">{fileName}</span>
           {hasBoxes && (
-            <span
-              className="shrink-0 text-[12.5px] whitespace-nowrap"
-              style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-            >
-              {shownCount}/{boxes.length} boxed
+            <span className="flex shrink-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowLabels((value) => !value)}
+                aria-pressed={showLabels}
+                className={clsx(
+                  "focus-ring inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[12px] transition-colors",
+                  showLabels ? "text-text" : "text-text-faint hover:text-text",
+                )}
+              >
+                <Tag size={12} strokeWidth={1.75} />
+                Labels
+              </button>
+              <span
+                className="text-[12.5px] whitespace-nowrap tabular-nums"
+                style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
+              >
+                {activeGrainId ? `${activeGrainId} · ` : ""}
+                {shownCount}/{boxes.length} shown
+              </span>
             </span>
           )}
         </div>

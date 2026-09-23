@@ -9,6 +9,7 @@ import {
   ImagePlus,
   X,
   Loader2,
+  Maximize2,
   Microscope,
 } from "lucide-react";
 import {
@@ -23,6 +24,7 @@ import { getDraft, saveDraft } from "@/lib/store";
 import { accountName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import { Button } from "@/components/Button";
+import ImageLightbox from "@/components/ImageLightbox";
 
 type ItemStatus = "pending" | "analyzing" | "analyzed";
 
@@ -185,6 +187,7 @@ export default function AnalyzeWorkspace() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [hasPendingDraft, setHasPendingDraft] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const settings = useSettings();
@@ -567,11 +570,28 @@ export default function AnalyzeWorkspace() {
           ) : (
             <div>
               <div className="overflow-hidden rounded-md border border-border">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={selected.imageUrl}
-                  alt={`Specimen ${selected.file.name}`}
-                  className="max-h-64 w-full bg-surface-sunken object-contain"
+                <button
+                  type="button"
+                  onClick={() => setPreviewOpen(true)}
+                  className="focus-ring group relative block w-full cursor-zoom-in bg-viewer"
+                  aria-label={`Enlarge ${selected.file.name}`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={selected.imageUrl}
+                    alt={`Specimen ${selected.file.name}`}
+                    className="max-h-64 w-full object-contain"
+                  />
+                  <span className="absolute top-2 right-2 inline-flex items-center gap-1.5 rounded border border-white/20 bg-black/60 px-2 py-1 text-[12px] text-white opacity-90 group-hover:opacity-100">
+                    <Maximize2 size={12} strokeWidth={2} />
+                    Enlarge
+                  </span>
+                </button>
+                <ImageLightbox
+                  open={previewOpen}
+                  onOpenChange={setPreviewOpen}
+                  imageUrl={selected.imageUrl}
+                  fileName={selected.file.name}
                 />
                 <div className="truncate border-t border-border bg-surface px-3 py-2 text-[13px] text-text-muted">
                   {selected.file.name}

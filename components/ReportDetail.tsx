@@ -34,6 +34,8 @@ import { getReport, getReportImageBlobs, getReportImageUrls } from "@/lib/store"
 import { downloadReportPdf } from "@/lib/pdf";
 import StatusBadge from "@/components/StatusBadge";
 import SpecimenImageViewer from "@/components/SpecimenImageViewer";
+import SpecimenInspector from "@/components/SpecimenInspector";
+import { overlayColor, overlayColors, type OverlayColors } from "@/lib/slide-colors";
 import { Button } from "@/components/Button";
 
 function riskBadgeClass(level: "High" | "Moderate" | "Low") {
@@ -48,10 +50,13 @@ function riskBadgeClass(level: "High" | "Moderate" | "Low") {
  */
 function DetectionRow({
   detection,
+  colors,
   selected = false,
   onSelect,
 }: {
   detection: SpecimenDetection;
+  /** Overlay colours, so the swatch matches this type's boxes on the images. */
+  colors: OverlayColors;
   selected?: boolean;
   onSelect?: () => void;
 }) {
@@ -70,8 +75,8 @@ function DetectionRow({
       <div className="flex min-w-0 items-center gap-2.5">
         <span
           aria-hidden
-          className="h-2.5 w-2.5 shrink-0 rounded-full"
-          style={{ backgroundColor: species.color }}
+          className="h-3 w-3 shrink-0 rounded-[2px] ring-1 ring-black/20"
+          style={{ backgroundColor: overlayColor(colors, detection.speciesId) }}
         />
         <div className="min-w-0 text-left">
           <span
@@ -179,6 +184,8 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
   // The pollen type each slide's overlay is isolating, keyed by slide id.
   const [highlighted, setHighlighted] = useState<Record<string, SpeciesId | null>>({});
   const [downloading, setDownloading] = useState(false);
+  // Which slide (and type) the full-screen inspector opened on; null = closed.
+  const [inspector, setInspector] = useState<{ slideId: string; speciesId: SpeciesId | null } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -233,6 +240,8 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
   }
 
   const aggregated = aggregateSlideDetections(report.slides);
+  // One palette for the whole report: a type keeps its colour on every slide.
+  const colors = overlayColors(aggregated);
   const totalGrains = getTotalGrains(aggregated);
   const overallConfidence = getWeightedAvgConfidence(aggregated);
   const collectionTime = getCollectionTime(report.collectedAt);
@@ -351,7 +360,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
         ) : (
           <ul className="flex flex-col gap-2">
             {aggregated.map((detection) => (
-              <DetectionRow key={detection.speciesId} detection={detection} />
+              <DetectionRow key={detection.speciesId} detection={detection} colors={colors} />
             ))}
           </ul>
         )}
@@ -403,6 +412,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                           <DetectionRow
                             key={detection.speciesId}
                             detection={detection}
+                            colors={colors}
                             selected={selectedSpecies === detection.speciesId}
                             onSelect={() =>
                               select(
@@ -437,8 +447,12 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                       fileName={slide.fileName}
                       grains={slide.grains}
                       detections={slide.detections}
+                      colors={colors}
                       selectedSpeciesId={selectedSpecies}
                       onSelectSpecies={select}
+                      onExpand={() =>
+                        setInspector({ slideId: slide.id, speciesId: selectedSpecies })
+                      }
                     />
                   </div>
                 </div>
@@ -447,6 +461,24 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
           })}
         </div>
       </div>
+
+      <SpecimenInspector
+        open={inspector !== null}
+        onOpenChange={(open) => {
+          if (!open) setInspector(null);
+        }}
+        colors={colors}
+        initialSlideId={inspector?.slideId}
+        initialSpeciesId={inspector?.speciesId ?? null}
+        slides={report.slides.map((slide, index) => ({
+          id: slide.id,
+          label: `Slide ${index + 1}`,
+          fileName: slide.fileName,
+          imageUrl: imageUrls[slide.id],
+          grains: slide.grains,
+          detections: slide.detections,
+        }))}
+      />
 
       <p className="text-[12.5px] text-text-faint">
         Collected {formatCollectedAt(report.collectedAt)} · saved as{" "}
