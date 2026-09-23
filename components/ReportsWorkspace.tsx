@@ -38,6 +38,13 @@ export default function ReportsWorkspace() {
   }
 
   return (
-    <ReportsTable reports={reports} highlightId={savedId} initialQuery={initialQuery} />
+    // Keyed on the query so following a link that changes ?q= (e.g. from the
+    // Pollen Map) re-seeds the search box instead of keeping stale text.
+    <ReportsTable
+      key={initialQuery}
+      reports={reports}
+      highlightId={savedId}
+      initialQuery={initialQuery}
+    />
   );
 }

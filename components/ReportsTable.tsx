@@ -7,7 +7,9 @@ import { AnimatePresence, motion } from "motion/react";
 import clsx from "clsx";
 import { FileDown, Loader2, Search, X } from "lucide-react";
 import {
+  aggregateSlideDetections,
   formatCollectedAt,
+  getSpecies,
   formatTime,
   getCollectionDate,
   getCollectionTime,
@@ -42,6 +44,29 @@ const NO_FILTERS: Filters = {
 
 const controlClass =
   "focus-ring rounded-md border border-border bg-surface px-2 py-1.5 text-[13px] text-text";
+
+/** Case- and accent-insensitive form for search: "Baños" matches "banos". */
+function fold(text: string): string {
+  return text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+}
+
+/**
+ * Everything a search can match for one report, pre-folded: sample id,
+ * location, the collection date both as shown and as stored (so "Jul 29" and
+ * "2026-07-29" both work), and every pollen type detected on any slide by
+ * code, scientific and common name — not just the most abundant one.
+ */
+function searchText(report: Specimen): string {
+  const species = aggregateSlideDetections(report.slides).map((d) => {
+    const sp = getSpecies(d.speciesId);
+    return `${sp.code} ${sp.scientificName} ${sp.commonName}`;
+  });
+  return fold(
+    [report.sampleId, report.location, report.collectedAt, formatCollectedAt(report.collectedAt), ...species].join(
+      " | ",
+    ),
+  );
+}
 
 const rowTransition = { duration: 0.18, ease: [0.16, 1, 0.3, 1] as const };
 
@@ -98,8 +123,14 @@ export default function ReportsTable({
     [rows],
   );
 
+  const haystacks = useMemo(
+    () => new Map(reports.map((report) => [report.sampleId, searchText(report)])),
+    [reports],
+  );
+
+  // Filters on every keystroke — a partial word ("cand") is enough.
   const filtered = useMemo(() => {
-    const q = filters.query.trim().toLowerCase();
+    const q = fold(filters.query.trim());
     return rows.filter((r) => {
       // ISO dates compare correctly as plain strings, so the range needs no
       // parsing and cannot be shifted by a timezone.
@@ -109,14 +140,10 @@ export default function ReportsTable({
         (filters.location === ALL_LOCATIONS || r.location === filters.location) &&
         (filters.from === "" || date >= filters.from) &&
         (filters.to === "" || date <= filters.to) &&
-        (q.length === 0 ||
-          r.sampleId.toLowerCase().includes(q) ||
-          r.location.toLowerCase().includes(q) ||
-          r.topPollen.toLowerCase().includes(q) ||
-          formatCollectedAt(r.collectedAt).toLowerCase().includes(q))
+        (q.length === 0 || (haystacks.get(r.sampleId) ?? "").includes(q))
       );
     });
-  }, [rows, filters]);
+  }, [rows, filters, haystacks]);
 
   const hasActiveFilters =
     filters.query.trim() !== "" ||
