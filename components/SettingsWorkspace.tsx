@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { toast } from "sonner";
 import {
@@ -18,7 +17,8 @@ import {
 } from "lucide-react";
 import type { Specimen } from "@/lib/data";
 import { accountName, getInitials, institutionFromEmail } from "@/lib/account";
-import { resetSettings, useSettings } from "@/lib/settings";
+import { useSettings } from "@/lib/settings";
+import { signOut } from "@/lib/session";
 import { clearAllReports, getStorageSummary, listReports } from "@/lib/store";
 import { exportReportsCsv, exportReportsJson } from "@/lib/export";
 import { Button } from "@/components/Button";
@@ -60,7 +60,6 @@ function formatBytes(bytes: number): string {
 
 export default function SettingsWorkspace() {
   const settings = useSettings();
-  const router = useRouter();
 
   const [reports, setReports] = useState<Specimen[] | null>(null);
   const [storage, setStorage] = useState<{
@@ -70,6 +69,7 @@ export default function SettingsWorkspace() {
   } | null>(null);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -281,7 +281,7 @@ export default function SettingsWorkspace() {
       <Section
         icon={LogOut}
         title="Account"
-        description="Sign-in is not connected to a real provider yet, so signing out just forgets the account stored in this browser. Your saved reports stay."
+        description="Signing out revokes this browser's session on the server and forgets it here. Saved reports stay on the server; an unsaved analysis draft stays in this browser."
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-[13px] text-text-muted">
@@ -296,14 +296,22 @@ export default function SettingsWorkspace() {
           </div>
           <button
             type="button"
-            onClick={() => {
-              resetSettings();
-              router.push("/");
+            disabled={signingOut}
+            onClick={async () => {
+              setSigningOut(true);
+              await signOut();
+              // A full load, not a client push: drops in-memory data from this
+              // account (e.g. the live species catalog) along with the session.
+              window.location.replace("/");
             }}
             className="focus-ring inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text-muted transition-[color,border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text hover:border-border-strong active:scale-[0.97]"
           >
-            <LogOut size={14} strokeWidth={1.75} />
-            Sign Out
+            {signingOut ? (
+              <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
+            ) : (
+              <LogOut size={14} strokeWidth={1.75} />
+            )}
+            {signingOut ? "Signing Out…" : "Sign Out"}
           </button>
         </div>
       </Section>

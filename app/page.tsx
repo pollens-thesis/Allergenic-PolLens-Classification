@@ -4,7 +4,8 @@ import SignInForm from "@/components/SignInForm";
 import { speciesCatalog } from "@/lib/data";
 
 export const metadata: Metadata = {
-  title: "Sign In",
+  // The layout's "%s · PolLens" template only applies below the root segment.
+  title: { absolute: "Sign In · PolLens" },
 };
 
 export default function LoginPage() {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { ChevronLeft } from "lucide-react";
@@ -28,6 +28,17 @@ declare global {
   }
 }
 
+const noopSubscribe = () => () => {};
+
+/** Whether we were sent here because the session ran out (see lib/api.ts). */
+function useSessionExpired(): boolean {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => new URLSearchParams(window.location.search).get("reason") === "expired",
+    () => false,
+  );
+}
+
 /** The page to land on after sign-in — `?next=` if it's a safe local path. */
 function nextPage(): string {
   return safeNext(new URLSearchParams(window.location.search).get("next"));
@@ -51,6 +62,7 @@ export default function SignInForm() {
   const configured = Boolean(GOOGLE_CLIENT_ID);
   const settings = useSettings();
   const signedIn = isSignedIn(settings);
+  const expired = useSessionExpired();
 
   // Already signed in (or just signed in from another tab): skip the form.
   useEffect(() => {
@@ -90,6 +102,11 @@ export default function SignInForm() {
 
   return (
     <>
+      {expired && (
+        <p className="mb-3 rounded-md border border-processing/30 bg-processing-bg px-3 py-2 text-[12.5px] text-processing">
+          Your session expired — sign in again to pick up where you left off.
+        </p>
+      )}
       <Script
         src="https://accounts.google.com/gsi/client"
         strategy="afterInteractive"

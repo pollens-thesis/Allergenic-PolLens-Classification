@@ -45,7 +45,8 @@ function endSession(): never {
     resetSettings();
     toast.error("Your session expired — sign in again.");
     const next = window.location.pathname + window.location.search;
-    window.location.assign(`/?next=${encodeURIComponent(next)}`);
+    // The toast is lost with the page; ?reason= lets the sign-in page say why.
+    window.location.assign(`/?next=${encodeURIComponent(next)}&reason=expired`);
   }
   throw new SessionExpiredError();
 }
