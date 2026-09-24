@@ -95,7 +95,8 @@ class MeViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
-            response.data, {'email': 'researcher@up.edu.ph', 'institution': 'up.edu.ph'},
+            response.data,
+            {'email': 'researcher@up.edu.ph', 'fullName': '', 'institution': 'up.edu.ph'},
         )
 
 
@@ -255,3 +256,37 @@ class MicrosoftLoginViewTests(APITestCase):
     @override_settings(MICROSOFT_CLIENT_ID='')
     def test_unconfigured_is_503(self):
         self.assertEqual(self.post(make_microsoft_token()).status_code, 503)
+
+
+@override_settings(GOOGLE_OAUTH_CLIENT_ID='client-id', SIGNIN_ALLOWED_DOMAINS=['up.edu.ph'], SIGNIN_ALLOWED_EMAILS=[])
+class AccountNameTests(APITestCase):
+    @patch('accounts.views.google_id_token.verify_oauth2_token')
+    def test_name_is_stored_refreshed_and_returned_by_me(self, mock_verify):
+        mock_verify.return_value = {**GOOGLE_CLAIMS, 'name': 'Juan Dela Cruz'}
+        self.client.post('/api/v1/auth/google/', {'id_token': 'x'}, format='json')
+        user = User.objects.get(email='researcher@up.edu.ph')
+        self.assertEqual(user.full_name, 'Juan Dela Cruz')
+
+        mock_verify.return_value = {**GOOGLE_CLAIMS, 'name': 'Juan P. Dela Cruz'}
+        self.client.post('/api/v1/auth/google/', {'id_token': 'x'}, format='json')
+        user.refresh_from_db()
+        self.assertEqual(user.full_name, 'Juan P. Dela Cruz')
+
+        # A token without a name never erases the one we have.
+        mock_verify.return_value = dict(GOOGLE_CLAIMS)
+        self.client.post('/api/v1/auth/google/', {'id_token': 'x'}, format='json')
+        user.refresh_from_db()
+        self.assertEqual(user.full_name, 'Juan P. Dela Cruz')
+
+        self.client.force_authenticate(user=user)
+        self.assertEqual(self.client.get('/api/v1/auth/me/').data['fullName'], 'Juan P. Dela Cruz')
+
+
+@override_settings(MICROSOFT_CLIENT_ID=MS_CLIENT_ID, SIGNIN_ALLOWED_DOMAINS=['up.edu.ph'], SIGNIN_ALLOWED_EMAILS=[])
+@patch('accounts.views._microsoft_signing_key', lambda token: _MS_KEY.public_key())
+class MicrosoftNameTests(APITestCase):
+    def test_microsoft_name_claim_is_stored(self):
+        self.client.post(
+            '/api/v1/auth/microsoft/', {'id_token': make_microsoft_token(name='Maria Santos')}, format='json',
+        )
+        self.assertEqual(User.objects.get(email='researcher@up.edu.ph').full_name, 'Maria Santos')

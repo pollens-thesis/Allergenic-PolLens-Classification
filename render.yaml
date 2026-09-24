@@ -42,8 +42,6 @@ services:
         sync: false
       - key: AWS_SECRET_ACCESS_KEY
         sync: false
-      - key: OPENWEATHER_API_KEY
-        sync: false
       # Canned Roboflow-shaped responses until the model is deployed; then set
       # the three ROBOFLOW_* values and flip this to "false".
       - key: ROBOFLOW_MOCK

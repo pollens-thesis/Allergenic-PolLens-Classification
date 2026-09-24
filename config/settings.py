@@ -254,10 +254,7 @@ ROBOFLOW_MODEL_VERSION = os.environ.get('ROBOFLOW_MODEL_VERSION', '')
 ROBOFLOW_MOCK = env_bool('ROBOFLOW_MOCK', False)
 
 
-# OpenWeather
-# Weather lookup for the Analyze screen — see reports.views.WeatherView.
-
-OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY', '')
+# Weather comes from Open-Meteo (free, no key) — see reports.views.WeatherView.
 
 
 # Internationalization

@@ -30,14 +30,14 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     """
-    Identity is the signed-in Google account's email address — there is no
-    separate profile/name to fill in. The frontend derives display name and
-    institution from the email itself (see app/PolLens/lib/account.ts);
-    `institution` here mirrors the Google ID token's `hd` claim when present,
-    per that file's TODO(backend) note.
+    Identity is the signed-in account's email address (Google or Microsoft).
+    `full_name` is the person's name from the ID token's `name` claim, and
+    `institution` the Google `hd` claim / Microsoft UPN domain — both refreshed
+    on every sign-in, never typed in.
     """
 
     email = models.EmailField(unique=True)
+    full_name = models.CharField(max_length=255, blank=True)
     institution = models.CharField(max_length=255, blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

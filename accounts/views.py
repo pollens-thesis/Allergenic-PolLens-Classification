@@ -16,7 +16,7 @@ from .serializers import GoogleLoginSerializer, LogoutSerializer, UserSerializer
 NOT_ALLOWED_DETAIL = "This account isn't authorised to use PolLens. Ask the project team to add it."
 
 
-def issue_session(email, institution):
+def issue_session(email, institution, full_name=''):
     """
     Shared end of every sign-in: allowlist, get-or-create the user (one account
     per email, whichever provider was used), refresh the institution, and mint
@@ -26,12 +26,20 @@ def issue_session(email, institution):
     if not is_allowed(email):
         return Response({'detail': NOT_ALLOWED_DETAIL}, status=status.HTTP_403_FORBIDDEN)
 
+    full_name = (full_name or '').strip()[:255]
     user = User.objects.filter(email__iexact=email).first()
     if user is None:
-        user = User.objects.create(email=email, institution=institution)
-    elif institution and user.institution != institution:
-        user.institution = institution
-        user.save(update_fields=['institution'])
+        user = User.objects.create(email=email, institution=institution, full_name=full_name)
+    else:
+        changed = []
+        if institution and user.institution != institution:
+            user.institution = institution
+            changed.append('institution')
+        if full_name and user.full_name != full_name:
+            user.full_name = full_name
+            changed.append('full_name')
+        if changed:
+            user.save(update_fields=changed)
 
     if not user.is_active:
         return Response(
@@ -90,7 +98,7 @@ class GoogleLoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        return issue_session(email, claims.get('hd', ''))
+        return issue_session(email, claims.get('hd', ''), claims.get('name', ''))
 
 
 MICROSOFT_JWKS_URL = 'https://login.microsoftonline.com/common/discovery/v2.0/keys'
@@ -173,7 +181,7 @@ class MicrosoftLoginView(APIView):
                 {'detail': 'Microsoft account has no sign-in email.'},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
-        return issue_session(email, email.rsplit('@', 1)[1])
+        return issue_session(email, email.rsplit('@', 1)[1], claims.get('name', ''))
 
 
 class LogoutView(APIView):

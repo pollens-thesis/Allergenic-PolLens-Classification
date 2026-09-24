@@ -12,7 +12,9 @@ class LogoutSerializer(serializers.Serializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    fullName = serializers.CharField(source='full_name', read_only=True)
+
     class Meta:
         model = User
-        fields = ('email', 'institution')
+        fields = ('email', 'fullName', 'institution')
         read_only_fields = fields

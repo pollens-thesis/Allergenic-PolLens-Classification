@@ -1,7 +1,9 @@
 import calendar
+import datetime
 import json
 import re
 import uuid
+import zoneinfo
 from pathlib import Path
 
 import requests
@@ -284,110 +286,110 @@ class DetectView(APIView):
         })
 
 
-OPENWEATHER_URL = 'https://api.openweathermap.org/data/2.5/weather'
+OPEN_METEO_FORECAST_URL = 'https://api.open-meteo.com/v1/forecast'
+OPEN_METEO_ARCHIVE_URL = 'https://archive-api.open-meteo.com/v1/archive'
+# The forecast service keeps roughly the last 92 days and the next 16; older
+# dates come from the reanalysis archive (which lags a few days behind).
+FORECAST_PAST_DAYS = 90
+FORECAST_FUTURE_DAYS = 15
+WEATHER_TIMEZONE = 'Asia/Manila'
+DEFAULT_HOUR = 12  # no collection time recorded: midday
+HOURLY_FIELDS = 'temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code,cloud_cover'
 # Sustained wind at/above this speed is reported as "Windy" ahead of sky
-# condition — OpenWeather has no dedicated "windy" weather group, so this
-# is a deliberate approximation, not a value from any spec.
+# condition — neither source has a "windy" condition, so this is a deliberate
+# approximation, not a value from any spec.
 WINDY_THRESHOLD_KPH = 30
 
 
-def _map_weather_response(payload):
-    # OpenWeather's ~10 weather groups (Clear/Clouds/Rain/Drizzle/
-    # Thunderstorm/Snow/Atmosphere...) don't map 1:1 onto the app's 5-value
-    # WeatherCondition enum (lib/data.ts), so this is an approximation:
-    # wind speed is checked first, then sky condition, and anything outside
-    # Clear/Clouds/the rain family falls back to "Overcast" as the closest
-    # available value.
-    main = payload.get('main') or {}
-    wind = payload.get('wind') or {}
-    clouds = payload.get('clouds') or {}
-    weather_main = (payload.get('weather') or [{}])[0].get('main', '')
-    wind_kph = round(wind.get('speed', 0) * 3.6, 1)
-
-    if wind_kph >= WINDY_THRESHOLD_KPH:
-        condition = 'Windy'
-    elif weather_main in ('Thunderstorm', 'Drizzle', 'Rain'):
-        condition = 'Rainy'
-    elif weather_main == 'Clear':
-        condition = 'Sunny'
-    elif weather_main == 'Clouds':
-        condition = 'Partly cloudy' if clouds.get('all', 0) < 50 else 'Overcast'
-    else:
-        condition = 'Overcast'
-
-    return {
-        'condition': condition,
-        'temperatureC': main.get('temp'),
-        'humidityPct': main.get('humidity'),
-        'windKph': wind_kph,
-    }
+def _condition(weather_code, cloud_cover, wind_kph):
+    # WMO weather codes (Open-Meteo) → the app's 5-value WeatherCondition.
+    if wind_kph is not None and wind_kph >= WINDY_THRESHOLD_KPH:
+        return 'Windy'
+    code = weather_code if weather_code is not None else -1
+    if 51 <= code <= 67 or 80 <= code <= 82 or code >= 95:  # drizzle, rain, showers, thunder
+        return 'Rainy'
+    if code in (0, 1):
+        return 'Sunny'
+    if code == 2:
+        return 'Partly cloudy'
+    if code in (3, 45, 48) or 71 <= code <= 86:  # overcast, fog, snow (n/a here)
+        return 'Overcast'
+    if cloud_cover is not None:
+        return 'Sunny' if cloud_cover < 25 else 'Partly cloudy' if cloud_cover < 70 else 'Overcast'
+    return 'Overcast'
 
 
 class WeatherView(APIView):
     """
-    GET /api/v1/reports/weather/?lat=<deg>&lon=<deg> (preferred) or
-    ?location=<free-text location> — current conditions for a collection
-    site, via OpenWeather.
+    GET /api/v1/reports/weather/?lat=<deg>&lon=<deg>&date=YYYY-MM-DD[&time=HH:MM]
 
-    Stateless, like DetectView — called at Analyze-time to pre-fill the
-    manually-entered weather fields (lib/analysis.ts's fetchWeather TODO),
-    not persisted here. `location` is passed through to OpenWeather as-is
-    (the same free-text "Town, Province" strings the frontend already
-    collects); if OpenWeather can't resolve it, that's a 404, not a service
-    failure. The frontend's place search sends `lat`/`lon` instead (the
-    centre of the chosen PSGC town), which OpenWeather never fails to
-    resolve; when both are given, coordinates win.
+    Conditions at a collection site **at the collection date and time**
+    (Asia/Manila local), from Open-Meteo — free, keyless, hourly data from the
+    recent forecast model or, for older dates, the ERA5 reanalysis archive.
+    Without `date` it returns the conditions now. Stateless; the Analyze
+    screen pre-fills its (still editable) weather fields with it.
+
+    Coordinates come from the place search (the centre of the chosen PSGC
+    town), so there is no free-text geocoding: a request without lat/lon is
+    a 400.
     """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        lat = request.query_params.get('lat', '').strip()
-        lon = request.query_params.get('lon', '').strip()
-        location = request.query_params.get('location', '').strip()
-        if lat or lon:
-            try:
-                lat, lon = float(lat), float(lon)
-            except ValueError:
-                return Response(
-                    {'detail': 'lat and lon must both be numbers.'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            if not (-90 <= lat <= 90 and -180 <= lon <= 180):
-                return Response(
-                    {'detail': 'lat/lon are out of range.'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            place = {'lat': lat, 'lon': lon}
-        elif location:
-            place = {'q': location}
-        else:
+        params = request.query_params
+        try:
+            lat, lon = float(params.get('lat', '')), float(params.get('lon', ''))
+        except ValueError:
             return Response(
-                {'detail': 'A location or lat/lon is required.'},
+                {'detail': 'Pick a place from the list — lat and lon are required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            return Response({'detail': 'lat/lon are out of range.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        tz = zoneinfo.ZoneInfo(WEATHER_TIMEZONE)
+        now = timezone.now().astimezone(tz)
+        raw_date = params.get('date', '').strip()
+        raw_time = params.get('time', '').strip()
+        try:
+            day = datetime.date.fromisoformat(raw_date) if raw_date else now.date()
+            if raw_time:
+                hour = datetime.time.fromisoformat(raw_time).hour
+            else:
+                hour = now.hour if not raw_date else DEFAULT_HOUR
+        except ValueError:
+            return Response(
+                {'detail': 'date must be YYYY-MM-DD and time HH:MM.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if not settings.OPENWEATHER_API_KEY:
+        age = (now.date() - day).days
+        if age < -FORECAST_FUTURE_DAYS:
             return Response(
-                {'detail': 'Weather lookup is not configured.'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                {'detail': 'No weather is available that far in the future.'},
+                status=status.HTTP_400_BAD_REQUEST,
             )
+        url = OPEN_METEO_FORECAST_URL if age <= FORECAST_PAST_DAYS else OPEN_METEO_ARCHIVE_URL
 
         try:
             upstream = requests.get(
-                OPENWEATHER_URL,
-                params={**place, 'appid': settings.OPENWEATHER_API_KEY, 'units': 'metric'},
-                timeout=10,
+                url,
+                params={
+                    'latitude': lat,
+                    'longitude': lon,
+                    'start_date': day.isoformat(),
+                    'end_date': day.isoformat(),
+                    'hourly': HOURLY_FIELDS,
+                    'timezone': WEATHER_TIMEZONE,
+                },
+                timeout=15,
             )
-        except requests.RequestException:
+            payload = upstream.json()
+        except (requests.RequestException, ValueError):
             return Response(
                 {'detail': 'Weather service is unavailable.'},
                 status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        if upstream.status_code == 404:
-            return Response(
-                {'detail': 'Location not found.'}, status=status.HTTP_404_NOT_FOUND,
             )
         if upstream.status_code != 200:
             return Response(
@@ -395,15 +397,35 @@ class WeatherView(APIView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        try:
-            payload = upstream.json()
-        except ValueError:
+        hourly = payload.get('hourly') or {}
+        wanted = f'{day.isoformat()}T{hour:02d}:00'
+        times = hourly.get('time') or []
+        if wanted not in times:
             return Response(
-                {'detail': 'Weather service is unavailable.'},
-                status=status.HTTP_502_BAD_GATEWAY,
+                {'detail': 'No weather data for that date yet.'},
+                status=status.HTTP_404_NOT_FOUND,
             )
+        i = times.index(wanted)
 
-        return Response(_map_weather_response(payload))
+        def at(field):
+            values = hourly.get(field) or []
+            return values[i] if i < len(values) else None
+
+        temperature, humidity, wind = at('temperature_2m'), at('relative_humidity_2m'), at('wind_speed_10m')
+        if temperature is None and humidity is None and wind is None:
+            # The archive lags a few days behind: the hours exist but are empty.
+            return Response(
+                {'detail': 'No weather data for that date yet.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response({
+            'condition': _condition(at('weather_code'), at('cloud_cover'), wind),
+            'temperatureC': temperature,
+            'humidityPct': humidity,
+            'windKph': wind,
+            'observedAt': wanted,
+            'source': 'Open-Meteo',
+        })
 
 
 class ReportMonthlyCountsView(APIView):

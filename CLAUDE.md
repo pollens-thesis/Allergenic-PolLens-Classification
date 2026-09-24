@@ -35,7 +35,9 @@ between the thesis proposal paper and the frontend.
     must equal `https://login.microsoftonline.com/{tid}/v2.0` for the
     token's own `tid`, personal-account tenant rejected (work/school only).
     Identity is `preferred_username` (tenant-verified UPN), lowercased;
-    `institution` = its domain. One `User` per email regardless of
+    `institution` = its domain; `full_name` = the token's `name` claim (also
+    from Google), refreshed each sign-in and returned as `fullName` by
+    `/me/`. One `User` per email regardless of
     provider (`issue_session()` is shared by both views).
   - **Allowlist (added 2026-09-24):** `accounts.access.is_allowed(email)`
     — `SIGNIN_ALLOWED_DOMAINS` (default `up.edu.ph,mseuf.edu.ph`; a domain
@@ -247,33 +249,21 @@ between the thesis proposal paper and the frontend.
       batch can't proceed to the report page until every slide has a real
       reading. `ROBOFLOW_MOCK` (server-side) is the only source of sample
       detections.
-  - **`GET /api/v1/reports/weather/?lat=..&lon=..` or `?location=...`** (`reports.views.WeatherView`,
-    `IsAuthenticated`; registered in `config/urls.py` before
-    `<sample_id>/` for the same reason as `monthly-counts/`/`species/`).
-    Stateless proxy — current conditions for a collection site, called at
-    Analyze-time to pre-fill the manually-entered weather fields
-    (`app/PolLens/lib/analysis.ts`'s `fetchWeather` `TODO(backend)`), not
-    persisted here. `location` is the same free-text "Town, Province"
-    string the frontend already collects, passed through to OpenWeather
-    as-is (config-driven via `OPENWEATHER_API_KEY`, same `os.environ.get`
-    pattern as the other provider keys). Maps OpenWeather's response onto
-    `WeatherConditions { condition, temperatureC, humidityPct, windKph }`
-    — since OpenWeather's ~10 weather groups don't map 1:1 onto the app's
-    5-value `WeatherCondition` enum, this is a deliberate approximation:
-    wind speed ≥30 kph (`WINDY_THRESHOLD_KPH` in `reports/views.py`) is
-    classified `"Windy"` ahead of sky condition, then Clear→`"Sunny"`,
-    Clouds→`"Partly cloudy"`/`"Overcast"` by cloud-cover percentage, the
-    rain family (Thunderstorm/Drizzle/Rain)→`"Rainy"`, and anything else
-    falls back to `"Overcast"` as the closest available value. Missing
-    `location` and no `lat`/`lon` → `400`. **`lat`/`lon` (added 2026-09-23)** take precedence over `location` when given — the frontend's place search sends the centre of the chosen PSGC town, which OpenWeather always resolves; both must be numbers in range, else `400`. Unconfigured (`OPENWEATHER_API_KEY` blank) → `503
-    {"detail": "Weather lookup is not configured."}`. OpenWeather can't
-    resolve the location → `404 {"detail": "Location not found."}` (not a
-    service failure). Any other upstream failure → `502 {"detail":
-    "Weather service is unavailable."}`. As of 2026-09-23,
-    `app/PolLens/lib/analysis.ts`'s `fetchWeather()` calls this endpoint
-    (null on any failure). The Analyze screen calls it when a place is
-    picked from its location search and pre-fills the weather fields,
-    which stay editable (researcher override) — decided 2026-09-23.
+  - **`GET /api/v1/reports/weather/?lat=..&lon=..&date=YYYY-MM-DD&time=HH:MM`**
+    (`reports.views.WeatherView`, `IsAuthenticated`). **Since 2026-09-25 the
+    source is Open-Meteo** (free, no API key — OpenWeather and
+    `OPENWEATHER_API_KEY` are gone) so conditions are for the **collection
+    date and time** (Asia/Manila), not "now": the forecast API for the last
+    ~90 days and the next 15, the ERA5 archive for older dates; the hour is
+    `time` (or 12:00 when only a date is given; no date = now). Returns
+    `{condition, temperatureC, humidityPct, windKph, observedAt, source}`;
+    WMO weather codes map to the 5 app conditions (rain/drizzle/showers/
+    thunder → Rainy, 0–1 → Sunny, 2 → Partly cloudy, 3/fog → Overcast), wind
+    ≥ 30 km/h → Windy. `lat`/`lon` are required (400 otherwise — coordinates
+    come from the PSGC place search); bad date/time or > 15 days ahead → 400;
+    hours not yet in the archive → 404; upstream failure → 502. The Analyze
+    screen pre-fills its editable weather fields from it whenever the place or
+    collection date/time changes, unless the researcher edited them.
   - **Models** (`reports/models.py`): `Report` (weather flattened onto the
     model as nullable fields, not a separate table; `collected_at` stored
     as a validated `CharField`, not `DateTimeField`, to preserve the
