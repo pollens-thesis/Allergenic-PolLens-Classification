@@ -19,6 +19,7 @@ placeholder, Vercel gets Render's URL, and then Render gets Vercel's.
 Keep a scratch note open. You'll collect these values as you go:
 
 ```
+DATABASE_URL=             (step 0)
 R2_ACCOUNT_ID=            (step 1)
 R2_ACCESS_KEY_ID=         (step 1)
 R2_SECRET_ACCESS_KEY=     (step 1)
@@ -27,6 +28,29 @@ VERCEL_URL=               (step 3, e.g. https://pollens.vercel.app)
 ```
 
 ---
+
+## 0. Neon: the database
+
+1. Go to <https://neon.com> → **Sign up**. Use the personal account that owns the
+   API (GitHub `0ban4`, or `va.dmesa@gmail.com`) — not a school account, which
+   can be deactivated after graduation.
+2. **Create project**:
+   - Name: `pollens`.
+   - Postgres version: the default.
+   - Region: **Asia Pacific (Singapore)** — closest to the Philippines and to
+     the Render service.
+3. When the project opens, click **Connect**. Leave the branch (`main`), the
+   database and the role at their defaults, and turn **Connection pooling
+   off**. Copy the connection string that starts with `postgresql://`.
+   Keep it private — it contains the database password.
+4. Save it in your note as `DATABASE_URL`.
+
+Nothing else to set up: Render's first build creates all the tables and the 23
+species. Neon pauses an idle database after a few minutes; the first request
+afterwards takes about a second longer.
+
+To run the API on your own computer against Neon, put the same string in
+`api/.env` as `DATABASE_URL=` (it takes priority over the `DATABASE_*` lines).
 
 ## 1. Cloudflare R2: slide image storage
 
@@ -91,7 +115,7 @@ MSEUF IT blocks it, Google sign-in still works.
 
    | Key | Value |
    |---|---|
-   | `DATABASE_NAME` / `DATABASE_USER` / `DATABASE_PASSWORD` / `DATABASE_HOST` | From the **Neon dashboard** → your project → **Connect**: database, role, password and host. Use the host **without** `-pooler`. Your local `api/.env` points at a Postgres on your own machine, not Neon, so don't copy those. |
+   | `DATABASE_URL` | The Neon connection string — see step 0 below. Your local `api/.env` points at a Postgres on your own machine, not Neon, so don't copy those values. |
    | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` for now (step 4 replaces it) |
    | `GOOGLE_OAUTH_CLIENT_ID` | Same as local `api/.env` |
    | `MICROSOFT_CLIENT_ID` | From step 1b (leave empty to disable Microsoft sign-in) |
@@ -180,7 +204,7 @@ Open `VERCEL_URL` and check each step:
 | Report images broken / 403 | Check the `AWS_*` values on Render: the endpoint must use the account ID, and the token must cover the bucket. |
 | PDF has no images | R2 CORS policy is missing `VERCEL_URL`. |
 | First request hangs ~1 min | Free-tier cold start, see step 2. |
-| Render build fails at `migrate` | Wrong `DATABASE_*` values, or the Neon project is suspended. Check the Neon dashboard. |
+| Render build fails at `migrate` | Wrong `DATABASE_URL` (a typo, or the password contains a character Neon percent-encoded — paste the string exactly as Neon shows it), or the Neon project is suspended. Check the Neon dashboard. |
 | Session keeps expiring | Renewal needs the API reachable. Check Render's logs. |
 
 ## Notes
