@@ -123,7 +123,6 @@ MSEUF IT blocks it, Google sign-in still works.
    | `AWS_STORAGE_BUCKET_NAME` | `pollens-media` |
    | `AWS_S3_ENDPOINT_URL` | `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com` |
    | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | From step 1.4 |
-   | `OPENWEATHER_API_KEY` | Your OpenWeather key (optional; without it weather stays manual) |
    | `ROBOFLOW_API_KEY` / `ROBOFLOW_MODEL_ID` / `ROBOFLOW_MODEL_VERSION` | Leave empty. `ROBOFLOW_MOCK=true` serves sample detections until the model exists. |
 
    `DJANGO_SECRET_KEY` is generated for you, and `DJANGO_DEBUG` is already
@@ -180,7 +179,7 @@ Open `VERCEL_URL` and check each step:
 - [ ] Opening `/reports` directly redirects to the sign-in page.
 - [ ] **Continue with Google** signs you in and lands on the Dashboard.
 - [ ] **Analyze Specimen**: type "cand" and pick Candelaria, Quezon. The
-  weather fills in, if the OpenWeather key is set.
+  weather fills in for the collection date and time (Open-Meteo, no key needed).
 - [ ] Upload a slide image and run **Analyze Specimen**. Boxes appear (sample
   detections from mock mode).
 - [ ] **Open Inspector**: zoom, select a type and a grain.
