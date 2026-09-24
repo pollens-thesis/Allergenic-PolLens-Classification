@@ -23,10 +23,30 @@ between the thesis proposal paper and the frontend.
   username/password login endpoint. Real login is
   `POST /api/v1/auth/google/` (`accounts.views.GoogleLoginView`), built
   against the `google-auth` package (`google.oauth2.id_token.verify_oauth2_token`)
-  and the `GOOGLE_OAUTH_CLIENT_ID` env var. `TokenObtainPairView` in
-  `config/urls.py` is only a scaffolding placeholder still left wired up
-  at `/api/v1/auth/token/` — do not build against it; `TokenRefreshView`
-  still applies as-is for refreshing a pair issued by `GoogleLoginView`.
+  and the `GOOGLE_OAUTH_CLIENT_ID` env var. The old scaffolding
+  `TokenObtainPairView` route (`/api/v1/auth/token/`) was **removed
+  2026-09-24** — it was a working password login for admin accounts;
+  `TokenRefreshView` (`/api/v1/auth/token/refresh/`) stays.
+  - **Microsoft sign-in (added 2026-09-24):** `POST /api/v1/auth/microsoft/
+    {id_token}` (`accounts.views.MicrosoftLoginView`), same response as
+    Google. Verifies a Microsoft identity platform v2 ID token with PyJWT
+    against Microsoft's published keys (`PyJWKClient`), audience =
+    `MICROSOFT_CLIENT_ID` (a multitenant Entra app registration), issuer
+    must equal `https://login.microsoftonline.com/{tid}/v2.0` for the
+    token's own `tid`, personal-account tenant rejected (work/school only).
+    Identity is `preferred_username` (tenant-verified UPN), lowercased;
+    `institution` = its domain. One `User` per email regardless of
+    provider (`issue_session()` is shared by both views).
+  - **Allowlist (added 2026-09-24):** `accounts.access.is_allowed(email)`
+    — `SIGNIN_ALLOWED_DOMAINS` (default `up.edu.ph,mseuf.edu.ph`; a domain
+    admits its subdomains) and `SIGNIN_ALLOWED_EMAILS` (named addresses);
+    both empty admits nobody. Enforced at both sign-ins (403) **and** on
+    every request by `accounts.authentication.AllowlistedJWTAuthentication`
+    (the DRF default auth class), so removing someone takes effect on their
+    next request (401).
+  - **Throttling:** DRF anon/user rates plus scopes `login` (both sign-in
+    views) and `detect`; overridable via `THROTTLE_*` env vars; effectively
+    unlimited when running `manage.py test`.
   JWT (rather than session/cookie auth) was chosen because the frontend
   (`app/PolLens/`, Next.js) is a separate app from a different origin —
   session/cookie auth would add unnecessary CSRF complexity for a
@@ -78,11 +98,31 @@ between the thesis proposal paper and the frontend.
     call `/logout/`) is frontend work outside this file's scope; see
     `../docs/login-frontend-handoff.md` for the full handoff instead of
     re-deriving it from scratch.
-- **Reports:** server-side storage for saved analysis batches — the
-  backend replacement for `app/PolLens/lib/store.ts`'s IndexedDB
-  persistence. **This app is storage only** — no server-side ML/Roboflow
-  inference and no async processing pipeline. `POST` is fully synchronous
-  and always writes `status="Completed"`.
+- **Reports:** server-side storage for analysis batches. **No server-side
+  ML** (detection is the `/detect/` proxy) and no async pipeline.
+  - **Lifecycle (added 2026-09-24, paper §5.1.7):** `Pending` → `Completed`
+    ("Generate Report") → `Needs review` ⇄ `Completed`
+    (`models.STATUS_TRANSITIONS`). The Analyze screen POSTs a fresh batch
+    with `status: "Pending"` (location may be blank while Pending);
+    `POST` without `status` still stores a Completed report in one step.
+    Completing requires a non-blank location. `Processing` was dropped
+    (never written; migration 0007 maps it to Pending). Monthly counts
+    only count `Completed`.
+  - **`PATCH /api/v1/reports/<id>/`** (JSON, `ReportUpdateSerializer`):
+    optional `collectedAt`, `location`, `researcher`, `weather` (null
+    clears), `slides: [{id, notes}]`, `status` (validated transition).
+    **`DELETE`** removes the report and, after commit, its image files.
+    Both: owner or staff only (403 otherwise); every response carries
+    `canEdit` for the caller, and `createdAt`.
+  - **List filter `owner=me`** (the caller's own reports — used for the
+    Pending list), alongside the existing filters.
+  - **Validation:** every uploaded image (create and detect) is opened with
+    Pillow and must be JPEG/PNG and ≤ `MAX_SLIDE_IMAGE_BYTES` (25 MB,
+    paper TC-US-01) → 400/413 with a readable `detail`; the stored extension
+    comes from the detected format. Boxes slightly outside the frame are
+    clipped to [0,1] (a box entirely outside is 400); duplicate species in
+    one slide's `detections` → 400; text fields capped at 255.
+  - **Detect** responses include `"mock": true|false`.
   - **Visibility:** shared corpus — every authenticated user can list/view
     every report (`GET` endpoints have no owner filter). `Report.owner`
     (FK → `accounts.User`, nullable) is captured for attribution and
@@ -266,9 +306,9 @@ between the thesis proposal paper and the frontend.
     matching frontend-side change). `common_name`/`season` are seeded as
     empty strings, still pending real data (same status as before, just
     DB-backed now instead of a `"TBD"` literal — see the Taxonomic Scope
-    row in `../docs/system-spec.md`). `status` choices include
-    `Processing`/`Needs review` for schema completeness even though
-    nothing writes them yet.
+    row in `../docs/system-spec.md`). `risk_level` gained `Not assessed`
+    (migration 0007 sets it on every species still holding the seeded
+    placeholder), shown instead of a made-up "Moderate".
   - **Test coverage**: `reports/tests.py` covers all views — authentication,
     list (empty/populated, filtering by `q`/`status`/`location`/`from`/`to`
     individually and combined, invalid `status`/date param errors), create
@@ -282,15 +322,10 @@ between the thesis proposal paper and the frontend.
     rescaled to the uploaded image, every class a catalog species), and weather (auth required, missing location,
     unconfigured → 503, location not found → 404, upstream failure → 502,
     condition-mapping cases for clear/light-clouds/heavy-clouds/rain/
-    high-wind). Run with `python manage.py test reports`.
-  - **What's still open**: no `PATCH`/`DELETE` (owner is captured for
-    this, unused so far). **As of 2026-09-21, `GET`/`POST
-    /api/v1/reports/` and `GET /api/v1/reports/<sample_id>/` are wired
-    into the frontend** — `app/PolLens/lib/store.ts`'s
-    `listReports`/`getReport`/`saveReport` now call these endpoints
-    (falling back to seed history when signed out or on failure) instead
-    of persisting to IndexedDB, per the root `CLAUDE.md`'s narrow
-    frontend-integration exception.
+    high-wind), plus (2026-09-24) box clipping, image type/size checks,
+    duplicate species, Pending create, `owner=me`, every PATCH transition
+    and permission, DELETE removing files, and the risk migration. Run
+    with `python manage.py test`.
 - **API style:** REST, DRF ViewSets/Serializers unless a specific endpoint
   needs something custom.
 - **Folder structure:** Django project scaffolded at `api/` with settings

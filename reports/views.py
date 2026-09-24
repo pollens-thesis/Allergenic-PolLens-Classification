@@ -7,6 +7,7 @@ from pathlib import Path
 import requests
 from PIL import Image as PILImage
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Q, Sum
 from django.db.models.functions import Substr
 from django.utils import timezone
@@ -17,11 +18,27 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .images import SlideImageError, check_slide_image
 from .models import STATUS_CHOICES, Detection, Report, Species
-from .serializers import ReportCreateSerializer, ReportSerializer, SpeciesSerializer
+from .serializers import (
+    ReportCreateSerializer,
+    ReportSerializer,
+    ReportUpdateSerializer,
+    SpeciesSerializer,
+)
 
 DATE_PARAM_VALIDATOR = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 VALID_STATUSES = dict(STATUS_CHOICES)
+
+
+def image_error_response(exc):
+    return Response(
+        {'detail': str(exc)},
+        status=(
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE if exc.too_large
+            else status.HTTP_400_BAD_REQUEST
+        ),
+    )
 
 
 def all_species_ids():
@@ -34,8 +51,10 @@ def all_species_ids():
 
 class ReportListCreateView(APIView):
     """
-    GET  /api/v1/reports/   — list every saved report (shared corpus).
-    POST /api/v1/reports/   — persist an already-analyzed batch as one report.
+    GET  /api/v1/reports/   — list every report (shared corpus). `owner=me`
+                              narrows to the caller's own (e.g. their Pending).
+    POST /api/v1/reports/   — persist an analyzed batch as one report, as
+                              Pending (to finalise later) or Completed.
     """
 
     permission_classes = [IsAuthenticated]
@@ -52,6 +71,9 @@ class ReportListCreateView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             reports = reports.filter(status=status_param)
+
+        if request.query_params.get('owner', '').strip() == 'me':
+            reports = reports.filter(owner=request.user)
 
         location_param = request.query_params.get('location', '').strip()
         if location_param and location_param.lower() != 'all':
@@ -104,8 +126,18 @@ class ReportListCreateView(APIView):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
+        # Every image is checked (real JPEG/PNG, within the size limit) before
+        # anything is written.
+        extensions = {}
+        for key, upload in request.FILES.items():
+            try:
+                extensions[key] = check_slide_image(upload)
+            except SlideImageError as exc:
+                return image_error_response(exc)
+
         serializer = ReportCreateSerializer(
-            data=data, context={'files': request.FILES, 'owner': request.user},
+            data=data,
+            context={'files': request.FILES, 'extensions': extensions, 'owner': request.user},
         )
         if not serializer.is_valid():
             return Response(
@@ -205,6 +237,7 @@ class DetectView(APIView):
 
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
+    throttle_scope = 'detect'
 
     def post(self, request):
         image = request.FILES.get('image')
@@ -213,6 +246,10 @@ class DetectView(APIView):
                 {'detail': 'An image file is required.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        try:
+            check_slide_image(image)
+        except SlideImageError as exc:
+            return image_error_response(exc)
 
         if settings.ROBOFLOW_MOCK:
             payload = _mock_roboflow_detect(image)
@@ -242,6 +279,8 @@ class DetectView(APIView):
         return Response({
             'image': {'width': image_size.get('width'), 'height': image_size.get('height')},
             'predictions': predictions,
+            # Lets the UI say plainly that these are sample detections.
+            'mock': bool(settings.ROBOFLOW_MOCK),
         })
 
 
@@ -430,18 +469,65 @@ class SpeciesListView(APIView):
 
 class ReportDetailView(APIView):
     """
-    GET /api/v1/reports/<sample_id>/ — a single report by its sample id.
+    GET    /api/v1/reports/<sample_id>/ — a single report (any researcher).
+    PATCH  /api/v1/reports/<sample_id>/ — edit details/notes, change status.
+    DELETE /api/v1/reports/<sample_id>/ — delete it and its slide images.
+
+    PATCH and DELETE are for the report's owner or staff only.
     """
 
     permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser]
+
+    def _get(self, sample_id):
+        return Report.objects.prefetch_related(
+            'slides__detections', 'slides__grains',
+        ).filter(sample_id=sample_id).first()
+
+    @staticmethod
+    def _not_found():
+        return Response({'detail': 'Report not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    @staticmethod
+    def _can_edit(request, report):
+        return request.user.is_staff or report.owner_id == request.user.id
 
     def get(self, request, sample_id):
-        try:
-            report = Report.objects.prefetch_related(
-                'slides__detections', 'slides__grains',
-            ).get(sample_id=sample_id)
-        except Report.DoesNotExist:
-            return Response(
-                {'detail': 'Report not found.'}, status=status.HTTP_404_NOT_FOUND,
-            )
+        report = self._get(sample_id)
+        if report is None:
+            return self._not_found()
         return Response(ReportSerializer(report, context={'request': request}).data)
+
+    def patch(self, request, sample_id):
+        report = self._get(sample_id)
+        if report is None:
+            return self._not_found()
+        if not self._can_edit(request, report):
+            return Response(
+                {'detail': 'Only the researcher who created this report can change it.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        serializer = ReportUpdateSerializer(report, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(
+                {'detail': 'The update is invalid.', 'errors': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer.save()
+        return Response(ReportSerializer(self._get(sample_id), context={'request': request}).data)
+
+    def delete(self, request, sample_id):
+        report = self._get(sample_id)
+        if report is None:
+            return self._not_found()
+        if not self._can_edit(request, report):
+            return Response(
+                {'detail': 'Only the researcher who created this report can delete it.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        images = [slide.image for slide in report.slides.all() if slide.image]
+        with transaction.atomic():
+            report.delete()
+            # Files go only once the rows are really gone.
+            transaction.on_commit(lambda: [image.storage.delete(image.name) for image in images])
+        return Response(status=status.HTTP_204_NO_CONTENT)

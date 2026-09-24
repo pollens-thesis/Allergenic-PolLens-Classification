@@ -7,11 +7,25 @@ from django.utils import timezone
 
 RISK_LEVEL_CHOICES = [
     ('High', 'High'), ('Moderate', 'Moderate'), ('Low', 'Low'),
+    # Honest default until the real allergenicity data is entered in admin —
+    # the catalog was seeded before any risk levels were known.
+    ('Not assessed', 'Not assessed'),
 ]  # matches Species['riskLevel'] in app/PolLens/lib/data.ts
 
+# The report lifecycle (matches ReportStatus in app/PolLens/lib/data.ts):
+#   Pending      — analysed and stored, not yet finalised ("Generate Report")
+#   Completed    — finalised; the only status counted in charts and the map
+#   Needs review — a completed report flagged for another look
 STATUS_CHOICES = [
-    ('Completed', 'Completed'), ('Processing', 'Processing'), ('Needs review', 'Needs review'),
-]  # matches ReportStatus; this app only ever writes 'Completed' — see api/CLAUDE.md
+    ('Pending', 'Pending'), ('Completed', 'Completed'), ('Needs review', 'Needs review'),
+]
+
+# Allowed status changes via PATCH /api/v1/reports/<id>/.
+STATUS_TRANSITIONS = {
+    'Pending': {'Completed'},
+    'Completed': {'Needs review'},
+    'Needs review': {'Completed'},
+}
 
 WEATHER_CONDITION_CHOICES = [
     ('Sunny', 'Sunny'), ('Partly cloudy', 'Partly cloudy'), ('Overcast', 'Overcast'),
@@ -53,11 +67,12 @@ def next_sample_id(year=None):
 
 class Report(models.Model):
     """
-    A saved collection session (one microscope batch). Maps to the
-    frontend's `Specimen` type (app/PolLens/lib/data.ts). Reports are a
-    shared corpus — every authenticated user can read every report;
-    `owner` is for attribution and future edit/delete permission checks
-    only, and is never exposed in the API response.
+    A collection session (one microscope batch). Maps to the frontend's
+    `Specimen` type (app/PolLens/lib/data.ts). Reports are a shared corpus —
+    every authenticated user can read every report (a deliberate decision,
+    see docs/system-spec.md); only the `owner` (or staff) may edit, change
+    the status of, or delete one. The owner itself is never exposed in the
+    API response — only whether the caller may edit (`canEdit`).
     """
 
     sample_id = models.CharField(max_length=20, unique=True, editable=False)
@@ -70,7 +85,7 @@ class Report(models.Model):
     # not a DateTimeField, so round-trip fidelity matches the frontend's own
     # string-comparison sort in app/PolLens/lib/data.ts.
     collected_at = models.CharField(max_length=16, validators=[COLLECTED_AT_VALIDATOR])
-    location = models.CharField(max_length=255)
+    location = models.CharField(max_length=255, blank=True)  # required to complete, not while Pending
     researcher = models.CharField(max_length=255)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Completed')
 
@@ -126,7 +141,7 @@ class Species(models.Model):
     common_name = models.CharField(max_length=100, blank=True, default='')
     code = models.CharField(max_length=4, unique=True)
     season = models.CharField(max_length=100, blank=True, default='')
-    risk_level = models.CharField(max_length=10, choices=RISK_LEVEL_CHOICES, default='Moderate')
+    risk_level = models.CharField(max_length=16, choices=RISK_LEVEL_CHOICES, default='Not assessed')
     color = models.CharField(max_length=7)  # CSS hex, e.g. "#2a78d6"
     sort_order = models.PositiveSmallIntegerField(unique=True)  # curated display order
 
@@ -147,6 +162,7 @@ class Detection(models.Model):
     avg_confidence = models.FloatField(validators=[MinValueValidator(0), MaxValueValidator(1)])
 
     class Meta:
+        ordering = ['-grain_count', '-avg_confidence']  # richest first, like sortByAbundance
         constraints = [
             models.UniqueConstraint(fields=['slide', 'species'], name='unique_species_per_slide'),
         ]

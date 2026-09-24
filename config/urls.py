@@ -19,12 +19,9 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import path
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
+from rest_framework_simplejwt.views import TokenRefreshView
 
-from accounts.views import GoogleLoginView, LogoutView, MeView
+from accounts.views import GoogleLoginView, LogoutView, MeView, MicrosoftLoginView
 from reports.views import (
     DetectView,
     ReportDetailView,
@@ -42,11 +39,9 @@ def healthz(request):
 urlpatterns = [
     path('healthz/', healthz, name='healthz'),
     path('admin/', admin.site.urls),
-    # Scaffolding placeholder — there is no username/password login; real
-    # login is GoogleLoginView below. See the Auth section of api/CLAUDE.md.
-    path('api/v1/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/v1/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/v1/auth/google/', GoogleLoginView.as_view(), name='google_login'),
+    path('api/v1/auth/microsoft/', MicrosoftLoginView.as_view(), name='microsoft_login'),
     path('api/v1/auth/logout/', LogoutView.as_view(), name='logout'),
     path('api/v1/auth/me/', MeView.as_view(), name='me'),
     path('api/v1/reports/', ReportListCreateView.as_view(), name='report_list_create'),

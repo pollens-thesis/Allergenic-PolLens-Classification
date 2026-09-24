@@ -2,6 +2,8 @@ from django.db import transaction
 from rest_framework import serializers
 
 from .models import (
+    STATUS_CHOICES,
+    STATUS_TRANSITIONS,
     WEATHER_CONDITION_CHOICES,
     Detection,
     Grain,
@@ -18,14 +20,33 @@ from .models import (
 # JSON-encoded strings inside form fields; images travel as one file part
 # per slide, keyed by the slide's index as a string (e.g. "0", "1"),
 # mirroring the frontend's `images: Record<string, Blob>` in lib/store.ts.
+# Image type/size is checked by the view (reports.images) before this runs.
 # ---------------------------------------------------------------------------
+
+# How far outside the frame a box may start before it's treated as garbage
+# rather than a grain cut off by the image edge.
+BOX_TOLERANCE = 0.5
 
 
 class BoundingBoxInputSerializer(serializers.Serializer):
-    x = serializers.FloatField(min_value=0, max_value=1)
-    y = serializers.FloatField(min_value=0, max_value=1)
-    width = serializers.FloatField(min_value=0, max_value=1)
-    height = serializers.FloatField(min_value=0, max_value=1)
+    """
+    Normalized top-left box. A detector legitimately reports grains that run
+    off the edge of the frame (x or y slightly below 0, or x + width past 1);
+    those are clipped to the image rather than rejecting the whole report.
+    """
+
+    x = serializers.FloatField(min_value=-BOX_TOLERANCE, max_value=1)
+    y = serializers.FloatField(min_value=-BOX_TOLERANCE, max_value=1)
+    width = serializers.FloatField(min_value=0, max_value=1 + BOX_TOLERANCE)
+    height = serializers.FloatField(min_value=0, max_value=1 + BOX_TOLERANCE)
+
+    def validate(self, box):
+        x0, y0 = max(0.0, box['x']), max(0.0, box['y'])
+        x1 = min(1.0, box['x'] + box['width'])
+        y1 = min(1.0, box['y'] + box['height'])
+        if x1 <= x0 or y1 <= y0:
+            raise serializers.ValidationError('The box lies outside the image.')
+        return {'x': x0, 'y': y0, 'width': x1 - x0, 'height': y1 - y0}
 
 
 class DetectionInputSerializer(serializers.Serializer):
@@ -52,29 +73,54 @@ class WeatherInputSerializer(serializers.Serializer):
 
 
 class SlideInputSerializer(serializers.Serializer):
-    fileName = serializers.CharField(source='file_name')
+    fileName = serializers.CharField(source='file_name', max_length=255)
     detections = DetectionInputSerializer(many=True)
     grains = GrainInputSerializer(many=True, required=False, default=list)
     notes = serializers.CharField(allow_blank=True, default='')
+
+    def validate_detections(self, detections):
+        seen = set()
+        for detection in detections:
+            species_id = detection['species'].id
+            if species_id in seen:
+                raise serializers.ValidationError(
+                    f'"{species_id}" appears more than once; send one summary row per species.'
+                )
+            seen.add(species_id)
+        return detections
+
+
+def require_location(status, location):
+    if status in ('Completed', 'Needs review') and not (location or '').strip():
+        raise serializers.ValidationError(
+            {'location': ['Location is required to complete a report.']}
+        )
 
 
 class ReportCreateSerializer(serializers.Serializer):
     """
     Validates and persists a POST /api/v1/reports/ body. Pure storage: does
-    not recompute detections from grains, and always writes
-    status='Completed' — server-side ML inference is a separate feature.
+    not recompute detections from grains. `status` is 'Pending' when the
+    Analyze screen stores a fresh batch (finalised later via PATCH), or
+    'Completed' to store an already-finalised report in one step (default).
     """
 
     collectedAt = serializers.RegexField(
         r'^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$', source='collected_at',
     )
-    location = serializers.CharField()
-    researcher = serializers.CharField(allow_blank=True)
+    location = serializers.CharField(allow_blank=True, max_length=255)
+    researcher = serializers.CharField(allow_blank=True, max_length=255)
     weather = WeatherInputSerializer(allow_null=True, required=False, default=None)
     slides = SlideInputSerializer(many=True, min_length=1)
+    status = serializers.ChoiceField(choices=['Pending', 'Completed'], default='Completed')
+
+    def validate(self, attrs):
+        require_location(attrs['status'], attrs['location'])
+        return attrs
 
     def create(self, validated_data):
         files = self.context['files']
+        extensions = self.context.get('extensions', {})
         owner = self.context['owner']
 
         with transaction.atomic():
@@ -85,7 +131,7 @@ class ReportCreateSerializer(serializers.Serializer):
                 collected_at=validated_data['collected_at'],
                 location=validated_data['location'].strip(),
                 researcher=validated_data['researcher'].strip() or 'Unknown',
-                status='Completed',
+                status=validated_data['status'],
                 weather_condition=weather['condition'] if weather else None,
                 weather_temperature_c=weather.get('temperature_c') if weather else None,
                 weather_humidity_pct=weather.get('humidity_pct') if weather else None,
@@ -97,6 +143,8 @@ class ReportCreateSerializer(serializers.Serializer):
                     raise serializers.ValidationError(
                         {'slides': f'Missing image file for slide index {index}.'}
                     )
+                # Stored under the format Pillow detected, not the client's name.
+                image.name = f'slide{extensions.get(str(index), "")}'
                 slide = Slide.objects.create(
                     report=report, number=index + 1,
                     file_name=slide_data['file_name'], image=image,
@@ -114,6 +162,73 @@ class ReportCreateSerializer(serializers.Serializer):
                     )
                     for i, grain in enumerate(slide_data['grains'])
                 )
+        return report
+
+
+class SlideNotesInputSerializer(serializers.Serializer):
+    id = serializers.CharField()  # "{sampleId}-S{n}", as returned by the API
+    notes = serializers.CharField(allow_blank=True, max_length=10000)
+
+
+class ReportUpdateSerializer(serializers.Serializer):
+    """
+    PATCH /api/v1/reports/<id>/ — edit a report's collection details and slide
+    notes, and move it through its lifecycle (models.STATUS_TRANSITIONS):
+    Pending → Completed ("Generate Report"), Completed ⇄ Needs review.
+    Every field is optional; only the ones sent change.
+    """
+
+    collectedAt = serializers.RegexField(
+        r'^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$', source='collected_at', required=False,
+    )
+    location = serializers.CharField(allow_blank=True, max_length=255, required=False)
+    researcher = serializers.CharField(allow_blank=True, max_length=255, required=False)
+    weather = WeatherInputSerializer(allow_null=True, required=False)
+    slides = SlideNotesInputSerializer(many=True, required=False)
+    status = serializers.ChoiceField(choices=STATUS_CHOICES, required=False)
+
+    def validate(self, attrs):
+        report = self.instance
+        new_status = attrs.get('status', report.status)
+        if new_status != report.status and new_status not in STATUS_TRANSITIONS[report.status]:
+            raise serializers.ValidationError(
+                {'status': [f'A {report.status} report can\'t be changed to {new_status}.']}
+            )
+        require_location(new_status, attrs.get('location', report.location))
+
+        numbers = {}
+        for slide in attrs.get('slides', []):
+            prefix = f'{report.sample_id}-S'
+            number = slide['id'][len(prefix):] if slide['id'].startswith(prefix) else ''
+            if not number.isdigit() or not report.slides.filter(number=int(number)).exists():
+                raise serializers.ValidationError({'slides': [f'Unknown slide "{slide["id"]}".']})
+            numbers[int(number)] = slide['notes'].strip()
+        attrs['slide_notes'] = numbers
+        return attrs
+
+    def update(self, report, data):
+        fields = []
+        for field in ('collected_at', 'status'):
+            if field in data:
+                setattr(report, field, data[field])
+                fields.append(field)
+        for field in ('location', 'researcher'):
+            if field in data:
+                setattr(report, field, data[field].strip())
+                fields.append(field)
+        if 'weather' in data:
+            weather = data['weather']
+            report.weather_condition = weather['condition'] if weather else None
+            report.weather_temperature_c = weather.get('temperature_c') if weather else None
+            report.weather_humidity_pct = weather.get('humidity_pct') if weather else None
+            report.weather_wind_kph = weather.get('wind_kph') if weather else None
+            fields += ['weather_condition', 'weather_temperature_c',
+                       'weather_humidity_pct', 'weather_wind_kph']
+        with transaction.atomic():
+            if fields:
+                report.save(update_fields=fields)
+            for number, notes in data['slide_notes'].items():
+                report.slides.filter(number=number).update(notes=notes)
         return report
 
 
@@ -181,6 +296,16 @@ class ReportSerializer(serializers.Serializer):
     weather = serializers.SerializerMethodField()
     researcher = serializers.CharField()
     status = serializers.CharField()
+    createdAt = serializers.DateTimeField(source='created_at')
+    # Whether the caller may edit/delete it — the owner itself isn't exposed.
+    canEdit = serializers.SerializerMethodField()
+
+    def get_canEdit(self, obj):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user is None or not user.is_authenticated:
+            return False
+        return user.is_staff or obj.owner_id == user.id
 
     def get_weather(self, obj):
         if obj.weather_condition is None:

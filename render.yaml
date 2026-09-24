@@ -34,6 +34,14 @@ services:
         sync: false
       - key: GOOGLE_OAUTH_CLIENT_ID
         sync: false
+      # Microsoft Entra app registration (Application/client ID); blank = Microsoft sign-in off.
+      - key: MICROSOFT_CLIENT_ID
+        sync: false
+      # Who may sign in. A domain also admits its subdomains; both empty admits nobody.
+      - key: SIGNIN_ALLOWED_DOMAINS
+        value: up.edu.ph,mseuf.edu.ph
+      - key: SIGNIN_ALLOWED_EMAILS
+        sync: false
       # Cloudflare R2 (S3-compatible) for slide images.
       - key: AWS_STORAGE_BUCKET_NAME
         sync: false

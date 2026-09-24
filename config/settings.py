@@ -14,6 +14,7 @@ from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 import os
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -162,12 +163,33 @@ AUTH_PASSWORD_VALIDATORS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'accounts.authentication.AllowlistedJWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    # Coarse abuse limits. /detect/ proxies a paid upstream model and the
+    # login endpoints are unauthenticated, so they get their own tighter scopes.
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': os.environ.get('THROTTLE_ANON', '120/hour'),
+        'user': os.environ.get('THROTTLE_USER', '5000/hour'),
+        'detect': os.environ.get('THROTTLE_DETECT', '600/hour'),
+        'login': os.environ.get('THROTTLE_LOGIN', '30/minute'),
+    },
 }
+
+# The test suite makes hundreds of requests in one process and the throttle
+# counters live in the (process-wide) cache, so real limits would make tests
+# fail depending on run order. Same classes, effectively unlimited rates.
+if sys.argv[1:2] == ['test']:
+    REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {
+        scope: '100000/minute' for scope in REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']
+    }
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
@@ -199,6 +221,18 @@ if RENDER_EXTERNAL_HOSTNAME:
 # Login is via Google ID token exchange — see accounts.views.GoogleLoginView.
 
 GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '')
+
+# Microsoft (Entra ID) sign-in — see accounts.views.MicrosoftLoginView. The
+# Application (client) ID of a multitenant app registration; any work/school
+# account can authenticate, and the allowlist below decides who gets in.
+MICROSOFT_CLIENT_ID = os.environ.get('MICROSOFT_CLIENT_ID', '')
+
+# Who may sign in (accounts.access). A domain admits its subdomains too.
+# Both empty admits nobody.
+SIGNIN_ALLOWED_DOMAINS = [
+    d.lower() for d in env_list('SIGNIN_ALLOWED_DOMAINS', 'up.edu.ph,mseuf.edu.ph')
+]
+SIGNIN_ALLOWED_EMAILS = [e.lower() for e in env_list('SIGNIN_ALLOWED_EMAILS')]
 
 
 # Roboflow
@@ -288,6 +322,10 @@ if AWS_STORAGE_BUCKET_NAME:
 # exceed Django's 2.5MB default multipart/memory limits.
 DATA_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
+
+# Per-image limit enforced by reports.images.check_slide_image (the settings
+# above only tune buffering). 25 MB is the paper's upload limit.
+MAX_SLIDE_IMAGE_BYTES = int(os.environ.get('MAX_SLIDE_IMAGE_MB', '25')) * 1024 * 1024
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
