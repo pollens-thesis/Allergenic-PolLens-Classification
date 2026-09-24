@@ -11,6 +11,7 @@ import {
   CloudSun,
   Loader2,
   Maximize2,
+  TriangleAlert,
   RefreshCw,
   Microscope,
 } from "lucide-react";
@@ -21,7 +22,8 @@ import {
   type WeatherCondition,
   type WeatherConditions,
 } from "@/lib/data";
-import { analyzeSpecimen, fetchWeather, type AnalysisResult } from "@/lib/analysis";
+import { analyzeSpecimen, DetectionError, fetchWeather, type AnalysisResult } from "@/lib/analysis";
+import { SessionExpiredError } from "@/lib/api";
 import { getDraft, saveDraft } from "@/lib/store";
 import { accountName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
@@ -29,7 +31,7 @@ import { Button } from "@/components/Button";
 import ImageLightbox from "@/components/ImageLightbox";
 import LocationSearch, { type Place } from "@/components/LocationSearch";
 
-type ItemStatus = "pending" | "analyzing" | "analyzed";
+type ItemStatus = "pending" | "analyzing" | "analyzed" | "failed";
 
 /** One uploaded slide. Detections are per image; the collection details
  *  (location, researcher, weather) are shared by the whole batch. */
@@ -39,6 +41,10 @@ type BatchItem = {
   imageUrl: string;
   status: ItemStatus;
   detections: SpecimenDetection[];
+  /** Kept once analyzed, so retrying a batch only re-runs the slides that failed. */
+  analysis?: AnalysisResult;
+  /** Why detection failed, for "failed" items. */
+  error?: string;
 };
 
 /** Local "now", split into the shapes <input type="date"|"time"> expect. */
@@ -213,6 +219,14 @@ function SpecimenListRow({
                 Analyzing…
               </>
             )}
+            {item.status === "failed" && (
+              <span className="flex min-w-0 items-center gap-1 text-danger">
+                <TriangleAlert size={11} strokeWidth={2} className="shrink-0" />
+                <span className="truncate" title={item.error}>
+                  {item.error ?? "Couldn't be analyzed"}
+                </span>
+              </span>
+            )}
             {item.status === "analyzed" && (
               <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                 {grains} {grains === 1 ? "grain" : "grains"} · {item.detections.length}{" "}
@@ -248,6 +262,7 @@ export default function AnalyzeWorkspace() {
   const [collectedTime, setCollectedTime] = useState("");
   const [weather, setWeather] = useState<WeatherConditions>(EMPTY_WEATHER);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [hasPendingDraft, setHasPendingDraft] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -268,6 +283,7 @@ export default function AnalyzeWorkspace() {
 
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const canAnalyze = items.length > 0 && !!collectedDate && !isAnalyzing;
+  const failedCount = items.filter((item) => item.status === "failed").length;
 
   // An analysis run in an earlier visit may still be sitting unsaved. Say so
   // rather than letting the next run quietly replace it.
@@ -327,6 +343,7 @@ export default function AnalyzeWorkspace() {
     }));
 
     setItems((current) => [...current, ...added]);
+    setAnalyzeError(null);
     setSelectedId((current) => current ?? added[0].id);
 
     // Defaults are applied here, in an event handler, rather than as initial
@@ -350,6 +367,7 @@ export default function AnalyzeWorkspace() {
     if (target) URL.revokeObjectURL(target.imageUrl);
     const next = items.filter((item) => item.id !== id);
     setItems(next);
+    setAnalyzeError(null);
     if (selectedId === id) setSelectedId(next[0]?.id ?? null);
   }
 
@@ -357,6 +375,7 @@ export default function AnalyzeWorkspace() {
     items.forEach((item) => URL.revokeObjectURL(item.imageUrl));
     setItems([]);
     setSelectedId(null);
+    setAnalyzeError(null);
     setWeather({ ...EMPTY_WEATHER });
     setWeatherSource("manual");
     setWeatherPlace(null);
@@ -377,19 +396,50 @@ export default function AnalyzeWorkspace() {
     if (!canAnalyze) return;
     setIsAnalyzing(true);
 
+    setAnalyzeError(null);
+
     // One slide at a time, so the list shows progress as each result lands.
+    // Slides already analyzed (on an earlier, partly failed run) keep their
+    // reading; only the rest go to the model.
     const analyzed: { item: BatchItem; analysis: AnalysisResult }[] = [];
+    const failures: string[] = [];
     let batchWeather = weather;
 
     for (const item of items) {
-      patchItem(item.id, { status: "analyzing" });
-      const analysis = await analyzeSpecimen(item.file);
-      patchItem(item.id, { status: "analyzed", detections: analysis.detections });
+      if (item.analysis) {
+        analyzed.push({ item, analysis: item.analysis });
+        continue;
+      }
+      patchItem(item.id, { status: "analyzing", error: undefined });
+      let analysis: AnalysisResult;
+      try {
+        analysis = await analyzeSpecimen(item.file);
+      } catch (error) {
+        if (error instanceof SessionExpiredError) return; // on its way to sign-in
+        const message =
+          error instanceof DetectionError ? error.message : "Something went wrong analyzing this slide.";
+        patchItem(item.id, { status: "failed", error: message });
+        failures.push(message);
+        continue;
+      }
+      patchItem(item.id, { status: "analyzed", detections: analysis.detections, analysis });
       analyzed.push({ item, analysis });
       if (analysis.weather) {
         batchWeather = analysis.weather;
         setWeather(analysis.weather);
       }
+    }
+
+    // Never hand a partial batch to the report page as if it were complete.
+    if (failures.length > 0) {
+      setIsAnalyzing(false);
+      const count = failures.length === 1 ? "1 slide" : `${failures.length} slides`;
+      setAnalyzeError(
+        `${count} couldn't be analyzed — ${failures[0]} Retry, or remove ${
+          failures.length === 1 ? "it" : "them"
+        } to continue with the rest.`,
+      );
+      return;
     }
 
     await saveDraft({
@@ -630,12 +680,22 @@ export default function AnalyzeWorkspace() {
             </div>
           </div>
 
+          {analyzeError && (
+            <p
+              role="alert"
+              className="mt-5 flex items-start gap-2 rounded-md border border-danger/30 bg-danger-bg px-3 py-2.5 text-[12.5px] text-danger"
+            >
+              <TriangleAlert size={14} strokeWidth={2} className="mt-px shrink-0" />
+              {analyzeError}
+            </p>
+          )}
+
           <Button
             type="button"
             intent="accent"
             disabled={!canAnalyze}
             onClick={handleAnalyze}
-            className="mt-5 w-full disabled:cursor-not-allowed"
+            className={`${analyzeError ? "mt-3" : "mt-5"} w-full disabled:cursor-not-allowed`}
           >
             {isAnalyzing ? (
               <>
@@ -645,7 +705,13 @@ export default function AnalyzeWorkspace() {
             ) : (
               <>
                 <Microscope size={16} strokeWidth={1.75} />
-                {items.length > 1 ? `Analyze ${items.length} Specimens` : "Analyze Specimen"}
+                {failedCount > 0
+                  ? failedCount === 1
+                    ? "Retry Failed Slide"
+                    : `Retry ${failedCount} Failed Slides`
+                  : items.length > 1
+                    ? `Analyze ${items.length} Specimens`
+                    : "Analyze Specimen"}
               </>
             )}
           </Button>

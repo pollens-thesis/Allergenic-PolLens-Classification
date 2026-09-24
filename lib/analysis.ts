@@ -9,16 +9,15 @@
 //
 // Until the Roboflow model is deployed the backend answers /detect/ from a
 // canned, Roboflow-shaped response (ROBOFLOW_MOCK), so this file already runs
-// the real mapping. Signed out, or if the request fails, the local
-// deterministic mock below stands in — it produces the same raw per-grain
-// predictions, so both paths share `aggregateGrainPredictions`.
+// the real mapping. A failed detection is reported as a `DetectionError`, never
+// replaced with a made-up reading — a report must only ever hold what the
+// model actually returned.
 // ---------------------------------------------------------------------------
 
 import {
   aggregateGrainPredictions,
   speciesCatalog,
   toDetectedGrains,
-  type BoundingBox,
   type CollectedAt,
   type DetectedGrain,
   type GrainPrediction,
@@ -52,109 +51,6 @@ export type NewReportInput = {
   weather: WeatherConditions | null;
   slides: NewSlideInput[];
 };
-
-/** How long the mock pretends inference takes. */
-const MOCK_INFERENCE_MS = 1400;
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// --- Deterministic mock ----------------------------------------------------
-// A real model returns the same reading for the same image. Seeding the mock
-// from the file makes re-analysing one image reproducible, while different
-// images still give different results.
-
-function seedFromFile(file: File): number {
-  const key = `${file.name}:${file.size}:${file.lastModified}`;
-  let hash = 2166136261;
-  for (let i = 0; i < key.length; i++) {
-    hash ^= key.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
-/** Small deterministic PRNG (mulberry32), returning floats in [0, 1). */
-function makeRandom(seed: number): () => number {
-  let state = seed;
-  return () => {
-    state = (state + 0x6d2b79f5) >>> 0;
-    let t = state;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/** Fraction of `a` that lies inside `b`, used to keep mock grains from stacking. */
-function overlapRatio(a: BoundingBox, b: BoundingBox): number {
-  const overlapWidth = Math.max(
-    0,
-    Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x),
-  );
-  const overlapHeight = Math.max(
-    0,
-    Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y),
-  );
-  return (overlapWidth * overlapHeight) / (a.width * a.height);
-}
-
-/**
- * A plausible grain box: roughly square, a few percent of the frame, and
- * nudged away from boxes already placed. Real detections do touch, so a light
- * overlap is allowed — this only stops the mock piling every grain in one spot.
- */
-function mockBox(random: () => number, placed: BoundingBox[]): BoundingBox {
-  for (let attempt = 0; attempt < 12; attempt++) {
-    const size = 0.05 + random() * 0.06;
-    // Slightly oval, the way a grain sits at an angle under the lens.
-    const height = size * (0.85 + random() * 0.3);
-    const box = {
-      x: 0.02 + random() * (0.96 - size),
-      y: 0.02 + random() * (0.96 - height),
-      width: size,
-      height,
-    };
-    if (placed.every((other) => overlapRatio(box, other) < 0.25)) return box;
-  }
-  // Crowded slide — take the last position rather than loop forever.
-  const size = 0.05 + random() * 0.06;
-  return {
-    x: 0.02 + random() * (0.96 - size),
-    y: 0.02 + random() * (0.96 - size),
-    width: size,
-    height: size,
-  };
-}
-
-function mockGrainPredictions(random: () => number): GrainPrediction[] {
-  const pool: SpeciesId[] = speciesCatalog.map((s) => s.id);
-
-  // Shuffle the catalog, then keep the first 2–4 species as what's on the slide.
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  const speciesOnSlide = pool.slice(0, 2 + Math.floor(random() * 3));
-
-  const predictions: GrainPrediction[] = [];
-  const placed: BoundingBox[] = [];
-  speciesOnSlide.forEach((speciesId, index) => {
-    // The first species is the dominant one; later ones are progressively rarer.
-    const grains = Math.max(1, Math.round((1 + random() * 19) / (index + 1)));
-    // Per-species baseline score, with a little spread grain to grain.
-    const base = 0.62 + random() * 0.33;
-    for (let g = 0; g < grains; g++) {
-      const confidence = Math.min(0.99, Math.max(0.4, base + (random() - 0.5) * 0.12));
-      const box = mockBox(random, placed);
-      placed.push(box);
-      predictions.push({ speciesId, confidence, box });
-    }
-  });
-
-  return predictions;
-}
 
 // --- Roboflow mapping ------------------------------------------------------
 // The backend passes Roboflow's own response through, trimmed to these fields.
@@ -210,34 +106,50 @@ function fromRoboflow({ image, predictions }: DetectResponse): GrainPrediction[]
   return grains;
 }
 
-async function detectGrains(file: File): Promise<GrainPrediction[] | null> {
-  const body = new FormData();
-  body.append("image", file);
-  try {
-    const res = await apiFetch("/api/v1/reports/detect/", { method: "POST", body });
-    if (!res.ok) return null;
-    return fromRoboflow((await res.json()) as DetectResponse);
-  } catch (error) {
-    // A lost session is on its way to sign-in; don't dress it up as a reading.
-    if (error instanceof SessionExpiredError) throw error;
-    return null;
+/** Detection didn't produce a reading; `message` is written for the researcher. */
+export class DetectionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DetectionError";
   }
+}
+
+async function detectionFailure(res: Response): Promise<DetectionError> {
+  const body = (await res.json().catch(() => null)) as { detail?: unknown } | null;
+  const detail = typeof body?.detail === "string" ? body.detail : "";
+  if (res.status === 503) {
+    return new DetectionError("Detection isn't set up on the server yet (Roboflow settings are missing).");
+  }
+  if (res.status === 502 || res.status === 504) {
+    return new DetectionError("The detection model didn't respond. Try again in a moment.");
+  }
+  if (res.status === 413) return new DetectionError("This image is too large to analyze.");
+  if (res.status === 400) return new DetectionError(detail || "This image couldn't be read.");
+  return new DetectionError(detail || `Detection failed (HTTP ${res.status}).`);
 }
 
 // --- Public API ------------------------------------------------------------
 
 /**
- * Identify and count the pollen grains on a specimen image — via the backend's
- * Roboflow proxy when signed in, the local mock otherwise or if that fails.
+ * Identify and count the pollen grains on a specimen image via the backend's
+ * Roboflow proxy. Throws `DetectionError` when there is no reading to show
+ * (server unreachable, model down, unreadable image), or `SessionExpiredError`
+ * when the session is gone (lib/api.ts is already redirecting to sign-in).
  */
 export async function analyzeSpecimen(file: File): Promise<AnalysisResult> {
-  const signedIn = hasSession();
-  let predictions = signedIn ? await detectGrains(file) : null;
-  if (!predictions) {
-    if (signedIn) console.warn("Detection request failed; using the local mock reading.");
-    await delay(MOCK_INFERENCE_MS);
-    predictions = mockGrainPredictions(makeRandom(seedFromFile(file)));
+  const body = new FormData();
+  body.append("image", file);
+
+  let res: Response;
+  try {
+    res = await apiFetch("/api/v1/reports/detect/", { method: "POST", body });
+  } catch (error) {
+    if (error instanceof SessionExpiredError) throw error;
+    throw new DetectionError("Couldn't reach the analysis server. Check your connection and try again.");
   }
+  if (!res.ok) throw await detectionFailure(res);
+
+  const predictions = fromRoboflow((await res.json()) as DetectResponse);
   return {
     detections: aggregateGrainPredictions(predictions),
     grains: toDetectedGrains(predictions),
