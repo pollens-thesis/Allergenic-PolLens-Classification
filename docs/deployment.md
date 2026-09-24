@@ -60,6 +60,26 @@ VERCEL_URL=               (step 3, e.g. https://pollens.vercel.app)
    This lets the browser download slide images to build report PDFs. Plain
    `<img>` display doesn't need it.
 
+## 1b. Microsoft Entra: the "Continue with Microsoft" app (optional)
+
+Skip this step if you only want Google sign-in. The Microsoft button stays
+hidden while no client ID is set.
+
+1. Go to <https://portal.azure.com> → **Microsoft Entra ID** → **App registrations**
+   → **New registration**.
+   - Name: `PolLens`.
+   - Supported account types: **Accounts in any organizational directory
+     (Any Microsoft Entra ID tenant — Multitenant)**.
+   - Redirect URI: platform **Single-page application (SPA)**, URI
+     `http://localhost:3000/auth/microsoft`.
+2. Register, then copy the **Application (client) ID** into your note as
+   `MICROSOFT_CLIENT_ID`. No client secret is needed.
+3. In step 4 you'll add the Vercel redirect URI the same way.
+
+A school's Microsoft 365 may ask an administrator to approve a new app the
+first time someone from that school signs in ("Need admin approval"). If UP or
+MSEUF IT blocks it, Google sign-in still works.
+
 ## 2. Render: the API
 
 1. Sign in at <https://render.com> with GitHub, as the account that owns
@@ -74,6 +94,8 @@ VERCEL_URL=               (step 3, e.g. https://pollens.vercel.app)
    | `DATABASE_NAME` / `DATABASE_USER` / `DATABASE_PASSWORD` / `DATABASE_HOST` | From the **Neon dashboard** → your project → **Connect**: database, role, password and host. Use the host **without** `-pooler`. Your local `api/.env` points at a Postgres on your own machine, not Neon, so don't copy those. |
    | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` for now (step 4 replaces it) |
    | `GOOGLE_OAUTH_CLIENT_ID` | Same as local `api/.env` |
+   | `MICROSOFT_CLIENT_ID` | From step 1b (leave empty to disable Microsoft sign-in) |
+   | `SIGNIN_ALLOWED_EMAILS` | Individual addresses allowed in besides the domains, comma-separated (e.g. your Gmail, the adviser) |
    | `AWS_STORAGE_BUCKET_NAME` | `pollens-media` |
    | `AWS_S3_ENDPOINT_URL` | `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com` |
    | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | From step 1.4 |
@@ -101,6 +123,7 @@ Starter plan ($7/mo) stays awake.
 3. **Environment Variables**:
    - `NEXT_PUBLIC_API_BASE_URL` = `RENDER_URL` (no trailing slash)
    - `NEXT_PUBLIC_GOOGLE_CLIENT_ID` = same Google client ID as in step 2
+   - `NEXT_PUBLIC_MICROSOFT_CLIENT_ID` = the Microsoft client ID from step 1b (optional)
 4. **Deploy**. Copy the production domain into `VERCEL_URL`, e.g.
    `https://pollens.vercel.app`.
 
@@ -117,6 +140,14 @@ later, use **Deployments** → **⋯** → **Redeploy**.
    → Save. It can take a few minutes to take effect.
 3. **Cloudflare R2** → `pollens-media` → **Settings** → **CORS Policy** → add
    `VERCEL_URL` to `AllowedOrigins`.
+4. **Microsoft Entra** (if you did step 1b) → your app → **Authentication** →
+   Single-page application → add `VERCEL_URL/auth/microsoft` → Save.
+
+**Who can sign in:** `SIGNIN_ALLOWED_DOMAINS` defaults to
+`up.edu.ph,mseuf.edu.ph`; a domain also admits its subdomains, e.g.
+`student.mseuf.edu.ph`. Anyone else needs to be listed in
+`SIGNIN_ALLOWED_EMAILS`. Changes on Render take effect on the researcher's next
+request.
 
 ## 5. Smoke test
 
@@ -142,6 +173,9 @@ Open `VERCEL_URL` and check each step:
 | Browser console: *blocked by CORS policy* on `/api/v1/...` | `CORS_ALLOWED_ORIGINS` on Render doesn't exactly match `VERCEL_URL`: scheme, no trailing slash. |
 | Google button: *origin is not allowed for the client ID* | Step 4.2 isn't saved yet, or it's still propagating. |
 | Sign-in fails with *Invalid Google token* | Vercel and Render use different Google client IDs. |
+| *This account isn't authorised to use PolLens* | The email isn't on the allowlist: add its domain to `SIGNIN_ALLOWED_DOMAINS` or the address to `SIGNIN_ALLOWED_EMAILS` on Render. |
+| Microsoft popup: *redirect URI mismatch* | Add `VERCEL_URL/auth/microsoft` as an SPA redirect URI (step 4.4). |
+| Microsoft: *Need admin approval* | The school tenant requires admin consent for new apps; ask its IT, or use Google. |
 | API returns **400 Bad Request** | Host not allowed. Render's own hostname is added automatically; a custom domain needs adding to `DJANGO_ALLOWED_HOSTS`. |
 | Report images broken / 403 | Check the `AWS_*` values on Render: the endpoint must use the account ID, and the token must cover the bucket. |
 | PDF has no images | R2 CORS policy is missing `VERCEL_URL`. |

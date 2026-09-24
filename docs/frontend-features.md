@@ -1,5 +1,12 @@
 # PolLens Frontend — Feature Inventory
 
+> **Historical snapshot (phase 2 of the reconciliation, before the backend
+> existed).** Much of it is out of date: mocked sign-in, IndexedDB storage, the
+> 8-species catalog, the missing `/dataset` page and the in-browser mock model
+> have all been replaced. Use `system-spec.md` and `../api/CLAUDE.md` for the
+> current state; keep this file only as the record the reconciliation was
+> built from.
+
 Extracted directly from `app/PolLens/` source (Next.js App Router, React 19,
 Tailwind, Recharts, jsPDF). No backend exists yet — this is a frontend-only
 build with a mock inference service, browser storage in place of a database,
