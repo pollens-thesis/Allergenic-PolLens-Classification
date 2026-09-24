@@ -24,7 +24,7 @@ R2_ACCOUNT_ID=            (step 1)
 R2_ACCESS_KEY_ID=         (step 1)
 R2_SECRET_ACCESS_KEY=     (step 1)
 RENDER_URL=               (step 2, e.g. https://pollens-api.onrender.com)
-VERCEL_URL=               (step 3, e.g. https://pollens.vercel.app)
+VERCEL_URL=               (step 3, e.g. https://your-project.vercel.app — copy it from Vercel, do not guess)
 ```
 
 ---
@@ -149,7 +149,7 @@ Starter plan ($7/mo) stays awake.
    - `NEXT_PUBLIC_GOOGLE_CLIENT_ID` = same Google client ID as in step 2
    - `NEXT_PUBLIC_MICROSOFT_CLIENT_ID` = the Microsoft client ID from step 1b (optional)
 4. **Deploy**. Copy the production domain into `VERCEL_URL`, e.g.
-   `https://pollens.vercel.app`.
+   `https://your-project.vercel.app`. Vercel may add a suffix (yours is `pollens-theta`) if the short name is taken — a `pollens.vercel.app` you did not create belongs to someone else, so always copy the address Vercel shows you.
 
 These variables are built into the page at build time. If you change them
 later, use **Deployments** → **⋯** → **Redeploy**.
