@@ -51,6 +51,7 @@ import {
 import { downloadLocationReportPdf } from "@/lib/pdf";
 import { useMapZoom } from "./useMapZoom";
 import { Button } from "./Button";
+import LocationSearch, { type Place } from "./LocationSearch";
 
 const fieldClass =
   "focus-ring rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text";
@@ -324,6 +325,30 @@ export default function PollenMap() {
     leaveScope();
   }
 
+  // A town picked in the search, waiting for its province's boundaries to load.
+  const [pendingTown, setPendingTown] = useState<number | null>(null);
+  if (pendingTown !== null && loadedTowns) {
+    // Adjusting state while rendering (not in an effect): the towns just arrived.
+    const feature = loadedTowns.features.find((f) => f.properties.psgc === pendingTown);
+    setPendingTown(null);
+    if (feature) {
+      const key = featureKey(feature);
+      if (places.has(key)) setSelected(key);
+      const bounds = geometry.bounds.get(key);
+      if (bounds) fitTo(bounds);
+    }
+  }
+
+  /** A place picked in the search: open its province, and frame the town. */
+  function goToPlace(place: Place) {
+    const province = provinces?.features.find((f) => f.properties.psgc === place.provincePsgc);
+    if (!province) return;
+    const alreadyOpen = scope.level === "province" && scope.psgc === place.provincePsgc;
+    if (!alreadyOpen) openProvince(province);
+    else setFilters((f) => ({ ...f, query: "" }));
+    setPendingTown(place.kind === "town" ? (place.townPsgc ?? null) : null);
+  }
+
   function backToCountry() {
     setScope({ level: "country" });
     leaveScope();
@@ -473,13 +498,14 @@ export default function PollenMap() {
             <Search
               size={14}
               strokeWidth={1.75}
-              className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-faint"
+              className="pointer-events-none absolute top-1/2 left-2.5 z-10 -translate-y-1/2 text-text-faint"
             />
-            <input
-              type="text"
+            <LocationSearch
               value={filters.query}
-              onChange={(e) => applyFilters({ query: e.target.value })}
-              placeholder={`Search ${unitPlural}`}
+              onChange={(text) => applyFilters({ query: text })}
+              onSelectPlace={goToPlace}
+              warnUnrecognised={false}
+              placeholder={`Search ${unitPlural}, or any town or province`}
               className="focus-ring w-full rounded-md border border-border bg-surface py-1.5 pr-8 pl-8 text-[13px] text-text placeholder:text-text-muted"
             />
             {filters.query && (
@@ -487,7 +513,7 @@ export default function PollenMap() {
                 type="button"
                 onClick={() => applyFilters({ query: "" })}
                 aria-label="Clear search"
-                className="focus-ring absolute top-1/2 right-1.5 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-text-muted transition-[background-color,color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-surface-sunken hover:text-text active:scale-[0.9]"
+                className="focus-ring absolute top-1/2 right-1.5 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-text-muted transition-[background-color,color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-surface-sunken hover:text-text active:scale-[0.9]"
               >
                 <X size={13} strokeWidth={1.75} />
               </button>

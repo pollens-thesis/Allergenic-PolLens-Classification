@@ -14,7 +14,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { isFinalised, type Specimen } from "@/lib/data";
-import { accountName, getInitials, institutionFromEmail } from "@/lib/account";
+import { displayName, getInitials, institutionFromEmail } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import { signOut } from "@/lib/session";
 import { listReports } from "@/lib/store";
@@ -72,7 +72,7 @@ export default function SettingsWorkspace() {
   }, []);
 
   const finalised = reports?.filter(isFinalised) ?? [];
-  const name = accountName(settings.email);
+  const name = displayName(settings);
   const institution = institutionFromEmail(settings.email);
 
   return (
@@ -81,7 +81,7 @@ export default function SettingsWorkspace() {
       <Section
         icon={UserRound}
         title="Profile"
-        description="Read from the account you signed in with. Reports you save are filed under this name and it is printed on their PDFs."
+        description="Read from the account you signed in with."
       >
         <div className="flex items-center gap-3.5 rounded-md border border-border bg-surface px-3.5 py-3">
           <span
@@ -100,18 +100,15 @@ export default function SettingsWorkspace() {
         </div>
 
         <p className="mt-3 text-[12.5px] leading-relaxed text-text-muted">
+          Your name comes from your Google or Microsoft account and is the default researcher on
+          new reports (you can change it per report).{" "}
           {institution ? (
             <>
-              <span className="font-medium text-text">{institution}</span>{" "}
-              comes from the domain of that address, so the name on a report always matches the account that saved it. To
-              file under a different institution, sign in with that institution&rsquo;s mailbox.
+              Institution: <span className="font-medium text-text">{institution}</span>, from the
+              domain of your address.
             </>
           ) : (
-            <>
-              This address is not on an institution domain, so the console uses the mailbox&rsquo;s
-              own name. Signing in with an institution address — <code>name@mseuf.edu.ph</code> —
-              files reports under that institution instead.
-            </>
+            <>This address isn&rsquo;t on an institution domain, so no institution is shown.</>
           )}
         </p>
       </Section>

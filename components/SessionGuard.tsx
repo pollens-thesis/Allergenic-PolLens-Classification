@@ -3,7 +3,8 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { useSettings } from "@/lib/settings";
+import { updateSettings, useSettings } from "@/lib/settings";
+import { apiFetch } from "@/lib/api";
 import { isSignedIn } from "@/lib/session";
 
 const noopSubscribe = () => () => {};
@@ -26,6 +27,18 @@ export default function SessionGuard({ children }: { children: React.ReactNode }
   const router = useRouter();
   const pathname = usePathname();
   const allowed = hydrated && isSignedIn(settings);
+
+  // Sessions started before names were stored: fetch it once from /me/.
+  const needsName = allowed && settings.name === undefined;
+  useEffect(() => {
+    if (!needsName) return;
+    apiFetch("/api/v1/auth/me/")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((me: { fullName?: string } | null) => {
+        if (me) updateSettings({ name: me.fullName ?? "" });
+      })
+      .catch(() => {});
+  }, [needsName]);
 
   useEffect(() => {
     if (!hydrated || allowed) return;

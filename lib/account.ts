@@ -10,9 +10,10 @@
 // disagree with the account that saved the report; a name derived from the
 // credential cannot.
 //
-// TODO(backend): when Google sign-in is real, the address comes from the ID
-// token and `hd` (hosted domain) gives the institution directly. Everything
-// below still applies to accounts on a plain domain.
+// Since 2026-09-25 the person's name comes from the Google/Microsoft ID token
+// (stored as `name` in lib/settings.ts, also served by /api/v1/auth/me/), and
+// `displayName` prefers it. The email-derived name below is the fallback for
+// an account whose provider shares no name.
 // ---------------------------------------------------------------------------
 
 /** Mail hosts that say nothing about where someone works. */
@@ -107,6 +108,11 @@ export function personFromEmail(email: string): string {
 export function accountName(email: string, fallback = "Researcher"): string {
   if (!email.includes("@")) return fallback;
   return institutionFromEmail(email) || personFromEmail(email) || fallback;
+}
+
+/** The person's own name when the account provides one, else the email-derived name. */
+export function displayName(account: { email: string; name?: string }, fallback = "Researcher"): string {
+  return account.name?.trim() || accountName(account.email, fallback);
 }
 
 /** "MSEUF" → "MS"; falls back to the first two characters. */

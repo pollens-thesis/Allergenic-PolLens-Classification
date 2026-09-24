@@ -12,13 +12,17 @@ export type Place = {
   kind: "town" | "province";
   lat: number;
   lon: number;
+  /** PSGC of the province boundary (public/geo/provinces.json) it sits in. */
+  provincePsgc: number;
+  /** PSGC of the town boundary, for towns. */
+  townPsgc?: number;
 };
 
 const MAX_SUGGESTIONS = 8;
 
 // Loaded once per session, on first use — 1,700 places, ~200 KB.
 let placesRequest: Promise<Place[]> | null = null;
-function loadPlaces(): Promise<Place[]> {
+export function loadPlaces(): Promise<Place[]> {
   placesRequest ??= fetch("/geo/places.json")
     .then((res) => (res.ok ? (res.json() as Promise<Place[]>) : []))
     .catch(() => {
@@ -66,6 +70,7 @@ export default function LocationSearch({
   onSelectPlace,
   placeholder,
   className,
+  warnUnrecognised = true,
 }: {
   value: string;
   onChange: (text: string) => void;
@@ -73,6 +78,8 @@ export default function LocationSearch({
   onSelectPlace?: (place: Place) => void;
   placeholder?: string;
   className?: string;
+  /** Warn when the text isn't a known place (off where partial text is a search). */
+  warnUnrecognised?: boolean;
 }) {
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -203,7 +210,7 @@ export default function LocationSearch({
         </ul>
       )}
 
-      {!focused && !recognised && (
+      {warnUnrecognised && !focused && !recognised && (
         <p className="mt-1 flex items-start gap-1 text-[12px] text-processing">
           <TriangleAlert size={12} strokeWidth={2} className="mt-0.5 shrink-0" />
           Not a recognised town or province — it won&apos;t appear on the map or fill the weather.

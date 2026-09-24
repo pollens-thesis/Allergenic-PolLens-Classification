@@ -25,7 +25,7 @@ export class GoogleSignInError extends Error {}
  */
 export async function exchangeGoogleCredential(
   credential: string,
-): Promise<{ email: string; tokens: GoogleTokenPair }> {
+): Promise<{ email: string; name: string; tokens: GoogleTokenPair }> {
   const res = await fetch(`${API_BASE_URL}/api/v1/auth/google/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -46,7 +46,8 @@ export async function exchangeGoogleCredential(
     throw new GoogleSignInError("Google did not return an email address.");
   }
 
-  return { email, tokens };
+  const name = typeof claims.name === "string" ? claims.name.trim() : "";
+  return { email, name, tokens };
 }
 
 /**
@@ -56,7 +57,7 @@ export async function exchangeGoogleCredential(
  */
 export async function exchangeMicrosoftIdToken(
   idToken: string,
-): Promise<{ email: string; tokens: GoogleTokenPair }> {
+): Promise<{ email: string; name: string; tokens: GoogleTokenPair }> {
   const res = await fetch(`${API_BASE_URL}/api/v1/auth/microsoft/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -74,5 +75,6 @@ export async function exchangeMicrosoftIdToken(
   const claims = decodeJwtPayload(idToken);
   const email = typeof claims.preferred_username === "string" ? claims.preferred_username.toLowerCase() : "";
   if (!email) throw new GoogleSignInError("Microsoft did not return a sign-in name.");
-  return { email, tokens };
+  const name = typeof claims.name === "string" ? claims.name.trim() : "";
+  return { email, name, tokens };
 }

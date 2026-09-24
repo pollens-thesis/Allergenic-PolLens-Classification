@@ -14,7 +14,7 @@ import {
   Settings,
   X,
 } from "lucide-react";
-import { accountName, getInitials } from "@/lib/account";
+import { displayName, getInitials } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 
 const NAV_ITEMS = [
@@ -61,9 +61,8 @@ export default function Sidebar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const prefersReducedMotion = useReducedMotion();
 
-  // The name is the institution read off the signed-in address, so the second
-  // line says where the card goes rather than repeating it.
-  const name = accountName(settings.email);
+  // The person's name from their account; the second line says where the card goes.
+  const name = displayName(settings);
 
   // While the drawer is over the page, the page behind it should not scroll.
   useEffect(() => {

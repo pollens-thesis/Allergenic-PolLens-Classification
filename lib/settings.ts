@@ -30,6 +30,8 @@ const CHANGE_EVENT = "pollens:settings-changed";
 export type Settings = {
   /** The address this browser is signed in with. Empty means signed out. */
   email: string;
+  /** The person's name from the Google/Microsoft account ("" or absent if none). */
+  name?: string;
   /** JWT pair from the backend's Google token exchange (see lib/auth.ts). */
   accessToken?: string;
   refreshToken?: string;

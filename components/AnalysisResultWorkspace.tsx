@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Check,
   CloudOff,
+  CloudSun,
   FileCheck2,
   FlaskConical,
   Loader2,
@@ -31,11 +32,12 @@ import {
 import { findSpecies, useSpeciesCatalog } from "@/lib/species-catalog";
 import { deleteReport, getReport, updateReport, type ReportPatch } from "@/lib/store";
 import { SessionExpiredError } from "@/lib/api";
-import { accountName } from "@/lib/account";
+import { displayName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import SpecimenImageViewer from "@/components/SpecimenImageViewer";
 import SpecimenInspector from "@/components/SpecimenInspector";
-import LocationSearch from "@/components/LocationSearch";
+import LocationSearch, { findPlace, loadPlaces, type Place } from "@/components/LocationSearch";
+import { fetchWeather } from "@/lib/analysis";
 import RiskBadge from "@/components/RiskBadge";
 import { overlayColor, overlayColors, type OverlayColors } from "@/lib/slide-colors";
 import { Button } from "@/components/Button";
@@ -209,6 +211,9 @@ export default function AnalysisResultWorkspace({
   const [collectedDate, setCollectedDate] = useState("");
   const [collectedTime, setCollectedTime] = useState("");
   const [weather, setWeather] = useState<WeatherConditions | null>(null);
+  // The location as a known place (with coordinates), so weather can be looked up.
+  const [place, setPlace] = useState<Place | null>(null);
+  const [fillingWeather, setFillingWeather] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -219,7 +224,7 @@ export default function AnalysisResultWorkspace({
   const router = useRouter();
   const settings = useSettings();
   const speciesCatalog = useSpeciesCatalog();
-  const researcherName = accountName(settings.email);
+  const researcherName = displayName(settings);
 
   useEffect(() => {
     if (!sampleId) return;
@@ -242,6 +247,11 @@ export default function AnalysisResultWorkspace({
         setCollectedDate(date);
         setCollectedTime(time);
         setWeather(found.weather);
+        if (found.location) {
+          loadPlaces().then((places) => {
+            if (!cancelled) setPlace(findPlace(places, found.location));
+          });
+        }
       })
       .catch((error: unknown) => {
         if (cancelled || error instanceof SessionExpiredError) return;
@@ -302,6 +312,20 @@ export default function AnalysisResultWorkspace({
     const next = { ...(weather ?? EMPTY_WEATHER), [key]: value };
     setWeather(next);
     edit({ weather: next });
+  }
+
+  /** Conditions at the place on the collection date/time, from Open-Meteo. */
+  async function fillWeatherFromOpenMeteo() {
+    if (!place) return;
+    setFillingWeather(true);
+    const found = await fetchWeather({ lat: place.lat, lon: place.lon, date: collectedDate, time: collectedTime });
+    setFillingWeather(false);
+    if (!found) {
+      toast.error("No weather available for this place and time.");
+      return;
+    }
+    setWeather(found);
+    edit({ weather: found });
   }
 
   async function handleGenerate() {
@@ -644,7 +668,9 @@ export default function AnalysisResultWorkspace({
               onChange={(text) => {
                 setLocation(text);
                 edit({ location: text });
+                if (place && text !== place.label) setPlace(null);
               }}
+              onSelectPlace={setPlace}
               placeholder="Search town or province"
               className={fieldClass}
             />
@@ -695,9 +721,26 @@ export default function AnalysisResultWorkspace({
         )}
 
         <div className="mt-4">
-          <h4 className={sectionHeadingClass} style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-            Conditions at Collection
-          </h4>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h4 className={`${sectionHeadingClass} mb-0`} style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+              Conditions at Collection
+            </h4>
+            {place && collectedDate && (
+              <button
+                type="button"
+                onClick={() => void fillWeatherFromOpenMeteo()}
+                disabled={fillingWeather}
+                className="focus-ring inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[12.5px] text-accent hover:bg-accent-muted disabled:opacity-50"
+              >
+                {fillingWeather ? (
+                  <Loader2 size={12} strokeWidth={2} className="animate-spin" />
+                ) : (
+                  <CloudSun size={12} strokeWidth={2} />
+                )}
+                Fill From Open-Meteo
+              </button>
+            )}
+          </div>
           {weather ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <label className="col-span-2 block sm:col-span-1">

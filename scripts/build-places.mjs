@@ -59,7 +59,10 @@ for (const feature of provinces.features) {
 
   if (!seen.has(province)) {
     seen.add(province);
-    places.push({ label: province, town: "", province, kind: "province", ...centre(feature.geometry) });
+    places.push({
+      label: province, town: "", province, kind: "province", provincePsgc: feature.properties.psgc,
+      ...centre(feature.geometry),
+    });
   }
 
   const file = path.join(GEO, "municipalities", `${feature.properties.psgc}.json`);
@@ -71,7 +74,10 @@ for (const feature of provinces.features) {
     const label = `${name}, ${province}`;
     if (seen.has(label)) continue;
     seen.add(label);
-    places.push({ label, town: name, province, kind: "town", ...centre(town.geometry) });
+    places.push({
+      label, town: name, province, kind: "town", provincePsgc: feature.properties.psgc,
+      townPsgc: town.properties.psgc, ...centre(town.geometry),
+    });
   }
 }
 

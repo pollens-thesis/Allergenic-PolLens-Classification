@@ -165,28 +165,27 @@ export async function analyzeSpecimen(file: File): Promise<AnalysisResult> {
 }
 
 /**
- * Current weather for a collection site, via the backend's OpenWeather proxy,
- * already mapped onto `WeatherConditions`. Takes the coordinates of a place
- * picked from the location search (preferred — they always resolve) or a
- * free-text location. Null when signed out, unresolvable, or the lookup fails —
- * the fields then stay manual.
+ * Weather at a collection site at the collection date and time (Asia/Manila),
+ * via the backend's Open-Meteo proxy, already mapped onto `WeatherConditions`.
+ * `lat`/`lon` come from a place picked in the location search; `date`
+ * ("YYYY-MM-DD") and optional `time` ("HH:MM") pick the hour — without a date
+ * it's the conditions now. Null when unavailable; the fields then stay manual.
  */
-export async function fetchWeather(
-  site: string | { lat: number; lon: number },
-): Promise<WeatherConditions | null> {
+export async function fetchWeather(site: {
+  lat: number;
+  lon: number;
+  date?: string;
+  time?: string;
+}): Promise<WeatherConditions | null> {
   if (!hasSession()) return null;
-  const params =
-    typeof site === "string"
-      ? site.trim()
-        ? new URLSearchParams({ location: site.trim() })
-        : null
-      : new URLSearchParams({ lat: String(site.lat), lon: String(site.lon) });
-  if (!params) return null;
+  const params = new URLSearchParams({ lat: String(site.lat), lon: String(site.lon) });
+  if (site.date) params.set("date", site.date);
+  if (site.date && site.time) params.set("time", site.time);
   try {
     const res = await apiFetch(`/api/v1/reports/weather/?${params}`);
     if (!res.ok) return null;
     const w = (await res.json()) as WeatherConditions;
-    // Readings to the precision a field sheet records, not OpenWeather's floats.
+    // Readings to the precision a field sheet records.
     const round = (n: number | null, digits: number) =>
       n === null ? null : Math.round(n * 10 ** digits) / 10 ** digits;
     return {

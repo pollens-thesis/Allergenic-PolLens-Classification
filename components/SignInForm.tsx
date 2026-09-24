@@ -82,8 +82,8 @@ export default function SignInForm() {
         setPending(true);
         setError(null);
         exchangeGoogleCredential(response.credential)
-          .then(({ email, tokens }) => {
-            updateSettings({ email, accessToken: tokens.access, refreshToken: tokens.refresh });
+          .then(({ email, name, tokens }) => {
+            updateSettings({ email, name, accessToken: tokens.access, refreshToken: tokens.refresh });
             router.push(nextPage());
           })
           .catch((err: unknown) => {
@@ -107,8 +107,8 @@ export default function SignInForm() {
     setError(null);
     try {
       const idToken = await signInWithMicrosoft();
-      const { email, tokens } = await exchangeMicrosoftIdToken(idToken);
-      updateSettings({ email, accessToken: tokens.access, refreshToken: tokens.refresh });
+      const { email, name, tokens } = await exchangeMicrosoftIdToken(idToken);
+      updateSettings({ email, name, accessToken: tokens.access, refreshToken: tokens.refresh });
       router.push(nextPage());
     } catch (err: unknown) {
       setPending(false);

@@ -27,7 +27,7 @@ import {
 import { analyzeSpecimen, DetectionError, fetchWeather, type AnalysisResult } from "@/lib/analysis";
 import { SessionExpiredError } from "@/lib/api";
 import { createReport, deleteReport, listReports } from "@/lib/store";
-import { accountName } from "@/lib/account";
+import { displayName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import { Button } from "@/components/Button";
 import ImageLightbox from "@/components/ImageLightbox";
@@ -116,35 +116,43 @@ function WeatherStatusLine({
   status,
   place,
   collectedDate,
+  collectedTime,
   onRefresh,
 }: {
   source: "manual" | "auto" | "edited";
   status: "idle" | "loading" | "failed";
   place: Place | null;
   collectedDate: string;
+  collectedTime: string;
   onRefresh?: () => void;
 }) {
-  const today = nowParts().date;
+  const when = collectedDate
+    ? formatCollectedAt(collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate)
+    : "now";
   let message: React.ReactNode;
   if (status === "loading") {
     message = (
       <>
         <Loader2 size={12} strokeWidth={2} className="animate-spin" />
-        Fetching current weather for {place?.label}…
+        Fetching the weather at {place?.label} for {when}…
       </>
     );
   } else if (status === "failed") {
-    message = <span className="text-processing">Couldn&apos;t fetch weather for this place — enter it manually.</span>;
+    message = (
+      <span className="text-processing">
+        No weather available for this place and time — enter it manually.
+      </span>
+    );
   } else if (source === "auto") {
     message = (
       <>
         <CloudSun size={12} strokeWidth={2} className="text-accent" />
-        Auto-filled from OpenWeather (current conditions
-        {collectedDate && collectedDate !== today ? ", not the collection date" : ""}). Edit any field to override.
+        Filled from Open-Meteo for {when}
+        {collectedTime ? "" : " (midday — no time set)"}. Edit any field to override.
       </>
     );
   } else if (source === "edited") {
-    message = <>Edited by researcher — overrides the OpenWeather values.</>;
+    message = <>Edited by researcher — overrides the Open-Meteo values.</>;
   } else {
     message = <>Pick a place above to auto-fill the weather, or enter it manually.</>;
   }
@@ -159,7 +167,7 @@ function WeatherStatusLine({
           className="focus-ring inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-accent hover:bg-accent-muted"
         >
           <RefreshCw size={12} strokeWidth={2} />
-          {source === "edited" ? "Replace With OpenWeather" : "Refresh"}
+          {source === "edited" ? "Replace With Open-Meteo" : "Refresh"}
         </button>
       )}
     </div>
@@ -284,7 +292,7 @@ export default function AnalyzeWorkspace() {
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const settings = useSettings();
-  const researcherName = accountName(settings.email);
+  const researcherName = displayName(settings);
 
   // Time is optional — a researcher who only knows the day can leave it blank.
   const collectedAt = collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate;
@@ -329,12 +337,15 @@ export default function AnalyzeWorkspace() {
     if (weatherSource === "auto") setWeatherSource("edited");
   }
 
-  /** Pre-fill the weather fields for a picked place; they stay editable. */
-  async function fillWeather(place: Place) {
+  /**
+   * Pre-fill the weather fields with the conditions at the picked place on the
+   * collection date and time; they stay editable.
+   */
+  async function fillWeather(place: Place, date = collectedDate, time = collectedTime) {
     const request = ++weatherRequest.current;
     setWeatherPlace(place);
     setWeatherStatus("loading");
-    const found = await fetchWeather({ lat: place.lat, lon: place.lon });
+    const found = await fetchWeather({ lat: place.lat, lon: place.lon, date, time });
     if (request !== weatherRequest.current) return; // a newer pick won
     if (found) {
       setWeather(found);
@@ -344,6 +355,16 @@ export default function AnalyzeWorkspace() {
       setWeatherStatus("failed");
     }
   }
+
+  // A new collection date or time re-fetches the weather for it — unless the
+  // researcher has typed their own readings, which are never overwritten.
+  useEffect(() => {
+    if (!weatherPlace || weatherSource === "edited" || !collectedDate) return;
+    const timer = setTimeout(() => void fillWeather(weatherPlace, collectedDate, collectedTime), 500);
+    return () => clearTimeout(timer);
+    // Only the date/time trigger this; picking a place fetches on its own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collectedDate, collectedTime]);
 
   function handleLocationChange(text: string) {
     setLocation(text);
@@ -720,6 +741,7 @@ export default function AnalyzeWorkspace() {
               status={weatherStatus}
               place={weatherPlace}
               collectedDate={collectedDate}
+              collectedTime={collectedTime}
               onRefresh={weatherPlace ? () => fillWeather(weatherPlace) : undefined}
             />
             <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
