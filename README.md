@@ -25,15 +25,15 @@ npx tsc --noEmit  # typecheck
 
 | Route | What it is |
 |---|---|
-| `/` | Sign-in. |
-| `/dashboard` | Stat tiles, a 12-month pollen chart, and the report list. |
-| `/upload` | **Analyze specimen** — assemble a batch of slides, describe the collection, run the analysis. |
-| `/upload/result` | The reading it produced: pollen detected, the slide, the details entered — plus notes, and the button that saves it as a report. |
-| `/reports` | **Report** — every saved report, filterable and exportable. |
-| `/reports/[sampleId]` | One report in full: collection details, combined results, every slide. |
-| `/map` | **Pollen map** — the Philippines shaded by grains counted, drilling into a province's towns. |
-| `/settings` | Profile, local data, export, sign out. |
-| `/dataset` | **Dead link.** Allergen reference — planned, not built. |
+| `/` | Sign-in — Google or Microsoft (work/school); only allowlisted accounts get in. |
+| `/dashboard` | Stat tiles, a 12-month grain-count chart, and recent reports. |
+| `/upload` | **Analyze Specimen** — assemble a batch of slides, describe the collection, run the analysis; lists your pending analyses to resume. |
+| `/upload/result?report=…` | A **Pending** report: the reading beside each slide, notes, collection details (autosaved) — and **Generate Report**, which completes it. |
+| `/reports` | **Reports** — every report (shared across researchers), filterable by status/location/date, PDF and Excel export. |
+| `/reports/[sampleId]` | One report in full; its creator can flag it for review, mark it completed, or delete it. |
+| `/map` | **Pollen Map** — the Philippines shaded by grains counted in completed reports, drilling into a province's towns. |
+| `/dataset` | **Allergen Reference** — the 23-species catalog with grains counted across all reports. |
+| `/settings` | Profile, Excel/CSV/JSON export, sign out. |
 
 ## What it does
 
@@ -42,11 +42,12 @@ slides, each with its own image, reading and note; the location, time and
 weather belong to the session. Analysing five images and saving once produces
 one report with five slides.
 
-**Analysis and review are two screens.** `/upload` assembles and describes the
-batch; pressing *Analyze specimen* runs the readings and opens `/upload/result`,
-where they are reviewed, annotated and saved. The hand-off is a draft in
-IndexedDB, so it survives a refresh, and edits are written back as they are
-typed.
+**Analysis and review are two screens, with the report on the server in
+between.** `/upload` assembles and describes the batch; *Analyze Specimen* runs
+each slide through the detection proxy and stores the batch as a **Pending**
+report. `/upload/result` reviews it — notes and corrections autosave — and
+*Generate Report* marks it **Completed**. A pending analysis can be resumed from
+any device; a completed one can be flagged **Needs Review** by its creator.
 
 **Every grain is boxed.** Detections keep each grain's position, so selecting a
 pollen type draws that type's grains on the slide in its own colour and fades
@@ -78,23 +79,22 @@ columns scrolled sideways.
   came from, what was missing, how the hot zones are shaded, and how zoom and
   search work.
 - [docs/allergen-reference-plan.md](docs/allergen-reference-plan.md) — the plan
-  for the unbuilt `/dataset` page.
+  for `/dataset` (a first version is shipped).
+- [docs/design-system.md](docs/design-system.md) — the laboratory UI rationale
+  (typography, colour, overlay palette) with sources.
 - [AGENTS.md](AGENTS.md) — conventions for anyone writing code here.
 
 ## Status
 
-The front end is complete and usable end to end. Nothing is fetched from a third
-party at runtime, so it works offline and a figure cannot break because someone
-else's endpoint went down.
+Everything runs against the Django API in `../../api` (see the root repo's
+`docs/deployment.md` for hosting). As of 2026-09-24:
 
-What is not real yet, each isolated behind a single module:
-
-| Not real | Today | Where it plugs in |
-|---|---|---|
-| The detection model | Deterministic mock readings, seeded from the file so the same image always gives the same result | `lib/analysis.ts` |
-| The server | Reports and their images live in the browser's IndexedDB, so they do not travel between machines | `lib/store.ts` |
-| Sign-in | A stand-in chooser; no provider, no session | `components/SignInForm.tsx` |
-
-Report status is also decorative: every saved report is stamped `Completed`, and
-the `Processing` and `Needs review` records are seed data. See the overview for
-the migration path and the full list of what is unbuilt.
+- **Reports** live on the server and are shared by every signed-in researcher;
+  only a report's creator (or staff) can edit, re-status or delete it.
+- **Detection** goes through the API's Roboflow proxy. Until the trained model
+  is deployed the API answers with a built-in sample reading, and the UI says
+  so on every analysis that used it.
+- **Sign-in** is real (Google, and Microsoft work/school accounts) and limited
+  by a server-side allowlist; sessions renew automatically.
+- **Species metadata** (common name, season, allergenic risk) is still being
+  collected — the UI shows "Not Assessed" rather than a made-up level.

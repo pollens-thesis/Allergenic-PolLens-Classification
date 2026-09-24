@@ -1,10 +1,10 @@
 # Allergen reference page — plan
 
-> **Status (2026-09-19): a first version shipped** — `app/dataset/page.tsx` +
+> **Status (2026-09-19): a first version shipped** — `app/(app)/dataset/page.tsx` +
 > `components/AllergenReference.tsx` (commit `21666ac`), `/dataset` is no longer a dead
 > link. What's real today: the live 23-species catalog via `useSpeciesCatalog()`
 > (scientific name, code, color swatch, risk level) and a genuine per-species "grains
-> detected in your reports" count computed client-side from local report data — deliberately
+> detected in your reports" count computed client-side from all completed reports on the server — deliberately
 > *not* the unused mock `allergenClasses` this doc originally pointed at. What's **not**
 > built yet, still exactly as described below: the extended `Species` fields in §2
 > (`roboflowClass`, `peakMonths`, `description`, `morphology`, `allergenicity`,
@@ -236,7 +236,7 @@ Decisions here are expensive to reverse, so they are worth making deliberately.
 
 | File | Change |
 |---|---|
-| `app/dataset/page.tsx` | **Shipped 2026-09-19** — route shell, matching the other pages |
+| `app/(app)/dataset/page.tsx` | **Shipped 2026-09-19** — route shell, matching the other pages |
 | `components/AllergenReference.tsx` | **Shipped 2026-09-19**, but as a plain table (identity + risk level + real report count) — still needs cards, sort, filter from §4 |
 | `lib/model.ts` | **New** — Roboflow metadata seam, returns `null` today |
 | `lib/data.ts` | Extend `Species` with the fields in §2; author the 23 entries |

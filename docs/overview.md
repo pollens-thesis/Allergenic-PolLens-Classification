@@ -8,10 +8,20 @@ map of where each pollen type is turning up.
 This document describes what exists **today**. Where something is a stand-in for
 a real service, it says so and points at the seam where the real one plugs in.
 
-**Status: working front end, no backend.** Every screen is built and usable end
-to end, and nothing is fetched from a third party at runtime. What is not real
-yet: the detection model, the sign-in provider, and the server that would hold
-reports for more than one browser. Each is isolated behind one module.
+> **Update 2026-09-24 — the backend exists; parts of this document are
+> historical.** Reports, images, sign-in and detection now go through the
+> Django API (`../../api`): reports are server-side and shared, with a
+> Pending → Completed → Needs Review lifecycle; sign-in is Google or Microsoft,
+> allowlisted; detection is the API's Roboflow proxy (sample readings until the
+> model is deployed); the built-in sample reports and IndexedDB storage are
+> gone. Sections below that describe IndexedDB, the in-browser mock, the
+> stand-in sign-in or seed records describe the earlier front-end-only build.
+> Current contracts: `../../api/CLAUDE.md`; decisions: the root repo's
+> `docs/system-spec.md`.
+
+**Status (original, front-end-only build):** every screen built and usable end
+to end, with the detection model, sign-in provider and server stubbed behind
+one module each.
 
 ---
 
