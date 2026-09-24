@@ -20,7 +20,7 @@ services:
       # Connect panel, e.g. postgresql://user:password@ep-....neon.tech/dbname?sslmode=require
       - key: DATABASE_URL
         sync: false
-      # The Vercel frontend's URL, e.g. https://pollens.vercel.app (no trailing slash).
+      # The Vercel frontend's URL, e.g. https://your-project.vercel.app — copy it from Vercel, do not guess (no trailing slash).
       - key: CORS_ALLOWED_ORIGINS
         sync: false
       - key: GOOGLE_OAUTH_CLIENT_ID
