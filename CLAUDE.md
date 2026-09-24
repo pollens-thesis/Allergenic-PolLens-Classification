@@ -201,8 +201,12 @@ between the thesis proposal paper and the frontend.
       trained model uses other labels, add an alias map in
       `toSpeciesId()` in `app/PolLens/lib/analysis.ts`.
     - **Wired into the frontend as of 2026-09-23**: `analyzeSpecimen()`
-      POSTs each image here once signed in, falling back to its local
-      deterministic mock when signed out or on any failure.
+      POSTs each image here. **As of 2026-09-24 there is no client-side
+      fallback**: a failed detection (unreachable, 502/503, unreadable image)
+      is shown on the Analyze screen as a per-slide error with retry, and the
+      batch can't proceed to the report page until every slide has a real
+      reading. `ROBOFLOW_MOCK` (server-side) is the only source of sample
+      detections.
   - **`GET /api/v1/reports/weather/?lat=..&lon=..` or `?location=...`** (`reports.views.WeatherView`,
     `IsAuthenticated`; registered in `config/urls.py` before
     `<sample_id>/` for the same reason as `monthly-counts/`/`species/`).
