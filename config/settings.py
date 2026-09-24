@@ -16,6 +16,8 @@ from dotenv import load_dotenv
 import os
 import sys
 
+from .dburl import database_from_url
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -112,10 +114,13 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 #
-# Falls back to sqlite for zero-config local development. Set DATABASE_*
-# env vars (see .env.example) to point at PostgreSQL.
+# Falls back to sqlite for zero-config local development. Point at PostgreSQL
+# with either DATABASE_URL (one connection string, as Neon's dashboard shows
+# it — preferred) or the separate DATABASE_* variables (see .env.example).
 
-if os.environ.get('DATABASE_NAME'):
+if os.environ.get('DATABASE_URL'):
+    DATABASES = {'default': database_from_url(os.environ['DATABASE_URL'])}
+elif os.environ.get('DATABASE_NAME'):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -126,8 +131,8 @@ if os.environ.get('DATABASE_NAME'):
             'PORT': os.environ.get('DATABASE_PORT', '5432'),
             'OPTIONS': {'sslmode': os.environ.get('DATABASE_SSLMODE', 'require')},
             'CONN_MAX_AGE': 600,
-            # A pooled connection Neon has since closed is detected and
-            # replaced instead of failing the request.
+            # A connection the server has since closed (Neon suspends idle
+            # databases) is detected and replaced instead of failing the request.
             'CONN_HEALTH_CHECKS': True,
         }
     }

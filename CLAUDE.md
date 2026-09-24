@@ -391,6 +391,13 @@ click-by-click runbook is `../docs/deployment.md`.
   guessable. Unset → local `FileSystemStorage` as before (tests use this).
   The frontend's PDF export `fetch()`es image URLs, so the bucket needs a
   CORS rule for the Vercel origin (in the runbook).
+- **`DATABASE_URL`** (added 2026-09-24): one PostgreSQL connection string,
+  parsed by `config/dburl.py` (percent-decoding, `sslmode=require` default,
+  Neon's `channel_binding` passed through); it takes priority over the
+  separate `DATABASE_*` variables, which still work. A Neon `-pooler` host
+  (PgBouncer, transaction mode) is tolerated — persistent connections and
+  server-side cursors are switched off for it — but the direct host is
+  preferred.
 - `CONN_HEALTH_CHECKS=True` on the Postgres connection; console `LOGGING`
   so errors reach Render's log viewer.
 
