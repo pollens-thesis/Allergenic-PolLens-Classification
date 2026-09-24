@@ -25,3 +25,5 @@ dev-server.log
 # env files
 .env
 .env*.local
+# Vercel project link (per-machine)
+.vercel
