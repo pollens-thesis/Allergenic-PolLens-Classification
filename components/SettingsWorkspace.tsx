@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { toast } from "sonner";
 import {
-  AlertTriangle,
   Database,
   Download,
   FileJson,
@@ -12,16 +10,15 @@ import {
   Loader2,
   LogOut,
   Mail,
-  Trash2,
+  Sheet,
   UserRound,
 } from "lucide-react";
-import type { Specimen } from "@/lib/data";
+import { isFinalised, type Specimen } from "@/lib/data";
 import { accountName, getInitials, institutionFromEmail } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import { signOut } from "@/lib/session";
-import { clearAllReports, getStorageSummary, listReports } from "@/lib/store";
-import { exportReportsCsv, exportReportsJson } from "@/lib/export";
-import { Button } from "@/components/Button";
+import { listReports } from "@/lib/store";
+import { exportReportsCsv, exportReportsJson, exportReportsXlsx } from "@/lib/export";
 
 function Section({
   icon: Icon,
@@ -52,48 +49,29 @@ function Section({
   );
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 export default function SettingsWorkspace() {
   const settings = useSettings();
 
   const [reports, setReports] = useState<Specimen[] | null>(null);
-  const [storage, setStorage] = useState<{
-    reportCount: number;
-    imageCount: number;
-    approxBytes: number;
-  } | null>(null);
-  const [clearDialogOpen, setClearDialogOpen] = useState(false);
-  const [clearing, setClearing] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([listReports(), getStorageSummary()]).then(([loaded, summary]) => {
-      if (cancelled) return;
-      setReports(loaded);
-      setStorage(summary);
-    });
+    listReports()
+      .then((loaded) => {
+        if (!cancelled) setReports(loaded);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadFailed(true);
+      });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  async function handleClearAll() {
-    setClearing(true);
-    await clearAllReports();
-    const [loaded, summary] = await Promise.all([listReports(), getStorageSummary()]);
-    setReports(loaded);
-    setStorage(summary);
-    setClearing(false);
-    setClearDialogOpen(false);
-  }
-
-  const savedReportCount = storage?.reportCount ?? 0;
+  const finalised = reports?.filter(isFinalised) ?? [];
   const name = accountName(settings.email);
   const institution = institutionFromEmail(settings.email);
 
@@ -128,171 +106,102 @@ export default function SettingsWorkspace() {
               comes from the domain of that address, so the name on a report always matches the account that saved it. To
               file under a different institution, sign in with that institution&rsquo;s mailbox.
             </>
-          ) : settings.email ? (
+          ) : (
             <>
               This address is not on an institution domain, so the console uses the mailbox&rsquo;s
               own name. Signing in with an institution address — <code>name@mseuf.edu.ph</code> —
               files reports under that institution instead.
             </>
-          ) : (
-            <>
-              No account is signed in on this browser, so reports fall back to a generic name. Sign
-              in from the landing page to file them under your institution.
-            </>
           )}
         </p>
       </Section>
 
-      {/* Data and storage */}
+      {/* Data export */}
       <Section
         icon={Database}
-        title="Data & Storage"
-        description="Reports are saved in this browser. Export them to keep a copy elsewhere or to analyze them in other software."
+        title="Data Export"
+        description="Reports are stored on the PolLens server and shared with every signed-in researcher. Export completed reports to keep a copy or analyze them in other software."
       >
-        <div className="mb-4 grid grid-cols-3 gap-3 rounded-md bg-surface-sunken px-3 py-3 text-center">
+        <div className="mb-4 grid grid-cols-2 gap-3 rounded-md bg-surface-sunken px-3 py-3 text-center">
           <div>
             <div className="text-[17px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-              {storage ? savedReportCount : "—"}
+              {reports ? finalised.length : loadFailed ? "—" : "…"}
             </div>
-            <div className="text-[12px] text-text-muted">Saved here</div>
+            <div className="text-[12px] text-text-muted">Completed reports</div>
           </div>
           <div>
             <div className="text-[17px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-              {storage ? storage.imageCount : "—"}
+              {reports ? reports.length - finalised.length : loadFailed ? "—" : "…"}
             </div>
-            <div className="text-[12px] text-text-muted">Slide images</div>
-          </div>
-          <div>
-            <div className="text-[17px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-              {storage ? formatBytes(storage.approxBytes) : "—"}
-            </div>
-            <div className="text-[12px] text-text-muted">Approx. size</div>
+            <div className="text-[12px] text-text-muted">Pending (not exported)</div>
           </div>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
-            disabled={!reports}
-            onClick={() => {
-              if (!reports) return;
-              exportReportsJson(reports);
-              toast.success("Exported as JSON");
+            disabled={!reports || finalised.length === 0 || exporting}
+            onClick={async () => {
+              setExporting(true);
+              try {
+                await exportReportsXlsx(finalised);
+                toast.success("Exported as Excel");
+              } catch {
+                toast.error("Couldn't build the Excel file.");
+              } finally {
+                setExporting(false);
+              }
             }}
             className="focus-ring flex flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text-muted transition-[color,border-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text hover:border-border-strong active:scale-[0.97] disabled:opacity-50"
           >
-            <FileJson size={14} strokeWidth={1.75} />
-            Export JSON backup
+            {exporting ? <Loader2 size={14} strokeWidth={1.75} className="animate-spin" /> : <Sheet size={14} strokeWidth={1.75} />}
+            Excel Workbook
           </button>
           <button
             type="button"
-            disabled={!reports}
+            disabled={!reports || finalised.length === 0}
             onClick={() => {
-              if (!reports) return;
-              exportReportsCsv(reports);
+              exportReportsCsv(finalised);
               toast.success("Exported as CSV");
             }}
             className="focus-ring flex flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text-muted transition-[color,border-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text hover:border-border-strong active:scale-[0.97] disabled:opacity-50"
           >
             <FileSpreadsheet size={14} strokeWidth={1.75} />
-            Export CSV for analysis
+            CSV for Analysis
+          </button>
+          <button
+            type="button"
+            disabled={!reports || finalised.length === 0}
+            onClick={() => {
+              exportReportsJson(finalised);
+              toast.success("Exported as JSON");
+            }}
+            className="focus-ring flex flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text-muted transition-[color,border-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text hover:border-border-strong active:scale-[0.97] disabled:opacity-50"
+          >
+            <FileJson size={14} strokeWidth={1.75} />
+            JSON Copy
           </button>
         </div>
-        {/* The text lives in its own span: as bare children of a flex row the
-            runs either side of {count} become separate flex items and the
-            spaces around the number are lost. */}
         <p className="mt-2 flex items-start gap-1.5 text-[12.5px] text-text-muted">
           <Download size={12} strokeWidth={1.75} className="mt-0.5 shrink-0" />
           <span>
-            Exports cover all {reports?.length ?? 0}{" "}
-            reports, including the sample records that ship with the app. Slide images
-            aren&apos;t included — download a report&apos;s PDF for those.
+            {loadFailed
+              ? "Couldn't reach the server to load reports."
+              : "Exports cover every completed report, from all researchers. Slide images aren't included — download a report's PDF for those."}
           </span>
         </p>
-
-        <div className="mt-5 rounded-md border border-danger/25 bg-danger-bg p-3.5">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle size={15} strokeWidth={1.75} className="mt-0.5 shrink-0 text-danger" />
-            <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-medium text-text">Clear Locally Saved Reports</div>
-              <p className="mt-0.5 text-[12.5px] text-text-muted">
-                Permanently deletes the {savedReportCount}{" "}
-                {savedReportCount === 1 ? "report" : "reports"}{" "}
-                saved in this browser, and their slide images. The sample records that ship with
-                the app stay. This cannot be undone — export a backup first.
-              </p>
-
-              <AlertDialog.Root open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
-                <AlertDialog.Trigger
-                  disabled={savedReportCount === 0}
-                  className="focus-ring mt-2.5 inline-flex items-center gap-1.5 rounded-md border border-danger/30 bg-surface px-3 py-1.5 text-[13px] text-danger transition-[background-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-danger-bg active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <Trash2 size={13} strokeWidth={1.75} />
-                  Clear Saved Reports
-                </AlertDialog.Trigger>
-                <AlertDialog.Portal>
-                  <AlertDialog.Backdrop className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] transition-opacity duration-[var(--duration-base)] ease-[var(--ease-out)] data-[starting-style]:opacity-0 data-[ending-style]:opacity-0" />
-                  <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-50 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-surface p-5 shadow-lg outline-none transition-all duration-[var(--duration-base)] ease-[var(--ease-out)] data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0">
-                    <AlertDialog.Title className="text-[15px] font-medium text-text">
-                      Clear All Saved Reports?
-                    </AlertDialog.Title>
-                    <AlertDialog.Description className="mt-2 text-[13px] leading-relaxed text-text-muted">
-                      This permanently deletes the {savedReportCount}{" "}
-                      {savedReportCount === 1 ? "report" : "reports"} saved in this browser, along
-                      with their slide images. The sample records that ship with the app stay. This
-                      cannot be undone.
-                    </AlertDialog.Description>
-                    <div className="mt-4 flex justify-end gap-2">
-                      <AlertDialog.Close
-                        disabled={clearing}
-                        className="focus-ring rounded-md border border-border bg-surface px-3 py-1.5 text-[13px] text-text-muted transition-[color,border-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text hover:border-border-strong active:scale-[0.97]"
-                      >
-                        Cancel
-                      </AlertDialog.Close>
-                      <Button
-                        type="button"
-                        intent="destructive"
-                        size="sm"
-                        disabled={clearing}
-                        onClick={handleClearAll}
-                      >
-                        {clearing ? (
-                          <>
-                            <Loader2 size={13} strokeWidth={1.75} className="animate-spin" />
-                            Deleting…
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 size={13} strokeWidth={1.75} />
-                            Yes, Delete Them
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </AlertDialog.Popup>
-                </AlertDialog.Portal>
-              </AlertDialog.Root>
-            </div>
-          </div>
-        </div>
       </Section>
 
       {/* Account */}
       <Section
         icon={LogOut}
         title="Account"
-        description="Signing out revokes this browser's session on the server and forgets it here. Saved reports stay on the server; an unsaved analysis draft stays in this browser."
+        description="Signing out revokes this browser's session on the server and forgets it here. Your reports — including pending analyses — stay on the server."
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-[13px] text-text-muted">
-            {settings.email ? (
-              <>
-                Signed in as <span className="text-text">{name}</span>
-                <span className="text-text-muted"> · {settings.email}</span>
-              </>
-            ) : (
-              "No account signed in on this browser."
-            )}
+            Signed in as <span className="text-text">{name}</span>
+            <span className="text-text-muted"> · {settings.email}</span>
           </div>
           <button
             type="button"

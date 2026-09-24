@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, CloudOff, Loader2 } from "lucide-react";
 import { formatCollectedAt, toReportRow, type Specimen } from "@/lib/data";
 import { listReports } from "@/lib/store";
 import StatusBadge from "@/components/StatusBadge";
@@ -18,12 +18,17 @@ const RECENT_COUNT = 5;
  */
 export default function DashboardRecentReports() {
   const [reports, setReports] = useState<Specimen[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    listReports().then((all) => {
-      if (!cancelled) setReports(all);
-    });
+    listReports()
+      .then((all) => {
+        if (!cancelled) setReports(all);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Couldn't load reports.");
+      });
     return () => {
       cancelled = true;
     };
@@ -33,7 +38,7 @@ export default function DashboardRecentReports() {
     <div className="rounded-lg border border-border bg-surface p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-          Saved Reports
+          Recent Reports
         </h2>
         <Link
           href="/reports"
@@ -44,7 +49,12 @@ export default function DashboardRecentReports() {
         </Link>
       </div>
 
-      {reports === null ? (
+      {error ? (
+        <p className="flex items-center justify-center gap-2 py-10 text-center text-[13px] text-text-muted">
+          <CloudOff size={15} strokeWidth={1.75} className="shrink-0 text-text-faint" />
+          {error}
+        </p>
+      ) : reports === null ? (
         <div className="flex items-center justify-center gap-2 py-10 text-[13px] text-text-muted">
           <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
           Loading reports…
@@ -70,7 +80,9 @@ export default function DashboardRecentReports() {
                     >
                       {row.sampleId}
                     </span>
-                    <span className="truncate text-[13px] text-text-muted">{row.location}</span>
+                    <span className="truncate text-[13px] text-text-muted">
+                      {row.location || "No location yet"}
+                    </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     <span className="hidden text-[12.5px] text-text-faint sm:inline">

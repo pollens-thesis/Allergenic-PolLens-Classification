@@ -20,7 +20,6 @@ import {
   getWeightedAvgConfidence,
   sortByAbundance,
   type DetectedGrain,
-  type Species,
   type SpeciesId,
   type SpecimenDetection,
 } from "@/lib/data";
@@ -28,6 +27,7 @@ import { findSpecies, useSpeciesCatalog } from "@/lib/species-catalog";
 import { useReportGrainCounts } from "@/lib/report-grain-counts";
 import { overlayColor, overlayColors, type OverlayColors } from "@/lib/slide-colors";
 import GrainOverlay from "@/components/GrainOverlay";
+import RiskBadge from "@/components/RiskBadge";
 
 export type InspectorSlide = {
   id: string;
@@ -44,12 +44,6 @@ const MAX_ZOOM = 8;
 
 type View = { scale: number; x: number; y: number };
 const FIT: View = { scale: 1, x: 0, y: 0 };
-
-function riskBadgeClass(level: Species["riskLevel"]) {
-  if (level === "High") return "bg-danger-bg text-danger";
-  if (level === "Moderate") return "bg-processing-bg text-processing";
-  return "bg-success-bg text-success";
-}
 
 const mono = { fontFamily: "var(--font-mono)", fontWeight: 500 } as const;
 const sectionLabel = "mb-2 text-[11.5px] font-semibold tracking-wider text-text-muted uppercase";
@@ -342,25 +336,21 @@ function InspectorBody({
                   <div className="min-w-0">
                     <p className="text-[15px] font-semibold text-text italic">{focusSpecies.scientificName}</p>
                     <p className="text-[12.5px] text-text-muted">
-                      {focusSpecies.commonName && focusSpecies.commonName !== "TBD"
+                      {focusSpecies.commonName
                         ? focusSpecies.commonName
                         : "Common name not yet recorded"}
                     </p>
                   </div>
-                  <span
-                    className={`shrink-0 rounded px-2 py-0.5 text-[11.5px] font-medium ${riskBadgeClass(focusSpecies.riskLevel)}`}
-                  >
-                    {focusSpecies.riskLevel} Risk
-                  </span>
+                  <RiskBadge level={focusSpecies.riskLevel} className="shrink-0" />
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-[12.5px]">
                   <dt className="text-text-muted">Code</dt>
                   <dd className="text-right text-text" style={mono}>{focusSpecies.code}</dd>
                   <dt className="text-text-muted">Season</dt>
                   <dd className="text-right text-text">
-                    {focusSpecies.season && focusSpecies.season !== "TBD" ? focusSpecies.season : "Not yet recorded"}
+                    {focusSpecies.season || "Not yet recorded"}
                   </dd>
-                  <dt className="text-text-muted">Grains in Your Reports</dt>
+                  <dt className="text-text-muted">Grains in All Reports</dt>
                   <dd className="text-right text-text tabular-nums" style={mono}>
                     {reportCounts === null ? "…" : (reportCounts[focusSpecies.id] ?? 0).toLocaleString()}
                   </dd>

@@ -152,6 +152,9 @@ export function aggregate(
     const all = aggregateSlideDetections(report.slides);
     const detections =
       speciesFilter === "all" ? all : all.filter((d) => d.speciesId === speciesFilter);
+    // Filtering by one pollen: a report without any of it doesn't make the
+    // place "sampled for it".
+    if (speciesFilter !== "all" && detections.length === 0) continue;
 
     const place =
       places.get(key) ??

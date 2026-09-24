@@ -18,13 +18,15 @@ import {
 import {
   getTotalGrains,
   weatherConditionOptions,
+  formatCollectedAt,
+  type Specimen,
   type SpecimenDetection,
   type WeatherCondition,
   type WeatherConditions,
 } from "@/lib/data";
 import { analyzeSpecimen, DetectionError, fetchWeather, type AnalysisResult } from "@/lib/analysis";
 import { SessionExpiredError } from "@/lib/api";
-import { getDraft, saveDraft } from "@/lib/store";
+import { createReport, deleteReport, listReports } from "@/lib/store";
 import { accountName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import { Button } from "@/components/Button";
@@ -32,6 +34,10 @@ import ImageLightbox from "@/components/ImageLightbox";
 import LocationSearch, { type Place } from "@/components/LocationSearch";
 
 type ItemStatus = "pending" | "analyzing" | "analyzed" | "failed";
+
+/** What the server accepts (api/reports/images.py): JPEG/PNG, 25 MB each. */
+const ACCEPTED_TYPES = ["image/jpeg", "image/png"];
+const MAX_IMAGE_MB = 25;
 
 /** One uploaded slide. Detections are per image; the collection details
  *  (location, researcher, weather) are shared by the whole batch. */
@@ -264,7 +270,9 @@ export default function AnalyzeWorkspace() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [hasPendingDraft, setHasPendingDraft] = useState(false);
+  // Your analyses stored as Pending on the server, to resume or discard.
+  const [pendingReports, setPendingReports] = useState<Specimen[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   // Where the weather fields' values came from. "auto" = OpenWeather for
   // `weatherPlace`; any manual change flips it to "edited" (the researcher's
@@ -285,17 +293,30 @@ export default function AnalyzeWorkspace() {
   const canAnalyze = items.length > 0 && !!collectedDate && !isAnalyzing;
   const failedCount = items.filter((item) => item.status === "failed").length;
 
-  // An analysis run in an earlier visit may still be sitting unsaved. Say so
-  // rather than letting the next run quietly replace it.
+  // Analyses you ran earlier but haven't generated yet, from any device.
   useEffect(() => {
     let cancelled = false;
-    getDraft().then((draft) => {
-      if (!cancelled) setHasPendingDraft(draft !== null);
-    });
+    listReports({ mine: true, status: "Pending" })
+      .then((reports) => {
+        if (!cancelled) setPendingReports(reports);
+      })
+      .catch(() => {
+        // Not being able to list them doesn't stop a new analysis.
+      });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  async function discardPending(sampleId: string) {
+    try {
+      await deleteReport(sampleId);
+      setPendingReports((current) => current.filter((r) => r.sampleId !== sampleId));
+    } catch (error) {
+      if (error instanceof SessionExpiredError) return;
+      setAnalyzeError(error instanceof Error ? error.message : "Couldn't discard that analysis.");
+    }
+  }
 
   function patchItem(id: string, patch: Partial<BatchItem>) {
     setItems((current) =>
@@ -331,7 +352,20 @@ export default function AnalyzeWorkspace() {
   }
 
   function handleFiles(fileList: FileList | null) {
-    const images = Array.from(fileList ?? []).filter((f) => f.type.startsWith("image/"));
+    const files = Array.from(fileList ?? []);
+    const wrongType = files.filter((f) => !ACCEPTED_TYPES.includes(f.type));
+    const tooLarge = files.filter(
+      (f) => ACCEPTED_TYPES.includes(f.type) && f.size > MAX_IMAGE_MB * 1024 * 1024,
+    );
+    const images = files.filter((f) => !wrongType.includes(f) && !tooLarge.includes(f));
+    const problems = [
+      wrongType.length > 0 &&
+        `${wrongType.map((f) => f.name).join(", ")} ${wrongType.length === 1 ? "isn't" : "aren't"} JPG or PNG`,
+      tooLarge.length > 0 &&
+        `${tooLarge.map((f) => f.name).join(", ")} ${tooLarge.length === 1 ? "is" : "are"} over ${MAX_IMAGE_MB} MB`,
+    ].filter(Boolean);
+    setUploadError(problems.length > 0 ? `Not added: ${problems.join("; ")}.` : null);
+    if (inputRef.current) inputRef.current.value = "";
     if (images.length === 0) return;
 
     const added: BatchItem[] = images.map((file) => ({
@@ -442,45 +476,89 @@ export default function AnalyzeWorkspace() {
       return;
     }
 
-    await saveDraft({
-      collectedAt,
-      location,
-      researcher: researcher || researcherName,
-      weather: batchWeather,
-      analyzedAt: new Date().toISOString(),
-      slides: analyzed.map(({ item, analysis }) => ({
-        id: item.id,
-        fileName: item.file.name,
-        image: item.file,
-        detections: analysis.detections,
-        grains: analysis.grains,
-        notes: "",
-      })),
-    });
+    // Weather goes with the batch only if the researcher (or OpenWeather) set it —
+    // an untouched form would otherwise store its "Sunny, blank" defaults.
+    const weatherSet =
+      weatherSource !== "manual" || JSON.stringify(batchWeather) !== JSON.stringify(EMPTY_WEATHER);
 
-    // The draft owns the images from here; these object URLs belong to this
-    // screen and go with it.
+    let report: Specimen;
+    try {
+      report = await createReport(
+        {
+          collectedAt,
+          location,
+          researcher: researcher || researcherName,
+          weather: weatherSet ? batchWeather : null,
+          slides: analyzed.map(({ item, analysis }) => ({
+            fileName: item.file.name,
+            detections: analysis.detections,
+            grains: analysis.grains,
+            notes: "",
+          })),
+        },
+        Object.fromEntries(analyzed.map(({ item }, index) => [String(index), item.file])),
+        "Pending",
+      );
+    } catch (error) {
+      setIsAnalyzing(false);
+      if (error instanceof SessionExpiredError) return;
+      // The readings are kept on each slide, so trying again won't re-run detection.
+      setAnalyzeError(
+        `The analysis ran but couldn't be stored — ${
+          error instanceof Error ? error.message : "try again."
+        }`,
+      );
+      return;
+    }
+
+    // The server has the images now; these object URLs belong to this screen.
     items.forEach((item) => URL.revokeObjectURL(item.imageUrl));
-    router.push("/upload/result");
+    const sample = analyzed.some(({ analysis }) => analysis.sampleDetections);
+    router.push(`/upload/result?report=${report.sampleId}${sample ? "&sample=1" : ""}`);
   }
 
   return (
     <div className="flex flex-col gap-4">
-      {hasPendingDraft && !isAnalyzing && (
-        <div className="flex flex-col gap-3 rounded-lg border border-processing/30 bg-processing-bg px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-2.5">
-            <FileText size={15} strokeWidth={1.75} className="mt-0.5 shrink-0 text-processing" />
-            <p className="text-[13px] text-text/80">
-              You have an analysis that hasn&apos;t been saved yet. Running a new one replaces it.
-            </p>
+      {pendingReports.length > 0 && !isAnalyzing && (
+        <div className="rounded-lg border border-processing/30 bg-processing-bg px-4 py-3">
+          <div className="mb-2 flex items-center gap-2">
+            <FileText size={15} strokeWidth={1.75} className="shrink-0 text-processing" />
+            <h2 className="text-[13.5px] font-semibold text-text">
+              Pending Analyses{" "}
+              <span className="font-normal text-text-muted">
+                — analysed but not generated yet ({pendingReports.length})
+              </span>
+            </h2>
           </div>
-          <Link
-            href="/upload/result"
-            className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border-strong bg-surface px-3 py-1.5 text-[13px] text-text transition active:scale-[0.97] hover:bg-surface-sunken"
-          >
-            Open It
-            <ArrowRight size={13} strokeWidth={1.75} />
-          </Link>
+          <ul className="flex flex-col divide-y divide-processing/15">
+            {pendingReports.map((report) => (
+              <li key={report.sampleId} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <span className="min-w-0 text-[13px] text-text">
+                  <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{report.sampleId}</span>
+                  <span className="text-text-muted">
+                    {" "}· {report.slides.length} {report.slides.length === 1 ? "slide" : "slides"} ·{" "}
+                    {report.location || "No location yet"} · collected {formatCollectedAt(report.collectedAt)}
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => void discardPending(report.sampleId)}
+                    className="focus-ring rounded-md px-2 py-1 text-[12.5px] text-text-muted hover:text-danger"
+                  >
+                    Discard
+                  </button>
+                  <Link
+                    href={`/upload/result?report=${report.sampleId}`}
+                    className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-border-strong bg-surface px-3 py-1 text-[12.5px] text-text transition active:scale-[0.97] hover:bg-surface-sunken"
+                  >
+                    Resume
+                    <ArrowRight size={13} strokeWidth={1.75} />
+                  </Link>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -505,7 +583,7 @@ export default function AnalyzeWorkspace() {
           <input
             ref={inputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png"
             multiple
             className="hidden"
             onChange={(e) => handleFiles(e.target.files)}
@@ -536,7 +614,7 @@ export default function AnalyzeWorkspace() {
                 Drag and drop microscope images, or click to browse
               </span>
               <span className="text-[12.5px] text-text-muted">
-                JPG, PNG — up to 10MB each. Select several to analyze a batch.
+                JPG or PNG, up to {MAX_IMAGE_MB} MB each. Select several to analyze a batch.
               </span>
             </button>
           ) : (
@@ -679,6 +757,13 @@ export default function AnalyzeWorkspace() {
               />
             </div>
           </div>
+
+          {uploadError && (
+            <p role="alert" className="mt-3 flex items-start gap-2 text-[12.5px] text-danger">
+              <TriangleAlert size={13} strokeWidth={2} className="mt-px shrink-0" />
+              {uploadError}
+            </p>
+          )}
 
           {analyzeError && (
             <p

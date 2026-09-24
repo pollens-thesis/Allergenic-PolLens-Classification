@@ -6,7 +6,6 @@ import DashboardGreeting from "@/components/DashboardGreeting";
 import DashboardStats from "@/components/DashboardStats";
 import DashboardRecentReports from "@/components/DashboardRecentReports";
 import PollenCountChart from "@/components/PollenCountChart";
-import { dashboardStats, historicalPollenCounts } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -53,11 +52,11 @@ export default function DashboardPage() {
           </Link>
 
           {/* Quick stats */}
-          <DashboardStats initial={dashboardStats} />
+          <DashboardStats />
 
           {/* Historical pollen counts */}
           <div className="mb-6">
-            <PollenCountChart initial={historicalPollenCounts} />
+            <PollenCountChart />
           </div>
 
           {/* A quick preview, not the full filterable workspace — see /reports for that. */}

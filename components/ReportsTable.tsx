@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import clsx from "clsx";
-import { FileDown, Loader2, Search, X } from "lucide-react";
+import { FileDown, FileSpreadsheet, Loader2, Search, X } from "lucide-react";
+import { toast } from "sonner";
 import {
   aggregateSlideDetections,
   formatCollectedAt,
@@ -18,10 +19,11 @@ import {
   type Specimen,
 } from "@/lib/data";
 import { downloadSelectionReportPdf } from "@/lib/pdf";
+import { exportReportsXlsx } from "@/lib/export";
 import StatusBadge from "@/components/StatusBadge";
 import { Button } from "@/components/Button";
 
-const STATUS_FILTERS: (ReportStatus | "All")[] = ["All", "Completed", "Processing", "Needs review"];
+const STATUS_FILTERS: (ReportStatus | "All")[] = ["All", "Pending", "Completed", "Needs review"];
 
 const ALL_LOCATIONS = "all";
 
@@ -104,7 +106,7 @@ export default function ReportsTable({
 }) {
   const [filters, setFilters] = useState<Filters>({ ...NO_FILTERS, query: initialQuery });
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [building, setBuilding] = useState(false);
+  const [building, setBuilding] = useState<"pdf" | "xlsx" | null>(null);
   const router = useRouter();
 
   const rows = useMemo(() => reports.map(toReportRow), [reports]);
@@ -199,18 +201,25 @@ export default function ReportsTable({
    * pick more — so the export works from the picked set rather than the rows
    * on screen.
    */
-  async function handleGenerate() {
-    const chosen = [...picked]
+  function chosenReports(): Specimen[] {
+    return [...picked]
       .map((id) => bySampleId.get(id))
       .filter((report): report is Specimen => report !== undefined)
       .sort((a, b) => b.collectedAt.localeCompare(a.collectedAt));
+  }
+
+  async function handleGenerate(format: "pdf" | "xlsx") {
+    const chosen = chosenReports();
     if (chosen.length === 0) return;
 
-    setBuilding(true);
+    setBuilding(format);
     try {
-      await downloadSelectionReportPdf({ reports: chosen });
+      if (format === "pdf") await downloadSelectionReportPdf({ reports: chosen });
+      else await exportReportsXlsx(chosen);
+    } catch {
+      toast.error(format === "pdf" ? "Couldn't build the PDF." : "Couldn't build the Excel file.");
     } finally {
-      setBuilding(false);
+      setBuilding(null);
     }
   }
 
@@ -219,7 +228,7 @@ export default function ReportsTable({
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-            Saved Reports
+            Reports
           </h2>
           <p className="mt-0.5 text-[13px] text-text-muted">
             {filtered.length} of {rows.length} {rows.length === 1 ? "report" : "reports"}
@@ -270,7 +279,7 @@ export default function ReportsTable({
                       transition={{ type: "spring", stiffness: 500, damping: 40 }}
                     />
                   )}
-                  <span className="relative z-10">{option}</span>
+                  <span className="relative z-10">{option === "Needs review" ? "Needs Review" : option}</span>
                 </button>
               );
             })}
@@ -345,16 +354,30 @@ export default function ReportsTable({
             >
               Clear
             </button>
-            <Button type="button" onClick={handleGenerate} disabled={building} size="sm">
-              {building ? (
+            <Button
+              type="button"
+              intent="secondary"
+              onClick={() => handleGenerate("xlsx")}
+              disabled={building !== null}
+              size="sm"
+            >
+              {building === "xlsx" ? (
+                <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
+              ) : (
+                <FileSpreadsheet size={14} strokeWidth={1.75} />
+              )}
+              Excel
+            </Button>
+            <Button type="button" onClick={() => handleGenerate("pdf")} disabled={building !== null} size="sm">
+              {building === "pdf" ? (
                 <>
                   <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
-                  Building report…
+                  Building PDF…
                 </>
               ) : (
                 <>
                   <FileDown size={14} strokeWidth={1.75} />
-                  Generate Report
+                  PDF Report
                 </>
               )}
             </Button>
@@ -409,7 +432,7 @@ export default function ReportsTable({
                     </div>
                     <div className="mt-1 text-[13px] text-text">{r.topPollen}</div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-text-muted">
-                      <span>{r.location}</span>
+                      <span>{r.location || "No location yet"}</span>
                       <span aria-hidden>·</span>
                       <span>
                         {formatDate(r.collectedAt)}
@@ -506,7 +529,7 @@ export default function ReportsTable({
                     )}
                   </td>
                   <CollectedCell collectedAt={r.collectedAt} />
-                  <td className="py-2.5 pr-3 whitespace-nowrap text-text-muted">{r.location}</td>
+                  <td className="py-2.5 pr-3 whitespace-nowrap text-text-muted">{r.location || "—"}</td>
                   <td className="py-2.5 pr-3 text-text">
                     {r.topPollen}
                     {r.slideCount > 1 && (

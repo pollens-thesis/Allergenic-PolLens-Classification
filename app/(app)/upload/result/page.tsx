@@ -8,7 +8,13 @@ export const metadata: Metadata = {
   title: "Analysis Result",
 };
 
-export default function AnalysisResultPage() {
+export default async function AnalysisResultPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ report?: string; sample?: string }>;
+}) {
+  const { report, sample } = await searchParams;
+
   return (
     <div className="grid min-h-screen w-full grid-cols-1 bg-bg lg:grid-cols-[15rem_1fr]">
       <Sidebar />
@@ -29,12 +35,12 @@ export default function AnalysisResultPage() {
             Analysis Result
           </h1>
           <p className="mt-1 max-w-prose text-sm text-text-muted">
-            Everything the analysis found, beside the slide it came from. Add your notes and save
-            it as a report.
+            Everything the analysis found, beside the slide it came from. Add your notes, check the
+            details, then generate the report.
           </p>
         </div>
 
-        <AnalysisResultWorkspace />
+        <AnalysisResultWorkspace sampleId={report ?? null} sampleDetections={sample === "1"} />
       </main>
     </div>
   );

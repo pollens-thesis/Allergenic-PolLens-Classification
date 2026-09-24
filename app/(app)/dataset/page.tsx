@@ -18,7 +18,7 @@ export default function DatasetPage() {
           </h1>
           <p className="mt-1 max-w-prose text-sm text-text-muted">
             The full taxonomic scope this console classifies against, with how many
-            grains of each you&apos;ve detected across your saved reports.
+            grains of each detected across all completed reports.
           </p>
         </div>
 

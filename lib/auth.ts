@@ -48,3 +48,31 @@ export async function exchangeGoogleCredential(
 
   return { email, tokens };
 }
+
+/**
+ * Exchanges a Microsoft ID token (from lib/microsoft.ts) for our JWT pair. The
+ * account's sign-in name (`preferred_username`) is what the backend keys the
+ * user on, so it's what the rest of the app shows as the email.
+ */
+export async function exchangeMicrosoftIdToken(
+  idToken: string,
+): Promise<{ email: string; tokens: GoogleTokenPair }> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/auth/microsoft/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id_token: idToken }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new GoogleSignInError(
+      typeof body?.detail === "string" ? body.detail : "Microsoft sign-in failed.",
+    );
+  }
+
+  const tokens = (await res.json()) as GoogleTokenPair;
+  const claims = decodeJwtPayload(idToken);
+  const email = typeof claims.preferred_username === "string" ? claims.preferred_username.toLowerCase() : "";
+  if (!email) throw new GoogleSignInError("Microsoft did not return a sign-in name.");
+  return { email, tokens };
+}

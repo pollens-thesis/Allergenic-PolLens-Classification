@@ -18,14 +18,14 @@ import { fetchMonthlyPollenCounts } from "@/lib/backend";
 import { useSettings } from "@/lib/settings";
 
 /**
- * "seed" — signed out, never fetched, showing the bundled illustrative data.
+ * "loading" — first fetch in flight.
  * "live" — fetch succeeded with real, non-zero totals.
  * "empty-live" — fetch succeeded but there's genuinely nothing to plot yet.
- * "error" — fetch failed; still showing the last-known (seed or live) data.
- * Distinguishing these is the point: a flat zero-line chart looked identical
- * to "broken" and to "no data yet" before this existed.
+ * "error" — fetch failed (keeps any data from an earlier successful fetch).
+ * Distinguishing these is the point: a flat zero-line chart looks identical
+ * to "broken" and to "no data yet".
  */
-type Status = "seed" | "live" | "empty-live" | "error";
+type Status = "loading" | "live" | "empty-live" | "error";
 
 const RANGES = [
   { label: "6 Months", value: 6 },
@@ -57,7 +57,7 @@ function CustomTooltip({
         {payload.map((p) => (
           <div key={p.name} className="flex items-center gap-1.5 text-[13px] text-text/80">
             <span className="h-1.5 w-1.5 rounded-full" style={{ background: p.color }} />
-            {p.name}: {p.value} grains/m&sup3;
+            {p.name}: {p.value} {p.value === 1 ? "grain" : "grains"}
           </div>
         ))}
       </div>
@@ -66,22 +66,21 @@ function CustomTooltip({
 }
 
 /**
- * Starts from the server-rendered seed months, then swaps in the real
- * per-species counts once fetched — mirrors DashboardStats's `initial` +
- * background-refresh pattern. Keeps showing the seed if the fetch fails
- * (e.g. signed out, backend unreachable) rather than clearing the chart.
+ * Grains counted per species per month over the trailing year, from the
+ * server (Completed reports only). These are counts of detected grains, not an
+ * airborne concentration — nothing here measures a sampled air volume.
  */
-export default function PollenCountChart({ initial }: { initial: MonthlyPollenCount[] }) {
+export default function PollenCountChart() {
   const [range, setRange] = useState<number>(12);
-  const [data, setData] = useState<MonthlyPollenCount[]>(initial);
-  const [status, setStatus] = useState<Status>("seed");
+  const [data, setData] = useState<MonthlyPollenCount[]>([]);
+  const [status, setStatus] = useState<Status>("loading");
   // Keyed on who is signed in, not the access token — that rotates every 15
   // minutes and would refetch for nothing.
   const { email } = useSettings();
 
   useEffect(() => {
-    // Default state is already "seed" — nothing to set for the signed-out
-    // case, just skip fetching.
+    // The page is behind the session guard, so an email is always present
+    // here; the guard is just for the first render before settings hydrate.
     if (!email) return;
     let cancelled = false;
     fetchMonthlyPollenCounts()
@@ -129,7 +128,7 @@ export default function PollenCountChart({ initial }: { initial: MonthlyPollenCo
           <h2 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
             Historical Pollen Counts
           </h2>
-          <p className="text-[13px] text-text-muted">Average grains per m&sup3;, by month</p>
+          <p className="text-[13px] text-text-muted">Grains counted in completed reports, by month</p>
         </div>
         <div className="flex rounded-md border border-border bg-surface p-0.5">
           {RANGES.map((r) => (
@@ -149,19 +148,20 @@ export default function PollenCountChart({ initial }: { initial: MonthlyPollenCo
         </div>
       </div>
 
-      {status === "seed" && (
-        <p className="mt-2 text-[12.5px] text-text-muted">
-          Preview data — sign in to see your real counts.
-        </p>
-      )}
-      {status === "error" && (
+      {status === "error" && data.length > 0 && (
         <p className="mt-2 flex items-center gap-1.5 text-[12.5px] text-text-muted">
           <AlertTriangle size={13} strokeWidth={1.75} className="shrink-0 text-processing" />
           Couldn&apos;t refresh — showing last known data.
         </p>
       )}
 
-      {status === "empty-live" ? (
+      {status === "loading" || (status === "error" && data.length === 0) ? (
+        <div className="mt-3 flex h-56 flex-col items-center justify-center gap-1.5 rounded-md bg-surface-sunken text-center">
+          <span className="px-3 text-[12.5px] text-text-muted">
+            {status === "loading" ? "Loading counts…" : "Couldn't reach the server to load counts."}
+          </span>
+        </div>
+      ) : status === "empty-live" ? (
         <div className="mt-3 flex h-56 flex-col items-center justify-center gap-1.5 rounded-md bg-surface-sunken text-center">
           <Inbox size={18} strokeWidth={1.5} className="text-text-faint" />
           <span className="px-3 text-[12.5px] text-text-muted">

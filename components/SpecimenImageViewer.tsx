@@ -35,6 +35,7 @@ export default function SpecimenImageViewer({
   selectedSpeciesId,
   onSelectSpecies,
   onExpand,
+  onImageError,
 }: {
   imageUrl?: string;
   fileName: string;
@@ -46,6 +47,7 @@ export default function SpecimenImageViewer({
   selectedSpeciesId: SpeciesId | null;
   onSelectSpecies: (speciesId: SpeciesId | null) => void;
   onExpand?: () => void;
+  onImageError?: () => void;
 }) {
   const reduceMotion = useReducedMotion();
   const speciesCatalog = useSpeciesCatalog();
@@ -167,6 +169,7 @@ export default function SpecimenImageViewer({
               selectedSpeciesId={selectedSpeciesId}
               selectedGrainId={activeGrainId}
               onGrainClick={handleGrainClick}
+              onImageError={onImageError}
             />
             {onExpand && (
               <button

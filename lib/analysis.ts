@@ -33,6 +33,8 @@ export type AnalysisResult = {
   grains: DetectedGrain[];
   /** Filled in when a weather lookup is wired up; null means "ask the researcher". */
   weather: WeatherConditions | null;
+  /** The server answered from its built-in sample (ROBOFLOW_MOCK), not the model. */
+  sampleDetections: boolean;
 };
 
 /** One slide's reading as it leaves the Analyze screen, before it is saved. */
@@ -69,6 +71,7 @@ type RoboflowPrediction = {
 type DetectResponse = {
   image: { width: number; height: number };
   predictions: RoboflowPrediction[];
+  mock?: boolean;
 };
 
 const knownSpecies = new Set<string>(speciesCatalog.map((s) => s.id));
@@ -88,19 +91,21 @@ function fromRoboflow({ image, predictions }: DetectResponse): GrainPrediction[]
   for (const p of predictions) {
     const speciesId = toSpeciesId(p.class);
     if (!speciesId) {
-      // getSpecies() throws on unknown ids, so an unmapped class can't go further.
+      // A class outside the catalog can't be named, counted or coloured.
       console.warn(`Skipping detection with unknown class "${p.class}"`);
       continue;
     }
+    // A grain cut off by the frame edge comes back partly outside the image;
+    // clip it to the frame (the server would clip it the same way).
+    const x0 = Math.max(0, (p.x - p.width / 2) / image.width);
+    const y0 = Math.max(0, (p.y - p.height / 2) / image.height);
+    const x1 = Math.min(1, (p.x + p.width / 2) / image.width);
+    const y1 = Math.min(1, (p.y + p.height / 2) / image.height);
+    if (x1 <= x0 || y1 <= y0) continue;
     grains.push({
       speciesId,
       confidence: p.confidence,
-      box: {
-        x: (p.x - p.width / 2) / image.width,
-        y: (p.y - p.height / 2) / image.height,
-        width: p.width / image.width,
-        height: p.height / image.height,
-      },
+      box: { x: x0, y: y0, width: x1 - x0, height: y1 - y0 },
     });
   }
   return grains;
@@ -149,11 +154,13 @@ export async function analyzeSpecimen(file: File): Promise<AnalysisResult> {
   }
   if (!res.ok) throw await detectionFailure(res);
 
-  const predictions = fromRoboflow((await res.json()) as DetectResponse);
+  const payload = (await res.json()) as DetectResponse;
+  const predictions = fromRoboflow(payload);
   return {
     detections: aggregateGrainPredictions(predictions),
     grains: toDetectedGrains(predictions),
     weather: null, // filled on the Analyze screen from the location search — see fetchWeather
+    sampleDetections: payload.mock === true,
   };
 }
 
@@ -178,7 +185,16 @@ export async function fetchWeather(
   try {
     const res = await apiFetch(`/api/v1/reports/weather/?${params}`);
     if (!res.ok) return null;
-    return (await res.json()) as WeatherConditions;
+    const w = (await res.json()) as WeatherConditions;
+    // Readings to the precision a field sheet records, not OpenWeather's floats.
+    const round = (n: number | null, digits: number) =>
+      n === null ? null : Math.round(n * 10 ** digits) / 10 ** digits;
+    return {
+      condition: w.condition,
+      temperatureC: round(w.temperatureC, 1),
+      humidityPct: round(w.humidityPct, 0),
+      windKph: round(w.windKph, 1),
+    };
   } catch {
     return null;
   }

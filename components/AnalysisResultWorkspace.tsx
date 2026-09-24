@@ -5,9 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Check,
+  CloudOff,
+  FileCheck2,
+  FlaskConical,
   Loader2,
   Microscope,
-  Save,
+  Plus,
   Trash2,
 } from "lucide-react";
 import {
@@ -16,21 +20,23 @@ import {
   getTotalGrains,
   getWeightedAvgConfidence,
   sortByAbundance,
+  speciesLabel,
   weatherConditionOptions,
-  type Species,
   type SpeciesId,
+  type Specimen,
   type SpecimenDetection,
   type WeatherCondition,
   type WeatherConditions,
 } from "@/lib/data";
 import { findSpecies, useSpeciesCatalog } from "@/lib/species-catalog";
-import { clearDraft, getDraft, saveDraft, saveReport, type ReportDraft } from "@/lib/store";
+import { deleteReport, getReport, updateReport, type ReportPatch } from "@/lib/store";
 import { SessionExpiredError } from "@/lib/api";
 import { accountName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import SpecimenImageViewer from "@/components/SpecimenImageViewer";
 import SpecimenInspector from "@/components/SpecimenInspector";
 import LocationSearch from "@/components/LocationSearch";
+import RiskBadge from "@/components/RiskBadge";
 import { overlayColor, overlayColors, type OverlayColors } from "@/lib/slide-colors";
 import { Button } from "@/components/Button";
 import { toast } from "sonner";
@@ -40,11 +46,14 @@ const fieldClass =
 
 const sectionHeadingClass = "mb-2 text-[12px] tracking-[0.2em] text-text-muted uppercase";
 
-function riskBadgeClass(level: Species["riskLevel"]) {
-  if (level === "High") return "bg-danger-bg text-danger";
-  if (level === "Moderate") return "bg-processing-bg text-processing";
-  return "bg-success-bg text-success";
-}
+const AUTOSAVE_MS = 600;
+
+const EMPTY_WEATHER: WeatherConditions = {
+  condition: "Sunny",
+  temperatureC: null,
+  humidityPct: null,
+  windKph: null,
+};
 
 /**
  * One pollen type found on a slide: how many grains, and how sure the model is.
@@ -79,52 +88,49 @@ function DetectionRow({
             : "border-border bg-surface hover:border-border-strong"
         }`}
       >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-2.5">
-          <span
-            aria-hidden
-            className="mt-1.5 h-3 w-3 shrink-0 rounded-[2px] ring-1 ring-black/20"
-            style={{ backgroundColor: overlayColor(colors, detection.speciesId) }}
-          />
-          <div className="min-w-0">
-            <div
-              className="text-[11.5px] tracking-widest text-text-muted uppercase"
-              style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-            >
-              {species.code}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-2.5">
+            <span
+              aria-hidden
+              className="mt-1.5 h-3 w-3 shrink-0 rounded-[2px] ring-1 ring-black/20"
+              style={{ backgroundColor: overlayColor(colors, detection.speciesId) }}
+            />
+            <div className="min-w-0">
+              <div
+                className="text-[11.5px] tracking-widest text-text-muted uppercase"
+                style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
+              >
+                {species.code}
+              </div>
+              <div className="truncate text-[14px] font-semibold tracking-tight text-text italic">
+                {species.scientificName}
+              </div>
+              {species.commonName && (
+                <div className="truncate text-[13px] text-text-muted">{species.commonName}</div>
+              )}
             </div>
-            <div className="truncate text-[14px] font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
-              {species.scientificName}
+          </div>
+
+          <div className="shrink-0 text-right">
+            <div className="text-[14px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+              {detection.grainCount}
             </div>
-            <div className="truncate text-[13px] text-text-muted">{species.commonName}</div>
+            <div className="text-[12px] text-text-muted">
+              {detection.grainCount === 1 ? "grain" : "grains"}
+            </div>
+            <RiskBadge level={species.riskLevel} className="mt-1.5" />
           </div>
         </div>
 
-        <div className="shrink-0 text-right">
-          <div className="text-[14px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-            {detection.grainCount}
+        <div className="mt-2.5">
+          <div className="mb-1 flex items-center justify-between text-[12.5px] text-text-muted">
+            <span>Avg. Confidence</span>
+            <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{confidencePct}%</span>
           </div>
-          <div className="text-[12px] text-text-muted">
-            {detection.grainCount === 1 ? "grain" : "grains"}
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-sunken">
+            <div className="h-full rounded-full bg-accent" style={{ width: `${confidencePct}%` }} />
           </div>
-          <span
-            className={`mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap ${riskBadgeClass(species.riskLevel)}`}
-            style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-          >
-            {species.riskLevel} Risk
-          </span>
         </div>
-      </div>
-
-      <div className="mt-2.5">
-        <div className="mb-1 flex items-center justify-between text-[12.5px] text-text-muted">
-          <span>Avg. Confidence</span>
-          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{confidencePct}%</span>
-        </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-sunken">
-          <div className="h-full rounded-full bg-accent" style={{ width: `${confidencePct}%` }} />
-        </div>
-      </div>
       </button>
     </li>
   );
@@ -172,17 +178,27 @@ function SummaryTile({ value, label }: { value: string | number; label: string }
   );
 }
 
+type SaveState = "idle" | "saving" | "saved" | "failed";
+
 /**
- * The page the Analyze screen hands off to: what the model found on the left,
- * the slide itself on the right, the collection details underneath — all still
- * editable — and the note the researcher writes before saving the report.
- *
- * Nothing here is a saved report yet. It reads the draft written by Analyze,
- * and only `Save report` turns it into a record with a sample id.
+ * A Pending report — what the model found, straight after Analyze stored it on
+ * the server. The researcher reviews the reading beside each slide, writes
+ * notes and corrects the collection details (every edit saves automatically),
+ * then generates the report, which marks it Completed. Because it lives on the
+ * server, it can be resumed later from any device (Analyze lists your pending
+ * analyses).
  */
-export default function AnalysisResultWorkspace() {
-  const [draft, setDraft] = useState<ReportDraft | null | undefined>(undefined);
-  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
+export default function AnalysisResultWorkspace({
+  sampleId,
+  sampleDetections = false,
+}: {
+  sampleId: string | null;
+  /** True when the detections came from the backend's mock mode. */
+  sampleDetections?: boolean;
+}) {
+  // undefined = loading; null = nothing to show (no id, or not found).
+  const [report, setReport] = useState<Specimen | null | undefined>(sampleId ? undefined : null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Which pollen type the image overlay is isolating; null shows every box.
   const [highlighted, setHighlighted] = useState<SpeciesId | null>(null);
@@ -193,124 +209,157 @@ export default function AnalysisResultWorkspace() {
   const [collectedDate, setCollectedDate] = useState("");
   const [collectedTime, setCollectedTime] = useState("");
   const [weather, setWeather] = useState<WeatherConditions | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
-  // Only true once the draft's values are in state, so the write-back effect
-  // below can't flush empty fields over the draft it is still loading.
-  const [hydrated, setHydrated] = useState(false);
-  // Set the moment the draft is on its way out, so a debounced write can't
-  // resurrect it after it has been saved or discarded.
+  // Edits made since the last successful save; the autosave sends these.
+  const dirty = useRef<ReportPatch>({});
   const finished = useRef(false);
   const router = useRouter();
   const settings = useSettings();
+  const speciesCatalog = useSpeciesCatalog();
   const researcherName = accountName(settings.email);
 
   useEffect(() => {
+    if (!sampleId) return;
     let cancelled = false;
-    let created: string[] = [];
-
-    getDraft().then((found) => {
-      if (cancelled) return;
-      setDraft(found);
-      if (!found) return;
-
-      const urls = Object.fromEntries(
-        found.slides.map((slide) => [slide.id, URL.createObjectURL(slide.image)]),
-      );
-      created = Object.values(urls);
-      setImageUrls(urls);
-      setSelectedId(found.slides[0]?.id ?? null);
-      setNotes(Object.fromEntries(found.slides.map((slide) => [slide.id, slide.notes])));
-      const [date, time = ""] = found.collectedAt.split("T");
-      setLocation(found.location);
-      setResearcher(found.researcher);
-      setCollectedDate(date);
-      setCollectedTime(time);
-      setWeather(found.weather);
-      setHydrated(true);
-    });
-
+    getReport(sampleId)
+      .then((found) => {
+        if (cancelled) return;
+        if (found && (found.status !== "Pending" || !found.canEdit)) {
+          // Already generated, or someone else's: the report page is the place for it.
+          router.replace(`/reports/${found.sampleId}`);
+          return;
+        }
+        setReport(found);
+        if (!found) return;
+        setSelectedId(found.slides[0]?.id ?? null);
+        setNotes(Object.fromEntries(found.slides.map((slide) => [slide.id, slide.notes])));
+        const [date, time = ""] = found.collectedAt.split("T");
+        setLocation(found.location);
+        setResearcher(found.researcher);
+        setCollectedDate(date);
+        setCollectedTime(time);
+        setWeather(found.weather);
+      })
+      .catch((error: unknown) => {
+        if (cancelled || error instanceof SessionExpiredError) return;
+        setLoadError(error instanceof Error ? error.message : "Couldn't load this analysis.");
+      });
     return () => {
       cancelled = true;
-      created.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, []);
+  }, [sampleId, router]);
 
-  // Every edit goes back into the draft, so a refresh — or a detour to another
-  // screen and back — returns to the notes and corrections already made rather
-  // than to the raw reading.
-  useEffect(() => {
-    if (!draft || !hydrated || finished.current) return;
-    const timer = setTimeout(() => {
-      if (finished.current) return;
-      void saveDraft({
-        ...draft,
-        collectedAt: collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate,
-        location,
-        researcher,
-        weather: weather ?? draft.weather,
-        slides: draft.slides.map((slide) => ({ ...slide, notes: notes[slide.id] ?? "" })),
-      });
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [draft, hydrated, notes, location, researcher, collectedDate, collectedTime, weather]);
-
-  function updateWeather<K extends keyof WeatherConditions>(key: K, value: WeatherConditions[K]) {
-    setWeather((current) => (current ? { ...current, [key]: value } : current));
+  /** Record an edit and (re)start the autosave timer. */
+  function edit(patch: ReportPatch) {
+    const { notes: notePatch, ...fields } = patch;
+    dirty.current = {
+      ...dirty.current,
+      ...fields,
+      ...(notePatch ? { notes: { ...dirty.current.notes, ...notePatch } } : {}),
+    };
+    setSaveState("saving");
+    setSaveError(null);
   }
 
-  async function handleSave() {
-    if (!draft || !collectedDate || isSaving) return;
-    finished.current = true;
-    setIsSaving(true);
-
-    const savePromise = saveReport(
-      {
-        collectedAt: collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate,
-        location,
-        researcher: researcher || researcherName,
-        weather,
-        slides: draft.slides.map((slide) => ({
-          fileName: slide.fileName,
-          detections: slide.detections,
-          grains: slide.grains,
-          notes: notes[slide.id] ?? "",
-        })),
-      },
-      Object.fromEntries(draft.slides.map((slide, index) => [String(index), slide.image])),
-    );
-    toast.promise(savePromise, {
-      loading: "Saving report…",
-      success: "Report saved",
-      error: (error) =>
-        error instanceof SessionExpiredError
-          ? "Session expired — your draft is kept; sign in and save again."
-          : `Couldn't save report${error instanceof Error && error.message ? `: ${error.message}` : ""}`,
-    });
-
-    let report;
+  async function flush(): Promise<boolean> {
+    if (!report || finished.current) return true;
+    const patch = dirty.current;
+    if (Object.keys(patch).length === 0) return true;
+    dirty.current = {};
     try {
-      report = await savePromise;
-    } catch {
-      // Nothing was saved: keep the draft (and its autosave) alive and let the
-      // researcher try again rather than leaving the button stuck on "Saving".
-      finished.current = false;
-      setIsSaving(false);
+      await updateReport(report.sampleId, patch);
+      setSaveState("saved");
+      return true;
+    } catch (error) {
+      // Put the unsaved edits back so the next attempt still sends them.
+      dirty.current = { ...patch, ...dirty.current };
+      if (error instanceof SessionExpiredError) return false;
+      setSaveState("failed");
+      setSaveError(error instanceof Error ? error.message : "Couldn't save your changes.");
+      return false;
+    }
+  }
+
+  // Autosave: a short pause after the last edit sends everything changed since.
+  useEffect(() => {
+    if (saveState !== "saving") return;
+    const timer = setTimeout(() => void flush(), AUTOSAVE_MS);
+    return () => clearTimeout(timer);
+    // flush reads refs; re-running on every render would reset the timer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saveState, notes, location, researcher, collectedDate, collectedTime, weather]);
+
+  function setCollected(date: string, time: string) {
+    setCollectedDate(date);
+    setCollectedTime(time);
+    if (date) edit({ collectedAt: time ? `${date}T${time}` : date });
+  }
+
+  function updateWeather<K extends keyof WeatherConditions>(key: K, value: WeatherConditions[K]) {
+    const next = { ...(weather ?? EMPTY_WEATHER), [key]: value };
+    setWeather(next);
+    edit({ weather: next });
+  }
+
+  async function handleGenerate() {
+    if (!report || isGenerating) return;
+    setIsGenerating(true);
+    // Everything on screen goes with the status change, so nothing typed is lost.
+    const final: ReportPatch = {
+      ...dirty.current,
+      collectedAt: collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate,
+      location,
+      researcher: researcher.trim() || researcherName,
+      weather,
+      notes,
+      status: "Completed",
+    };
+    dirty.current = {};
+    try {
+      await updateReport(report.sampleId, final);
+    } catch (error) {
+      dirty.current = final;
+      setIsGenerating(false);
+      if (error instanceof SessionExpiredError) return;
+      toast.error(error instanceof Error ? error.message : "Couldn't generate the report.");
       return;
     }
-
-    await clearDraft();
+    finished.current = true;
+    toast.success(`Report ${report.sampleId} generated`);
     router.push(`/reports?saved=${report.sampleId}`);
   }
 
   async function handleDiscard() {
+    if (!report) return;
     finished.current = true;
-    await clearDraft();
-    toast.success("Draft discarded");
+    try {
+      await deleteReport(report.sampleId);
+    } catch (error) {
+      finished.current = false;
+      if (error instanceof SessionExpiredError) return;
+      toast.error(error instanceof Error ? error.message : "Couldn't discard the analysis.");
+      return;
+    }
+    toast.success("Analysis discarded");
     router.push("/upload");
   }
 
-  if (draft === undefined) {
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-16 text-center">
+        <CloudOff size={22} strokeWidth={1.5} className="text-text-faint" />
+        <p className="text-[13.5px] text-text-muted">{loadError}</p>
+        <Button type="button" intent="secondary" size="sm" onClick={() => window.location.reload()}>
+          Try Again
+        </Button>
+      </div>
+    );
+  }
+
+  if (report === undefined) {
     return (
       <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-6 py-16 text-[13px] text-text-muted">
         <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
@@ -319,12 +368,12 @@ export default function AnalysisResultWorkspace() {
     );
   }
 
-  if (draft === null) {
+  if (report === null) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-16 text-center">
         <Microscope size={22} strokeWidth={1.5} className="text-text-faint" />
         <p className="text-[13.5px] text-text-muted">
-          There is no analysis waiting here. Run one from Analyze specimen, or open a saved report.
+          There is no pending analysis here. Run one from Analyze Specimen, or open a report.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Link
@@ -338,27 +387,57 @@ export default function AnalysisResultWorkspace() {
             href="/reports"
             className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 text-[13px] text-text-muted transition active:scale-[0.97] hover:text-text"
           >
-            Saved Reports
+            Reports
           </Link>
         </div>
       </div>
     );
   }
 
-  const selected = draft.slides.find((slide) => slide.id === selectedId) ?? draft.slides[0] ?? null;
+  const selected = report.slides.find((slide) => slide.id === selectedId) ?? report.slides[0] ?? null;
   const detections = selected ? [...selected.detections].sort(sortByAbundance) : [];
   const totalGrains = getTotalGrains(detections);
   const confidence = getWeightedAvgConfidence(detections);
-  const batchGrains = draft.slides.reduce(
-    (sum, slide) => sum + getTotalGrains(slide.detections),
-    0,
-  );
-  const slideIndex = selected ? draft.slides.findIndex((slide) => slide.id === selected.id) : -1;
+  const batchGrains = report.slides.reduce((sum, slide) => sum + getTotalGrains(slide.detections), 0);
+  const slideIndex = selected ? report.slides.findIndex((slide) => slide.id === selected.id) : -1;
   // One palette for the whole batch: a type keeps its colour on every slide.
-  const colors = overlayColors(aggregateSlideDetections(draft.slides));
+  const colors = overlayColors(aggregateSlideDetections(report.slides));
+  const canGenerate = Boolean(collectedDate) && location.trim() !== "" && !isGenerating;
+  const top = aggregateSlideDetections(report.slides)[0];
+
+  const generateButton = (size: "sm" | "md") => (
+    <Button
+      type="button"
+      intent="accent"
+      size={size}
+      onClick={handleGenerate}
+      disabled={!canGenerate}
+      className="disabled:cursor-not-allowed"
+    >
+      {isGenerating ? (
+        <>
+          <Loader2 size={15} strokeWidth={1.75} className="animate-spin" />
+          Generating…
+        </>
+      ) : (
+        <>
+          <FileCheck2 size={15} strokeWidth={1.75} />
+          Generate Report
+        </>
+      )}
+    </Button>
+  );
 
   return (
     <div className="flex flex-col gap-6">
+      {sampleDetections && (
+        <p className="flex items-start gap-2 rounded-md border border-processing/30 bg-processing-bg px-3 py-2.5 text-[12.5px] text-processing">
+          <FlaskConical size={14} strokeWidth={2} className="mt-px shrink-0" />
+          Sample detections — the trained model isn&apos;t deployed yet, so the server returned its
+          built-in example reading. Don&apos;t treat these counts as results.
+        </p>
+      )}
+
       {/* Header: what was analyzed, and the way out of the screen */}
       <div className="rounded-lg border border-border bg-surface p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -367,16 +446,28 @@ export default function AnalysisResultWorkspace() {
               className="text-[12px] tracking-widest text-text-muted uppercase"
               style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
             >
-              Not Saved Yet
+              Pending · {report.sampleId}
             </div>
-            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
-              {draft.slides.length === 1
-                ? "1 Slide Analyzed"
-                : `${draft.slides.length} Slides Analyzed`}
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-text">
+              {report.slides.length === 1 ? "1 Slide Analyzed" : `${report.slides.length} Slides Analyzed`}
             </h2>
             <p className="mt-1 text-[13px] text-text-muted">
-              {batchGrains} {batchGrains === 1 ? "grain" : "grains"} counted across the batch ·
-              saved as one report
+              {batchGrains} {batchGrains === 1 ? "grain" : "grains"} counted across the batch
+              {top ? ` · mostly ${speciesLabel(findSpecies(speciesCatalog, top.speciesId))}` : ""}
+            </p>
+            <p className="mt-1.5 flex items-center gap-1.5 text-[12px] text-text-faint" aria-live="polite">
+              {saveState === "saving" && (
+                <>
+                  <Loader2 size={11} strokeWidth={2} className="animate-spin" /> Saving changes…
+                </>
+              )}
+              {saveState === "saved" && (
+                <>
+                  <Check size={11} strokeWidth={2} /> All changes saved
+                </>
+              )}
+              {saveState === "failed" && <span className="text-danger">{saveError}</span>}
+              {saveState === "idle" && "Stored on the server — you can resume it later from Analyze."}
             </p>
           </div>
 
@@ -409,34 +500,14 @@ export default function AnalysisResultWorkspace() {
                 Discard
               </button>
             )}
-
-            <Button
-              type="button"
-              intent="accent"
-              size="sm"
-              onClick={handleSave}
-              disabled={!collectedDate || isSaving}
-              className="disabled:cursor-not-allowed"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 size={15} strokeWidth={1.75} className="animate-spin" />
-                  Saving report…
-                </>
-              ) : (
-                <>
-                  <Save size={15} strokeWidth={1.75} />
-                  Save Report
-                </>
-              )}
-            </Button>
+            {generateButton("sm")}
           </div>
         </div>
 
         {/* Slide switcher — one report, but each slide has its own reading. */}
-        {draft.slides.length > 1 && (
+        {report.slides.length > 1 && (
           <div className="mt-4 flex flex-wrap gap-1.5 border-t border-border pt-4">
-            {draft.slides.map((slide, index) => {
+            {report.slides.map((slide, index) => {
               const active = slide.id === selected?.id;
               return (
                 <button
@@ -453,10 +524,7 @@ export default function AnalysisResultWorkspace() {
                       : "border-border bg-surface-sunken text-text-muted hover:border-border-strong hover:text-text"
                   }`}
                 >
-                  <span
-                    className="shrink-0 text-[12px] text-text-muted"
-                    style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-                  >
+                  <span className="shrink-0 text-[12px] text-text-muted" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                     S{index + 1}
                   </span>
                   <span className="truncate">{slide.fileName}</span>
@@ -472,32 +540,25 @@ export default function AnalysisResultWorkspace() {
           {/* Left: what the analysis found */}
           <div className="rounded-lg border border-border bg-surface p-5 xl:col-span-3">
             <div className="mb-4 flex items-baseline justify-between gap-3">
-              <h3 className="text-lg font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
-                Pollen Detected
-              </h3>
-              {draft.slides.length > 1 && (
+              <h3 className="text-lg font-semibold tracking-tight text-text">Pollen Detected</h3>
+              {report.slides.length > 1 && (
                 <span className="text-[13px] text-text-muted">Slide {slideIndex + 1}</span>
               )}
             </div>
 
             <div className="mb-4 grid grid-cols-3 gap-3 rounded-md bg-surface-sunken px-3 py-3 text-center">
               <SummaryTile value={totalGrains} label="Grains" />
-              <SummaryTile
-                value={detections.length}
-                label={detections.length === 1 ? "Pollen Type" : "Pollen Types"}
-              />
+              <SummaryTile value={detections.length} label={detections.length === 1 ? "Pollen Type" : "Pollen Types"} />
               <SummaryTile value={`${Math.round(confidence * 100)}%`} label="Avg. Confidence" />
             </div>
 
             {detections.length === 0 ? (
               <p className="rounded-md border border-border bg-surface px-3 py-4 text-center text-[13px] text-text-muted">
-                No pollen grains found on this slide.
+                Nothing detected on this slide — no pollen grains were found.
               </p>
             ) : (
               <>
-                <p className="mb-2 text-[12.5px] text-text-muted">
-                  Select a type to box its grains on the image.
-                </p>
+                <p className="mb-2 text-[12.5px] text-text-muted">Select a type to box its grains on the image.</p>
                 <ul className="flex flex-col gap-2">
                   {detections.map((detection) => (
                     <DetectionRow
@@ -506,9 +567,7 @@ export default function AnalysisResultWorkspace() {
                       colors={colors}
                       selected={highlighted === detection.speciesId}
                       onSelect={() =>
-                        setHighlighted((current) =>
-                          current === detection.speciesId ? null : detection.speciesId,
-                        )
+                        setHighlighted((current) => (current === detection.speciesId ? null : detection.speciesId))
                       }
                     />
                   ))}
@@ -520,11 +579,9 @@ export default function AnalysisResultWorkspace() {
           {/* Right: the slide itself, and the note about it */}
           <div className="flex flex-col gap-6 xl:col-span-2">
             <div className="rounded-lg border border-border bg-surface p-5">
-              <h3 className="mb-4 text-lg font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
-                Specimen Image
-              </h3>
+              <h3 className="mb-4 text-lg font-semibold tracking-tight text-text">Specimen Image</h3>
               <SpecimenImageViewer
-                imageUrl={imageUrls[selected.id]}
+                imageUrl={selected.imageUrl}
                 fileName={selected.fileName}
                 grains={selected.grains}
                 detections={detections}
@@ -539,11 +596,11 @@ export default function AnalysisResultWorkspace() {
                 colors={colors}
                 initialSlideId={selected.id}
                 initialSpeciesId={highlighted}
-                slides={draft.slides.map((slide, index) => ({
+                slides={report.slides.map((slide, index) => ({
                   id: slide.id,
                   label: `Slide ${index + 1}`,
                   fileName: slide.fileName,
-                  imageUrl: imageUrls[slide.id],
+                  imageUrl: slide.imageUrl,
                   grains: slide.grains,
                   detections: slide.detections,
                 }))}
@@ -551,19 +608,19 @@ export default function AnalysisResultWorkspace() {
             </div>
 
             <div className="rounded-lg border border-border bg-surface p-5">
-              <h3 className="mb-1 text-lg font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
-                Notes
-              </h3>
+              <h3 className="mb-1 text-lg font-semibold tracking-tight text-text">Notes</h3>
               <p className="mb-2.5 text-[12.5px] text-text-muted">
                 Recorded against this slide
-                {draft.slides.length > 1 ? " only — each slide keeps its own note." : "."}
+                {report.slides.length > 1 ? " only — each slide keeps its own note." : "."}
               </p>
               <textarea
                 rows={6}
                 value={notes[selected.id] ?? ""}
-                onChange={(e) =>
-                  setNotes((current) => ({ ...current, [selected.id]: e.target.value }))
-                }
+                onChange={(e) => {
+                  const text = e.target.value;
+                  setNotes((current) => ({ ...current, [selected.id]: text }));
+                  edit({ notes: { [selected.id]: text } });
+                }}
                 placeholder="Slide preparation, staining, obscured grains, anything unusual…"
                 className={`${fieldClass} resize-y`}
               />
@@ -572,14 +629,11 @@ export default function AnalysisResultWorkspace() {
         </div>
       )}
 
-      {/* The details entered on Analyze, still editable until the report is saved. */}
+      {/* The details entered on Analyze, still editable until the report is generated. */}
       <div className="rounded-lg border border-border bg-surface p-5">
-        <h3 className="text-lg font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
-          Collection Details
-        </h3>
+        <h3 className="text-lg font-semibold tracking-tight text-text">Collection Details</h3>
         <p className="mt-0.5 mb-4 text-[13px] text-text-muted">
-          What you entered before analyzing — correct anything here and it is saved with the
-          report.
+          What you entered before analyzing — correct anything here; changes save as you go.
         </p>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -587,7 +641,10 @@ export default function AnalysisResultWorkspace() {
             <span className="mb-1 block text-[12.5px] text-text-muted">Location</span>
             <LocationSearch
               value={location}
-              onChange={setLocation}
+              onChange={(text) => {
+                setLocation(text);
+                edit({ location: text });
+              }}
               placeholder="Search town or province"
               className={fieldClass}
             />
@@ -597,7 +654,10 @@ export default function AnalysisResultWorkspace() {
             <input
               type="text"
               value={researcher}
-              onChange={(e) => setResearcher(e.target.value)}
+              onChange={(e) => {
+                setResearcher(e.target.value);
+                edit({ researcher: e.target.value });
+              }}
               placeholder={researcherName}
               className={fieldClass}
             />
@@ -607,41 +667,38 @@ export default function AnalysisResultWorkspace() {
             <input
               type="date"
               value={collectedDate}
-              onChange={(e) => setCollectedDate(e.target.value)}
+              onChange={(e) => setCollected(e.target.value, collectedTime)}
               className={fieldClass}
             />
           </label>
           <label className="block">
             <span className="mb-1 block text-[12.5px] text-text-muted">
-              Time collected <span className="text-text-faint">(optional)</span>
+              Time Collected <span className="text-text-faint">(optional)</span>
             </span>
             <input
               type="time"
               value={collectedTime}
-              onChange={(e) => setCollectedTime(e.target.value)}
+              onChange={(e) => setCollected(collectedDate, e.target.value)}
               className={fieldClass}
             />
           </label>
         </div>
 
-        {collectedDate ? (
-          <p className="mt-2 text-[12.5px] text-text-muted">
-            Collected{" "}
-            {formatCollectedAt(
-              collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate,
-            )}
-          </p>
+        {!collectedDate ? (
+          <p className="mt-2 text-[12.5px] text-danger">Set the collection date before generating the report.</p>
+        ) : !location.trim() ? (
+          <p className="mt-2 text-[12.5px] text-danger">Set the location before generating the report.</p>
         ) : (
-          <p className="mt-2 text-[12.5px] text-danger">
-            Set the collection date before saving the report.
+          <p className="mt-2 text-[12.5px] text-text-muted">
+            Collected {formatCollectedAt(collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate)}
           </p>
         )}
 
-        {weather && (
-          <div className="mt-4">
-            <h4 className={sectionHeadingClass} style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-              Conditions at Collection
-            </h4>
+        <div className="mt-4">
+          <h4 className={sectionHeadingClass} style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+            Conditions at Collection
+          </h4>
+          {weather ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <label className="col-span-2 block sm:col-span-1">
                 <span className="mb-1 block text-[12.5px] text-text-muted">Weather</span>
@@ -657,11 +714,7 @@ export default function AnalysisResultWorkspace() {
                   ))}
                 </select>
               </label>
-              <MeasurementField
-                label="Temp (°C)"
-                value={weather.temperatureC}
-                onChange={(next) => updateWeather("temperatureC", next)}
-              />
+              <MeasurementField label="Temp (°C)" value={weather.temperatureC} onChange={(next) => updateWeather("temperatureC", next)} />
               <MeasurementField
                 label="Humidity (%)"
                 value={weather.humidityPct}
@@ -669,45 +722,27 @@ export default function AnalysisResultWorkspace() {
                 min={0}
                 max={100}
               />
-              <MeasurementField
-                label="Wind (km/h)"
-                value={weather.windKph}
-                onChange={(next) => updateWeather("windKph", next)}
-                min={0}
-              />
+              <MeasurementField label="Wind (km/h)" value={weather.windKph} onChange={(next) => updateWeather("windKph", next)} min={0} />
             </div>
-          </div>
-        )}
+          ) : (
+            <button
+              type="button"
+              onClick={() => updateWeather("condition", EMPTY_WEATHER.condition)}
+              className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[13px] text-text-muted hover:border-border-strong hover:text-text"
+            >
+              <Plus size={13} strokeWidth={2} />
+              Add Conditions
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Link
-          href="/upload"
-          className="focus-ring inline-flex items-center gap-1.5 rounded text-[13px] text-text-muted transition hover:text-text"
-        >
+        <Link href="/upload" className="focus-ring inline-flex items-center gap-1.5 rounded text-[13px] text-text-muted transition hover:text-text">
           <ArrowLeft size={14} strokeWidth={1.75} />
           Back to Analyze Specimen
         </Link>
-
-        <Button
-          type="button"
-          intent="accent"
-          onClick={handleSave}
-          disabled={!collectedDate || isSaving}
-          className="disabled:cursor-not-allowed"
-        >
-          {isSaving ? (
-            <>
-              <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
-              Saving report…
-            </>
-          ) : (
-            <>
-              <Save size={16} strokeWidth={1.75} />
-              Save Report
-            </>
-          )}
-        </Button>
+        {generateButton("md")}
       </div>
     </div>
   );

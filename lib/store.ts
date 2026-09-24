@@ -1,95 +1,36 @@
 // ---------------------------------------------------------------------------
-// REPORT STORE — where saved reports live.
+// REPORT STORE — reports live on the server (api/, /api/v1/reports/).
 //
-// Saved reports and their slide images live on the backend now
-// (GET/POST /api/v1/reports/, GET /api/v1/reports/:sampleId/) — see
-// listReports/getReport/saveReport below. Reports are a shared corpus, so
-// reads/writes require a signed-in accessToken; signed out (or on a failed
-// request) falls back to the seed history alone, matching the pattern
-// already used for the species catalog and monthly pollen counts in
-// lib/data.ts.
+// Reports are a shared corpus: every signed-in researcher can read every
+// report; only a report's creator (or staff) can edit, finalise or delete it
+// (`canEdit` on each report says which). A report's lifecycle is
 //
-// The seed records in lib/data.ts are treated as read-only history that
-// always appears alongside anything fetched from the backend.
+//   Pending      — stored straight after analysis (Analyze → createReport)
+//   Completed    — the researcher generated the report (updateReport status)
+//   Needs review ⇄ Completed — flagged for another look
 //
-// A third store, `drafts`, holds the analysis a researcher has just run but not
-// yet saved. It exists because Analyze and the report page it hands off to are
-// two routes: the readings, the images and the collection details have to
-// outlive the navigation between them, and a draft in IndexedDB also survives a
-// refresh of the report page. Only one draft is kept — a researcher works
-// through one batch at a time. Drafts stay local-only — they're pre-save,
-// pre-report-existence state, not part of the backend migration above.
+// Failures throw `ReportStoreError` with a message written for the
+// researcher; nothing here falls back to made-up data.
 // ---------------------------------------------------------------------------
 
 import {
-  MOCK_TODAY,
-  specimens as seedSpecimens,
   type CollectedAt,
-  type DetectedGrain,
+  type ReportStatus,
   type Specimen,
-  type SpecimenDetection,
   type SpecimenSlide,
   type WeatherConditions,
 } from "@/lib/data";
 import type { NewReportInput } from "@/lib/analysis";
-import { apiFetch, hasSession } from "@/lib/api";
+import { apiFetch, SessionExpiredError } from "@/lib/api";
 
-const DB_NAME = "pollens";
-const DB_VERSION = 2;
-const REPORTS = "reports";
-const IMAGES = "images";
-const DRAFTS = "drafts";
-
-/** A slide image kept alongside its report, keyed by the slide's id. */
-type StoredImage = { slideId: string; sampleId: string; blob: Blob };
-
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(REPORTS)) {
-        db.createObjectStore(REPORTS, { keyPath: "sampleId" });
-      }
-      if (!db.objectStoreNames.contains(IMAGES)) {
-        const images = db.createObjectStore(IMAGES, { keyPath: "slideId" });
-        images.createIndex("bySample", "sampleId", { unique: false });
-      }
-      // Added in v2. Existing browsers hold a v1 database, so this runs as an
-      // upgrade on them and leaves their saved reports untouched.
-      if (!db.objectStoreNames.contains(DRAFTS)) {
-        db.createObjectStore(DRAFTS, { keyPath: "id" });
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+export class ReportStoreError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ReportStoreError";
+  }
 }
 
-function promisify<T>(request: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-/**
- * IndexedDB is unavailable during server rendering and in a few locked-down
- * browser modes. Callers get the seed records instead of an exception.
- */
-function hasIndexedDb(): boolean {
-  return typeof indexedDB !== "undefined";
-}
-
-function sortByRecency(a: Specimen, b: Specimen): number {
-  // ISO timestamps sort chronologically as text; sampleId breaks same-instant
-  // ties so the order never flickers between renders.
-  return b.collectedAt.localeCompare(a.collectedAt) || b.sampleId.localeCompare(a.sampleId);
-}
-
-// The backend's SlideSerializer emits `image_url` (snake_case — an
-// inconsistency against its own camelCase convention elsewhere), mapped to
-// `imageUrl` below rather than fixed server-side.
+// The backend's SlideSerializer emits `image_url` (snake_case), mapped here.
 type BackendSlide = Omit<SpecimenSlide, "imageUrl"> & { image_url: string };
 type BackendReport = Omit<Specimen, "slides"> & { slides: BackendSlide[] };
 
@@ -100,37 +41,75 @@ function mapBackendReport(row: BackendReport): Specimen {
   };
 }
 
-/** Saved reports (from the backend, once signed in) and seed history together, newest collection first. */
-export async function listReports(): Promise<Specimen[]> {
-  let fetched: Specimen[] = [];
-  if (hasSession()) {
-    try {
-      const res = await apiFetch("/api/v1/reports/");
-      if (res.ok) {
-        const rows = (await res.json()) as BackendReport[];
-        fetched = rows.map(mapBackendReport);
-      }
-    } catch {
-      // Network failure (or a lost session, which apiFetch has already sent to
-      // sign-in) — fall back to seed history below.
-    }
-  }
-  return [...fetched, ...seedSpecimens].sort(sortByRecency);
+/**
+ * The most useful message in an error response: the first field error when the
+ * server lists them (`{"detail", "errors": {...}}`), else its `detail`.
+ */
+async function errorMessage(res: Response, fallback: string): Promise<string> {
+  const body = (await res.json().catch(() => null)) as
+    | { detail?: unknown; errors?: unknown }
+    | null;
+  const first = firstFieldError(body?.errors);
+  if (first) return first;
+  return typeof body?.detail === "string" ? body.detail : fallback;
 }
 
+function firstFieldError(errors: unknown): string | null {
+  if (typeof errors === "string") return errors;
+  if (Array.isArray(errors)) {
+    for (const entry of errors) {
+      const found = firstFieldError(entry);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (errors && typeof errors === "object") {
+    for (const value of Object.values(errors)) {
+      const found = firstFieldError(value);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/** apiFetch, with network failures turned into a readable error. */
+async function request(path: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await apiFetch(path, init);
+  } catch (error) {
+    if (error instanceof SessionExpiredError) throw error;
+    throw new ReportStoreError("Couldn't reach the PolLens server. Check your connection and try again.");
+  }
+}
+
+function sortByRecency(a: Specimen, b: Specimen): number {
+  // ISO timestamps sort chronologically as text; sampleId breaks ties.
+  return b.collectedAt.localeCompare(a.collectedAt) || b.sampleId.localeCompare(a.sampleId);
+}
+
+/** Every report (shared corpus), newest collection first. `mine` narrows to your own. */
+export async function listReports(
+  options: { mine?: boolean; status?: ReportStatus } = {},
+): Promise<Specimen[]> {
+  const params = new URLSearchParams();
+  if (options.mine) params.set("owner", "me");
+  if (options.status) params.set("status", options.status);
+  const query = params.size ? `?${params}` : "";
+  const res = await request(`/api/v1/reports/${query}`);
+  if (!res.ok) throw new ReportStoreError(await errorMessage(res, "Couldn't load reports."));
+  const rows = (await res.json()) as BackendReport[];
+  return rows.map(mapBackendReport).sort(sortByRecency);
+}
+
+/** One report, or null if it doesn't exist. */
 export async function getReport(sampleId: string): Promise<Specimen | null> {
-  if (hasSession()) {
-    try {
-      const res = await apiFetch(`/api/v1/reports/${encodeURIComponent(sampleId)}/`);
-      if (res.ok) return mapBackendReport((await res.json()) as BackendReport);
-    } catch {
-      // Fall through to the seed lookup below.
-    }
-  }
-  return seedSpecimens.find((s) => s.sampleId === sampleId) ?? null;
+  const res = await request(`/api/v1/reports/${encodeURIComponent(sampleId)}/`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new ReportStoreError(await errorMessage(res, "Couldn't load this report."));
+  return mapBackendReport((await res.json()) as BackendReport);
 }
 
-/** Direct <img src> URLs for a report's slide images — server-hosted, no object-URL lifecycle needed. */
+/** Direct <img src> URLs for a report's slide images. */
 export function getReportImageUrls(report: Specimen): Record<string, string> {
   const urls: Record<string, string> = {};
   for (const slide of report.slides) {
@@ -139,29 +118,43 @@ export function getReportImageUrls(report: Specimen): Record<string, string> {
   return urls;
 }
 
-/** Blobs for a report's slides — used when building the PDF. */
+/**
+ * Blobs for a report's slides — used when building the PDF. Each slide is
+ * fetched on its own, so one unreachable image leaves that slide out (the PDF
+ * says so) instead of failing the whole document. `no-store` avoids reusing a
+ * cached copy of the image that was loaded without CORS for the <img> tag.
+ */
 export async function getReportImageBlobs(report: Specimen): Promise<Record<string, Blob>> {
   const entries = await Promise.all(
     report.slides
       .filter((slide) => Boolean(slide.imageUrl))
-      .map(async (slide) => [slide.id, await (await fetch(slide.imageUrl!)).blob()] as const),
+      .map(async (slide) => {
+        try {
+          const res = await fetch(slide.imageUrl!, { cache: "no-store", mode: "cors" });
+          return res.ok ? ([slide.id, await res.blob()] as const) : null;
+        } catch {
+          return null;
+        }
+      }),
   );
-  return Object.fromEntries(entries);
+  return Object.fromEntries(entries.filter((entry) => entry !== null));
 }
 
 /**
- * Persist a finished batch as one report, storing each slide's image with it.
- * The sample id comes back from the backend rather than being minted
- * client-side.
+ * Store a freshly analysed batch as one report — Pending by default, so the
+ * researcher can review it, add notes and generate it later from any device.
+ * `images` is keyed by the slide's index in `input.slides`.
  */
-export async function saveReport(
+export async function createReport(
   input: NewReportInput,
-  images: Record<string, Blob>, // keyed by the index of the slide in input.slides
+  images: Record<string, Blob>,
+  status: "Pending" | "Completed" = "Pending",
 ): Promise<Specimen> {
   const formData = new FormData();
   formData.append("collectedAt", input.collectedAt);
   formData.append("location", input.location.trim());
   formData.append("researcher", input.researcher.trim());
+  formData.append("status", status);
   if (input.weather) formData.append("weather", JSON.stringify(input.weather));
   formData.append("slides", JSON.stringify(input.slides));
   input.slides.forEach((slide, index) => {
@@ -169,169 +162,41 @@ export async function saveReport(
     if (file) formData.append(String(index), file, slide.fileName);
   });
 
-  // No Content-Type header here — the browser sets the multipart boundary
-  // itself from a FormData body.
-  const res = await apiFetch("/api/v1/reports/", { method: "POST", body: formData });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as { detail?: string } | null;
-    throw new Error(body?.detail ?? "Failed to save report.");
-  }
+  // No Content-Type header — the browser sets the multipart boundary itself.
+  const res = await request("/api/v1/reports/", { method: "POST", body: formData });
+  if (!res.ok) throw new ReportStoreError(await errorMessage(res, "Couldn't store the analysis."));
   return mapBackendReport((await res.json()) as BackendReport);
 }
 
-// ---------------------------------------------------------------------------
-// Draft — the analysis that has been run but not saved yet.
-// ---------------------------------------------------------------------------
-
-/** One analyzed slide waiting to be saved, image included. */
-export type DraftSlide = {
-  id: string;
-  fileName: string;
-  image: Blob;
-  detections: SpecimenDetection[];
-  grains: DetectedGrain[];
-  notes: string;
+export type ReportPatch = {
+  collectedAt?: CollectedAt;
+  location?: string;
+  researcher?: string;
+  weather?: WeatherConditions | null;
+  /** Per-slide notes, by slide id ("{sampleId}-S{n}"). */
+  notes?: Record<string, string>;
+  status?: ReportStatus;
 };
 
-/**
- * A finished analysis on its way to becoming a report: the readings, the
- * images, and the collection details the researcher typed on the Analyze
- * screen. Every field stays editable on the report page until it is saved.
- */
-export type ReportDraft = {
-  collectedAt: CollectedAt;
-  location: string;
-  researcher: string;
-  weather: WeatherConditions;
-  slides: DraftSlide[];
-  /** When the analysis was run — not when the specimen was collected. */
-  analyzedAt: string;
-};
+/** Edit a report you created (details, notes) and/or move it along its lifecycle. */
+export async function updateReport(sampleId: string, patch: ReportPatch): Promise<Specimen> {
+  const { notes, ...fields } = patch;
+  const body: Record<string, unknown> = { ...fields };
+  if (notes) body.slides = Object.entries(notes).map(([id, text]) => ({ id, notes: text }));
 
-// One draft at a time, so it lives under a fixed key rather than an id that
-// would have to be threaded through the URL.
-const DRAFT_KEY = "current";
-
-type StoredDraft = ReportDraft & { id: typeof DRAFT_KEY };
-
-/** Replaces whatever draft was there — a new analysis supersedes the old one. */
-export async function saveDraft(draft: ReportDraft): Promise<void> {
-  if (!hasIndexedDb()) return;
-  const db = await openDb();
-  try {
-    const tx = db.transaction(DRAFTS, "readwrite");
-    tx.objectStore(DRAFTS).put({ ...draft, id: DRAFT_KEY } satisfies StoredDraft);
-    await new Promise<void>((resolve, reject) => {
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error);
-    });
-  } finally {
-    db.close();
-  }
+  const res = await request(`/api/v1/reports/${encodeURIComponent(sampleId)}/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new ReportStoreError(await errorMessage(res, "Couldn't update the report."));
+  return mapBackendReport((await res.json()) as BackendReport);
 }
 
-/** The analysis waiting to be saved, or null when there isn't one. */
-export async function getDraft(): Promise<ReportDraft | null> {
-  if (!hasIndexedDb()) return null;
-  const db = await openDb();
-  try {
-    const tx = db.transaction(DRAFTS, "readonly");
-    const found = await promisify(
-      tx.objectStore(DRAFTS).get(DRAFT_KEY) as IDBRequest<StoredDraft | undefined>,
-    );
-    return found ?? null;
-  } finally {
-    db.close();
-  }
-}
-
-/** Drops the pending analysis — after it is saved, or when it is discarded. */
-export async function clearDraft(): Promise<void> {
-  if (!hasIndexedDb()) return;
-  const db = await openDb();
-  try {
-    const tx = db.transaction(DRAFTS, "readwrite");
-    tx.objectStore(DRAFTS).delete(DRAFT_KEY);
-    await new Promise<void>((resolve, reject) => {
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  } finally {
-    db.close();
-  }
-}
-
-/** Removes a locally saved report and its images. Seed records are read-only. */
+/** Delete a report you created, with its slide images. */
 export async function deleteReport(sampleId: string): Promise<void> {
-  if (!hasIndexedDb()) return;
-  const db = await openDb();
-  try {
-    const tx = db.transaction([REPORTS, IMAGES], "readwrite");
-    tx.objectStore(REPORTS).delete(sampleId);
-    const index = tx.objectStore(IMAGES).index("bySample");
-    const keys = await promisify(index.getAllKeys(IDBKeyRange.only(sampleId)));
-    keys.forEach((key) => tx.objectStore(IMAGES).delete(key));
-    await new Promise<void>((resolve, reject) => {
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  } finally {
-    db.close();
+  const res = await request(`/api/v1/reports/${encodeURIComponent(sampleId)}/`, { method: "DELETE" });
+  if (!res.ok && res.status !== 404) {
+    throw new ReportStoreError(await errorMessage(res, "Couldn't delete the report."));
   }
 }
-
-/** Counts and rough size of what this browser is holding, for the Settings page. */
-export async function getStorageSummary(): Promise<{
-  reportCount: number;
-  imageCount: number;
-  approxBytes: number;
-}> {
-  if (!hasIndexedDb()) return { reportCount: 0, imageCount: 0, approxBytes: 0 };
-  const db = await openDb();
-  try {
-    const tx = db.transaction([REPORTS, IMAGES], "readonly");
-    const reports = await promisify(
-      tx.objectStore(REPORTS).getAll() as IDBRequest<Specimen[]>,
-    );
-    const images = await promisify(tx.objectStore(IMAGES).getAll() as IDBRequest<StoredImage[]>);
-    return {
-      reportCount: reports.length,
-      imageCount: images.length,
-      // Images dominate; the JSON metadata is rounding error next to them.
-      approxBytes:
-        images.reduce((sum, i) => sum + i.blob.size, 0) + JSON.stringify(reports).length,
-    };
-  } finally {
-    db.close();
-  }
-}
-
-/**
- * Wipes every locally saved report and image, and any unsaved analysis with
- * them — "clear local data" would otherwise leave a draft's images behind.
- * Seed records are unaffected.
- */
-export async function clearAllReports(): Promise<void> {
-  if (!hasIndexedDb()) return;
-  const db = await openDb();
-  try {
-    const tx = db.transaction([REPORTS, IMAGES, DRAFTS], "readwrite");
-    tx.objectStore(REPORTS).clear();
-    tx.objectStore(IMAGES).clear();
-    tx.objectStore(DRAFTS).clear();
-    await new Promise<void>((resolve, reject) => {
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  } finally {
-    db.close();
-  }
-}
-
-/** True for the read-only records that ship with the app. */
-export function isSeedReport(sampleId: string): boolean {
-  return seedSpecimens.some((s) => s.sampleId === sampleId);
-}
-
-export { MOCK_TODAY };

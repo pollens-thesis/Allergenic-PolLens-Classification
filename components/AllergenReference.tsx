@@ -1,20 +1,13 @@
 "use client";
 
 import { useSpeciesCatalog } from "@/lib/species-catalog";
-import { type Species } from "@/lib/data";
 import { useReportGrainCounts } from "@/lib/report-grain-counts";
-
-function riskBadgeClass(level: Species["riskLevel"]) {
-  if (level === "High") return "bg-danger-bg text-danger";
-  if (level === "Moderate") return "bg-processing-bg text-processing";
-  return "bg-success-bg text-success";
-}
+import RiskBadge from "@/components/RiskBadge";
 
 /**
  * The full 23-species taxonomic scope this console classifies against.
- * commonName/season are omitted — both are still unset "TBD" placeholders
- * for every species today, and showing 23 literal "TBD"s would be worse
- * than not showing the field at all.
+ * Common name and season are omitted until real per-species data is entered
+ * (Django admin → Species); the risk column reads "Not Assessed" until then.
  */
 export default function AllergenReference() {
   const speciesCatalog = useSpeciesCatalog();
@@ -31,7 +24,7 @@ export default function AllergenReference() {
             <th className="px-4 py-3 font-medium">Species</th>
             <th className="px-4 py-3 font-medium">Code</th>
             <th className="px-4 py-3 font-medium">Risk Level</th>
-            <th className="px-4 py-3 text-right font-medium">Grains in Your Reports</th>
+            <th className="px-4 py-3 text-right font-medium">Grains in All Reports</th>
           </tr>
         </thead>
         <tbody>
@@ -55,9 +48,7 @@ export default function AllergenReference() {
                 {sp.code}
               </td>
               <td className="px-4 py-3">
-                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium ${riskBadgeClass(sp.riskLevel)}`}>
-                  {sp.riskLevel}
-                </span>
+                <RiskBadge level={sp.riskLevel} suffix={false} />
               </td>
               <td className="px-4 py-3 text-right text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                 {counts === null ? "…" : (counts[sp.id] ?? 0).toLocaleString()}

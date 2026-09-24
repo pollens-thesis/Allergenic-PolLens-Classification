@@ -27,6 +27,7 @@ export default function GrainOverlay({
   selectedGrainId,
   onGrainClick,
   imageClassName = "block w-full",
+  onImageError,
 }: {
   imageUrl: string;
   alt: string;
@@ -37,6 +38,8 @@ export default function GrainOverlay({
   selectedGrainId: string | null;
   onGrainClick: (grain: DetectedGrain) => void;
   imageClassName?: string;
+  /** The image failed to load (e.g. its signed link expired). */
+  onImageError?: () => void;
 }) {
   const reduceMotion = useReducedMotion();
   const speciesCatalog = useSpeciesCatalog();
@@ -49,7 +52,7 @@ export default function GrainOverlay({
   return (
     <div className="relative">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={imageUrl} alt={alt} className={imageClassName} draggable={false} />
+      <img src={imageUrl} alt={alt} className={imageClassName} draggable={false} onError={onImageError} />
 
       {visible.map((grain, index) => {
         const species = findSpecies(speciesCatalog, grain.speciesId);

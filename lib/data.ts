@@ -1,12 +1,9 @@
 // ---------------------------------------------------------------------------
-// SINGLE SOURCE OF TRUTH
-// Everything below (allergen classes, report rows, recent detections,
-// dashboard stats) is derived from `specimens`. Edit specimens/speciesCatalog
-// and every screen that reads from this file stays consistent automatically.
-// The one exception is `historicalPollenCounts`, which represents a separate
-// real-world dataset (continuous monthly air-monitoring measurements) rather
-// than individual specimen analyses — it shares the same species catalog for
-// naming/color consistency, but its numbers are independent by design.
+// DOMAIN TYPES AND THE SPECIES CATALOG
+// Shared shapes for reports, slides and detections (matching the API in
+// api/reports/serializers.py), the bundled species catalog (the offline
+// fallback for GET /api/v1/reports/species/), and pure helpers over them.
+// There is no sample data here: every report comes from the server.
 // ---------------------------------------------------------------------------
 
 export type SpeciesId =
@@ -41,16 +38,17 @@ export type Species = {
   commonName: string;
   code: string; // taxonomic-style short tag, e.g. AMAR
   season: string;
-  riskLevel: "High" | "Moderate" | "Low";
+  /** "Not assessed" until real allergenicity data is entered (backend admin). */
+  riskLevel: "High" | "Moderate" | "Low" | "Not assessed";
   color: string; // CSS color, used consistently across charts, badges, thumbnails
 };
 
 // The real 23-species UPLB taxonomic scope, replacing an earlier 8-species
 // European/temperate placeholder catalog that was never cross-checked against
 // the actual dataset (see the Taxonomic Scope row in docs/system-spec.md).
-// commonName/season/riskLevel are unset placeholders (not real clinical
-// assessments) pending real per-species data — riskLevel defaults to
-// "Moderate" rather than widening the type for an "unknown" state. `color`
+// commonName/season are "" and riskLevel is "Not assessed" until real
+// per-species data is entered (Django admin → Species); nothing here is a
+// clinical assessment. `color`
 // cycles a validated 8-hue categorical palette (dataviz skill's reference
 // palette — 23 mutually-distinguishable hues isn't achievable, confirmed by
 // its own validator, so identity colors repeat every 8 species), except
@@ -63,43 +61,67 @@ export type Species = {
 // IMPORTANT: this color is duplicated in api/reports/migrations — keep both
 // in sync (see 0006_recolor_species.py).
 export const speciesCatalog: Species[] = [
-  { id: "amaranthus_spinosus", scientificName: "Amaranthus spinosus", commonName: "TBD", code: "AMAR", season: "TBD", riskLevel: "Moderate", color: "#2a78d6" },
-  { id: "axonopus_compressus", scientificName: "Axonopus compressus", commonName: "TBD", code: "AXON", season: "TBD", riskLevel: "Moderate", color: "#eb6834" },
-  { id: "brachiaria_mutica", scientificName: "Brachiaria mutica", commonName: "TBD", code: "BRAC", season: "TBD", riskLevel: "Moderate", color: "#1baf7a" },
-  { id: "chloris_barbata", scientificName: "Chloris barbata", commonName: "TBD", code: "CHLO", season: "TBD", riskLevel: "Moderate", color: "#eda100" },
-  { id: "chrysopogon_aciculatus", scientificName: "Chrysopogon aciculatus", commonName: "TBD", code: "CHRY", season: "TBD", riskLevel: "Moderate", color: "#e87ba4" },
-  { id: "cocos_nucifera", scientificName: "Cocos nucifera", commonName: "TBD", code: "COCO", season: "TBD", riskLevel: "Moderate", color: "#008300" },
-  { id: "cyperus_rotundus", scientificName: "Cyperus rotundus", commonName: "TBD", code: "CYPE", season: "TBD", riskLevel: "Moderate", color: "#4a3aa7" },
-  { id: "dactyloctenium_aegyptium", scientificName: "Dactyloctenium aegyptium", commonName: "TBD", code: "DACT", season: "TBD", riskLevel: "Moderate", color: "#e34948" },
-  { id: "digitaria_ciliaris", scientificName: "Digitaria ciliaris", commonName: "TBD", code: "DIGI", season: "TBD", riskLevel: "Moderate", color: "#2a78d6" },
-  { id: "echinochloa_crus_galli", scientificName: "Echinochloa crus-galli", commonName: "TBD", code: "ECHI", season: "TBD", riskLevel: "Moderate", color: "#eb6834" },
-  { id: "eleusine_indica", scientificName: "Eleusine indica", commonName: "TBD", code: "ELEU", season: "TBD", riskLevel: "Moderate", color: "#1baf7a" },
-  { id: "imperata_cylindrica", scientificName: "Imperata cylindrica", commonName: "TBD", code: "IMPE", season: "TBD", riskLevel: "Moderate", color: "#eda100" },
-  { id: "leucaena_leucocephala", scientificName: "Leucaena leucocephala", commonName: "TBD", code: "LEUC", season: "TBD", riskLevel: "Moderate", color: "#e87ba4" },
-  { id: "panicum_maximum", scientificName: "Panicum maximum", commonName: "TBD", code: "PANI", season: "TBD", riskLevel: "Moderate", color: "#008300" },
-  { id: "pennisetum_polystachion", scientificName: "Pennisetum polystachion", commonName: "TBD", code: "PENN", season: "TBD", riskLevel: "Moderate", color: "#4a3aa7" },
-  { id: "pithecellobium_dulce", scientificName: "Pithecellobium dulce", commonName: "TBD", code: "PITH", season: "TBD", riskLevel: "Moderate", color: "#0891b2" },
-  { id: "saccharum_spontaneum", scientificName: "Saccharum spontaneum", commonName: "TBD", code: "SACC", season: "TBD", riskLevel: "Moderate", color: "#2a78d6" },
-  { id: "samanea_saman", scientificName: "Samanea saman", commonName: "TBD", code: "SAMA", season: "TBD", riskLevel: "Moderate", color: "#eb6834" },
-  { id: "sorghum_halepense", scientificName: "Sorghum halepense", commonName: "TBD", code: "SORG", season: "TBD", riskLevel: "Moderate", color: "#1baf7a" },
-  { id: "tridax_procumbens", scientificName: "Tridax procumbens", commonName: "TBD", code: "TRID", season: "TBD", riskLevel: "Moderate", color: "#eda100" },
-  { id: "oryza_sativa", scientificName: "Oryza sativa", commonName: "TBD", code: "ORYZ", season: "TBD", riskLevel: "Moderate", color: "#e87ba4" },
-  { id: "mimosa_pudica", scientificName: "Mimosa pudica", commonName: "TBD", code: "MIMO", season: "TBD", riskLevel: "Moderate", color: "#008300" },
-  { id: "mangifera_indica", scientificName: "Mangifera indica", commonName: "TBD", code: "MANG", season: "TBD", riskLevel: "Moderate", color: "#4a3aa7" },
+  { id: "amaranthus_spinosus", scientificName: "Amaranthus spinosus", commonName: "", code: "AMAR", season: "", riskLevel: "Not assessed", color: "#2a78d6" },
+  { id: "axonopus_compressus", scientificName: "Axonopus compressus", commonName: "", code: "AXON", season: "", riskLevel: "Not assessed", color: "#eb6834" },
+  { id: "brachiaria_mutica", scientificName: "Brachiaria mutica", commonName: "", code: "BRAC", season: "", riskLevel: "Not assessed", color: "#1baf7a" },
+  { id: "chloris_barbata", scientificName: "Chloris barbata", commonName: "", code: "CHLO", season: "", riskLevel: "Not assessed", color: "#eda100" },
+  { id: "chrysopogon_aciculatus", scientificName: "Chrysopogon aciculatus", commonName: "", code: "CHRY", season: "", riskLevel: "Not assessed", color: "#e87ba4" },
+  { id: "cocos_nucifera", scientificName: "Cocos nucifera", commonName: "", code: "COCO", season: "", riskLevel: "Not assessed", color: "#008300" },
+  { id: "cyperus_rotundus", scientificName: "Cyperus rotundus", commonName: "", code: "CYPE", season: "", riskLevel: "Not assessed", color: "#4a3aa7" },
+  { id: "dactyloctenium_aegyptium", scientificName: "Dactyloctenium aegyptium", commonName: "", code: "DACT", season: "", riskLevel: "Not assessed", color: "#e34948" },
+  { id: "digitaria_ciliaris", scientificName: "Digitaria ciliaris", commonName: "", code: "DIGI", season: "", riskLevel: "Not assessed", color: "#2a78d6" },
+  { id: "echinochloa_crus_galli", scientificName: "Echinochloa crus-galli", commonName: "", code: "ECHI", season: "", riskLevel: "Not assessed", color: "#eb6834" },
+  { id: "eleusine_indica", scientificName: "Eleusine indica", commonName: "", code: "ELEU", season: "", riskLevel: "Not assessed", color: "#1baf7a" },
+  { id: "imperata_cylindrica", scientificName: "Imperata cylindrica", commonName: "", code: "IMPE", season: "", riskLevel: "Not assessed", color: "#eda100" },
+  { id: "leucaena_leucocephala", scientificName: "Leucaena leucocephala", commonName: "", code: "LEUC", season: "", riskLevel: "Not assessed", color: "#e87ba4" },
+  { id: "panicum_maximum", scientificName: "Panicum maximum", commonName: "", code: "PANI", season: "", riskLevel: "Not assessed", color: "#008300" },
+  { id: "pennisetum_polystachion", scientificName: "Pennisetum polystachion", commonName: "", code: "PENN", season: "", riskLevel: "Not assessed", color: "#4a3aa7" },
+  { id: "pithecellobium_dulce", scientificName: "Pithecellobium dulce", commonName: "", code: "PITH", season: "", riskLevel: "Not assessed", color: "#0891b2" },
+  { id: "saccharum_spontaneum", scientificName: "Saccharum spontaneum", commonName: "", code: "SACC", season: "", riskLevel: "Not assessed", color: "#2a78d6" },
+  { id: "samanea_saman", scientificName: "Samanea saman", commonName: "", code: "SAMA", season: "", riskLevel: "Not assessed", color: "#eb6834" },
+  { id: "sorghum_halepense", scientificName: "Sorghum halepense", commonName: "", code: "SORG", season: "", riskLevel: "Not assessed", color: "#1baf7a" },
+  { id: "tridax_procumbens", scientificName: "Tridax procumbens", commonName: "", code: "TRID", season: "", riskLevel: "Not assessed", color: "#eda100" },
+  { id: "oryza_sativa", scientificName: "Oryza sativa", commonName: "", code: "ORYZ", season: "", riskLevel: "Not assessed", color: "#e87ba4" },
+  { id: "mimosa_pudica", scientificName: "Mimosa pudica", commonName: "", code: "MIMO", season: "", riskLevel: "Not assessed", color: "#008300" },
+  { id: "mangifera_indica", scientificName: "Mangifera indica", commonName: "", code: "MANG", season: "", riskLevel: "Not assessed", color: "#4a3aa7" },
 ];
 
+/**
+ * The bundled entry for `id`. A species added on the server after this build
+ * gets a neutral stand-in (its id, humanised) instead of crashing the page.
+ */
 export function getSpecies(id: SpeciesId): Species {
   const found = speciesCatalog.find((s) => s.id === id);
-  if (!found) throw new Error(`Unknown species id: ${id}`);
-  return found;
+  if (found) return found;
+  const name = String(id).replace(/_/g, " ");
+  return {
+    id,
+    scientificName: name.charAt(0).toUpperCase() + name.slice(1),
+    commonName: "",
+    code: String(id).slice(0, 4).toUpperCase(),
+    season: "",
+    riskLevel: "Not assessed",
+    color: "#8a8f98",
+  };
 }
 
-/** "Scientific name (common name)", omitting the parenthetical while commonName is still an unset "TBD" placeholder. */
+/** "Scientific name (common name)", or just the scientific name while no common name is recorded. */
 export function speciesLabel(sp: Species): string {
-  return sp.commonName === "TBD" ? sp.scientificName : `${sp.scientificName} (${sp.commonName})`;
+  return sp.commonName ? `${sp.scientificName} (${sp.commonName})` : sp.scientificName;
 }
 
-export type ReportStatus = "Completed" | "Processing" | "Needs review";
+/**
+ * A report's lifecycle (api/reports/models.py): Pending until the researcher
+ * generates the report, then Completed; a completed report can be flagged
+ * Needs review. Only Completed reports count in charts, stats and the map.
+ */
+export type ReportStatus = "Pending" | "Completed" | "Needs review";
+export const REPORT_STATUSES: ReportStatus[] = ["Pending", "Completed", "Needs review"];
+
+/** Reports that describe finished work — what charts, stats and the map count. */
+export function isFinalised(report: { status: ReportStatus }): boolean {
+  return report.status !== "Pending";
+}
 
 // ---------------------------------------------------------------------------
 // Detections
@@ -107,9 +129,8 @@ export type ReportStatus = "Completed" | "Processing" | "Needs review";
 // The detection model reports one box per pollen grain, so its raw output is a
 // flat list of `GrainPrediction`. The UI (and the record we persist) wants one
 // row per species, so `aggregateGrainPredictions` collapses that list into
-// `SpecimenDetection[]`. Keeping the two shapes separate is what lets the mock
-// in lib/analysis.ts be swapped for a real inference call without touching any
-// component: only the source of the predictions changes.
+// `SpecimenDetection[]`. Keeping the two shapes separate keeps the model's raw
+// output (lib/analysis.ts) independent of how readings are shown and stored.
 // ---------------------------------------------------------------------------
 
 /**
@@ -291,31 +312,32 @@ export type SpecimenSlide = {
   fileName: string;
   detections: SpecimenDetection[]; // one row per pollen type found, richest first
   /**
-   * Every grain the model boxed, for drawing over the image. Optional: the seed
-   * records and any report saved before boxes were kept simply have none, and
-   * the viewer says so rather than pretending the slide was empty.
+   * Every grain the model boxed, for drawing over the image. Optional: a report
+   * saved before boxes were kept has none, and the viewer says so rather than
+   * pretending the slide was empty.
    */
   grains?: DetectedGrain[];
   notes: string; // free-text note about this slide; "" when left blank
-  /**
-   * The slide's server-hosted image, for reports fetched from the backend.
-   * Optional: seed/demo records have no real photographed slide.
-   */
+  /** The slide's server-hosted image (a presigned URL in production — it expires). */
   imageUrl?: string;
 };
 
 /**
- * A saved report — one collection session. Location, time and weather describe
- * the session and are shared; the readings and notes live per slide.
+ * A report — one collection session. Location, time and weather describe the
+ * session and are shared; the readings and notes live per slide.
  */
 export type Specimen = {
   sampleId: string;
   collectedAt: CollectedAt;
-  location: string;
+  location: string; // "" only while Pending
   slides: SpecimenSlide[];
   weather: WeatherConditions | null; // null when conditions weren't recorded
   researcher: string;
   status: ReportStatus;
+  /** When it was analysed and stored (ISO timestamp) — not the collection date. */
+  createdAt: string;
+  /** Whether the signed-in researcher may edit, change the status of, or delete it. */
+  canEdit: boolean;
 };
 
 /** Every pollen type across a report's slides, combined and richest first. */
@@ -347,106 +369,6 @@ export function getReportGrains(specimen: Specimen): number {
   return specimen.slides.reduce((sum, slide) => sum + getTotalGrains(slide.detections), 0);
 }
 
-// "Today" for the mock dataset, so "this week" / "recent" calculations are stable.
-export const MOCK_TODAY = "2026-07-29";
-
-/** Terse constructor so the specimen table below stays readable. */
-function d(speciesId: SpeciesId, grainCount: number, avgConfidence: number): SpecimenDetection {
-  return { speciesId, grainCount, avgConfidence };
-}
-
-/** Wraps a single-slide reading, which is how the seed records are shaped. */
-function slide(sampleId: string, detections: SpecimenDetection[], notes: string): SpecimenSlide {
-  return { id: `${sampleId}-S1`, fileName: `${sampleId.toLowerCase()}-slide-1.jpg`, detections, notes };
-}
-
-export const specimens: Specimen[] = [
-  {
-    sampleId: "PLN-2026-0142", collectedAt: "2026-07-29T07:15", location: "Lucena City, Quezon",
-    slides: [slide("PLN-2026-0142", [d("cocos_nucifera", 18, 0.97), d("amaranthus_spinosus", 6, 0.84), d("dactyloctenium_aegyptium", 2, 0.71)], "Dense ragweed load along the roadside transect; slide re-stained once for contrast.")],
-    weather: { condition: "Sunny", temperatureC: 32, humidityPct: 64, windKph: 11 },
-    researcher: "You", status: "Completed",
-  },
-  {
-    sampleId: "PLN-2026-0141", collectedAt: "2026-07-28T09:40", location: "Lucban, Quezon",
-    slides: [slide("PLN-2026-0141", [d("axonopus_compressus", 12, 0.91), d("cyperus_rotundus", 5, 0.8), d("chrysopogon_aciculatus", 3, 0.76)], "Collected upslope of the treeline, mid-morning.")],
-    weather: { condition: "Partly cloudy", temperatureC: 26, humidityPct: 78, windKph: 8 },
-    researcher: "You", status: "Completed",
-  },
-  {
-    sampleId: "PLN-2026-0140", collectedAt: "2026-07-28T14:05", location: "Lucena City, Quezon",
-    slides: [slide("PLN-2026-0140", [d("amaranthus_spinosus", 9, 0.62), d("dactyloctenium_aegyptium", 4, 0.58)], "Several grains partly obscured by debris — flagged for a second reading.")],
-    weather: { condition: "Overcast", temperatureC: 29, humidityPct: 85, windKph: 6 },
-    researcher: "M. Reyes", status: "Needs review",
-  },
-  {
-    sampleId: "PLN-2026-0139", collectedAt: "2026-07-27T08:30", location: "Tayabas, Quezon",
-    slides: [slide("PLN-2026-0139", [d("chrysopogon_aciculatus", 15, 0.94), d("cyperus_rotundus", 4, 0.87), d("amaranthus_spinosus", 2, 0.69)], "")],
-    weather: { condition: "Sunny", temperatureC: 31, humidityPct: 60, windKph: 14 },
-    researcher: "You", status: "Completed",
-  },
-  {
-    sampleId: "PLN-2026-0138", collectedAt: "2026-07-26", location: "Lucena City, Quezon",
-    slides: [slide("PLN-2026-0138", [d("cocos_nucifera", 11, 0.79), d("amaranthus_spinosus", 7, 0.73)], "")],
-    weather: null,
-    researcher: "M. Reyes", status: "Processing",
-  },
-  {
-    sampleId: "PLN-2026-0137", collectedAt: "2026-07-26T16:20", location: "Sariaya, Quezon",
-    slides: [slide("PLN-2026-0137", [d("dactyloctenium_aegyptium", 13, 0.86), d("cocos_nucifera", 5, 0.82), d("amaranthus_spinosus", 3, 0.7)], "Fallow field margin; strong afternoon breeze during sampling.")],
-    weather: { condition: "Windy", temperatureC: 30, humidityPct: 58, windKph: 27 },
-    researcher: "You", status: "Completed",
-  },
-  {
-    sampleId: "PLN-2026-0136", collectedAt: "2026-07-25T06:50", location: "Lucban, Quezon",
-    slides: [slide("PLN-2026-0136", [d("cyperus_rotundus", 16, 0.88), d("axonopus_compressus", 4, 0.83)], "")],
-    weather: { condition: "Partly cloudy", temperatureC: 25, humidityPct: 80, windKph: 9 },
-    researcher: "You", status: "Completed",
-  },
-  {
-    sampleId: "PLN-2026-0135", collectedAt: "2026-06-14T10:10", location: "Lucena City, Quezon",
-    slides: [slide("PLN-2026-0135", [d("amaranthus_spinosus", 21, 0.93), d("chrysopogon_aciculatus", 3, 0.75)], "Peak grass season — highest grain count recorded at this site so far.")],
-    weather: { condition: "Sunny", temperatureC: 33, humidityPct: 62, windKph: 12 },
-    researcher: "You", status: "Completed",
-  },
-  {
-    sampleId: "PLN-2026-0134", collectedAt: "2026-05-30", location: "Candelaria, Quezon",
-    slides: [slide("PLN-2026-0134", [d("chloris_barbata", 10, 0.81), d("brachiaria_mutica", 6, 0.78), d("axonopus_compressus", 2, 0.72)], "")],
-    weather: null,
-    researcher: "M. Reyes", status: "Completed",
-  },
-  {
-    sampleId: "PLN-2026-0133", collectedAt: "2026-05-12T07:35", location: "Lucban, Quezon",
-    slides: [slide("PLN-2026-0133", [d("brachiaria_mutica", 14, 0.9), d("chloris_barbata", 5, 0.85)], "Sampled after two dry days; slide was unusually clean.")],
-    weather: { condition: "Sunny", temperatureC: 27, humidityPct: 70, windKph: 10 },
-    researcher: "You", status: "Completed",
-  },
-  {
-    sampleId: "PLN-2026-0132", collectedAt: "2026-04-22T11:25", location: "Tayabas, Quezon",
-    slides: [slide("PLN-2026-0132", [d("axonopus_compressus", 12, 0.85), d("chrysopogon_aciculatus", 6, 0.8), d("cyperus_rotundus", 3, 0.74)], "")],
-    weather: { condition: "Partly cloudy", temperatureC: 28, humidityPct: 73, windKph: 15 },
-    researcher: "You", status: "Completed",
-  },
-  {
-    sampleId: "PLN-2026-0131", collectedAt: "2026-03-18T15:45", location: "Lucena City, Quezon",
-    slides: [slide("PLN-2026-0131", [d("chrysopogon_aciculatus", 8, 0.77), d("amaranthus_spinosus", 6, 0.64), d("brachiaria_mutica", 2, 0.6)], "Low contrast on the oak grains; worth confirming against the reference set.")],
-    weather: { condition: "Rainy", temperatureC: 24, humidityPct: 92, windKph: 18 },
-    researcher: "M. Reyes", status: "Needs review",
-  },
-  {
-    sampleId: "PLN-2026-0130", collectedAt: "2026-02-09T08:05", location: "Sariaya, Quezon",
-    slides: [slide("PLN-2026-0130", [d("brachiaria_mutica", 17, 0.89), d("chloris_barbata", 7, 0.83), d("axonopus_compressus", 2, 0.76)], "")],
-    weather: { condition: "Overcast", temperatureC: 23, humidityPct: 88, windKph: 7 },
-    researcher: "You", status: "Completed",
-  },
-  {
-    sampleId: "PLN-2026-0129", collectedAt: "2026-01-20T05:55", location: "Lucban, Quezon",
-    slides: [slide("PLN-2026-0129", [d("chloris_barbata", 19, 0.92), d("brachiaria_mutica", 8, 0.87)], "Early hazel flush, sampled at dawn.")],
-    weather: { condition: "Overcast", temperatureC: 22, humidityPct: 90, windKph: 5 },
-    researcher: "You", status: "Completed",
-  },
-];
-
 // ---------------------------------------------------------------------------
 // Derived: reports table (Sample ID, Date, Location, Top pollen, Status)
 // ---------------------------------------------------------------------------
@@ -476,86 +398,9 @@ export function toReportRow(specimen: Specimen): ReportRow {
   };
 }
 
-export const reportRows: ReportRow[] = specimens.map(toReportRow);
 
 // ---------------------------------------------------------------------------
-// Derived: recent detections feed (most recent specimens, newest first)
-// ---------------------------------------------------------------------------
-
-export type Detection = {
-  id: string;
-  thumbColor: string;
-  classId: SpeciesId;
-  className: string;
-  code: string;
-  grainCount: number;
-  confidence: number;
-  researcher: string;
-  createdAt: string;
-};
-
-export const recentDetections: Detection[] = [...specimens]
-  // ISO strings sort chronologically as text, so no timezone-sensitive parsing.
-  .sort((a, b) => b.collectedAt.localeCompare(a.collectedAt))
-  .slice(0, 6)
-  .flatMap((s) => {
-    const top = getTopDetection(aggregateSlideDetections(s.slides));
-    if (!top) return [];
-    const sp = getSpecies(top.speciesId);
-    const sampleNumber = parseInt(s.sampleId.split("-").pop() ?? "0", 10);
-    return [
-      {
-        id: s.sampleId,
-        thumbColor: sp.color,
-        classId: sp.id,
-        className: speciesLabel(sp),
-        code: `${sp.code}·${sampleNumber}`,
-        grainCount: top.grainCount,
-        confidence: top.avgConfidence,
-        researcher: s.researcher,
-        createdAt: s.collectedAt,
-      },
-    ];
-  });
-
-// ---------------------------------------------------------------------------
-// Derived: allergen class reference set, with counts computed from specimens
-// ---------------------------------------------------------------------------
-
-export type AllergenClass = {
-  id: SpeciesId;
-  scientificName: string;
-  commonName: string;
-  code: string;
-  season: string;
-  riskLevel: "High" | "Moderate" | "Low";
-  count: number; // specimens this class was found in
-  grainCount: number; // grains of this class across every specimen
-};
-
-export const allergenClasses: AllergenClass[] = speciesCatalog.map((sp) => ({
-  id: sp.id,
-  scientificName: sp.scientificName,
-  commonName: sp.commonName,
-  code: sp.code,
-  season: sp.season,
-  riskLevel: sp.riskLevel,
-  count: specimens.filter((s) =>
-    s.slides.some((sl) => sl.detections.some((det) => det.speciesId === sp.id)),
-  ).length,
-  grainCount: specimens.reduce(
-    (sum, s) =>
-      sum +
-      aggregateSlideDetections(s.slides).reduce(
-        (n, det) => (det.speciesId === sp.id ? n + det.grainCount : n),
-        0,
-      ),
-    0,
-  ),
-}));
-
-// ---------------------------------------------------------------------------
-// Derived: dashboard stats, computed directly from specimens
+// Derived: dashboard stats
 // ---------------------------------------------------------------------------
 
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -568,41 +413,33 @@ export type DashboardStats = {
 };
 
 /**
- * Computed from whatever set of reports is passed in, so the dashboard can show
- * saved reports alongside the seed records rather than the seed alone.
- * `today` is a parameter so the mock dataset's fixed "today" stays testable.
+ * Dashboard figures over finalised reports (Pending ones aren't results yet):
+ * how many reports, how many were analysed in the last 7 days (by when they
+ * were stored, not when the sample was collected), and the mean confidence
+ * over every grain — weighted by grains, so a big slide counts for more than
+ * a sparse one.
  */
 export function computeDashboardStats(
   reports: Specimen[],
-  today: string = MOCK_TODAY,
+  classesTracked: number,
+  now: Date = new Date(),
 ): DashboardStats {
-  const withGrains = reports.filter((r) => r.slides.length > 0);
+  const finalised = reports.filter(isFinalised);
+  const detections = finalised.flatMap((r) => r.slides.flatMap((s) => s.detections));
   return {
-    totalSpecimens: reports.length,
-    classesTracked: speciesCatalog.length,
-    detectionsThisWeek: reports.filter((r) => {
-      // Compare date parts only, so a recorded time can't shift the window.
-      const days =
-        new Date(today).getTime() - new Date(getCollectionDate(r.collectedAt)).getTime();
-      return days >= 0 && days <= ONE_WEEK_MS;
+    totalSpecimens: finalised.length,
+    classesTracked,
+    detectionsThisWeek: finalised.filter((r) => {
+      const age = now.getTime() - new Date(r.createdAt).getTime();
+      return age >= 0 && age <= ONE_WEEK_MS;
     }).length,
-    avgConfidence:
-      withGrains.length === 0
-        ? 0
-        : withGrains.reduce(
-            (sum, r) => sum + getWeightedAvgConfidence(aggregateSlideDetections(r.slides)),
-            0,
-          ) / withGrains.length,
+    avgConfidence: getWeightedAvgConfidence(detections),
   };
 }
 
-/** Seed-only stats, used as the server-rendered starting point. */
-export const dashboardStats: DashboardStats = computeDashboardStats(specimens);
-
 // ---------------------------------------------------------------------------
-// Historical pollen counts: monthly environmental monitoring data.
-// A separate real-world dataset from `specimens` above, but keyed to the
-// same species catalog for consistent naming and color.
+// Monthly pollen counts — grains counted per species per month, from the
+// backend (lib/backend.ts fetchMonthlyPollenCounts, Completed reports only).
 // ---------------------------------------------------------------------------
 
 export type MonthlyPollenCount = {
@@ -620,25 +457,3 @@ export const pollenSeries = speciesCatalog.map((sp) => ({
   label: speciesLabel(sp),
   color: sp.color,
 }));
-
-const MONTH_ABBREVIATIONS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-/**
- * Illustrative demo data only (matches the old hand-authored numbers' spirit,
- * not real measurements) — a per-species amplitude with a seasonal sine curve,
- * offset so different species peak in different months. Real historical counts
- * come from fetchMonthlyPollenCounts (lib/backend.ts) once signed in.
- */
-export const historicalPollenCounts: MonthlyPollenCount[] = MONTH_ABBREVIATIONS.map((month, monthIndex) => {
-  const series = {} as Record<SpeciesId, number>;
-  speciesCatalog.forEach((sp, speciesIndex) => {
-    const amplitude = 20 + ((speciesIndex * 7) % 40);
-    const phase = (speciesIndex * 5) % 12;
-    const seasonal = Math.sin(((monthIndex - phase) / 12) * Math.PI * 2);
-    series[sp.id] = Math.max(0, Math.round(amplitude * (0.5 + 0.5 * seasonal)));
-  });
-  return { month, series };
-});
-
-export { API_BASE_URL } from "@/lib/config";
-

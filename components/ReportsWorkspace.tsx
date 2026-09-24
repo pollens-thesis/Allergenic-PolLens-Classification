@@ -2,31 +2,59 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { CloudOff, Loader2 } from "lucide-react";
 import { type Specimen } from "@/lib/data";
 import { listReports } from "@/lib/store";
+import { SessionExpiredError } from "@/lib/api";
 import ReportsTable from "@/components/ReportsTable";
+import { Button } from "@/components/Button";
 
 /**
- * Reports live in IndexedDB, which only exists in the browser, so the list is
- * loaded after mount. Fetching per mount (rather than caching at module scope)
- * is what makes a report saved seconds ago appear the moment we land here.
+ * Every report on the server (shared across researchers), loaded after mount
+ * so a report generated seconds ago is there when we land here.
  */
 export default function ReportsWorkspace() {
   const [reports, setReports] = useState<Specimen[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const searchParams = useSearchParams();
   const savedId = searchParams.get("saved");
   const initialQuery = searchParams.get("q") ?? "";
 
   useEffect(() => {
     let cancelled = false;
-    listReports().then((loaded) => {
-      if (!cancelled) setReports(loaded);
-    });
+    listReports()
+      .then((loaded) => {
+        if (!cancelled) setReports(loaded);
+      })
+      .catch((err: unknown) => {
+        if (cancelled || err instanceof SessionExpiredError) return;
+        setError(err instanceof Error ? err.message : "Couldn't load reports.");
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [attempt]);
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-16 text-center">
+        <CloudOff size={22} strokeWidth={1.5} className="text-text-faint" />
+        <p className="text-[13.5px] text-text-muted">{error}</p>
+        <Button
+          type="button"
+          intent="secondary"
+          size="sm"
+          onClick={() => {
+            setError(null);
+            setAttempt((n) => n + 1);
+          }}
+        >
+          Try Again
+        </Button>
+      </div>
+    );
+  }
 
   if (reports === null) {
     return (

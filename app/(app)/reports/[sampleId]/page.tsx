@@ -33,8 +33,8 @@ export default async function ReportDetailPage({
             <ArrowLeft size={14} strokeWidth={1.75} />
             Back to Reports
           </Link>
-          <h1 className="text-3xl text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-            Full Report Detail
+          <h1 className="text-3xl text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 600 }}>
+            {sampleId}
           </h1>
         </div>
 

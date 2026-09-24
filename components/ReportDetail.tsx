@@ -1,13 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { AlertDialog } from "@base-ui/react/alert-dialog";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   CalendarDays,
+  CircleCheck,
   Clock,
+  CloudOff,
   CloudSun,
   Download,
+  FileSpreadsheet,
+  Flag,
+  Trash2,
   Droplets,
   FileText,
   Loader2,
@@ -30,19 +38,22 @@ import {
   type SpecimenDetection,
 } from "@/lib/data";
 import { findSpecies, useSpeciesCatalog } from "@/lib/species-catalog";
-import { getReport, getReportImageBlobs, getReportImageUrls } from "@/lib/store";
+import {
+  deleteReport,
+  getReport,
+  getReportImageBlobs,
+  getReportImageUrls,
+  updateReport,
+} from "@/lib/store";
+import { exportReportsXlsx } from "@/lib/export";
+import { SessionExpiredError } from "@/lib/api";
+import RiskBadge from "@/components/RiskBadge";
 import { downloadReportPdf } from "@/lib/pdf";
 import StatusBadge from "@/components/StatusBadge";
 import SpecimenImageViewer from "@/components/SpecimenImageViewer";
 import SpecimenInspector from "@/components/SpecimenInspector";
 import { overlayColor, overlayColors, type OverlayColors } from "@/lib/slide-colors";
 import { Button } from "@/components/Button";
-
-function riskBadgeClass(level: "High" | "Moderate" | "Low") {
-  if (level === "High") return "bg-danger-bg text-danger";
-  if (level === "Moderate") return "bg-processing-bg text-processing";
-  return "bg-success-bg text-success";
-}
 
 /**
  * One pollen type in a reading. When `onSelect` is given the row doubles as the
@@ -85,17 +96,12 @@ function DetectionRow({
           >
             {species.code}
           </span>
-          <span className="text-[14px] text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-            {species.scientificName}
-          </span>
-          <span className="ml-1.5 text-[13px] text-text-muted">{species.commonName}</span>
+          <span className="text-[14px] font-semibold text-text italic">{species.scientificName}</span>
+          {species.commonName && (
+            <span className="ml-1.5 text-[13px] text-text-muted">{species.commonName}</span>
+          )}
         </div>
-        <span
-          className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap lg:inline-flex ${riskBadgeClass(species.riskLevel)}`}
-          style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-        >
-          {species.riskLevel} Risk
-        </span>
+        <RiskBadge level={species.riskLevel} className="hidden shrink-0 lg:inline-flex" />
       </div>
 
       <div className="flex shrink-0 items-center gap-4 pl-5 sm:pl-0">
@@ -183,32 +189,117 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
   const [report, setReport] = useState<Specimen | null | undefined>(undefined);
   // The pollen type each slide's overlay is isolating, keyed by slide id.
   const [highlighted, setHighlighted] = useState<Record<string, SpeciesId | null>>({});
-  const [downloading, setDownloading] = useState(false);
+  const [downloading, setDownloading] = useState<"pdf" | "xlsx" | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [changing, setChanging] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  // Presigned image links expire (1 h); one refetch per page view renews them.
+  const refreshedImages = useRef(false);
+  const router = useRouter();
   // Which slide (and type) the full-screen inspector opened on; null = closed.
   const [inspector, setInspector] = useState<{ slideId: string; speciesId: SpeciesId | null } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    getReport(sampleId).then((found) => {
-      if (!cancelled) setReport(found);
-    });
+    getReport(sampleId)
+      .then((found) => {
+        if (!cancelled) setReport(found);
+      })
+      .catch((error: unknown) => {
+        if (cancelled || error instanceof SessionExpiredError) return;
+        setLoadError(error instanceof Error ? error.message : "Couldn't load this report.");
+      });
     return () => {
       cancelled = true;
     };
   }, [sampleId]);
+
+  /** A slide image failed to load — most likely its signed link expired. */
+  function handleImageError() {
+    if (refreshedImages.current) return;
+    refreshedImages.current = true;
+    getReport(sampleId)
+      .then((found) => found && setReport(found))
+      .catch(() => {});
+  }
+
+  async function changeStatus(status: "Completed" | "Needs review") {
+    if (!report) return;
+    setChanging(true);
+    try {
+      setReport(await updateReport(report.sampleId, { status }));
+      toast.success(status === "Completed" ? "Marked as completed" : "Flagged for review");
+    } catch (error) {
+      if (!(error instanceof SessionExpiredError)) {
+        toast.error(error instanceof Error ? error.message : "Couldn't change the status.");
+      }
+    } finally {
+      setChanging(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!report) return;
+    setChanging(true);
+    try {
+      await deleteReport(report.sampleId);
+    } catch (error) {
+      setChanging(false);
+      if (!(error instanceof SessionExpiredError)) {
+        toast.error(error instanceof Error ? error.message : "Couldn't delete the report.");
+      }
+      return;
+    }
+    toast.success(`Report ${report.sampleId} deleted`);
+    router.push("/reports");
+  }
 
   // Server-hosted URLs, straight off the report — no object-URL lifecycle needed.
   const imageUrls = useMemo(() => (report ? getReportImageUrls(report) : {}), [report]);
 
   async function handleDownloadPdf() {
     if (!report) return;
-    setDownloading(true);
+    setDownloading("pdf");
     try {
       const blobs = await getReportImageBlobs(report);
       await downloadReportPdf(report, blobs);
+      const missing = report.slides.filter((slide) => slide.imageUrl && !blobs[slide.id]).length;
+      if (missing > 0) {
+        toast.warning(
+          `${missing} slide ${missing === 1 ? "image" : "images"} couldn't be fetched and ${
+            missing === 1 ? "is" : "are"
+          } left out of the PDF.`,
+        );
+      }
+    } catch {
+      toast.error("Couldn't build the PDF.");
     } finally {
-      setDownloading(false);
+      setDownloading(null);
     }
+  }
+
+  async function handleDownloadXlsx() {
+    if (!report) return;
+    setDownloading("xlsx");
+    try {
+      await exportReportsXlsx([report], `${report.sampleId}.xlsx`);
+    } catch {
+      toast.error("Couldn't build the Excel file.");
+    } finally {
+      setDownloading(null);
+    }
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-16 text-center">
+        <CloudOff size={22} strokeWidth={1.5} className="text-text-faint" />
+        <p className="text-[13.5px] text-text-muted">{loadError}</p>
+        <Button type="button" intent="secondary" size="sm" onClick={() => window.location.reload()}>
+          Try Again
+        </Button>
+      </div>
+    );
   }
 
   if (report === undefined) {
@@ -253,36 +344,93 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
       <div className="rounded-lg border border-border bg-surface p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <div
-              className="text-[12px] tracking-widest text-text-faint uppercase"
-              style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-            >
-              {report.sampleId}
-            </div>
-            <h2
-              className="mt-1 text-2xl text-text"
-              style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
-            >
-              Full Report
+            <h2 className="text-2xl font-semibold text-text">
+              {report.location || "Location not recorded"}
             </h2>
-            <div className="mt-2">
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               <StatusBadge status={report.status} />
+              <span className="text-[12.5px] text-text-muted">
+                Analysed {new Date(report.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </span>
             </div>
           </div>
 
-          <Button type="button" onClick={handleDownloadPdf} disabled={downloading} className="shrink-0">
-            {downloading ? (
-              <>
-                <Loader2 size={15} strokeWidth={1.75} className="animate-spin" />
-                Building PDF…
-              </>
-            ) : (
-              <>
-                <Download size={15} strokeWidth={1.75} />
-                Download PDF
-              </>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {report.status === "Pending" && report.canEdit && (
+              <Link
+                href={`/upload/result?report=${report.sampleId}`}
+                className="focus-ring inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-2 text-[13px] font-medium text-accent-fg hover:bg-[var(--accent-hover)]"
+              >
+                Resume Analysis
+              </Link>
             )}
-          </Button>
+            {report.canEdit && report.status === "Completed" && (
+              <Button type="button" intent="secondary" size="sm" disabled={changing} onClick={() => changeStatus("Needs review")}>
+                <Flag size={14} strokeWidth={1.75} />
+                Flag for Review
+              </Button>
+            )}
+            {report.canEdit && report.status === "Needs review" && (
+              <Button type="button" intent="secondary" size="sm" disabled={changing} onClick={() => changeStatus("Completed")}>
+                <CircleCheck size={14} strokeWidth={1.75} />
+                Mark Completed
+              </Button>
+            )}
+            {report.canEdit && (
+              <AlertDialog.Root open={deleteOpen} onOpenChange={setDeleteOpen}>
+                <AlertDialog.Trigger
+                  disabled={changing}
+                  className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-danger/30 bg-surface px-3 py-1.5 text-[13px] text-danger hover:bg-danger-bg disabled:opacity-40"
+                >
+                  <Trash2 size={14} strokeWidth={1.75} />
+                  Delete
+                </AlertDialog.Trigger>
+                <AlertDialog.Portal>
+                  <AlertDialog.Backdrop className="fixed inset-0 z-40 bg-black/40 transition-opacity duration-[var(--duration-base)] ease-[var(--ease-out)] data-[starting-style]:opacity-0 data-[ending-style]:opacity-0" />
+                  <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-50 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-surface p-5 shadow-lg outline-none transition-all duration-[var(--duration-base)] ease-[var(--ease-out)] data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0">
+                    <AlertDialog.Title className="text-[15px] font-medium text-text">
+                      Delete report {report.sampleId}?
+                    </AlertDialog.Title>
+                    <AlertDialog.Description className="mt-2 text-[13px] leading-relaxed text-text-muted">
+                      This permanently deletes the report and its {report.slides.length}{" "}
+                      {report.slides.length === 1 ? "slide image" : "slide images"} for every
+                      researcher. It can&apos;t be undone.
+                    </AlertDialog.Description>
+                    <div className="mt-4 flex justify-end gap-2">
+                      <AlertDialog.Close className="focus-ring rounded-md border border-border bg-surface px-3 py-1.5 text-[13px] text-text-muted hover:text-text">
+                        Cancel
+                      </AlertDialog.Close>
+                      <Button type="button" intent="destructive" size="sm" disabled={changing} onClick={handleDelete}>
+                        <Trash2 size={13} strokeWidth={1.75} />
+                        Delete Report
+                      </Button>
+                    </div>
+                  </AlertDialog.Popup>
+                </AlertDialog.Portal>
+              </AlertDialog.Root>
+            )}
+            <Button type="button" intent="secondary" size="sm" onClick={handleDownloadXlsx} disabled={downloading !== null}>
+              {downloading === "xlsx" ? (
+                <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
+              ) : (
+                <FileSpreadsheet size={14} strokeWidth={1.75} />
+              )}
+              Excel
+            </Button>
+            <Button type="button" size="sm" onClick={handleDownloadPdf} disabled={downloading !== null}>
+              {downloading === "pdf" ? (
+                <>
+                  <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
+                  Building PDF…
+                </>
+              ) : (
+                <>
+                  <Download size={14} strokeWidth={1.75} />
+                  Download PDF
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -453,6 +601,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                       onExpand={() =>
                         setInspector({ slideId: slide.id, speciesId: selectedSpecies })
                       }
+                      onImageError={handleImageError}
                     />
                   </div>
                 </div>

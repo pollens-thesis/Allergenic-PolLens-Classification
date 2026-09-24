@@ -28,6 +28,7 @@ import {
   type Specimen,
   type SpecimenDetection,
 } from "@/lib/data";
+import type { Species } from "@/lib/data";
 import type { PlaceStats } from "@/lib/geo";
 
 const PAGE = { width: 210, height: 297 }; // A4, millimetres
@@ -44,6 +45,12 @@ const FIELD = "#0b1d17";
 const ACCENT = "#d9704a";
 
 type Cursor = { doc: jsPDF; y: number };
+
+
+/** "high allergenic risk", or an honest note while no risk data exists. */
+function riskPhrase(level: Species["riskLevel"]): string {
+  return level === "Not assessed" ? "allergenic risk not yet assessed" : `${level.toLowerCase()} allergenic risk`;
+}
 
 /**
  * Some design tokens are CSS vars (e.g. `var(--anther)`), which jsPDF cannot
@@ -469,7 +476,7 @@ function footer(doc: jsPDF, sampleId: string, generated: string) {
 /**
  * Build and download the full report as a PDF.
  *
- * `images` maps slide id → blob; slides without one (the seed records have no
+ * `images` maps slide id → blob; slides without one (an image that couldn't be fetched, or no
  * image) simply render without a picture.
  */
 export async function downloadReportPdf(
@@ -536,7 +543,7 @@ export async function downloadReportPdf(
     const species = getSpecies(top.speciesId);
     paragraph(
       cursor,
-      `Most abundant: ${speciesLabel(species)} — ${top.grainCount} of ${totalGrains} grains, ${species.riskLevel.toLowerCase()} allergenic risk.`,
+      `Most abundant: ${speciesLabel(species)} — ${top.grainCount} of ${totalGrains} grains, ${riskPhrase(species.riskLevel)}.`,
     );
   }
   detectionTable(cursor, aggregated);
@@ -885,7 +892,7 @@ export async function downloadLocationReportPdf(input: LocationReportInput): Pro
     const species = getSpecies(top.speciesId);
     paragraph(
       cursor,
-      `Most abundant: ${speciesLabel(species)} — ${top.grainCount} of ${totalGrains} grains, ${species.riskLevel.toLowerCase()} allergenic risk.`,
+      `Most abundant: ${speciesLabel(species)} — ${top.grainCount} of ${totalGrains} grains, ${riskPhrase(species.riskLevel)}.`,
     );
   }
   detectionTable(cursor, detections);

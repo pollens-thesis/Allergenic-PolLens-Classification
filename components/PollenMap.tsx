@@ -17,6 +17,7 @@ import {
 import {
   formatCollectedAt,
   getWeightedAvgConfidence,
+  isFinalised,
   speciesLabel,
   type Specimen,
   type SpeciesId,
@@ -145,7 +146,8 @@ export default function PollenMap() {
     ])
       .then(([loadedReports, loadedProvinces]) => {
         if (cancelled) return;
-        setReports(loadedReports);
+        // Pending analyses aren't results yet.
+        setReports(loadedReports.filter(isFinalised));
         setProvinces(loadedProvinces);
       })
       .catch(() => !cancelled && setFailed(true));

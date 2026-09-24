@@ -53,5 +53,7 @@ export async function signOut(): Promise<void> {
       clearTimeout(timer);
     }
   }
+  // Forget the Microsoft account too, so the next person on this browser picks their own.
+  await import("@/lib/microsoft").then(({ clearMicrosoftCache }) => clearMicrosoftCache());
   resetSettings();
 }

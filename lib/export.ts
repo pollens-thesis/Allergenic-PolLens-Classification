@@ -1,26 +1,33 @@
 // ---------------------------------------------------------------------------
-// Bulk export of saved reports.
+// Bulk export of reports.
 //
-// Two formats, because they serve different jobs:
-//   JSON — a faithful backup of the records, re-importable later
-//   CSV  — one row per pollen type per slide, which is the shape stats software
-//          (R, SPSS, Excel) wants for analysis
+// Three formats, because they serve different jobs:
+//   Excel — a workbook for people: a Reports sheet (one row per report) and a
+//           Detections sheet (one row per pollen type per slide)
+//   CSV   — the Detections rows alone, the long format stats software (R, SPSS)
+//           wants for analysis
+//   JSON  — a faithful copy of the records, for archiving or other tools
 //
-// Slide images are deliberately not included. Base64-encoding a batch of
-// microscope photographs inflates a file into the hundreds of megabytes; the
-// per-report PDF is the export that carries the pictures.
+// Slide images are deliberately not included: a batch of microscope photos
+// would inflate a file into the hundreds of megabytes (and their links expire).
+// The per-report PDF is the export that carries the pictures.
 // ---------------------------------------------------------------------------
 
 import {
-  getSpecies,
+  aggregateSlideDetections,
   getCollectionDate,
   getCollectionTime,
+  getReportGrains,
+  getSpecies,
+  getTopDetection,
   getTotalGrains,
+  getWeightedAvgConfidence,
+  speciesLabel,
   type Specimen,
 } from "@/lib/data";
 
-function download(content: string, filename: string, mime: string) {
-  const url = URL.createObjectURL(new Blob([content], { type: mime }));
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
@@ -37,93 +44,174 @@ function stamp(): string {
 export function exportReportsJson(reports: Specimen[]): void {
   const payload = {
     exportedAt: new Date().toISOString(),
-    formatVersion: 1,
-    note: "Slide images are not included in this export; download a report's PDF for those.",
+    formatVersion: 2,
+    note: "Slide images are not included; download a report's PDF for those.",
     reportCount: reports.length,
-    reports,
+    // Image links are presigned and expire, and canEdit is about the exporter.
+    reports: reports.map((report) => {
+      const { canEdit, ...rest } = report;
+      void canEdit;
+      return {
+        ...rest,
+        slides: report.slides.map((slide) => {
+          const { imageUrl, ...slideRest } = slide;
+          void imageUrl;
+          return slideRest;
+        }),
+      };
+    }),
   };
-  download(JSON.stringify(payload, null, 2), `pollens-reports-${stamp()}.json`, "application/json");
+  downloadBlob(
+    new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
+    `pollens-reports-${stamp()}.json`,
+  );
 }
 
-/** Wraps a value for CSV: quote it, and double any quotes inside. */
-function cell(value: string | number | null): string {
-  if (value === null) return "";
-  const text = String(value);
-  return `"${text.replace(/"/g, '""')}"`;
-}
+type Value = string | number | null;
+
+const DETECTION_COLUMNS = [
+  "sample_id",
+  "status",
+  "collection_date",
+  "collection_time",
+  "location",
+  "researcher",
+  "weather_condition",
+  "temperature_c",
+  "humidity_pct",
+  "wind_kph",
+  "slide_number",
+  "slide_file",
+  "slide_total_grains",
+  "species_code",
+  "scientific_name",
+  "common_name",
+  "risk_level",
+  "grain_count",
+  "avg_confidence",
+  "slide_notes",
+] as const;
 
 /**
  * One row per detected pollen type per slide — the long format analysis tools
  * expect. Report-level fields repeat across a report's rows, which is intended:
- * it keeps every row independently filterable.
+ * it keeps every row independently filterable. A slide with nothing on it still
+ * gets a row (grain_count 0), because "nothing found" is a result.
  */
-export function exportReportsCsv(reports: Specimen[]): void {
-  const header = [
-    "sample_id",
-    "collection_date",
-    "collection_time",
-    "location",
-    "researcher",
-    "status",
-    "weather_condition",
-    "temperature_c",
-    "humidity_pct",
-    "wind_kph",
-    "slide_number",
-    "slide_file",
-    "slide_total_grains",
-    "species_code",
-    "genus",
-    "common_name",
-    "risk_level",
-    "grain_count",
-    "avg_confidence",
-    "slide_notes",
-  ];
-
-  const rows: string[] = [header.join(",")];
-
+function detectionRows(reports: Specimen[]): Value[][] {
+  const rows: Value[][] = [];
   for (const report of reports) {
     report.slides.forEach((slide, index) => {
-      const shared = [
-        cell(report.sampleId),
-        cell(getCollectionDate(report.collectedAt)),
-        cell(getCollectionTime(report.collectedAt)),
-        cell(report.location),
-        cell(report.researcher),
-        cell(report.status),
-        cell(report.weather?.condition ?? null),
-        cell(report.weather?.temperatureC ?? null),
-        cell(report.weather?.humidityPct ?? null),
-        cell(report.weather?.windKph ?? null),
-        cell(index + 1),
-        cell(slide.fileName),
-        cell(getTotalGrains(slide.detections)),
+      const shared: Value[] = [
+        report.sampleId,
+        report.status,
+        getCollectionDate(report.collectedAt),
+        getCollectionTime(report.collectedAt),
+        report.location,
+        report.researcher,
+        report.weather?.condition ?? null,
+        report.weather?.temperatureC ?? null,
+        report.weather?.humidityPct ?? null,
+        report.weather?.windKph ?? null,
+        index + 1,
+        slide.fileName,
+        getTotalGrains(slide.detections),
       ];
-
       if (slide.detections.length === 0) {
-        // A slide with nothing on it is still a result worth recording.
-        rows.push([...shared, cell(null), cell(null), cell(null), cell(null), cell(0), cell(null), cell(slide.notes)].join(","));
+        rows.push([...shared, null, null, null, null, 0, null, slide.notes]);
         return;
       }
-
       for (const detection of slide.detections) {
         const species = getSpecies(detection.speciesId);
-        rows.push(
-          [
-            ...shared,
-            cell(species.code),
-            cell(species.scientificName),
-            cell(species.commonName),
-            cell(species.riskLevel),
-            cell(detection.grainCount),
-            cell(detection.avgConfidence.toFixed(4)),
-            cell(slide.notes),
-          ].join(","),
-        );
+        rows.push([
+          ...shared,
+          species.code,
+          species.scientificName,
+          species.commonName || null,
+          species.riskLevel,
+          detection.grainCount,
+          Number(detection.avgConfidence.toFixed(4)),
+          slide.notes,
+        ]);
       }
     });
   }
+  return rows;
+}
 
-  download(rows.join("\n"), `pollens-detections-${stamp()}.csv`, "text/csv");
+/** Wraps a value for CSV: quote it, and double any quotes inside. */
+function csvCell(value: Value): string {
+  if (value === null) return "";
+  return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+export function exportReportsCsv(reports: Specimen[]): void {
+  const lines = [
+    DETECTION_COLUMNS.join(","),
+    ...detectionRows(reports).map((row) => row.map(csvCell).join(",")),
+  ];
+  downloadBlob(new Blob([lines.join("\n")], { type: "text/csv" }), `pollens-detections-${stamp()}.csv`);
+}
+
+const REPORT_COLUMNS = [
+  "Sample ID",
+  "Status",
+  "Collection Date",
+  "Collection Time",
+  "Location",
+  "Researcher",
+  "Slides",
+  "Total Grains",
+  "Pollen Types",
+  "Top Pollen",
+  "Avg. Confidence",
+  "Weather",
+  "Temperature (°C)",
+  "Humidity (%)",
+  "Wind (km/h)",
+];
+
+function reportRows(reports: Specimen[]): Value[][] {
+  return reports.map((report) => {
+    const detections = aggregateSlideDetections(report.slides);
+    const top = getTopDetection(detections);
+    return [
+      report.sampleId,
+      report.status,
+      getCollectionDate(report.collectedAt),
+      getCollectionTime(report.collectedAt),
+      report.location,
+      report.researcher,
+      report.slides.length,
+      getReportGrains(report),
+      detections.length,
+      top ? speciesLabel(getSpecies(top.speciesId)) : null,
+      detections.length ? Number(getWeightedAvgConfidence(detections).toFixed(4)) : null,
+      report.weather?.condition ?? null,
+      report.weather?.temperatureC ?? null,
+      report.weather?.humidityPct ?? null,
+      report.weather?.windKph ?? null,
+    ];
+  });
+}
+
+/** An .xlsx workbook: Reports (one row per report) + Detections (long format). */
+export async function exportReportsXlsx(reports: Specimen[], filename?: string): Promise<void> {
+  // Loaded on click — the spreadsheet writer isn't needed anywhere else.
+  const { default: writeXlsxFile } = await import("write-excel-file/browser");
+  const header = (labels: readonly string[]) =>
+    labels.map((label) => ({ value: label, fontWeight: "bold" as const }));
+  const blob = await writeXlsxFile([
+    {
+      sheet: "Reports",
+      data: [header(REPORT_COLUMNS), ...reportRows(reports)],
+      stickyRowsCount: 1,
+    },
+    {
+      sheet: "Detections",
+      data: [header(DETECTION_COLUMNS), ...detectionRows(reports)],
+      stickyRowsCount: 1,
+    },
+  ]).toBlob();
+  downloadBlob(blob, filename ?? `pollens-reports-${stamp()}.xlsx`);
 }

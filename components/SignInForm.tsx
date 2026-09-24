@@ -6,7 +6,9 @@ import Script from "next/script";
 import { ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import GoogleIcon from "@/components/GoogleIcon";
-import { exchangeGoogleCredential, GoogleSignInError } from "@/lib/auth";
+import { exchangeGoogleCredential, exchangeMicrosoftIdToken, GoogleSignInError } from "@/lib/auth";
+import { microsoftConfigured, signInWithMicrosoft } from "@/lib/microsoft";
+import MicrosoftIcon from "@/components/MicrosoftIcon";
 import { updateSettings, useSettings } from "@/lib/settings";
 import { isSignedIn, safeNext } from "@/lib/session";
 
@@ -100,6 +102,25 @@ export default function SignInForm() {
     });
   }, [choosing, scriptReady, configured, router]);
 
+  async function handleMicrosoft() {
+    setPending(true);
+    setError(null);
+    try {
+      const idToken = await signInWithMicrosoft();
+      const { email, tokens } = await exchangeMicrosoftIdToken(idToken);
+      updateSettings({ email, accessToken: tokens.access, refreshToken: tokens.refresh });
+      router.push(nextPage());
+    } catch (err: unknown) {
+      setPending(false);
+      // Closing Microsoft's window is a choice, not an error.
+      const code = (err as { errorCode?: string } | null)?.errorCode;
+      if (code === "user_cancelled" || code === "popup_window_error") return;
+      const message = err instanceof GoogleSignInError ? err.message : "Microsoft sign-in failed.";
+      setError(message);
+      toast.error(message);
+    }
+  }
+
   return (
     <>
       {expired && (
@@ -114,14 +135,29 @@ export default function SignInForm() {
       />
 
       {!choosing ? (
-        <button
-          type="button"
-          onClick={() => setChoosing(true)}
-          className="focus-ring flex w-full items-center justify-center gap-3 rounded-md border border-border bg-surface px-5 py-3 text-sm font-medium text-text transition-transform duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:border-border-strong active:scale-[0.98]"
-        >
-          <GoogleIcon />
-          Continue with Google
-        </button>
+        <div className="flex flex-col gap-2.5">
+          <button
+            type="button"
+            onClick={() => setChoosing(true)}
+            disabled={pending}
+            className="focus-ring flex w-full items-center justify-center gap-3 rounded-md border border-border bg-surface px-5 py-3 text-sm font-medium text-text transition-transform duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:border-border-strong active:scale-[0.98] disabled:opacity-50"
+          >
+            <GoogleIcon />
+            Continue with Google
+          </button>
+          {microsoftConfigured && (
+            <button
+              type="button"
+              onClick={() => void handleMicrosoft()}
+              disabled={pending}
+              className="focus-ring flex w-full items-center justify-center gap-3 rounded-md border border-border bg-surface px-5 py-3 text-sm font-medium text-text transition-transform duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:border-border-strong active:scale-[0.98] disabled:opacity-50"
+            >
+              <MicrosoftIcon />
+              {pending ? "Signing in…" : "Continue with Microsoft"}
+            </button>
+          )}
+          {error && <p className="text-[12.5px] text-danger">{error}</p>}
+        </div>
       ) : (
         <div className="rounded-md border border-border bg-surface p-4">
           <div className="mb-3 flex items-center gap-2.5">

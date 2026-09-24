@@ -50,7 +50,7 @@ export default function LoginPage() {
         >
           {[
             ["Classes tracked", `${speciesCatalog.length} taxa`],
-            ["Model", "Roboflow · v1"],
+            ["Model", "YOLO via Roboflow"],
             ["Access", "Research use"],
           ].map(([label, value]) => (
             <div key={label}>
@@ -92,8 +92,7 @@ export default function LoginPage() {
             </li>
             <li className="flex gap-2.5">
               <span className="mt-[3px] h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-              Access is limited to researchers named on the project&apos;s
-              consent form.
+              Access is limited to UP and MSEUF accounts and researchers added by the project team.
             </li>
           </ul>
 
