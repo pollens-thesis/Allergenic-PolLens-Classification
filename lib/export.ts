@@ -32,7 +32,9 @@ function downloadBlob(blob: Blob, filename: string) {
   anchor.href = url;
   anchor.download = filename;
   anchor.click();
-  URL.revokeObjectURL(url);
+  // Revoked later, not straight away: some browsers start reading the URL only
+  // after click() returns, and an early revoke cancels the download.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 function stamp(): string {
@@ -139,10 +141,16 @@ function detectionRows(reports: Specimen[]): Value[][] {
   return rows;
 }
 
-/** Wraps a value for CSV: quote it, and double any quotes inside. */
+/**
+ * Wraps a value for CSV: quote it, and double any quotes inside. Text that
+ * starts like a formula (a note beginning "=", "+", "-" or "@") is prefixed
+ * with an apostrophe so a spreadsheet opens it as text instead of running it.
+ */
 function csvCell(value: Value): string {
   if (value === null) return "";
-  return `"${String(value).replace(/"/g, '""')}"`;
+  let text = String(value);
+  if (typeof value === "string" && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+  return `"${text.replace(/"/g, '""')}"`;
 }
 
 export function exportReportsCsv(reports: Specimen[]): void {
@@ -150,7 +158,12 @@ export function exportReportsCsv(reports: Specimen[]): void {
     DETECTION_COLUMNS.join(","),
     ...detectionRows(reports).map((row) => row.map(csvCell).join(",")),
   ];
-  downloadBlob(new Blob([lines.join("\n")], { type: "text/csv" }), `pollens-detections-${stamp()}.csv`);
+  // A byte-order mark so Excel reads the file as UTF-8 ("Parañaque", "°C"),
+  // and CRLF line endings, as RFC 4180 specifies.
+  downloadBlob(
+    new Blob(["﻿" + lines.join("\r\n") + "\r\n"], { type: "text/csv;charset=utf-8" }),
+    `pollens-detections-${stamp()}.csv`,
+  );
 }
 
 const REPORT_COLUMNS = [
@@ -195,6 +208,15 @@ function reportRows(reports: Specimen[]): Value[][] {
   });
 }
 
+/** Confidence columns (0–1 fractions) are shown as percentages in the workbook. */
+function withPercent(rows: Value[][], column: number) {
+  return rows.map((row) =>
+    row.map((value, index) =>
+      index === column && typeof value === "number" ? { value, format: "0.0%" } : value,
+    ),
+  );
+}
+
 /** An .xlsx workbook: Reports (one row per report) + Detections (long format). */
 export async function exportReportsXlsx(reports: Specimen[], filename?: string): Promise<void> {
   // Loaded on click — the spreadsheet writer isn't needed anywhere else.
@@ -204,12 +226,18 @@ export async function exportReportsXlsx(reports: Specimen[], filename?: string):
   const blob = await writeXlsxFile([
     {
       sheet: "Reports",
-      data: [header(REPORT_COLUMNS), ...reportRows(reports)],
+      data: [
+        header(REPORT_COLUMNS),
+        ...withPercent(reportRows(reports), REPORT_COLUMNS.indexOf("Avg. Confidence")),
+      ],
       stickyRowsCount: 1,
     },
     {
       sheet: "Detections",
-      data: [header(DETECTION_COLUMNS), ...detectionRows(reports)],
+      data: [
+        header(DETECTION_COLUMNS),
+        ...withPercent(detectionRows(reports), DETECTION_COLUMNS.indexOf("avg_confidence")),
+      ],
       stickyRowsCount: 1,
     },
   ]).toBlob();

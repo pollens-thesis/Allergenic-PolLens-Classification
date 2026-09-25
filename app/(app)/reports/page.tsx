@@ -28,7 +28,7 @@ export default function ReportsPage() {
             Reports
           </h1>
           <p className="mt-1 max-w-prose text-sm text-text-muted">
-            Every saved analysis. Open a report for its images, full results, notes and conditions.
+            Every analysis, from every researcher — pending and generated. Open a report for its images, full results, notes and conditions.
           </p>
         </div>
 

@@ -117,10 +117,10 @@ from the Philippine Standard Geographic Code (PSGC) list the map is drawn from
 - **Why a fixed list:** every chosen place is spelled the way the map matches it.
 - **Free text:** still allowed, with a warning that it won't be plotted.
 
-**Weather.** Weather is pre-filled from OpenWeather using the chosen place's
-coordinates.
+**Weather.** Weather is pre-filled from Open-Meteo using the chosen place's
+coordinates, for the collection date and time.
 
-- **Labelled source:** it is always labelled as auto-filled current conditions.
+- **Labelled source:** it is always labelled as auto-filled conditions for the collection date and time.
 - **Override:** any manual change is marked "Edited by researcher" and is never silently overwritten.
 
 This keeps a clear record of where each value came from, which is a basic

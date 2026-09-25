@@ -13,7 +13,8 @@ import {
 } from "recharts";
 import { AlertTriangle, Inbox } from "lucide-react";
 import type { MonthlyPollenCount } from "@/lib/data";
-import { pollenSeries } from "@/lib/data";
+import { speciesLabel } from "@/lib/data";
+import { useSpeciesCatalog } from "@/lib/species-catalog";
 import { fetchMonthlyPollenCounts } from "@/lib/backend";
 import { useSettings } from "@/lib/settings";
 
@@ -67,7 +68,7 @@ function CustomTooltip({
 
 /**
  * Grains counted per species per month over the trailing year, from the
- * server (Completed reports only). These are counts of detected grains, not an
+ * server (Completed and Needs review reports). These are counts of detected grains, not an
  * airborne concentration — nothing here measures a sampled air volume.
  */
 export default function PollenCountChart() {
@@ -77,6 +78,11 @@ export default function PollenCountChart() {
   // Keyed on who is signed in, not the access token — that rotates every 15
   // minutes and would refetch for nothing.
   const { email } = useSettings();
+  const catalog = useSpeciesCatalog();
+  const pollenSeries = useMemo(
+    () => catalog.map((sp) => ({ key: sp.id, label: speciesLabel(sp), color: sp.color })),
+    [catalog],
+  );
 
   useEffect(() => {
     // The page is behind the session guard, so an email is always present
@@ -92,6 +98,7 @@ export default function PollenCountChart() {
           0,
         );
         setStatus(total > 0 ? "live" : "empty-live");
+        // (Whether the *visible* window is empty is decided at render time.)
       })
       .catch(() => {
         // Keep showing the last-known data — a failed refresh shouldn't blank the chart.
@@ -102,7 +109,13 @@ export default function PollenCountChart() {
     };
   }, [email]);
 
-  const visible = data.slice(-range);
+  const visible = useMemo(() => data.slice(-range), [data, range]);
+  const visibleTotal = visible.reduce(
+    (sum, month) => sum + Object.values(month.series).reduce((a, b) => a + b, 0),
+    0,
+  );
+  // Counts older than six months leave the 6-month window empty.
+  const empty = status === "empty-live" || (status === "live" && visibleTotal === 0);
 
   // Rank by total within the visible window so the busiest species (not an
   // arbitrary catalog subset) get the limited line slots; falls back to the
@@ -119,7 +132,7 @@ export default function PollenCountChart() {
       .filter((s) => (totals.get(s.key) ?? 0) > 0)
       .sort((a, b) => (totals.get(b.key) ?? 0) - (totals.get(a.key) ?? 0));
     return (withData.length > 0 ? withData : pollenSeries).slice(0, MAX_LINES);
-  }, [visible]);
+  }, [visible, pollenSeries]);
 
   return (
     <div className="rounded-lg border border-border bg-surface p-5">
@@ -128,7 +141,7 @@ export default function PollenCountChart() {
           <h2 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
             Historical Pollen Counts
           </h2>
-          <p className="text-[13px] text-text-muted">Grains counted in completed reports, by month</p>
+          <p className="text-[13px] text-text-muted">Grains counted in generated reports, by month</p>
         </div>
         <div className="flex rounded-md border border-border bg-surface p-0.5">
           {RANGES.map((r) => (
@@ -161,7 +174,7 @@ export default function PollenCountChart() {
             {status === "loading" ? "Loading counts…" : "Couldn't reach the server to load counts."}
           </span>
         </div>
-      ) : status === "empty-live" ? (
+      ) : empty ? (
         <div className="mt-3 flex h-56 flex-col items-center justify-center gap-1.5 rounded-md bg-surface-sunken text-center">
           <Inbox size={18} strokeWidth={1.5} className="text-text-faint" />
           <span className="px-3 text-[12.5px] text-text-muted">
@@ -237,7 +250,7 @@ export default function PollenCountChart() {
                 <tr key={month.month}>
                   <th scope="row">{month.month}</th>
                   {linesToShow.map((s) => (
-                    <td key={s.key}>{month.series[s.key] ?? 0} grains per cubic meter</td>
+                    <td key={s.key}>{month.series[s.key] ?? 0} grains</td>
                   ))}
                 </tr>
               ))}

@@ -17,7 +17,7 @@ export default function SettingsPage() {
             Settings
           </h1>
           <p className="mt-1 max-w-prose text-sm text-text-muted">
-            The account this browser is signed in with, and the data it has stored.
+            The account this browser is signed in with, and the preferences saved in it.
           </p>
         </div>
 

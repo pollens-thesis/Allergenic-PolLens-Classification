@@ -40,6 +40,7 @@ import {
   intensityFill,
   matchesQuery,
   municipalitiesUrl,
+  PROVINCE_WIDE_KEY,
   reportsForPlace,
   toPath,
   unionBounds,
@@ -133,6 +134,8 @@ export default function PollenMap() {
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [selected, setSelected] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  /** A one-line answer to a search pick that found nothing to select. */
+  const [notice, setNotice] = useState<string | null>(null);
   /** Which report is being built, so only that button shows a spinner. */
   const [building, setBuilding] = useState<string | null>(null);
 
@@ -223,8 +226,9 @@ export default function PollenMap() {
   const unmapped = useMemo(() => {
     if (!projection) return [];
     const drawable = new Set(features.map(featureKey));
-    return ranked.filter((p) => !drawable.has(p.key));
+    return ranked.filter((p) => !drawable.has(p.key) && p.key !== PROVINCE_WIDE_KEY);
   }, [ranked, features, projection]);
+  const provinceWide = places.get(PROVINCE_WIDE_KEY) ?? null;
 
   // Path strings, label anchors and bounds are all derived from the geometry
   // alone, so they are computed once per projection rather than on every
@@ -309,6 +313,8 @@ export default function PollenMap() {
 
   function leaveScope() {
     setSelected(null);
+    setNotice(null);
+    setPendingTown(null);
     // The search box belongs to the view you typed it in: a province name is
     // not a town name, so carrying it inside would show an empty province.
     setFilters((f) => ({ ...f, query: "" }));
@@ -327,13 +333,19 @@ export default function PollenMap() {
 
   // A town picked in the search, waiting for its province's boundaries to load.
   const [pendingTown, setPendingTown] = useState<number | null>(null);
-  if (pendingTown !== null && loadedTowns) {
-    // Adjusting state while rendering (not in an effect): the towns just arrived.
-    const feature = loadedTowns.features.find((f) => f.properties.psgc === pendingTown);
+  if (pendingTown !== null && provincePsgc !== null && !loadingTowns) {
+    // Adjusting state while rendering (not in an effect): the towns just
+    // arrived — or failed to, in which case there is nothing to frame.
+    const feature = loadedTowns?.features.find((f) => f.properties.psgc === pendingTown);
     setPendingTown(null);
     if (feature) {
       const key = featureKey(feature);
-      if (places.has(key)) setSelected(key);
+      if (places.has(key)) {
+        setSelected(key);
+      } else {
+        setHovered(key); // outline it, so the eye lands on the town anyway
+        setNotice(`No reports from ${displayName(feature.properties.name)} yet.`);
+      }
       const bounds = geometry.bounds.get(key);
       if (bounds) fitTo(bounds);
     }
@@ -345,7 +357,10 @@ export default function PollenMap() {
     if (!province) return;
     const alreadyOpen = scope.level === "province" && scope.psgc === place.provincePsgc;
     if (!alreadyOpen) openProvince(province);
-    else setFilters((f) => ({ ...f, query: "" }));
+    else {
+      setFilters((f) => ({ ...f, query: "" }));
+      setNotice(null);
+    }
     setPendingTown(place.kind === "town" ? (place.townPsgc ?? null) : null);
   }
 
@@ -362,7 +377,9 @@ export default function PollenMap() {
     );
   }
 
-  if (!reports || !provinces || !projection) {
+  // A province with no town boundaries (BARMM's Special Geographic Area) has
+  // no projection either; it still renders, with the way back and a message.
+  if (!reports || !provinces || (scope.level === "country" && !projection)) {
     return (
       <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-6 py-16 text-[13px] text-text-muted">
         <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
@@ -600,6 +617,14 @@ export default function PollenMap() {
             </button>
           </div>
 
+          {!projection ? (
+            <div className="flex min-h-64 items-center justify-center px-6 text-center text-[13px] text-text-muted">
+              {!loadingTowns &&
+                (loadedTowns
+                  ? `No town boundaries are drawn for ${scope.level === "province" ? scope.name : "this place"}.`
+                  : "Couldn't load the town boundaries. Go back and open the province again.")}
+            </div>
+          ) : (
           <svg
             ref={svgRef}
             viewBox={`0 0 ${projection.width} ${projection.height}`}
@@ -688,6 +713,7 @@ export default function PollenMap() {
               })}
             </g>
           </svg>
+          )}
         </div>
 
         {/* Legend — the classes are quantiles, so it states its own numbers
@@ -723,6 +749,15 @@ export default function PollenMap() {
               : "Scroll or use the controls to zoom"}
           </span>
         </div>
+
+        {provinceWide && (
+          <p className="mt-2 text-[12.5px] text-text-muted">
+            {provinceWide.reportCount === 1 ? "1 report names" : `${provinceWide.reportCount} reports name`} only
+            the province, not a town — listed as “No town given”.
+          </p>
+        )}
+
+        {notice && <p className="mt-2 text-[12.5px] text-text-muted">{notice}</p>}
 
         {unmapped.length > 0 && (
           <p className="mt-2 text-[12.5px] text-text-muted">
@@ -850,12 +885,12 @@ export default function PollenMap() {
               {building === selectedPlace.key ? (
                 <>
                   <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
-                  Building report…
+                  Building Report…
                 </>
               ) : (
                 <>
                   <FileDown size={14} strokeWidth={1.75} />
-                  Generate report for {selectedPlace.label}
+                  Generate Report for {selectedPlace.label}
                 </>
               )}
             </Button>
@@ -870,7 +905,7 @@ export default function PollenMap() {
               className="focus-ring mt-2 flex items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text-muted transition hover:text-text"
             >
               <Microscope size={14} strokeWidth={1.75} />
-              View reports from {selectedPlace.label}
+              View Reports from {selectedPlace.label}
             </Link>
           </div>
         ) : (
@@ -915,14 +950,14 @@ export default function PollenMap() {
                 {building === "filtered" ? (
                   <>
                     <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
-                    Building report…
+                    Building Report…
                   </>
                 ) : (
                   <>
                     <FileDown size={14} strokeWidth={1.75} />
                     {filteredPlaces.length === 1
-                      ? `Generate report for ${filteredPlaces[0].label}`
-                      : `Generate report for these ${filteredPlaces.length} ${unitPlural}`}
+                      ? `Generate Report for ${filteredPlaces[0].label}`
+                      : `Generate Report for These ${filteredPlaces.length} ${unitPlural === "towns" ? "Towns" : "Provinces"}`}
                   </>
                 )}
               </Button>
@@ -945,8 +980,10 @@ export default function PollenMap() {
                         onClick={() => applyFilters({ show: "all" })}
                         className="focus-ring mt-2 rounded text-text underline underline-offset-4 hover:opacity-70"
                       >
-                        Show {unsampledMatches} unsampled{" "}
-                        {unsampledMatches === 1 ? unitSingular : unitPlural}
+                        Show {unsampledMatches} Unsampled{" "}
+                        {scope.level === "country"
+                          ? unsampledMatches === 1 ? "Province" : "Provinces"
+                          : unsampledMatches === 1 ? "Town" : "Towns"}
                       </button>
                     )}
                   </>

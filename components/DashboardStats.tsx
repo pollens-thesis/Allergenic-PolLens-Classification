@@ -35,9 +35,9 @@ export default function DashboardStats() {
   return (
     <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
       <StatCard
-        label="Reports Completed"
+        label="Reports Generated"
         value={stats ? stats.totalSpecimens.toLocaleString() : dash}
-        sublabel={failed ? "Couldn't reach the server" : "All researchers, all time"}
+        sublabel={failed ? "Couldn't reach the server" : "Completed or in review · all researchers"}
         icon={Microscope}
       />
       <StatCard
@@ -49,7 +49,7 @@ export default function DashboardStats() {
       <StatCard
         label="This Week"
         value={stats ? String(stats.detectionsThisWeek) : dash}
-        sublabel="Reports analysed in the last 7 days"
+        sublabel="Generated reports stored in the last 7 days"
         icon={ScanLine}
       />
       <StatCard

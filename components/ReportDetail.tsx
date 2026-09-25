@@ -18,6 +18,7 @@ import {
   Trash2,
   Droplets,
   FileText,
+  FlaskConical,
   Loader2,
   MapPin,
   Microscope,
@@ -340,6 +341,13 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
 
   return (
     <div className="flex flex-col gap-6">
+      {report.sampleDetections && (
+        <p className="flex items-start gap-2 rounded-md border border-processing/30 bg-processing-bg px-3 py-2.5 text-[12.5px] text-processing">
+          <FlaskConical size={14} strokeWidth={2} className="mt-px shrink-0" />
+          Sample detections — this report was analyzed while the trained model wasn&apos;t
+          deployed, so its counts are the server&apos;s built-in example reading, not results.
+        </p>
+      )}
       {/* Header */}
       <div className="rounded-lg border border-border bg-surface p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -350,7 +358,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <StatusBadge status={report.status} />
               <span className="text-[12.5px] text-text-muted">
-                Analysed {new Date(report.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                Analyzed {new Date(report.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </span>
             </div>
           </div>
@@ -440,7 +448,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
           Collection Details
         </h3>
         <p className="mt-0.5 mb-4 text-[13px] text-text-muted">
-          Recorded with the batch when it was analyzed.
+          Recorded with the batch when it was analyzed and reviewed.
         </p>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -630,7 +638,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
       />
 
       <p className="text-[12.5px] text-text-faint">
-        Collected {formatCollectedAt(report.collectedAt)} · saved as{" "}
+        Collected {formatCollectedAt(report.collectedAt)} · report{" "}
         <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{report.sampleId}</span>
       </p>
     </div>

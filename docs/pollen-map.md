@@ -255,8 +255,8 @@ Filtering the map to a place is choosing a subject, so the map can hand that
 choice straight to a document. Two entry points, one builder
 (`downloadLocationReportPdf` in `lib/pdf.ts`):
 
-- **A selected place** — "Generate report for Lucban" in the detail panel.
-- **The filtered set** — "Generate report for these 5 towns" above the ranked
+- **A selected place** — "Generate Report for Lucban" in the detail panel.
+- **The filtered set** — "Generate Report for These 5 Towns" above the ranked
   list, so a search does not have to be walked place by place.
 
 Where a specimen report answers *what was on this slide*, a location report

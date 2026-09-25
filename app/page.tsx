@@ -69,8 +69,8 @@ export default function LoginPage() {
               Sign In to Continue
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-text-muted">
-              Sign in with the account your institution works from. The console
-              takes its name from that address.
+              Sign in with the Google or Microsoft account your institution
+              works from. The console greets you by that account&apos;s name.
             </p>
           </div>
 
@@ -87,7 +87,7 @@ export default function LoginPage() {
           <ul className="space-y-3 text-[13px] leading-relaxed text-text-muted">
             <li className="flex gap-2.5">
               <span className="mt-[3px] h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-              Google sign-in is the only supported entry point for this
+              Google and Microsoft sign-in are the only ways in for this
               thesis build — no password accounts.
             </li>
             <li className="flex gap-2.5">

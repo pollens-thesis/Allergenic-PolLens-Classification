@@ -113,7 +113,8 @@ export function speciesLabel(sp: Species): string {
 /**
  * A report's lifecycle (api/reports/models.py): Pending until the researcher
  * generates the report, then Completed; a completed report can be flagged
- * Needs review. Only Completed reports count in charts, stats and the map.
+ * Needs review. Completed and Needs review reports ("finalised") count in
+ * charts, stats and the map; Pending ones don't.
  */
 export type ReportStatus = "Pending" | "Completed" | "Needs review";
 export const REPORT_STATUSES: ReportStatus[] = ["Pending", "Completed", "Needs review"];
@@ -334,10 +335,12 @@ export type Specimen = {
   weather: WeatherConditions | null; // null when conditions weren't recorded
   researcher: string;
   status: ReportStatus;
-  /** When it was analysed and stored (ISO timestamp) — not the collection date. */
+  /** When it was analyzed and stored (ISO timestamp) — not the collection date. */
   createdAt: string;
   /** Whether the signed-in researcher may edit, change the status of, or delete it. */
   canEdit: boolean;
+  /** Detections came from the server's built-in sample, not a trained model. */
+  sampleDetections?: boolean;
 };
 
 /** Every pollen type across a report's slides, combined and richest first. */
@@ -404,6 +407,9 @@ export function toReportRow(specimen: Specimen): ReportRow {
 // ---------------------------------------------------------------------------
 
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+// A report stored a moment ago can carry a server timestamp slightly ahead of
+// this device's clock; it still counts as this week.
+const CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 export type DashboardStats = {
   totalSpecimens: number;
@@ -414,7 +420,7 @@ export type DashboardStats = {
 
 /**
  * Dashboard figures over finalised reports (Pending ones aren't results yet):
- * how many reports, how many were analysed in the last 7 days (by when they
+ * how many reports, how many were analyzed in the last 7 days (by when they
  * were stored, not when the sample was collected), and the mean confidence
  * over every grain — weighted by grains, so a big slide counts for more than
  * a sparse one.
@@ -431,7 +437,7 @@ export function computeDashboardStats(
     classesTracked,
     detectionsThisWeek: finalised.filter((r) => {
       const age = now.getTime() - new Date(r.createdAt).getTime();
-      return age >= 0 && age <= ONE_WEEK_MS;
+      return age >= -CLOCK_SKEW_MS && age <= ONE_WEEK_MS;
     }).length,
     avgConfidence: getWeightedAvgConfidence(detections),
   };
@@ -439,7 +445,7 @@ export function computeDashboardStats(
 
 // ---------------------------------------------------------------------------
 // Monthly pollen counts — grains counted per species per month, from the
-// backend (lib/backend.ts fetchMonthlyPollenCounts, Completed reports only).
+// backend (lib/backend.ts fetchMonthlyPollenCounts, finalised reports only).
 // ---------------------------------------------------------------------------
 
 export type MonthlyPollenCount = {
@@ -448,12 +454,3 @@ export type MonthlyPollenCount = {
   series: Record<SpeciesId, number>;
 };
 
-// pollenSeries covers the full catalog (23 species) — PollenCountChart caps how
-// many it actually plots at once (see that component), since no categorical
-// palette stays mutually distinguishable much past 8 simultaneous lines
-// (confirmed by the dataviz skill's own validator).
-export const pollenSeries = speciesCatalog.map((sp) => ({
-  key: sp.id,
-  label: speciesLabel(sp),
-  color: sp.color,
-}));

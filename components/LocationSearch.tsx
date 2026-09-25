@@ -20,25 +20,46 @@ export type Place = {
 
 const MAX_SUGGESTIONS = 8;
 
-// Loaded once per session, on first use — 1,700 places, ~200 KB.
-let placesRequest: Promise<Place[]> | null = null;
-export function loadPlaces(): Promise<Place[]> {
+// Loaded once per session, on first use — 1,700 places, ~200 KB. A failed
+// load resolves to null (not an empty list, which would call every place
+// unrecognised) and is retried on the next use.
+let placesRequest: Promise<Place[] | null> | null = null;
+export function loadPlaces(): Promise<Place[] | null> {
   placesRequest ??= fetch("/geo/places.json")
-    .then((res) => (res.ok ? (res.json() as Promise<Place[]>) : []))
+    .then((res) => {
+      if (!res.ok) throw new Error(`places ${res.status}`);
+      return res.json() as Promise<Place[]>;
+    })
     .catch(() => {
       placesRequest = null;
-      return [];
+      return null;
     });
   return placesRequest;
 }
 
 /**
- * Case- and accent-insensitive form, character for character (so an index in
- * the folded string is the same index in the original): "Dasmariñas" and
- * "dasmarinas" fold to the same text.
+ * Case- and accent-insensitive form of `text`, with `map[i]` = the index in
+ * `text` that folded character i came from (plus a final entry for the end),
+ * so a match found in the folded text can be highlighted in the original.
  */
+function foldWithMap(text: string): { folded: string; map: number[] } {
+  let folded = "";
+  const map: number[] = [];
+  for (let i = 0; i < text.length; ) {
+    const ch = String.fromCodePoint(text.codePointAt(i)!);
+    for (const out of ch.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase()) {
+      folded += out;
+      map.push(i);
+    }
+    i += ch.length;
+  }
+  map.push(text.length);
+  return { folded, map };
+}
+
+/** "Dasmariñas", "DASMARIÑAS" and "dasmarinas" all fold to the same text. */
 function fold(text: string): string {
-  return Array.from(text, (ch) => ch.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().charAt(0) || ch).join("");
+  return foldWithMap(text.normalize("NFC")).folded;
 }
 
 /** Lower rank = better: name starts with the query, then any word does, then anywhere. */
@@ -118,6 +139,8 @@ export default function LocationSearch({
   }, [places, q]);
 
   const showList = open && suggestions.length > 0;
+  // The list shrinks as you type; the highlighted row must stay inside it.
+  const activeIndex = Math.min(active, Math.max(suggestions.length - 1, 0));
   const recognised = !value.trim() || !places || findPlace(places, value) !== null;
 
   function choose(place: Place) {
@@ -127,16 +150,20 @@ export default function LocationSearch({
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "ArrowDown") {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      if (!suggestions.length) return;
       event.preventDefault();
-      setOpen(true);
-      setActive((i) => (suggestions.length ? (i + 1) % suggestions.length : 0));
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      setActive((i) => (suggestions.length ? (i - 1 + suggestions.length) % suggestions.length : 0));
+      if (!showList) {
+        // The first press only opens the list, on its first row.
+        setOpen(true);
+        setActive(0);
+        return;
+      }
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      setActive((activeIndex + step + suggestions.length) % suggestions.length);
     } else if (event.key === "Enter" && showList) {
       event.preventDefault();
-      choose(suggestions[Math.min(active, suggestions.length - 1)]);
+      choose(suggestions[activeIndex]);
     } else if (event.key === "Escape" && showList) {
       event.preventDefault();
       setOpen(false);
@@ -152,7 +179,7 @@ export default function LocationSearch({
         aria-expanded={showList}
         aria-controls={listId}
         aria-autocomplete="list"
-        aria-activedescendant={showList ? `${listId}-${active}` : undefined}
+        aria-activedescendant={showList ? `${listId}-${activeIndex}` : undefined}
         autoComplete="off"
         spellCheck={false}
         value={value}
@@ -186,7 +213,7 @@ export default function LocationSearch({
               key={place.label}
               id={`${listId}-${index}`}
               role="option"
-              aria-selected={index === active}
+              aria-selected={index === activeIndex}
               // mousedown, not click: it fires before the input's blur closes the list.
               onMouseDown={(event) => {
                 event.preventDefault();
@@ -195,7 +222,7 @@ export default function LocationSearch({
               onMouseEnter={() => setActive(index)}
               className={clsx(
                 "flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[13px]",
-                index === active ? "bg-accent-muted text-text" : "text-text",
+                index === activeIndex ? "bg-accent-muted text-text" : "text-text",
               )}
             >
               <MapPin size={13} strokeWidth={1.75} className="shrink-0 text-text-faint" />
@@ -221,13 +248,16 @@ export default function LocationSearch({
 }
 
 function Highlight({ text, query }: { text: string; query: string }) {
-  const at = query ? fold(text).indexOf(query) : -1;
+  const { folded, map } = foldWithMap(text);
+  const at = query ? folded.indexOf(query) : -1;
   if (at < 0) return <>{text}</>;
+  const start = map[at];
+  const end = map[at + query.length];
   return (
     <>
-      {text.slice(0, at)}
-      <mark className="bg-transparent font-semibold text-text">{text.slice(at, at + query.length)}</mark>
-      {text.slice(at + query.length)}
+      {text.slice(0, start)}
+      <mark className="bg-transparent font-semibold text-text">{text.slice(start, end)}</mark>
+      {text.slice(end)}
     </>
   );
 }

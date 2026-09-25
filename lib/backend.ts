@@ -7,7 +7,7 @@ import type { MonthlyPollenCount, Species } from "@/lib/data";
 
 /**
  * Trailing-12-month grain counts per species (GET /api/v1/reports/monthly-counts/,
- * Completed reports only). Throws on a non-2xx response.
+ * Completed and Needs review reports). Throws on a non-2xx response.
  */
 export async function fetchMonthlyPollenCounts(): Promise<MonthlyPollenCount[]> {
   const res = await apiFetch("/api/v1/reports/monthly-counts/");

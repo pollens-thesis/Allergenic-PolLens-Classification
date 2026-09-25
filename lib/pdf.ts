@@ -505,25 +505,25 @@ export async function downloadReportPdf(
   const weather = report.weather;
 
   masthead(cursor, {
-    title: "Specimen report",
+    title: "Specimen Report",
     rightTop: report.sampleId,
     rightBottom: report.status,
   });
 
   // --- At a glance --------------------------------------------------------
   summaryTiles(cursor, [
-    { value: String(totalGrains), label: "Total grains" },
-    { value: String(aggregated.length), label: "Pollen types" },
-    { value: `${Math.round(getWeightedAvgConfidence(aggregated) * 100)}%`, label: "Avg. confidence" },
+    { value: String(totalGrains), label: "Total Grains" },
+    { value: String(aggregated.length), label: "Pollen Types" },
+    { value: `${Math.round(getWeightedAvgConfidence(aggregated) * 100)}%`, label: "Avg. Confidence" },
     { value: String(report.slides.length), label: report.slides.length === 1 ? "Slide" : "Slides" },
   ]);
   compositionBar(cursor, aggregated);
 
   // --- What the researcher recorded ---------------------------------------
-  heading(cursor, "Collection details");
+  heading(cursor, "Collection Details");
   metaGrid(cursor, [
-    ["Date collected", shortDate(report.collectedAt)],
-    ["Time collected", collectionTime ? formatTime(collectionTime) : "Not recorded"],
+    ["Date Collected", shortDate(report.collectedAt)],
+    ["Time Collected", collectionTime ? formatTime(collectionTime) : "Not recorded"],
     ["Location", report.location || "Not specified"],
     ["Researcher", report.researcher],
     ["Weather", weather ? weather.condition : "Not recorded"],
@@ -538,7 +538,7 @@ export async function downloadReportPdf(
   ]);
 
   // --- Combined results ---------------------------------------------------
-  heading(cursor, "Results — whole report");
+  heading(cursor, "Results — Whole Report");
   if (top) {
     const species = getSpecies(top.speciesId);
     paragraph(
@@ -571,7 +571,7 @@ export async function downloadReportPdf(
     const slideGrains = getTotalGrains(slide.detections);
     metaGrid(cursor, [
       ["Grains", String(slideGrains)],
-      ["Pollen types", String(slide.detections.length)],
+      ["Pollen Types", String(slide.detections.length)],
     ]);
     detectionTable(cursor, slide.detections);
 
@@ -688,14 +688,14 @@ export async function downloadSelectionReportPdf({
   return downloadLocationReportPdf({
     // One place is a place; several is a selection, and naming it after the
     // first would misrepresent the rest.
-    title: places.length === 1 ? places[0].label : "Selected reports",
+    title: places.length === 1 ? places[0].label : "Selected Reports",
     scopeLabel: `${reports.length} ${reports.length === 1 ? "report" : "reports"}`,
     selectionNote: `Chosen from the report list${span}. Each report's slides, images and notes are in its own specimen PDF.`,
-    speciesLabel: "All pollen",
+    speciesLabel: "All Pollen",
     places,
     reports,
     fileSlug: "selected-reports",
-    documentLabel: "Report summary",
+    documentLabel: "Report Summary",
     subjectLabel: places.length === 1 ? "Location" : "Selection",
   });
 }
@@ -839,7 +839,7 @@ export async function downloadLocationReportPdf(input: LocationReportInput): Pro
     day: "numeric",
   });
 
-  const documentLabel = input.documentLabel ?? "Location report";
+  const documentLabel = input.documentLabel ?? "Location Report";
 
   doc.setProperties({
     title: `PolLens — ${input.title} (${documentLabel.toLowerCase()})`,
@@ -859,8 +859,8 @@ export async function downloadLocationReportPdf(input: LocationReportInput): Pro
   });
 
   summaryTiles(cursor, [
-    { value: String(totalGrains), label: "Total grains" },
-    { value: String(detections.length), label: "Pollen types" },
+    { value: String(totalGrains), label: "Total Grains" },
+    { value: String(detections.length), label: "Pollen Types" },
     { value: String(input.reports.length), label: input.reports.length === 1 ? "Report" : "Reports" },
     {
       value: String(input.places.length),
@@ -873,7 +873,7 @@ export async function downloadLocationReportPdf(input: LocationReportInput): Pro
   metaGrid(cursor, [
     [input.subjectLabel ?? "Place", input.title],
     ["Level", input.scopeLabel],
-    ["Pollen filter", input.speciesLabel],
+    ["Pollen Filter", input.speciesLabel],
     [
       "Collected",
       // Dates only: a span of months does not need the hour, and the pair has
@@ -887,7 +887,7 @@ export async function downloadLocationReportPdf(input: LocationReportInput): Pro
   ]);
   if (input.selectionNote) paragraph(cursor, input.selectionNote);
 
-  heading(cursor, "Pollen recorded here");
+  heading(cursor, "Pollen Recorded Here");
   if (top) {
     const species = getSpecies(top.speciesId);
     paragraph(
@@ -898,13 +898,13 @@ export async function downloadLocationReportPdf(input: LocationReportInput): Pro
   detectionTable(cursor, detections);
 
   if (input.places.length > 1) {
-    heading(cursor, "Places in this selection");
+    heading(cursor, "Places in This Selection");
     placesTable(cursor, input.places);
   }
 
-  heading(cursor, "Reports behind these figures");
+  heading(cursor, "Reports Behind These Figures");
   if (input.reports.length === 0) {
-    paragraph(cursor, "No saved reports match this selection.", true);
+    paragraph(cursor, "No generated reports match this selection.", true);
   } else {
     sourceReportsTable(cursor, input.reports);
   }

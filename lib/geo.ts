@@ -41,15 +41,11 @@ export type GeoFeature = {
 
 export type GeoCollection = { type: "FeatureCollection"; features: GeoFeature[] };
 
-/** Province names a researcher is likely to type that aren't the PSGC name. */
-const PROVINCE_ALIASES: Record<string, string> = {
-  "metro manila": "ncr",
-  "national capital region": "ncr",
-};
-
 function normalize(text: string): string {
   return text
     .trim()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "") // accents fold, not vanish: "Parañaque" = "Paranaque"
     .toLowerCase()
     .replace(/^city of\s+/, "")
     .replace(/\s+city$/, "")
@@ -58,20 +54,61 @@ function normalize(text: string): string {
     .trim();
 }
 
+// Metro Manila has no single boundary: PSGC splits it into four districts,
+// each drawn as its own "province". A location written "Town, Metro Manila"
+// is routed to the district that contains the town.
+const NCR_DISTRICTS = {
+  first: normalize("NCR, City of Manila, First District (Not a Province)"),
+  second: normalize("NCR, Second District (Not a Province)"),
+  third: normalize("NCR, Third District (Not a Province)"),
+  fourth: normalize("NCR, Fourth District (Not a Province)"),
+};
+const NCR_TOWN_DISTRICT: Record<string, string> = Object.fromEntries(
+  (
+    [
+      ["first", ["Manila"]],
+      ["second", ["Mandaluyong", "Marikina", "Pasig", "San Juan", "Quezon"]],
+      ["third", ["Caloocan", "Malabon", "Navotas", "Valenzuela"]],
+      ["fourth", ["Las Piñas", "Makati", "Muntinlupa", "Parañaque", "Taguig", "Pasay", "Pateros"]],
+    ] as const
+  ).flatMap(([district, towns]) => towns.map((town) => [normalize(town), NCR_DISTRICTS[district]])),
+);
+const ISABELA_CITY = normalize("City of Isabela (Not a Province)");
+
+/** Province names a researcher is likely to type that aren't the PSGC name. */
+const PROVINCE_ALIASES: Record<string, string> = {
+  "metro manila": "ncr",
+  "national capital region": "ncr",
+  // The place search's labels for the four NCR districts.
+  "metro manila manila": NCR_DISTRICTS.first,
+  "metro manila second district": NCR_DISTRICTS.second,
+  "metro manila third district": NCR_DISTRICTS.third,
+  "metro manila fourth district": NCR_DISTRICTS.fourth,
+};
+
+/** A province written by a researcher → the key of the boundary it names. */
+function provinceKeyOf(province: string): string {
+  // "Isabela City" must not collapse to "isabela" (the province in Region II).
+  if (/^\s*(isabela\s+city|city\s+of\s+isabela)\s*$/i.test(province)) return ISABELA_CITY;
+  const key = normalize(province);
+  return PROVINCE_ALIASES[key] ?? key;
+}
+
 export type ParsedLocation = { town: string; townKey: string; province: string; provinceKey: string };
 
-/** "Lucban, Quezon" → town "Lucban" / province "Quezon". */
+/**
+ * "Lucban, Quezon" → town "Lucban" / province "Quezon". A single name
+ * ("Quezon") is a province with no town — what the place search produces
+ * when a province itself is picked.
+ */
 export function parseLocation(location: string): ParsedLocation {
   const parts = location.split(",").map((s) => s.trim()).filter(Boolean);
-  const town = parts[0] ?? "";
-  const province = parts.length > 1 ? parts[parts.length - 1] : "";
-  const provinceKey = normalize(province);
-  return {
-    town,
-    townKey: normalize(town),
-    province,
-    provinceKey: PROVINCE_ALIASES[provinceKey] ?? provinceKey,
-  };
+  const town = parts.length > 1 ? parts[0] : "";
+  const province = parts.length > 1 ? parts[parts.length - 1] : (parts[0] ?? "");
+  const townKey = normalize(town);
+  let provinceKey = provinceKeyOf(province);
+  if (provinceKey === "ncr" && NCR_TOWN_DISTRICT[townKey]) provinceKey = NCR_TOWN_DISTRICT[townKey];
+  return { town, townKey, province, provinceKey };
 }
 
 export function featureKey(feature: GeoFeature): string {
@@ -88,8 +125,13 @@ export function featureKey(feature: GeoFeature): string {
  * labels from covering Metro Manila the moment you zoom in.
  */
 export function displayName(name: string): string {
+  // Not "Isabela": that is the province in Region II, a different place.
+  if (/^City of Isabela\b/i.test(name)) return "Isabela City";
   return name.replace(/\s*\(Not a Province\)\s*$/i, "").replace(/^City of\s+/, "");
 }
+
+/** Town-level key for a report that names only its province. */
+export const PROVINCE_WIDE_KEY = "(province-wide)";
 
 export type PlaceStats = {
   key: string;
@@ -145,8 +187,9 @@ export function aggregate(
     const parsed = parseLocation(report.location);
     if (scope.level === "province" && parsed.provinceKey !== scope.provinceKey) continue;
 
-    const key = scope.level === "country" ? parsed.provinceKey : parsed.townKey;
-    const label = scope.level === "country" ? parsed.province : parsed.town;
+    const key = scope.level === "country" ? parsed.provinceKey : parsed.townKey || PROVINCE_WIDE_KEY;
+    const label =
+      scope.level === "country" ? parsed.province : parsed.town || "No town given";
     if (!key) continue;
 
     const all = aggregateSlideDetections(report.slides);
@@ -519,7 +562,7 @@ export function reportsForPlace(
     .filter((report) => {
       const parsed = parseLocation(report.location);
       if (scope.level === "country") return parsed.provinceKey === key;
-      return parsed.provinceKey === scope.provinceKey && parsed.townKey === key;
+      return parsed.provinceKey === scope.provinceKey && (parsed.townKey || PROVINCE_WIDE_KEY) === key;
     })
     .sort((a, b) => b.collectedAt.localeCompare(a.collectedAt));
 }

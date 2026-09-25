@@ -4,7 +4,7 @@
 // Inference and lookups the Analyze screen performs go through this module, and
 // every function here is async. Once signed in, detection goes through the
 // backend's Roboflow proxy (POST /api/v1/reports/detect/) and weather through
-// its OpenWeather proxy (GET /api/v1/reports/weather/). Persisting a finished
+// its Open-Meteo proxy (GET /api/v1/reports/weather/). Persisting a finished
 // report is lib/store.ts's job, not this file's.
 //
 // Until the Roboflow model is deployed the backend answers /detect/ from a

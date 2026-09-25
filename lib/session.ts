@@ -3,9 +3,9 @@
 // Token refresh itself lives in lib/api.ts.
 // ---------------------------------------------------------------------------
 
-import { API_BASE_URL, validAccessToken } from "@/lib/api";
+import { API_BASE_URL } from "@/lib/api";
 import { isExpired } from "@/lib/jwt";
-import { getSnapshot, resetSettings, type Settings } from "@/lib/settings";
+import { getSnapshot, resetSettings, type Settings, updateSettings } from "@/lib/settings";
 
 /** Signed in = a refresh token that hasn't expired (the access token is renewed from it). */
 export function isSignedIn(settings: Settings): boolean {
@@ -38,9 +38,22 @@ export async function signOut(): Promise<void> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), LOGOUT_TIMEOUT_MS);
     try {
-      // Renew the access token first (logout needs one), *then* read the
-      // refresh token — renewing rotates it, and revoking the old one would fail.
-      const access = await validAccessToken();
+      // Logout needs a live access token. Renew it quietly if needed — this is
+      // a sign-out, so a session that can't be renewed just ends here without
+      // the "your session expired" path that validAccessToken() would take.
+      let access = getSnapshot().accessToken;
+      if (!access || isExpired(access, 30)) {
+        const res = await fetch(`${API_BASE_URL}/api/v1/auth/token/refresh/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh: refreshToken }),
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error("session already over");
+        const pair = (await res.json()) as { access: string; refresh?: string };
+        access = pair.access;
+        updateSettings({ accessToken: pair.access, refreshToken: pair.refresh ?? refreshToken });
+      }
       await fetch(`${API_BASE_URL}/api/v1/auth/logout/`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${access}` },

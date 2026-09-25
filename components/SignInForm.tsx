@@ -83,8 +83,8 @@ export default function SignInForm() {
         setError(null);
         exchangeGoogleCredential(response.credential)
           .then(({ email, name, tokens }) => {
+            // The signedIn effect above navigates once the session is stored.
             updateSettings({ email, name, accessToken: tokens.access, refreshToken: tokens.refresh });
-            router.push(nextPage());
           })
           .catch((err: unknown) => {
             const message = err instanceof GoogleSignInError ? err.message : "Google sign-in failed.";
@@ -109,7 +109,6 @@ export default function SignInForm() {
       const idToken = await signInWithMicrosoft();
       const { email, name, tokens } = await exchangeMicrosoftIdToken(idToken);
       updateSettings({ email, name, accessToken: tokens.access, refreshToken: tokens.refresh });
-      router.push(nextPage());
     } catch (err: unknown) {
       setPending(false);
       // Closing Microsoft's window is a choice, not an error.

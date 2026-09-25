@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { ImageOff, Maximize2, ScanSearch, Tag } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import clsx from "clsx";
@@ -54,6 +54,8 @@ export default function SpecimenImageViewer({
   // Off by default at this size, where labels crowd the slide; the colour
   // legend above carries the same information. On in the full-screen inspector.
   const [showLabels, setShowLabels] = useState(false);
+  // Each viewer animates its own chip highlight (a report page has several).
+  const viewerId = useId();
   // Tagged with the grains array it belongs to, so switching slides (a new
   // array) drops a selection that would otherwise match a same-numbered grain.
   const [grainSelection, setGrainSelection] = useState<{
@@ -103,7 +105,7 @@ export default function SpecimenImageViewer({
     );
   const chipHighlight = (
     <motion.span
-      layoutId="species-chip-highlight"
+      layoutId={`species-chip-${viewerId}`}
       className="absolute inset-0 -z-10 rounded bg-surface shadow-sm"
       transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 40 }}
     />

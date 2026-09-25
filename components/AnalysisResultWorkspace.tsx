@@ -182,6 +182,13 @@ function SummaryTile({ value, label }: { value: string | number; label: string }
 
 type SaveState = "idle" | "saving" | "saved" | "failed";
 
+/** `newer` wins field by field; per-slide notes are merged, not replaced. */
+function mergePatch(older: ReportPatch, newer: ReportPatch): ReportPatch {
+  const merged: ReportPatch = { ...older, ...newer };
+  if (older.notes || newer.notes) merged.notes = { ...older.notes, ...newer.notes };
+  return merged;
+}
+
 /**
  * A Pending report — what the model found, straight after Analyze stored it on
  * the server. The researcher reviews the reading beside each slide, writes
@@ -217,14 +224,23 @@ export default function AnalysisResultWorkspace({
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDiscarding, setIsDiscarding] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  // Bumped on every edit; the autosave timer restarts from the latest one.
+  const [editVersion, setEditVersion] = useState(0);
   // Edits made since the last successful save; the autosave sends these.
   const dirty = useRef<ReportPatch>({});
+  // Saves run one at a time, in order, so an older PATCH can never land after
+  // a newer one (or after Generate) and overwrite it.
+  const saveChain = useRef<Promise<unknown>>(Promise.resolve());
   const finished = useRef(false);
+  const weatherRequest = useRef(0);
+  const refreshedImages = useRef(false);
   const router = useRouter();
   const settings = useSettings();
   const speciesCatalog = useSpeciesCatalog();
   const researcherName = displayName(settings);
+  const sampleId_ = report?.sampleId ?? null;
 
   useEffect(() => {
     if (!sampleId) return;
@@ -249,7 +265,7 @@ export default function AnalysisResultWorkspace({
         setWeather(found.weather);
         if (found.location) {
           loadPlaces().then((places) => {
-            if (!cancelled) setPlace(findPlace(places, found.location));
+            if (!cancelled) setPlace(places ? findPlace(places, found.location) : null);
           });
         }
       })
@@ -262,45 +278,76 @@ export default function AnalysisResultWorkspace({
     };
   }, [sampleId, router]);
 
-  /** Record an edit and (re)start the autosave timer. */
-  function edit(patch: ReportPatch) {
-    const { notes: notePatch, ...fields } = patch;
-    dirty.current = {
-      ...dirty.current,
-      ...fields,
-      ...(notePatch ? { notes: { ...dirty.current.notes, ...notePatch } } : {}),
-    };
-    setSaveState("saving");
-    setSaveError(null);
+  /** Runs `task` after every save already queued. */
+  function enqueue<T>(task: () => Promise<T>): Promise<T> {
+    const run = saveChain.current.then(task, task);
+    saveChain.current = run.catch(() => undefined);
+    return run;
   }
 
-  async function flush(): Promise<boolean> {
-    if (!report || finished.current) return true;
-    const patch = dirty.current;
-    if (Object.keys(patch).length === 0) return true;
-    dirty.current = {};
-    try {
-      await updateReport(report.sampleId, patch);
-      setSaveState("saved");
-      return true;
-    } catch (error) {
-      // Put the unsaved edits back so the next attempt still sends them.
-      dirty.current = { ...patch, ...dirty.current };
-      if (error instanceof SessionExpiredError) return false;
-      setSaveState("failed");
-      setSaveError(error instanceof Error ? error.message : "Couldn't save your changes.");
-      return false;
-    }
+  /** Record an edit and (re)start the autosave timer. */
+  function edit(patch: ReportPatch) {
+    dirty.current = mergePatch(dirty.current, patch);
+    setSaveState("saving");
+    setSaveError(null);
+    setEditVersion((v) => v + 1);
+  }
+
+  function flush(): Promise<boolean> {
+    return enqueue(async () => {
+      if (!report || finished.current) return true;
+      const patch = dirty.current;
+      if (Object.keys(patch).length === 0) return true;
+      dirty.current = {};
+      try {
+        await updateReport(report.sampleId, patch);
+        // Edits typed while that request was out are still waiting.
+        if (Object.keys(dirty.current).length > 0) {
+          setEditVersion((v) => v + 1);
+        } else {
+          setSaveState("saved");
+        }
+        return true;
+      } catch (error) {
+        // Put the unsaved edits back (newer ones win) for the next attempt.
+        dirty.current = mergePatch(patch, dirty.current);
+        if (error instanceof SessionExpiredError) return false;
+        setSaveState("failed");
+        setSaveError(error instanceof Error ? error.message : "Couldn't save your changes.");
+        return false;
+      }
+    });
   }
 
   // Autosave: a short pause after the last edit sends everything changed since.
   useEffect(() => {
-    if (saveState !== "saving") return;
+    if (editVersion === 0) return;
     const timer = setTimeout(() => void flush(), AUTOSAVE_MS);
     return () => clearTimeout(timer);
-    // flush reads refs; re-running on every render would reset the timer.
+    // flush reads refs; only a new edit should restart the timer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [saveState, notes, location, researcher, collectedDate, collectedTime, weather]);
+  }, [editVersion]);
+
+  // Leaving with unsaved edits: warn on reload/close, and send them anyway
+  // when the page goes away (keepalive lets the request outlive the page).
+  useEffect(() => {
+    if (!sampleId_) return;
+    const unsaved = () => !finished.current && Object.keys(dirty.current).length > 0;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!unsaved()) return;
+      void updateReport(sampleId_, dirty.current, { keepalive: true }).catch(() => {});
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      if (unsaved()) {
+        const patch = dirty.current;
+        dirty.current = {};
+        void updateReport(sampleId_, patch, { keepalive: true }).catch(() => {});
+      }
+    };
+  }, [sampleId_]);
 
   function setCollected(date: string, time: string) {
     setCollectedDate(date);
@@ -309,6 +356,7 @@ export default function AnalysisResultWorkspace({
   }
 
   function updateWeather<K extends keyof WeatherConditions>(key: K, value: WeatherConditions[K]) {
+    weatherRequest.current++; // a lookup still in flight must not overwrite this
     const next = { ...(weather ?? EMPTY_WEATHER), [key]: value };
     setWeather(next);
     edit({ weather: next });
@@ -317,8 +365,10 @@ export default function AnalysisResultWorkspace({
   /** Conditions at the place on the collection date/time, from Open-Meteo. */
   async function fillWeatherFromOpenMeteo() {
     if (!place) return;
+    const request = ++weatherRequest.current;
     setFillingWeather(true);
     const found = await fetchWeather({ lat: place.lat, lon: place.lon, date: collectedDate, time: collectedTime });
+    if (request !== weatherRequest.current) return; // superseded by an edit or a newer lookup
     setFillingWeather(false);
     if (!found) {
       toast.error("No weather available for this place and time.");
@@ -328,27 +378,44 @@ export default function AnalysisResultWorkspace({
     edit({ weather: found });
   }
 
+  /** A slide image failed to load — most likely its signed link expired. */
+  function handleImageError() {
+    if (!sampleId || refreshedImages.current) return;
+    refreshedImages.current = true;
+    getReport(sampleId)
+      .then((found) => found && setReport(found))
+      .catch(() => {});
+  }
+
   async function handleGenerate() {
     if (!report || isGenerating) return;
     setIsGenerating(true);
-    // Everything on screen goes with the status change, so nothing typed is lost.
-    const final: ReportPatch = {
-      ...dirty.current,
+    // Everything on screen goes with the status change, so nothing typed is
+    // lost; queued behind any autosave still in flight.
+    const fields: ReportPatch = {
       collectedAt: collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate,
       location,
       researcher: researcher.trim() || researcherName,
       weather,
       notes,
-      status: "Completed",
     };
-    dirty.current = {};
-    try {
-      await updateReport(report.sampleId, final);
-    } catch (error) {
-      dirty.current = final;
+    const ok = await enqueue(async () => {
+      dirty.current = {};
+      try {
+        await updateReport(report.sampleId, { ...fields, status: "Completed" });
+        return true;
+      } catch (error) {
+        // Keep the edits, but never the status: a later autosave must not
+        // quietly finish the report the researcher saw fail.
+        dirty.current = mergePatch(fields, dirty.current);
+        if (!(error instanceof SessionExpiredError)) {
+          toast.error(error instanceof Error ? error.message : "Couldn't generate the report.");
+        }
+        return false;
+      }
+    });
+    if (!ok) {
       setIsGenerating(false);
-      if (error instanceof SessionExpiredError) return;
-      toast.error(error instanceof Error ? error.message : "Couldn't generate the report.");
       return;
     }
     finished.current = true;
@@ -357,12 +424,14 @@ export default function AnalysisResultWorkspace({
   }
 
   async function handleDiscard() {
-    if (!report) return;
+    if (!report || isDiscarding) return;
+    setIsDiscarding(true);
     finished.current = true;
     try {
-      await deleteReport(report.sampleId);
+      await enqueue(() => deleteReport(report.sampleId));
     } catch (error) {
       finished.current = false;
+      setIsDiscarding(false);
       if (error instanceof SessionExpiredError) return;
       toast.error(error instanceof Error ? error.message : "Couldn't discard the analysis.");
       return;
@@ -454,7 +523,7 @@ export default function AnalysisResultWorkspace({
 
   return (
     <div className="flex flex-col gap-6">
-      {sampleDetections && (
+      {(sampleDetections || report.sampleDetections) && (
         <p className="flex items-start gap-2 rounded-md border border-processing/30 bg-processing-bg px-3 py-2.5 text-[12.5px] text-processing">
           <FlaskConical size={14} strokeWidth={2} className="mt-px shrink-0" />
           Sample detections — the trained model isn&apos;t deployed yet, so the server returned its
@@ -502,6 +571,7 @@ export default function AnalysisResultWorkspace({
                 <button
                   type="button"
                   onClick={handleDiscard}
+                  disabled={isDiscarding}
                   className="focus-ring rounded-md border border-danger/30 bg-surface px-3 py-2 text-[13px] font-medium text-danger transition active:scale-[0.97] hover:bg-danger-bg"
                 >
                   Yes, Discard
@@ -613,6 +683,7 @@ export default function AnalysisResultWorkspace({
                 selectedSpeciesId={highlighted}
                 onSelectSpecies={setHighlighted}
                 onExpand={() => setInspectorOpen(true)}
+                onImageError={handleImageError}
               />
               <SpecimenInspector
                 open={inspectorOpen}
@@ -737,7 +808,7 @@ export default function AnalysisResultWorkspace({
                 ) : (
                   <CloudSun size={12} strokeWidth={2} />
                 )}
-                Fill From Open-Meteo
+                Fill from Open-Meteo
               </button>
             )}
           </div>

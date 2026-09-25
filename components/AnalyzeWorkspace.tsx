@@ -35,6 +35,13 @@ import LocationSearch, { type Place } from "@/components/LocationSearch";
 
 type ItemStatus = "pending" | "analyzing" | "analyzed" | "failed";
 
+let nextItemId = 0;
+function newItemId(): string {
+  return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `item-${Date.now()}-${nextItemId++}`;
+}
+
 /** What the server accepts (api/reports/images.py): JPEG/PNG, 25 MB each. */
 const ACCEPTED_TYPES = ["image/jpeg", "image/png"];
 const MAX_IMAGE_MB = 25;
@@ -108,7 +115,7 @@ function MeasurementField({
 
 /**
  * Where the weather values came from, so an auto-filled reading is never
- * mistaken for an observation: OpenWeather's *current* conditions for the
+ * mistaken for an observation: Open-Meteo's conditions for the
  * picked place, or the researcher's own entry/override.
  */
 function WeatherStatusLine({
@@ -167,7 +174,7 @@ function WeatherStatusLine({
           className="focus-ring inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-accent hover:bg-accent-muted"
         >
           <RefreshCw size={12} strokeWidth={2} />
-          {source === "edited" ? "Replace With Open-Meteo" : "Refresh"}
+          {source === "edited" ? "Replace with Open-Meteo" : "Refresh"}
         </button>
       )}
     </div>
@@ -282,13 +289,21 @@ export default function AnalyzeWorkspace() {
   const [pendingReports, setPendingReports] = useState<Specimen[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
-  // Where the weather fields' values came from. "auto" = OpenWeather for
+  // Which pending analysis is waiting for "Discard?" to be confirmed.
+  const [confirmingDiscard, setConfirmingDiscard] = useState<string | null>(null);
+  const [pendingError, setPendingError] = useState<string | null>(null);
+  // Where the weather fields' values came from. "auto" = Open-Meteo for
   // `weatherPlace`; any manual change flips it to "edited" (the researcher's
   // override), and nothing re-fetches over it unless they ask.
   const [weatherSource, setWeatherSource] = useState<"manual" | "auto" | "edited">("manual");
   const [weatherPlace, setWeatherPlace] = useState<Place | null>(null);
   const [weatherStatus, setWeatherStatus] = useState<"idle" | "loading" | "failed">("idle");
   const weatherRequest = useRef(0);
+  // The source as of now, for async callbacks that outlive the render they started in.
+  const weatherSourceRef = useRef(weatherSource);
+  useEffect(() => {
+    weatherSourceRef.current = weatherSource;
+  }, [weatherSource]);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const settings = useSettings();
@@ -300,6 +315,8 @@ export default function AnalyzeWorkspace() {
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const canAnalyze = items.length > 0 && !!collectedDate && !isAnalyzing;
   const failedCount = items.filter((item) => item.status === "failed").length;
+  // Every slide has a reading but the batch wasn't stored (the store step failed).
+  const allAnalyzed = items.length > 0 && items.every((item) => item.analysis);
 
   // Analyses you ran earlier but haven't generated yet, from any device.
   useEffect(() => {
@@ -317,12 +334,14 @@ export default function AnalyzeWorkspace() {
   }, []);
 
   async function discardPending(sampleId: string) {
+    setConfirmingDiscard(null);
+    setPendingError(null);
     try {
       await deleteReport(sampleId);
       setPendingReports((current) => current.filter((r) => r.sampleId !== sampleId));
     } catch (error) {
       if (error instanceof SessionExpiredError) return;
-      setAnalyzeError(error instanceof Error ? error.message : "Couldn't discard that analysis.");
+      setPendingError(error instanceof Error ? error.message : "Couldn't discard that analysis.");
     }
   }
 
@@ -333,8 +352,12 @@ export default function AnalyzeWorkspace() {
   }
 
   function updateWeather<K extends keyof WeatherConditions>(key: K, value: WeatherConditions[K]) {
+    // The researcher's own reading: cancel any lookup still in flight so it
+    // can't overwrite this, and never auto-fill over it again unless asked.
+    weatherRequest.current++;
     setWeather((current) => ({ ...current, [key]: value }));
-    if (weatherSource === "auto") setWeatherSource("edited");
+    setWeatherSource("edited");
+    setWeatherStatus("idle");
   }
 
   /**
@@ -352,7 +375,12 @@ export default function AnalyzeWorkspace() {
       setWeatherSource("auto");
       setWeatherStatus("idle");
     } else {
+      // Don't keep another date's (or place's) readings under this one.
       setWeatherStatus("failed");
+      if (weatherSourceRef.current === "auto") {
+        setWeather({ ...EMPTY_WEATHER });
+        setWeatherSource("manual");
+      }
     }
   }
 
@@ -368,11 +396,21 @@ export default function AnalyzeWorkspace() {
 
   function handleLocationChange(text: string) {
     setLocation(text);
-    // Typing away from the picked place detaches the weather from it.
-    if (weatherPlace && text !== weatherPlace.label) setWeatherPlace(null);
+    // Typing away from the picked place detaches the weather from it: its
+    // auto-filled readings belong to that place, not this one.
+    if (weatherPlace && text !== weatherPlace.label) {
+      setWeatherPlace(null);
+      weatherRequest.current++;
+      setWeatherStatus("idle");
+      if (weatherSource === "auto") {
+        setWeather({ ...EMPTY_WEATHER });
+        setWeatherSource("manual");
+      }
+    }
   }
 
   function handleFiles(fileList: FileList | null) {
+    if (isAnalyzing) return;
     const files = Array.from(fileList ?? []);
     const wrongType = files.filter((f) => !ACCEPTED_TYPES.includes(f.type));
     const tooLarge = files.filter(
@@ -390,7 +428,7 @@ export default function AnalyzeWorkspace() {
     if (images.length === 0) return;
 
     const added: BatchItem[] = images.map((file) => ({
-      id: crypto.randomUUID(),
+      id: newItemId(),
       file,
       imageUrl: URL.createObjectURL(file),
       status: "pending",
@@ -435,17 +473,23 @@ export default function AnalyzeWorkspace() {
     setWeatherSource("manual");
     setWeatherPlace(null);
     setWeatherStatus("idle");
+    weatherRequest.current++; // a lookup still in flight must not refill the form
     const { date, time } = nowParts();
     setCollectedDate(date);
     setCollectedTime(time);
     if (inputRef.current) inputRef.current.value = "";
   }
 
+  // Release every image preview when the screen goes away.
+  const itemsRef = useRef(items);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+  useEffect(() => () => itemsRef.current.forEach((item) => URL.revokeObjectURL(item.imageUrl)), []);
+
   /**
-   * Analyze every slide in the batch, then hand the whole reading over to the
-   * report page. The batch is written to a draft rather than passed in the URL
-   * because it carries the images themselves — and a draft in IndexedDB also
-   * survives a refresh of the page it lands on.
+   * Analyze every slide in the batch, then store it on the server as one
+   * Pending report and open it for review (notes, details, Generate Report).
    */
   async function handleAnalyze() {
     if (!canAnalyze) return;
@@ -497,7 +541,7 @@ export default function AnalyzeWorkspace() {
       return;
     }
 
-    // Weather goes with the batch only if the researcher (or OpenWeather) set it —
+    // Weather goes with the batch only if the researcher (or Open-Meteo) set it —
     // an untouched form would otherwise store its "Sunny, blank" defaults.
     const weatherSet =
       weatherSource !== "manual" || JSON.stringify(batchWeather) !== JSON.stringify(EMPTY_WEATHER);
@@ -519,6 +563,7 @@ export default function AnalyzeWorkspace() {
         },
         Object.fromEntries(analyzed.map(({ item }, index) => [String(index), item.file])),
         "Pending",
+        analyzed.some(({ analysis }) => analysis.sampleDetections),
       );
     } catch (error) {
       setIsAnalyzing(false);
@@ -532,10 +577,9 @@ export default function AnalyzeWorkspace() {
       return;
     }
 
-    // The server has the images now; these object URLs belong to this screen.
-    items.forEach((item) => URL.revokeObjectURL(item.imageUrl));
-    const sample = analyzed.some(({ analysis }) => analysis.sampleDetections);
-    router.push(`/upload/result?report=${report.sampleId}${sample ? "&sample=1" : ""}`);
+    // (Object URLs are revoked when this screen unmounts, so thumbnails stay
+    // intact while the next page loads.)
+    router.push(`/upload/result?report=${report.sampleId}`);
   }
 
   return (
@@ -547,7 +591,7 @@ export default function AnalyzeWorkspace() {
             <h2 className="text-[13.5px] font-semibold text-text">
               Pending Analyses{" "}
               <span className="font-normal text-text-muted">
-                — analysed but not generated yet ({pendingReports.length})
+                — analyzed but not generated yet ({pendingReports.length})
               </span>
             </h2>
           </div>
@@ -562,13 +606,33 @@ export default function AnalyzeWorkspace() {
                   </span>
                 </span>
                 <span className="flex shrink-0 items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => void discardPending(report.sampleId)}
-                    className="focus-ring rounded-md px-2 py-1 text-[12.5px] text-text-muted hover:text-danger"
-                  >
-                    Discard
-                  </button>
+                  {confirmingDiscard === report.sampleId ? (
+                    <>
+                      <span className="text-[12.5px] text-text-muted">Discard it?</span>
+                      <button
+                        type="button"
+                        onClick={() => void discardPending(report.sampleId)}
+                        className="focus-ring rounded-md border border-danger/30 px-2 py-1 text-[12.5px] text-danger hover:bg-danger-bg"
+                      >
+                        Yes, Discard
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingDiscard(null)}
+                        className="focus-ring rounded-md px-2 py-1 text-[12.5px] text-text-muted hover:text-text"
+                      >
+                        Keep
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingDiscard(report.sampleId)}
+                      className="focus-ring rounded-md px-2 py-1 text-[12.5px] text-text-muted hover:text-danger"
+                    >
+                      Discard
+                    </button>
+                  )}
                   <Link
                     href={`/upload/result?report=${report.sampleId}`}
                     className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-border-strong bg-surface px-3 py-1 text-[12.5px] text-text transition active:scale-[0.97] hover:bg-surface-sunken"
@@ -580,12 +644,15 @@ export default function AnalyzeWorkspace() {
               </li>
             ))}
           </ul>
+          {pendingError && <p role="alert" className="mt-1 text-[12.5px] text-danger">{pendingError}</p>}
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
         {/* Left: batch + collection details */}
         <div className="rounded-lg border border-border bg-surface p-5 xl:col-span-3">
+          {/* Frozen while a batch is analyzed: what's sent must be what's on screen. */}
+          <fieldset disabled={isAnalyzing} className="m-0 min-w-0 border-0 p-0">
           <div className="mb-4 flex items-baseline justify-between gap-3">
             <h2 className="text-lg font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
               Specimen Images
@@ -684,7 +751,7 @@ export default function AnalyzeWorkspace() {
             </h3>
             <p className="mb-2.5 text-[12.5px] text-text-muted">
               When and where the batch was collected — applies to every specimen in it. You can
-              still correct any of it on the report page before saving.
+              still correct any of it on the next page before generating the report.
             </p>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -779,6 +846,7 @@ export default function AnalyzeWorkspace() {
               />
             </div>
           </div>
+          </fieldset>
 
           {uploadError && (
             <p role="alert" className="mt-3 flex items-start gap-2 text-[12.5px] text-danger">
@@ -812,7 +880,9 @@ export default function AnalyzeWorkspace() {
             ) : (
               <>
                 <Microscope size={16} strokeWidth={1.75} />
-                {failedCount > 0
+                {allAnalyzed
+                  ? "Try Storing Again"
+                  : failedCount > 0
                   ? failedCount === 1
                     ? "Retry Failed Slide"
                     : `Retry ${failedCount} Failed Slides`
@@ -824,7 +894,7 @@ export default function AnalyzeWorkspace() {
           </Button>
 
           <p className="mt-2 text-center text-[12.5px] text-text-muted">
-            The results open on their own page, where you add notes and save the report.
+            The results open on their own page, where you add notes and generate the report.
           </p>
         </div>
 
@@ -887,7 +957,7 @@ export default function AnalyzeWorkspace() {
               </dl>
 
               <p className="mt-4 rounded-md bg-surface-sunken px-3 py-2.5 text-[12.5px] text-text-muted">
-                Each slide is counted and identified separately, then the whole batch is saved as a
+                Each slide is counted and identified separately, then the whole batch is stored as a
                 single report.
               </p>
             </div>

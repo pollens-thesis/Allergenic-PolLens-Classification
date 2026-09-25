@@ -20,9 +20,18 @@ import path from "node:path";
 
 const GEO = path.join(process.cwd(), "public", "geo");
 
+// Metro Manila is four PSGC districts, each its own boundary; the search
+// offers each one (lib/geo.ts aliases these labels to the district keys).
+const NCR_DISTRICT_LABELS = {
+  1303900000: "Metro Manila (Manila)",
+  1307400000: "Metro Manila (Second District)",
+  1307500000: "Metro Manila (Third District)",
+  1307600000: "Metro Manila (Fourth District)",
+};
+
 /** Province label as a researcher would write it (and as the map aliases it). */
-function provinceLabel(name) {
-  if (name.startsWith("NCR")) return "Metro Manila";
+function provinceLabel(name, psgc) {
+  if (NCR_DISTRICT_LABELS[psgc]) return NCR_DISTRICT_LABELS[psgc];
   return name.replace(/\s*\(Not a Province\)\s*$/i, "").replace(/^City of\s+(.+)$/, "$1 City");
 }
 
@@ -54,7 +63,9 @@ const places = [];
 const seen = new Set();
 
 for (const feature of provinces.features) {
-  const province = provinceLabel(feature.properties.name);
+  const province = provinceLabel(feature.properties.name, feature.properties.psgc);
+  // Towns in NCR are written "Makati City, Metro Manila" — lib/geo.ts finds the district.
+  const townProvince = NCR_DISTRICT_LABELS[feature.properties.psgc] ? "Metro Manila" : province;
   if (!feature.geometry) continue;
 
   if (!seen.has(province)) {
@@ -71,11 +82,11 @@ for (const feature of provinces.features) {
   for (const town of towns.features) {
     if (!town.geometry) continue;
     const name = townLabel(town.properties.name);
-    const label = `${name}, ${province}`;
+    const label = `${name}, ${townProvince}`;
     if (seen.has(label)) continue;
     seen.add(label);
     places.push({
-      label, town: name, province, kind: "town", provincePsgc: feature.properties.psgc,
+      label, town: name, province: townProvince, kind: "town", provincePsgc: feature.properties.psgc,
       townPsgc: town.properties.psgc, ...centre(town.geometry),
     });
   }

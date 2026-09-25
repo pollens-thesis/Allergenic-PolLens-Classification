@@ -17,6 +17,7 @@ import {
   toReportRow,
   type ReportStatus,
   type Specimen,
+  isFinalised,
 } from "@/lib/data";
 import { downloadSelectionReportPdf } from "@/lib/pdf";
 import { exportReportsXlsx } from "@/lib/export";
@@ -99,7 +100,7 @@ export default function ReportsTable({
   initialQuery = "",
 }: {
   reports: Specimen[];
-  /** Sample id to flag as just saved, e.g. after redirecting from Analyze. */
+  /** Sample id to flag as just generated, e.g. after redirecting from the result page. */
   highlightId?: string | null;
   /** Prefills the search box — the Pollen map links here filtered by town. */
   initialQuery?: string;
@@ -169,7 +170,7 @@ export default function ReportsTable({
    * landed on either is left alone.
    */
   function openRow(event: React.MouseEvent<HTMLTableRowElement>, sampleId: string) {
-    if (event.target instanceof HTMLElement && event.target.closest("a, input, label")) return;
+    if (event.target instanceof HTMLElement && event.target.closest("a, input, label, [data-no-open]")) return;
     router.push(`/reports/${sampleId}`);
   }
 
@@ -201,16 +202,26 @@ export default function ReportsTable({
    * pick more — so the export works from the picked set rather than the rows
    * on screen.
    */
-  function chosenReports(): Specimen[] {
-    return [...picked]
+  /** The ticked reports that are results — Pending analyses aren't exported. */
+  function chosenReports(): { reports: Specimen[]; skipped: number } {
+    const all = [...picked]
       .map((id) => bySampleId.get(id))
-      .filter((report): report is Specimen => report !== undefined)
+      .filter((report): report is Specimen => report !== undefined);
+    const reports = all
+      .filter(isFinalised)
       .sort((a, b) => b.collectedAt.localeCompare(a.collectedAt));
+    return { reports, skipped: all.length - reports.length };
   }
 
   async function handleGenerate(format: "pdf" | "xlsx") {
-    const chosen = chosenReports();
-    if (chosen.length === 0) return;
+    const { reports: chosen, skipped } = chosenReports();
+    if (chosen.length === 0) {
+      toast.error("Only pending analyses are ticked — generate them first to export.");
+      return;
+    }
+    if (skipped > 0) {
+      toast.info(`${skipped} pending ${skipped === 1 ? "analysis was" : "analyses were"} left out.`);
+    }
 
     setBuilding(format);
     try {
@@ -304,7 +315,7 @@ export default function ReportsTable({
 
         <div className="grid grid-cols-2 gap-2 md:flex md:items-end md:gap-2">
           <label className="flex flex-col gap-1 md:flex-row md:items-center md:gap-1.5">
-            <span className="text-[12.5px] whitespace-nowrap text-text-muted">Collected from</span>
+            <span className="text-[12.5px] whitespace-nowrap text-text-muted">Collected From</span>
             <input
               type="date"
               value={filters.from}
@@ -314,7 +325,7 @@ export default function ReportsTable({
             />
           </label>
           <label className="flex flex-col gap-1 md:flex-row md:items-center md:gap-1.5">
-            <span className="text-[12.5px] text-text-muted">to</span>
+            <span className="text-[12.5px] text-text-muted">To</span>
             <input
               type="date"
               value={filters.to}
@@ -450,7 +461,7 @@ export default function ReportsTable({
                       {r.slideCount > 1 && ` · ${r.slideCount} slides`}
                       {r.sampleId === highlightId && (
                         <span className="ml-2 rounded-full bg-accent-muted px-2 py-0.5 text-[11.5px] text-[var(--accent-hover)]">
-                          just saved
+                          Just Generated
                         </span>
                       )}
                     </div>
@@ -509,7 +520,7 @@ export default function ReportsTable({
                     picked.has(r.sampleId) ? "bg-accent-muted" : "hover:bg-surface-sunken",
                   )}
                 >
-                  <td className="py-2.5 pr-2">
+                  <td className="py-2.5 pr-2" data-no-open>
                     <input
                       type="checkbox"
                       checked={picked.has(r.sampleId)}
@@ -574,8 +585,8 @@ export default function ReportsTable({
 
       {rows.length > 0 && picked.size === 0 && (
         <p className="mt-3 text-[12.5px] text-text-faint">
-          Tick the reports you want in a summary PDF, or filter first and use the header checkbox to
-          take the whole result.
+          Tick the reports you want in a summary PDF or Excel file, or filter first and use the header
+          checkbox to take the whole result. Pending analyses are left out of exports.
         </p>
       )}
     </div>

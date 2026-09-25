@@ -7,7 +7,7 @@
 // there is no second copy to fall out of step.
 //
 // It is small and read on almost every screen, so it lives in localStorage
-// rather than IndexedDB (which holds the reports and their images).
+// (the reports and their images live on the server — see lib/store.ts).
 //
 // Reading is done through `useSyncExternalStore`, the React API built for
 // exactly this: an external mutable source that must not desync during

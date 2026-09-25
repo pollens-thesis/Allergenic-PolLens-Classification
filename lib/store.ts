@@ -141,7 +141,7 @@ export async function getReportImageBlobs(report: Specimen): Promise<Record<stri
 }
 
 /**
- * Store a freshly analysed batch as one report — Pending by default, so the
+ * Store a freshly analyzed batch as one report — Pending by default, so the
  * researcher can review it, add notes and generate it later from any device.
  * `images` is keyed by the slide's index in `input.slides`.
  */
@@ -149,12 +149,14 @@ export async function createReport(
   input: NewReportInput,
   images: Record<string, Blob>,
   status: "Pending" | "Completed" = "Pending",
+  sampleDetections = false,
 ): Promise<Specimen> {
   const formData = new FormData();
   formData.append("collectedAt", input.collectedAt);
   formData.append("location", input.location.trim());
   formData.append("researcher", input.researcher.trim());
   formData.append("status", status);
+  formData.append("sampleDetections", String(sampleDetections));
   if (input.weather) formData.append("weather", JSON.stringify(input.weather));
   formData.append("slides", JSON.stringify(input.slides));
   input.slides.forEach((slide, index) => {
@@ -179,7 +181,11 @@ export type ReportPatch = {
 };
 
 /** Edit a report you created (details, notes) and/or move it along its lifecycle. */
-export async function updateReport(sampleId: string, patch: ReportPatch): Promise<Specimen> {
+export async function updateReport(
+  sampleId: string,
+  patch: ReportPatch,
+  options: { keepalive?: boolean } = {},
+): Promise<Specimen> {
   const { notes, ...fields } = patch;
   const body: Record<string, unknown> = { ...fields };
   if (notes) body.slides = Object.entries(notes).map(([id, text]) => ({ id, notes: text }));
@@ -188,6 +194,8 @@ export async function updateReport(sampleId: string, patch: ReportPatch): Promis
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    // Lets a save started as the page closes still reach the server.
+    keepalive: options.keepalive,
   });
   if (!res.ok) throw new ReportStoreError(await errorMessage(res, "Couldn't update the report."));
   return mapBackendReport((await res.json()) as BackendReport);
