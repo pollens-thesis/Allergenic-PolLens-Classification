@@ -41,12 +41,28 @@ export type Species = {
   /** "Not assessed" until real allergenicity data is entered (backend admin). */
   riskLevel: "High" | "Moderate" | "Low" | "Not assessed";
   color: string; // CSS color, used consistently across charts, badges, thumbnails
+  // Allergen Reference content, served by the API (Django admin → Species).
+  // Botanical only: allergenicity stays in `riskLevel`. Absent in the bundled
+  // fallback below apart from the common name.
+  filipinoName?: string;
+  family?: string;
+  growthForm?: string;
+  description?: string;
+  distribution?: string;
+  pollination?: string;
+  infoSource?: string;
+  /** A freely licensed photo bundled at /species/<id>.jpg, with its credit. */
+  photoUrl?: string;
+  photoCredit?: string;
+  photoLicense?: string;
+  photoSource?: string;
 };
 
 // The real 23-species UPLB taxonomic scope, replacing an earlier 8-species
 // European/temperate placeholder catalog that was never cross-checked against
 // the actual dataset (see the Taxonomic Scope row in docs/system-spec.md).
-// commonName/season are "" and riskLevel is "Not assessed" until real
+// commonName is the English plant name (the API also serves Filipino names and
+// reference text); season is "" and riskLevel is "Not assessed" until real
 // per-species data is entered (Django admin → Species); nothing here is a
 // clinical assessment. `color`
 // cycles a validated 8-hue categorical palette (dataviz skill's reference
@@ -61,29 +77,29 @@ export type Species = {
 // IMPORTANT: this color is duplicated in api/reports/migrations — keep both
 // in sync (see 0006_recolor_species.py).
 export const speciesCatalog: Species[] = [
-  { id: "amaranthus_spinosus", scientificName: "Amaranthus spinosus", commonName: "", code: "AMAR", season: "", riskLevel: "Not assessed", color: "#2a78d6" },
-  { id: "axonopus_compressus", scientificName: "Axonopus compressus", commonName: "", code: "AXON", season: "", riskLevel: "Not assessed", color: "#eb6834" },
-  { id: "brachiaria_mutica", scientificName: "Brachiaria mutica", commonName: "", code: "BRAC", season: "", riskLevel: "Not assessed", color: "#1baf7a" },
-  { id: "chloris_barbata", scientificName: "Chloris barbata", commonName: "", code: "CHLO", season: "", riskLevel: "Not assessed", color: "#eda100" },
-  { id: "chrysopogon_aciculatus", scientificName: "Chrysopogon aciculatus", commonName: "", code: "CHRY", season: "", riskLevel: "Not assessed", color: "#e87ba4" },
-  { id: "cocos_nucifera", scientificName: "Cocos nucifera", commonName: "", code: "COCO", season: "", riskLevel: "Not assessed", color: "#008300" },
-  { id: "cyperus_rotundus", scientificName: "Cyperus rotundus", commonName: "", code: "CYPE", season: "", riskLevel: "Not assessed", color: "#4a3aa7" },
-  { id: "dactyloctenium_aegyptium", scientificName: "Dactyloctenium aegyptium", commonName: "", code: "DACT", season: "", riskLevel: "Not assessed", color: "#e34948" },
-  { id: "digitaria_ciliaris", scientificName: "Digitaria ciliaris", commonName: "", code: "DIGI", season: "", riskLevel: "Not assessed", color: "#2a78d6" },
-  { id: "echinochloa_crus_galli", scientificName: "Echinochloa crus-galli", commonName: "", code: "ECHI", season: "", riskLevel: "Not assessed", color: "#eb6834" },
-  { id: "eleusine_indica", scientificName: "Eleusine indica", commonName: "", code: "ELEU", season: "", riskLevel: "Not assessed", color: "#1baf7a" },
-  { id: "imperata_cylindrica", scientificName: "Imperata cylindrica", commonName: "", code: "IMPE", season: "", riskLevel: "Not assessed", color: "#eda100" },
-  { id: "leucaena_leucocephala", scientificName: "Leucaena leucocephala", commonName: "", code: "LEUC", season: "", riskLevel: "Not assessed", color: "#e87ba4" },
-  { id: "panicum_maximum", scientificName: "Panicum maximum", commonName: "", code: "PANI", season: "", riskLevel: "Not assessed", color: "#008300" },
-  { id: "pennisetum_polystachion", scientificName: "Pennisetum polystachion", commonName: "", code: "PENN", season: "", riskLevel: "Not assessed", color: "#4a3aa7" },
-  { id: "pithecellobium_dulce", scientificName: "Pithecellobium dulce", commonName: "", code: "PITH", season: "", riskLevel: "Not assessed", color: "#0891b2" },
-  { id: "saccharum_spontaneum", scientificName: "Saccharum spontaneum", commonName: "", code: "SACC", season: "", riskLevel: "Not assessed", color: "#2a78d6" },
-  { id: "samanea_saman", scientificName: "Samanea saman", commonName: "", code: "SAMA", season: "", riskLevel: "Not assessed", color: "#eb6834" },
-  { id: "sorghum_halepense", scientificName: "Sorghum halepense", commonName: "", code: "SORG", season: "", riskLevel: "Not assessed", color: "#1baf7a" },
-  { id: "tridax_procumbens", scientificName: "Tridax procumbens", commonName: "", code: "TRID", season: "", riskLevel: "Not assessed", color: "#eda100" },
-  { id: "oryza_sativa", scientificName: "Oryza sativa", commonName: "", code: "ORYZ", season: "", riskLevel: "Not assessed", color: "#e87ba4" },
-  { id: "mimosa_pudica", scientificName: "Mimosa pudica", commonName: "", code: "MIMO", season: "", riskLevel: "Not assessed", color: "#008300" },
-  { id: "mangifera_indica", scientificName: "Mangifera indica", commonName: "", code: "MANG", season: "", riskLevel: "Not assessed", color: "#4a3aa7" },
+  { id: "amaranthus_spinosus", scientificName: "Amaranthus spinosus", commonName: "Spiny amaranth", code: "AMAR", season: "", riskLevel: "Not assessed", color: "#2a78d6" },
+  { id: "axonopus_compressus", scientificName: "Axonopus compressus", commonName: "Broadleaf carpet grass", code: "AXON", season: "", riskLevel: "Not assessed", color: "#eb6834" },
+  { id: "brachiaria_mutica", scientificName: "Brachiaria mutica", commonName: "Para grass", code: "BRAC", season: "", riskLevel: "Not assessed", color: "#1baf7a" },
+  { id: "chloris_barbata", scientificName: "Chloris barbata", commonName: "Swollen finger grass", code: "CHLO", season: "", riskLevel: "Not assessed", color: "#eda100" },
+  { id: "chrysopogon_aciculatus", scientificName: "Chrysopogon aciculatus", commonName: "Golden false beardgrass", code: "CHRY", season: "", riskLevel: "Not assessed", color: "#e87ba4" },
+  { id: "cocos_nucifera", scientificName: "Cocos nucifera", commonName: "Coconut", code: "COCO", season: "", riskLevel: "Not assessed", color: "#008300" },
+  { id: "cyperus_rotundus", scientificName: "Cyperus rotundus", commonName: "Purple nutsedge", code: "CYPE", season: "", riskLevel: "Not assessed", color: "#4a3aa7" },
+  { id: "dactyloctenium_aegyptium", scientificName: "Dactyloctenium aegyptium", commonName: "Crowfoot grass", code: "DACT", season: "", riskLevel: "Not assessed", color: "#e34948" },
+  { id: "digitaria_ciliaris", scientificName: "Digitaria ciliaris", commonName: "Southern crabgrass", code: "DIGI", season: "", riskLevel: "Not assessed", color: "#2a78d6" },
+  { id: "echinochloa_crus_galli", scientificName: "Echinochloa crus-galli", commonName: "Barnyard grass", code: "ECHI", season: "", riskLevel: "Not assessed", color: "#eb6834" },
+  { id: "eleusine_indica", scientificName: "Eleusine indica", commonName: "Goosegrass", code: "ELEU", season: "", riskLevel: "Not assessed", color: "#1baf7a" },
+  { id: "imperata_cylindrica", scientificName: "Imperata cylindrica", commonName: "Cogon grass", code: "IMPE", season: "", riskLevel: "Not assessed", color: "#eda100" },
+  { id: "leucaena_leucocephala", scientificName: "Leucaena leucocephala", commonName: "White leadtree", code: "LEUC", season: "", riskLevel: "Not assessed", color: "#e87ba4" },
+  { id: "panicum_maximum", scientificName: "Panicum maximum", commonName: "Guinea grass", code: "PANI", season: "", riskLevel: "Not assessed", color: "#008300" },
+  { id: "pennisetum_polystachion", scientificName: "Pennisetum polystachion", commonName: "Mission grass", code: "PENN", season: "", riskLevel: "Not assessed", color: "#4a3aa7" },
+  { id: "pithecellobium_dulce", scientificName: "Pithecellobium dulce", commonName: "Manila tamarind", code: "PITH", season: "", riskLevel: "Not assessed", color: "#0891b2" },
+  { id: "saccharum_spontaneum", scientificName: "Saccharum spontaneum", commonName: "Wild sugarcane", code: "SACC", season: "", riskLevel: "Not assessed", color: "#2a78d6" },
+  { id: "samanea_saman", scientificName: "Samanea saman", commonName: "Rain tree", code: "SAMA", season: "", riskLevel: "Not assessed", color: "#eb6834" },
+  { id: "sorghum_halepense", scientificName: "Sorghum halepense", commonName: "Johnson grass", code: "SORG", season: "", riskLevel: "Not assessed", color: "#1baf7a" },
+  { id: "tridax_procumbens", scientificName: "Tridax procumbens", commonName: "Coat buttons", code: "TRID", season: "", riskLevel: "Not assessed", color: "#eda100" },
+  { id: "oryza_sativa", scientificName: "Oryza sativa", commonName: "Rice", code: "ORYZ", season: "", riskLevel: "Not assessed", color: "#e87ba4" },
+  { id: "mimosa_pudica", scientificName: "Mimosa pudica", commonName: "Sensitive plant", code: "MIMO", season: "", riskLevel: "Not assessed", color: "#008300" },
+  { id: "mangifera_indica", scientificName: "Mangifera indica", commonName: "Mango", code: "MANG", season: "", riskLevel: "Not assessed", color: "#4a3aa7" },
 ];
 
 /**

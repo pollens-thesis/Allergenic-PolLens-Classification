@@ -316,6 +316,9 @@ The slide image sits on the viewer surround inside a hairline-framed plate. Belo
 ### Key Row (signature)
 One detection per row, sitting beside the plate as its key. Each row has a species swatch, the serif-italic binomial, the mono code, and the risk badge. The mono count and "grains" are right-aligned with a confidence bar. The selected row takes an oxide border on an oxide wash, and selecting a row boxes that type on the plate.
 
+### Species Card (Allergen Reference)
+The Allergen Reference is an atlas of plates: a searchable grid, 6 across from `xl` (6 × 4 for the 23 species), 4 at `lg`, 3 at `sm`, 2 on phones. Each card is a hairline plate: a 4:3 photo over the **binomial** (serif italic 600, 16px, the primary) and the **plant names** below it (English · Filipino, 13px caption grey, the secondary), the risk stamp, and a footer rule with the species swatch and mono code on the left and the grain count on the right. The whole card is the button; it opens the full record in a dialog (photo with its credit line, plate-label code, binomial title, names, family, description, a ruled grid of readings, where it grows in the Philippines, and the source line). Search matches scientific name, English and Filipino names and code, accent- and case-insensitively. Photos are freely licensed (Wikimedia Commons) and always credited; a missing photo shows a "No photo yet" plate, never a stand-in.
+
 ### Ruled Stat Plate
 Four figures (two on narrow screens) in one hairline frame, divided by 1px rules. Each cell has a grey small-caps label, a serif lining figure and a 13px sublabel. There are no icons. Values count up between real values only, never on first load, and show dashes rather than invented numbers while loading or on failure.
 

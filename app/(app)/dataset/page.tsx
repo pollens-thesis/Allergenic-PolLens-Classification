@@ -10,11 +10,10 @@ export default function DatasetPage() {
   return (
     <>
       <PageHeader
-        width="medium"
         title="Allergen Reference"
-        description="The full taxonomic scope this console classifies against, with how many grains of each detected across all finalized reports (Completed or Needs Review)."
+        description="The 23 pollen types this console classifies, with how many grains of each were counted in finalized reports. Select a species for its full record."
       />
-      <PageBody width="medium">
+      <PageBody>
         <AllergenReference />
       </PageBody>
     </>
