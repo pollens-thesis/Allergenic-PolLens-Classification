@@ -52,7 +52,11 @@ a formula-injection guard. Details in `api/CLAUDE.md` and the commit messages.
 10. Data handling under the MOA (slide images in a private Cloudflare R2 bucket,
     shared-corpus access) — confirm it satisfies the confidentiality terms.
 11. Per-species metadata (common name, season, allergenic risk) — needed before
-    any "most allergenic" ranking can be shown.
+    any "most allergenic" ranking can be shown. **Partly filled 2026-09-26:** the
+    Allergen Reference is now a searchable species atlas with common and Filipino
+    names, botanical descriptions and credited Wikimedia Commons photos (Species
+    fields, editable in Django admin; marked for UPLB verification). **Season and
+    allergenic risk are still open** — risk stays "Not assessed".
 
 ## Paper Features vs. Frontend Implementation
 
