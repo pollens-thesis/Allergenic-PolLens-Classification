@@ -204,6 +204,17 @@ between the thesis proposal paper and the frontend.
     fallback and as the data source for PDF/CSV export and the mock
     analysis generator, which don't benefit from live data the way
     on-screen labels do.
+    **Allergen Reference content (2026-09-26):** migrations `0009`/`0010`
+    add and fill botanical reference fields on `Species`, served as
+    `filipinoName`, `family`, `growthForm`, `description`, `distribution`,
+    `pollination`, `infoSource`, `photoUrl`, `photoCredit`, `photoLicense`,
+    `photoSource` (and fill `commonName`). Photos are freely licensed
+    Wikimedia Commons images bundled with the frontend at
+    `/species/<id>.jpg`; the credit, license and file page are stored so the
+    page can attribute them. Content is botanical only and marked "to be
+    verified by the UPLB team" (`info_source`); `risk_level` stays
+    "Not assessed" — no clinical claims. All fields are editable in the
+    Species admin (grouped fieldsets).
   - **`POST /api/v1/reports/detect/`** (`reports.views.DetectView`,
     `IsAuthenticated`; registered in `config/urls.py` before
     `<sample_id>/` for the same reason as `monthly-counts/`/`species/`).

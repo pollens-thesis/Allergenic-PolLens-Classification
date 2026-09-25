@@ -151,6 +151,23 @@ class Species(models.Model):
     color = models.CharField(max_length=7)  # CSS hex, e.g. "#2a78d6"
     sort_order = models.PositiveSmallIntegerField(unique=True)  # curated display order
 
+    # Reference content for the Allergen Reference atlas (all editable in the
+    # admin). Botanical description only: allergenicity stays in risk_level,
+    # which remains "Not assessed" until UPLB supplies it.
+    filipino_name = models.CharField(max_length=100, blank=True, default='')
+    family = models.CharField(max_length=60, blank=True, default='')
+    growth_form = models.CharField(max_length=100, blank=True, default='')
+    description = models.TextField(blank=True, default='')
+    distribution = models.CharField(max_length=255, blank=True, default='')
+    pollination = models.CharField(max_length=60, blank=True, default='')
+    info_source = models.CharField(max_length=255, blank=True, default='')
+    # A freely licensed photo, bundled with the frontend at photo_url; the
+    # credit, license and source page are shown beside it.
+    photo_url = models.CharField(max_length=200, blank=True, default='')
+    photo_credit = models.CharField(max_length=120, blank=True, default='')
+    photo_license = models.CharField(max_length=40, blank=True, default='')
+    photo_source = models.URLField(max_length=300, blank=True, default='')
+
     class Meta:
         ordering = ['sort_order']
         verbose_name_plural = 'species'

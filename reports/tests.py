@@ -455,7 +455,12 @@ class SpeciesListViewTests(APITestCase):
 
         first = response.data[0]
         self.assertEqual(
-            set(first), {'id', 'scientificName', 'commonName', 'code', 'season', 'riskLevel', 'color'},
+            set(first),
+            {
+                'id', 'scientificName', 'commonName', 'code', 'season', 'riskLevel', 'color',
+                'filipinoName', 'family', 'growthForm', 'description', 'distribution', 'pollination',
+                'infoSource', 'photoUrl', 'photoCredit', 'photoLicense', 'photoSource',
+            },
         )
         self.assertEqual(first['scientificName'], 'Amaranthus spinosus')
         self.assertEqual(first['code'], 'AMAR')
@@ -885,6 +890,22 @@ class DetectImageValidationTests(APITestCase):
     def test_detect_uses_its_own_throttle_scope(self):
         from .views import DetectView
         self.assertEqual(DetectView.throttle_scope, 'detect')
+
+
+class SpeciesReferenceMigrationTests(APITestCase):
+    """0010 fills the Allergen Reference content for every species, without clinical claims."""
+
+    def test_every_species_has_names_photo_and_credit(self):
+        self.client.force_authenticate(user=User.objects.create(email='r@up.edu.ph', institution='up.edu.ph'))
+        rows = self.client.get('/api/v1/reports/species/').data
+        self.assertEqual(len(rows), 23)
+        for row in rows:
+            self.assertTrue(row['commonName'], row['id'])
+            self.assertTrue(row['description'], row['id'])
+            self.assertEqual(row['photoUrl'], f"/species/{row['id']}.jpg")
+            self.assertTrue(row['photoCredit'] and row['photoLicense'] and row['photoSource'], row['id'])
+            # Botanical content only: allergenicity is still unassessed.
+            self.assertEqual(row['riskLevel'], 'Not assessed')
 
 
 class SpeciesRiskMigrationTests(APITestCase):

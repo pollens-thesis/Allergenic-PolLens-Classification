@@ -290,6 +290,18 @@ class SpeciesSerializer(serializers.Serializer):
     season = serializers.CharField()
     riskLevel = serializers.CharField(source='risk_level')
     color = serializers.CharField()
+    # Allergen Reference content (botanical only; see Species).
+    filipinoName = serializers.CharField(source='filipino_name')
+    family = serializers.CharField()
+    growthForm = serializers.CharField(source='growth_form')
+    description = serializers.CharField()
+    distribution = serializers.CharField()
+    pollination = serializers.CharField()
+    infoSource = serializers.CharField(source='info_source')
+    photoUrl = serializers.CharField(source='photo_url')
+    photoCredit = serializers.CharField(source='photo_credit')
+    photoLicense = serializers.CharField(source='photo_license')
+    photoSource = serializers.CharField(source='photo_source')
 
 
 class BoundingBoxSerializer(serializers.Serializer):

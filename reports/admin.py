@@ -32,7 +32,16 @@ class SpeciesAdmin(admin.ModelAdmin):
     list_display = ('sort_order', 'id', 'scientific_name', 'common_name', 'code', 'season', 'risk_level', 'color')
     list_editable = ('common_name', 'season', 'risk_level', 'color')
     ordering = ('sort_order',)
-    search_fields = ('id', 'scientific_name', 'common_name')
+    search_fields = ('id', 'scientific_name', 'common_name', 'filipino_name')
+    fieldsets = (
+        (None, {'fields': ('id', 'scientific_name', 'code', 'sort_order', 'color')}),
+        ('Names', {'fields': ('common_name', 'filipino_name')}),
+        ('Allergen data', {'fields': ('risk_level', 'season')}),
+        ('Reference (Allergen Reference page)', {
+            'fields': ('family', 'growth_form', 'description', 'distribution', 'pollination', 'info_source'),
+        }),
+        ('Photo', {'fields': ('photo_url', 'photo_credit', 'photo_license', 'photo_source')}),
+    )
 
 
 admin.site.register(Slide)
