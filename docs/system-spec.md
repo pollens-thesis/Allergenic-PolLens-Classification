@@ -20,6 +20,16 @@ dashboard stats, "grains counted" chart units instead of "grains/m³", "Not asse
 risk instead of a placeholder "Moderate", removal of a password-login route, request
 throttling). See `api/CLAUDE.md` and `app/PolLens/README.md`.
 
+**QA pass 2026-09-25 (user request: "act as a QA professional"):** every feature was
+reviewed and defects fixed in `api/` and `app/PolLens/`, then checked in the browser.
+**Decision:** "finalised" = Completed + Needs review everywhere (dashboard, chart,
+map, monthly counts, exports); Pending reports are left out of PDF/Excel/CSV with a note.
+Other outcomes: the sample-detections flag is stored on the report (`sampleDetections`);
+Metro Manila towns map to their NCR district, Isabela City to its own boundary, and a
+province-only location ("Quezon") is province-level; saves on the result page are
+serialized so a failed Generate can't later complete a report; CSV has a UTF-8 BOM and
+a formula-injection guard. Details in `api/CLAUDE.md` and the commit messages.
+
 **Still for the adviser/team (not built, not guessed):**
 1. Architecture sign-off: Django API on Render + Next.js on Vercel vs. the paper's
    all-on-Vercel description (also Objective 4's "deploy it at Vercel").
