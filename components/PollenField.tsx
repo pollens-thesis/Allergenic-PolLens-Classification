@@ -76,12 +76,12 @@ function GrainShape({ kind }: { kind: Grain["kind"] }) {
 export default function PollenField() {
   return (
     <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
-      {/* darkfield vignette, recolored to the sign-in hero's teal accent */}
+      {/* darkfield vignette, in the frontispiece's oxide */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at 30% 20%, rgba(45,212,212,0.09), transparent 55%), radial-gradient(ellipse at 80% 70%, rgba(110,231,231,0.06), transparent 50%), var(--hero-bg)",
+            "radial-gradient(ellipse at 30% 20%, rgba(201,138,111,0.08), transparent 55%), radial-gradient(ellipse at 80% 70%, rgba(231,195,179,0.05), transparent 50%), var(--hero-bg)",
         }}
       />
       {GRAINS.map((g, i) => (
@@ -103,7 +103,7 @@ export default function PollenField() {
             width={44 * g.scale}
             height={44 * g.scale}
             viewBox="-22 -22 44 44"
-            style={{ transform: `rotate(${g.rotate}deg)`, filter: "drop-shadow(0 0 6px rgba(45,212,212,0.25))" }}
+            style={{ transform: `rotate(${g.rotate}deg)`, filter: "drop-shadow(0 0 6px rgba(201,138,111,0.22))" }}
           >
             <GrainShape kind={g.kind} />
           </svg>

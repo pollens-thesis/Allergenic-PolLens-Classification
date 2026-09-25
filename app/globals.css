@@ -2,53 +2,54 @@
 
 :root {
   /*
-   * Laboratory palette, after ISA-101 "high-performance" HMI practice: a
-   * neutral, low-saturation interface, so the only strong colour on screen
-   * carries meaning — the species boxes on a slide, and status. See
-   * docs/design-system.md for the sources.
+   * Pollen Atlas Plates. The console reads like a palynology reference atlas:
+   * plate-paper panels with hairline frames on a quiet grey page, ink text,
+   * and one oxide accent kept for plate/figure numbers, focus and the primary
+   * action. The species overlay palette stays the only strong colour in the
+   * data. Light, because the work happens under bright bench light.
    */
 
-  /* Surfaces — cool neutral gray canvas, white work panels */
-  --bg: #eef0f2;              /* page background */
-  --surface: #ffffff;         /* panels, inputs, table rows, sidebar */
-  --surface-sunken: #f4f5f7;  /* wells: stat strips, summary tiles */
-  --border: #d8dce0;          /* default 1px rule */
-  --border-strong: #b9c0c7;   /* hover/active/selected borders */
+  /* Surfaces — grey page, plate-paper panels */
+  --bg: #ecebe6;              /* page background */
+  --surface: #fafaf7;         /* plates: panels, inputs, table rows, sidebar */
+  --surface-sunken: #f1f0eb;  /* wells: stat strips, summary tiles */
+  --border: #d9d8d2;          /* hairline plate frame and rules */
+  --border-strong: #b3b1a8;   /* hover/active/selected borders */
 
   /* Text — all pass WCAG AA (4.5:1+) on bg, surface and surface-sunken */
-  --text: #111418;
-  --text-muted: #48505a;
-  --text-faint: #5f6873;
+  --text: #171717;
+  --text-muted: #4d4c47;
+  --text-faint: #5f5e59;
 
-  /* The one accent (teal) — actions, focus and selection only, never decoration */
-  --accent: #0a7070;
-  --accent-hover: #085c5c;
-  --accent-active: #064a4a;
-  --accent-muted: #0a70701a; /* ~10% */
+  /* The one accent (oxide) — plate numbers, actions, focus, selection */
+  --accent: #8c2f1b;
+  --accent-hover: #742617;
+  --accent-active: #5e1f13;
+  --accent-muted: #8c2f1b17; /* ~9% */
   --accent-fg: #ffffff;
 
-  /* Status — kept apart from the species overlay palette (Okabe–Ito) */
-  --success: #126b33;
-  --success-bg: #126b3314;
-  --processing: #a14a06;      /* amber — never the accent */
-  --processing-bg: #a14a0614;
-  --danger: #b91c1c;
-  --danger-bg: #b91c1c14;
+  /* Status — each also carries a label and a stamp pattern (StatusBadge) */
+  --success: #1f6a3a;
+  --success-bg: #1f6a3a14;
+  --processing: #8a5a00;      /* ochre — pending, never the accent */
+  --processing-bg: #8a5a0014;
+  --danger: #b3261e;
+  --danger-bg: #b3261e14;
 
   /* Image viewer surround — neutral, unsaturated, so it doesn't shift how
      the slide's own colours are perceived */
-  --viewer-bg: #2a2c2f;
+  --viewer-bg: #2a2a28;
 
-  /* Sign-in hero only — a dark, self-contained pre-auth surface */
-  --hero-bg: #0a0a0a;
-  --hero-bg-deep: #050505;
-  --hero-fg: #f4f4f5;
-  --hero-fg-muted: #9a9aa0;
-  --hero-grain: #2dd4d4;      /* teal-tinted grain, replaces the old gold */
-  --hero-grain-soft: #6ee7e7;
+  /* Sign-in frontispiece — an ink plate with paper type */
+  --hero-bg: #171717;
+  --hero-bg-deep: #0f0f0e;
+  --hero-fg: #fafaf7;
+  --hero-fg-muted: #a9a8a1;
+  --hero-grain: #c98a6f;      /* oxide-tinted grains */
+  --hero-grain-soft: #e7c3b3;
 
-  /* One typeface for headings and text; its mono sibling for data */
-  --font-display: var(--font-atkinson);
+  /* Journal serif for titles and captions; Atkinson for UI text and data */
+  --font-display: var(--font-serif);
   --font-body: var(--font-atkinson);
   --font-mono: var(--font-atkinson-mono);
 
@@ -89,11 +90,11 @@
   --font-body: var(--font-body);
   --font-mono: var(--font-mono);
 
-  /* Tighter corners than a consumer app — instrument-software density */
-  --radius-sm: 3px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
-  --radius-xl: 8px;
+  /* Plates are cut square; the barest softening keeps edges from aliasing */
+  --radius-sm: 1px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 3px;
 }
 
 * {
@@ -122,8 +123,36 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Titles are set like an atlas: the journal serif, a touch tight */
 h1, h2, h3 {
+  font-family: var(--font-display);
   letter-spacing: -0.01em;
+}
+
+/* Plate and figure numbers — small caps in the accent ("PL. 2 · FIG. 1") */
+.plate-label {
+  font-family: var(--font-display);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+/* Caption labels — the same small caps, in caption grey */
+.caption-label {
+  font-family: var(--font-display);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+::selection {
+  background: #8c2f1b2e;
+  color: var(--text);
+}
+
+html {
+  scrollbar-color: var(--border-strong) transparent;
+  accent-color: var(--accent);
 }
 
 @media (prefers-reduced-motion: reduce) {

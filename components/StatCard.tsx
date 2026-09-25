@@ -62,15 +62,10 @@ export default function StatCard({ label, value, sublabel, icon: Icon, variant }
   return (
     <div className="rounded-lg border border-border bg-surface p-5">
       <div className="flex items-center justify-between">
-        <span
-          className="text-[11.5px] tracking-wide text-text-muted uppercase"
-          style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-        >
-          {label}
-        </span>
+        <span className="caption-label text-[15px]">{label}</span>
         <Icon size={16} strokeWidth={1.75} className={clsx(iconVariants({ variant }))} />
       </div>
-      <div className="mt-3 text-3xl text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+      <div className="mt-2 text-4xl text-text lining-nums tabular-nums" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
         {display}
       </div>
       {sublabel && <div className="mt-1 text-[13px] text-text-muted">{sublabel}</div>}

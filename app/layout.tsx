@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next } from "next/font/google";
+import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next, Source_Serif_4 } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -25,6 +25,14 @@ const atkinsonMono = Atkinson_Hyperlegible_Mono({
   fallback: ["ui-monospace", "Consolas", "monospace"],
 });
 
+// Titles and captions: a journal serif with optical sizes, so page titles and
+// small plate captions are each drawn for their size — the atlas voice.
+const serif = Source_Serif_4({
+  variable: "--font-serif",
+  subsets: ["latin", "latin-ext"],
+  style: ["normal", "italic"],
+});
+
 export const metadata: Metadata = {
   title: { default: "PolLens", template: "%s · PolLens" },
   description: "Helping researchers identify pollen allergens from microscope imagery. Sign in to the PolLens research console.",
@@ -42,7 +50,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${atkinson.variable} ${atkinsonMono.variable} h-full`}
+      className={`${atkinson.variable} ${atkinsonMono.variable} ${serif.variable} h-full`}
     >
       <body className="min-h-full flex flex-col">
         {children}

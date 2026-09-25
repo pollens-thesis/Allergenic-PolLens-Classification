@@ -123,7 +123,7 @@ function DetectionRow({
             <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{confidencePct}%</span>
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-sunken">
-            <div className="h-full rounded-full bg-accent" style={{ width: `${confidencePct}%` }} />
+            <div className="h-full rounded-full bg-text/75" style={{ width: `${confidencePct}%` }} />
           </div>
         </div>
       </div>
@@ -142,7 +142,7 @@ function DetectionRow({
         aria-pressed={selected}
         className={`focus-ring block w-full rounded-md border px-3 py-2.5 transition-colors duration-[var(--duration-fast)] ${
           selected
-            ? "border-border-strong bg-surface shadow-[inset_3px_0_0_0_var(--accent)]"
+            ? "border-accent bg-accent-muted"
             : "border-border bg-surface hover:border-border-strong"
         }`}
       >
@@ -544,12 +544,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
             return (
               <div key={slide.id} className="border-t border-border pt-5 first:border-t-0 first:pt-0">
                 <div className="mb-3 flex flex-wrap items-center gap-3 text-[13px]">
-                  <span
-                    className="rounded-full bg-surface-sunken px-2.5 py-1 text-[12px] text-text-muted"
-                    style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-                  >
-                    Slide {index + 1}
-                  </span>
+                  <span className="plate-label text-[16px]">Slide {index + 1}</span>
                   <span className="flex items-center gap-1.5 text-text-muted">
                     <Microscope size={13} strokeWidth={1.75} className="text-text-faint" />
                     {slideGrains} {slideGrains === 1 ? "grain" : "grains"} ·{" "}

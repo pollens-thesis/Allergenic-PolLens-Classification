@@ -86,7 +86,7 @@ function DetectionRow({
         aria-pressed={selected}
         className={`focus-ring block w-full rounded-md border px-3 py-2.5 text-left transition ${
           selected
-            ? "border-border-strong bg-surface shadow-[inset_3px_0_0_0_var(--accent)]"
+            ? "border-accent bg-accent-muted"
             : "border-border bg-surface hover:border-border-strong"
         }`}
       >
@@ -130,7 +130,7 @@ function DetectionRow({
             <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{confidencePct}%</span>
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-sunken">
-            <div className="h-full rounded-full bg-accent" style={{ width: `${confidencePct}%` }} />
+            <div className="h-full rounded-full bg-text/75" style={{ width: `${confidencePct}%` }} />
           </div>
         </div>
       </button>
@@ -633,7 +633,14 @@ export default function AnalysisResultWorkspace({
         <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           {/* The slide itself leads: it is what every number below is read against. */}
           <div className="rounded-lg border border-border bg-surface p-5 xl:sticky xl:top-48">
-            <h3 className="mb-4 text-lg font-semibold tracking-tight text-text">Specimen Image</h3>
+            <div className="mb-4 flex items-baseline justify-between gap-3">
+              <h3 className="text-lg font-semibold tracking-tight text-text">Specimen Image</h3>
+              {/* The slide's plate number, as an atlas numbers its figures. */}
+              <span className="plate-label text-[15px]">
+                Slide {slideIndex + 1}
+                {report.slides.length > 1 ? ` of ${report.slides.length}` : ""}
+              </span>
+            </div>
             <SpecimenImageViewer
               imageUrl={selected.imageUrl}
               fileName={selected.fileName}
