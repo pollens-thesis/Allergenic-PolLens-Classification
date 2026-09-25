@@ -134,11 +134,16 @@ export default function PollenCountChart() {
     return (withData.length > 0 ? withData : pollenSeries).slice(0, MAX_LINES);
   }, [visible, pollenSeries]);
 
+  // How many types have grains in the window, to say when the chart shows only some of them.
+  const typesWithGrains = pollenSeries.filter((s) =>
+    visible.some((month) => (month.series[s.key] ?? 0) > 0),
+  ).length;
+
   return (
     <div className="rounded-lg border border-border bg-surface p-5">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+          <h2 className="t-plate-title text-text">
             Historical Pollen Counts
           </h2>
           <p className="text-[13px] text-text-muted">Grains counted in generated reports, by month</p>
@@ -149,7 +154,8 @@ export default function PollenCountChart() {
               key={r.value}
               type="button"
               onClick={() => setRange(r.value)}
-              className={`focus-ring rounded-[5px] px-2.5 py-1 text-[13px] transition-[transform,background-color,color] duration-[var(--duration-fast)] ease-[var(--ease-out)] active:scale-[0.97] ${
+              aria-pressed={range === r.value}
+              className={`focus-ring rounded-sm px-2.5 py-1 text-[13px] transition-[transform,background-color,color] duration-[var(--duration-fast)] ease-[var(--ease-out)] active:scale-[0.97] ${
                 range === r.value
                   ? "bg-text text-bg"
                   : "text-text-muted hover:bg-surface-sunken hover:text-text"
@@ -171,7 +177,7 @@ export default function PollenCountChart() {
       {status === "loading" || (status === "error" && data.length === 0) ? (
         <div className="mt-3 flex h-56 flex-col items-center justify-center gap-1.5 rounded-md bg-surface-sunken text-center">
           <span className="px-3 text-[12.5px] text-text-muted">
-            {status === "loading" ? "Loading counts…" : "Couldn't reach the server to load counts."}
+            {status === "loading" ? "Loading monthly counts…" : "Couldn't reach the server to load the counts. Reload the page to try again."}
           </span>
         </div>
       ) : empty ? (
@@ -191,12 +197,12 @@ export default function PollenCountChart() {
                 <CartesianGrid stroke="var(--border)" vertical={false} />
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 12, fill: "#52525bb3", fontWeight: 500 }}
+                  tick={{ fontSize: 12, fill: "var(--text-muted)", fontWeight: 500 }}
                   tickLine={false}
                   axisLine={{ stroke: "var(--border)" }}
                 />
                 <YAxis
-                  tick={{ fontSize: 12, fill: "#52525bb3", fontWeight: 500 }}
+                  tick={{ fontSize: 12, fill: "var(--text-muted)", fontWeight: 500 }}
                   tickLine={false}
                   axisLine={false}
                   width={44}
@@ -211,7 +217,7 @@ export default function PollenCountChart() {
                   // Recharts colours the label to match its line, and some line
                   // colors read too light on white for legend text. The dot
                   // already carries the colour; the words only have to be readable.
-                  formatter={(value) => <span style={{ color: "#0a0a0acc" }}>{value}</span>}
+                  formatter={(value) => <span style={{ color: "var(--text)" }}>{value}</span>}
                 />
                 {linesToShow.map((s) => (
                   <Line
@@ -229,6 +235,12 @@ export default function PollenCountChart() {
               </LineChart>
             </ResponsiveContainer>
           </div>
+
+          {typesWithGrains > MAX_LINES && (
+            <p className="mt-1 text-[13px] text-text-muted">
+              Showing the {MAX_LINES} most-counted pollen types of {typesWithGrains} with grains in this window.
+            </p>
+          )}
 
           {/* Wrapped: a <table> ignores sr-only's 1px width and widened the page. */}
           <div className="sr-only">

@@ -188,9 +188,9 @@ function InspectorBody({
       <aside className="order-2 min-h-0 overflow-y-auto border-r border-border bg-surface lg:order-1">
         <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border bg-surface px-4 py-3">
           <div className="min-w-0">
-            <Dialog.Title className="text-[15px] font-semibold text-text">Specimen Inspector</Dialog.Title>
-            <p className="truncate text-[12.5px] text-text-muted">
-              <span style={mono}>{slide.label}</span> · {slide.fileName}
+            <Dialog.Title className="t-plate-title text-text">Slide Inspector</Dialog.Title>
+            <p className="truncate text-[13px] text-text-muted">
+              <span className="plate-label mr-1 text-[14px]">{slide.label}</span> {slide.fileName}
             </p>
           </div>
           {slides.length > 1 && (
@@ -220,7 +220,7 @@ function InspectorBody({
           <dl className="grid grid-cols-3 divide-x divide-border rounded-md border border-border bg-surface-sunken text-center">
             <Stat label="Grains" value={slideGrains} />
             <Stat label="Types" value={slide.detections.length} />
-            <Stat label="Avg. Conf." value={`${Math.round(slideConfidence * 100)}%`} />
+            <Stat label="Avg. Confidence" value={`${Math.round(slideConfidence * 100)}%`} />
           </dl>
 
           {grain && focusSpecies && (
@@ -230,7 +230,7 @@ function InspectorBody({
                 <div className="flex items-center gap-2">
                   <Swatch color={overlayColor(palette, grain.speciesId)} />
                   <span className="text-[14px] font-semibold text-text" style={mono}>{grain.id}</span>
-                  <span className="text-[13px] text-text italic">{focusSpecies.scientificName}</span>
+                  <i className="t-binomial text-[14px] text-text">{focusSpecies.scientificName}</i>
                 </div>
                 <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[12.5px]">
                   <dt className="text-text-muted">Confidence</dt>
@@ -288,7 +288,7 @@ function InspectorBody({
                       >
                         <Swatch color={overlayColor(palette, detection.speciesId)} />
                         <span className="w-11 shrink-0 text-[12px] text-text-muted" style={mono}>{species.code}</span>
-                        <span className="min-w-0 flex-1 truncate text-[13px] text-text italic">
+                        <span className="t-binomial min-w-0 flex-1 truncate text-[14px] text-text italic">
                           {species.scientificName}
                         </span>
                         <span className="shrink-0 text-[12.5px] text-text tabular-nums" style={mono}>
@@ -307,7 +307,7 @@ function InspectorBody({
                                 onClick={() => selectGrain(g)}
                                 aria-pressed={g.id === grainId}
                                 className={clsx(
-                                  "focus-ring flex w-full items-center justify-between rounded border px-1.5 py-1 text-[11.5px] tabular-nums transition-colors",
+                                  "focus-ring flex w-full items-center justify-between rounded border px-1.5 py-1 text-[12px] tabular-nums transition-colors",
                                   g.id === grainId
                                     ? "border-accent bg-accent-muted text-text"
                                     : "border-border text-text-muted hover:border-border-strong hover:text-text",
@@ -334,7 +334,7 @@ function InspectorBody({
               <div className="rounded-md border border-border p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-[15px] font-semibold text-text italic">{focusSpecies.scientificName}</p>
+                    <p className="t-binomial text-lg font-semibold text-text">{focusSpecies.scientificName}</p>
                     <p className="text-[12.5px] text-text-muted">
                       {focusSpecies.commonName
                         ? focusSpecies.commonName
@@ -350,7 +350,7 @@ function InspectorBody({
                   <dd className="text-right text-text">
                     {focusSpecies.season || "Not yet recorded"}
                   </dd>
-                  <dt className="text-text-muted">Grains in All Reports</dt>
+                  <dt className="text-text-muted">Grains in Finalized Reports</dt>
                   <dd className="text-right text-text tabular-nums" style={mono}>
                     {reportCounts === null ? "…" : (reportCounts[focusSpecies.id] ?? 0).toLocaleString()}
                   </dd>
@@ -425,7 +425,7 @@ function InspectorBody({
             >
               <GrainOverlay
                 imageUrl={slide.imageUrl}
-                alt={`Specimen ${slide.fileName}`}
+                alt={`${slide.label} (${slide.fileName})`}
                 grains={grains}
                 colors={palette}
                 showLabels={showLabels}
@@ -449,7 +449,7 @@ function InspectorBody({
               />
             </div>
           ) : (
-            <p className="text-[13px] text-white/70">Image not stored for this record.</p>
+            <p className="text-[14px] text-white/70">Image not stored for this report.</p>
           )}
         </div>
       </section>
@@ -464,8 +464,8 @@ function Swatch({ color }: { color: string }) {
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="px-2 py-2">
-      <dd className="text-[16px] text-text tabular-nums" style={mono}>{value}</dd>
-      <dt className="text-[11.5px] text-text-muted">{label}</dt>
+      <dd className="text-lg text-text tabular-nums" style={mono}>{value}</dd>
+      <dt className="text-[12px] text-text-muted">{label}</dt>
     </div>
   );
 }

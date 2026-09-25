@@ -230,7 +230,7 @@ export default function LocationSearch({
                 <Highlight text={place.label} query={q} />
               </span>
               {place.kind === "province" && (
-                <span className="shrink-0 text-[11.5px] text-text-faint">Province</span>
+                <span className="shrink-0 text-[12px] text-text-muted">Province</span>
               )}
             </li>
           ))}
@@ -240,7 +240,7 @@ export default function LocationSearch({
       {warnUnrecognised && !focused && !recognised && (
         <p className="mt-1 flex items-start gap-1 text-[12px] text-processing">
           <TriangleAlert size={12} strokeWidth={2} className="mt-0.5 shrink-0" />
-          Not a recognised town or province — it won&apos;t appear on the map or fill the weather.
+          Not a recognized town or province — it won&apos;t appear on the map or fill the weather.
         </p>
       )}
     </div>

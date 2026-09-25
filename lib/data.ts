@@ -381,9 +381,13 @@ export type ReportRow = {
   collectedAt: CollectedAt;
   location: string;
   topPollen: string;
+  /** The species behind `topPollen`, for setting its name as a binomial. */
+  topSpecies: Species | null;
   totalGrains: number;
   slideCount: number;
   status: ReportStatus;
+  /** Counts are the server's built-in sample reading, not results. */
+  sampleDetections: boolean;
 };
 
 /** The row shown in the Reports table for one saved report. */
@@ -394,10 +398,12 @@ export function toReportRow(specimen: Specimen): ReportRow {
     sampleId: specimen.sampleId,
     collectedAt: specimen.collectedAt,
     location: specimen.location,
-    topPollen: sp ? speciesLabel(sp) : "No pollen detected",
+    topPollen: sp ? speciesLabel(sp) : "No pollen grains detected",
+    topSpecies: sp,
     totalGrains: getReportGrains(specimen),
     slideCount: specimen.slides.length,
     status: specimen.status,
+    sampleDetections: Boolean(specimen.sampleDetections),
   };
 }
 

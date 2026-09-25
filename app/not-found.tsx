@@ -17,11 +17,10 @@ export default function NotFound() {
           className="mt-2 text-3xl tracking-tight text-balance text-text"
           style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
         >
-          This page doesn&apos;t exist
+          Page Not Found
         </h1>
         <p className="mt-2 text-sm text-pretty text-text-muted">
-          The address may be mistyped, or the page may have moved. Reports are listed on the
-          Reports page.
+          The address may be mistyped, or the page may have moved.
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-4">
           <Link

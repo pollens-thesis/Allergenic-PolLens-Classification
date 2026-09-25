@@ -87,7 +87,10 @@ export default function SignInForm() {
             updateSettings({ email, name, accessToken: tokens.access, refreshToken: tokens.refresh });
           })
           .catch((err: unknown) => {
-            const message = err instanceof GoogleSignInError ? err.message : "Google sign-in failed.";
+            const message =
+              err instanceof GoogleSignInError
+                ? err.message
+                : "Google sign-in failed. Try again, or use your up.edu.ph or mseuf.edu.ph account.";
             setError(message);
             setPending(false);
             toast.error(message);
@@ -114,7 +117,10 @@ export default function SignInForm() {
       // Closing Microsoft's window is a choice, not an error.
       const code = (err as { errorCode?: string } | null)?.errorCode;
       if (code === "user_cancelled" || code === "popup_window_error") return;
-      const message = err instanceof GoogleSignInError ? err.message : "Microsoft sign-in failed.";
+      const message =
+        err instanceof GoogleSignInError
+          ? err.message
+          : "Microsoft sign-in failed. Try again, or use your up.edu.ph or mseuf.edu.ph account.";
       setError(message);
       toast.error(message);
     }
@@ -123,7 +129,7 @@ export default function SignInForm() {
   return (
     <>
       {expired && (
-        <p className="mb-3 rounded-md border border-processing/30 bg-processing-bg px-3 py-2 text-[12.5px] text-processing">
+        <p className="mb-3 rounded-md border border-processing/30 bg-processing-bg px-3 py-2 text-[13.5px] leading-relaxed text-processing">
           Your session expired — sign in again to pick up where you left off.
         </p>
       )}
@@ -155,7 +161,7 @@ export default function SignInForm() {
               {pending ? "Signing in…" : "Continue with Microsoft"}
             </button>
           )}
-          {error && <p className="text-[12.5px] text-danger">{error}</p>}
+          {error && <p className="text-[13.5px] text-danger">{error}</p>}
         </div>
       ) : (
         <div className="rounded-md border border-border bg-surface p-4">
@@ -167,13 +173,13 @@ export default function SignInForm() {
           {configured ? (
             <div ref={buttonSlotRef} className="flex min-h-[44px] items-center justify-center" />
           ) : (
-            <p className="text-[12.5px] text-danger">
-              Google sign-in is not configured (missing NEXT_PUBLIC_GOOGLE_CLIENT_ID).
+            <p className="text-[13.5px] text-danger">
+              Google sign-in isn&apos;t available right now. Use Microsoft, or contact the PolLens team.
             </p>
           )}
 
-          {pending && <p className="mt-2 text-[12.5px] text-text-muted">Signing in…</p>}
-          {error && <p className="mt-2 text-[12.5px] text-danger">{error}</p>}
+          {pending && <p className="mt-2 text-[13.5px] text-text-muted">Signing in…</p>}
+          {error && <p className="mt-2 text-[13.5px] text-danger">{error}</p>}
 
           <button
             type="button"

@@ -27,16 +27,16 @@ export default function DashboardPage() {
               <ScanLine size={20} strokeWidth={1.75} className="text-text" />
             </span>
             <div>
-              <div className="text-[17px] text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+              <div className="t-plate-title text-text">
                 Start New Analysis
               </div>
               <div className="text-[13px] text-text-muted">
-                Upload a microscope image to count and identify the pollen grains it contains
+                Upload one or more slide images to count and identify the pollen grains they contain
               </div>
             </div>
           </div>
           <span className="flex items-center gap-1.5 self-start rounded-md bg-accent px-3.5 py-2 text-[13px] text-accent-fg transition group-hover:bg-[var(--accent-hover)] sm:self-auto">
-            Begin
+            Analyze Slides
             <ArrowRight size={14} strokeWidth={1.75} />
           </span>
         </Link>

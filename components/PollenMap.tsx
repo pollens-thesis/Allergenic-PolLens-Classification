@@ -32,7 +32,6 @@ import {
   aggregate,
   buildIntensityScale,
   centroid,
-  describeTopPollen,
   displayName,
   featureBounds,
   featureKey,
@@ -52,6 +51,7 @@ import {
 import { downloadLocationReportPdf } from "@/lib/pdf";
 import { useMapZoom } from "./useMapZoom";
 import { Button } from "./Button";
+import SpeciesName from "@/components/SpeciesName";
 import LocationSearch, { type Place } from "./LocationSearch";
 
 const fieldClass =
@@ -160,6 +160,7 @@ export default function PollenMap() {
     };
   }, []);
 
+  const sampleCount = reports ? reports.filter((report) => report.sampleDetections).length : 0;
   const provincePsgc = scope.level === "province" ? scope.psgc : null;
 
   // A province's towns are fetched only when it is opened — one ~40 KB file.
@@ -371,8 +372,15 @@ export default function PollenMap() {
 
   if (failed) {
     return (
-      <div className="rounded-lg border border-border bg-surface px-6 py-16 text-center text-[13px] text-text-muted">
-        Could not load the boundary data.
+      <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-16 text-center">
+        <p className="text-[14px] text-text-muted">Couldn&apos;t load the map. Check your connection and try again.</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="focus-ring rounded-md border border-border bg-surface px-3 py-1.5 text-[13px] text-text transition hover:bg-surface-sunken"
+        >
+          Try Again
+        </button>
       </div>
     );
   }
@@ -529,7 +537,7 @@ export default function PollenMap() {
               <button
                 type="button"
                 onClick={() => applyFilters({ query: "" })}
-                aria-label="Clear search"
+                aria-label="Clear Search"
                 className="focus-ring absolute top-1/2 right-1.5 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-text-muted transition-[background-color,color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-surface-sunken hover:text-text active:scale-[0.9]"
               >
                 <X size={13} strokeWidth={1.75} />
@@ -592,7 +600,7 @@ export default function PollenMap() {
               type="button"
               onClick={() => zoomBy(1.6)}
               disabled={atMaxZoom}
-              aria-label="Zoom in"
+              aria-label="Zoom In"
               className="focus-ring flex h-10 w-10 items-center justify-center rounded-md border border-border bg-surface/90 text-text-muted transition-[color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text active:scale-[0.97] disabled:opacity-35 disabled:active:scale-100 lg:h-8 lg:w-8"
             >
               <ZoomIn size={15} strokeWidth={1.75} />
@@ -601,7 +609,7 @@ export default function PollenMap() {
               type="button"
               onClick={() => zoomBy(1 / 1.6)}
               disabled={!zoomedIn}
-              aria-label="Zoom out"
+              aria-label="Zoom Out"
               className="focus-ring flex h-10 w-10 items-center justify-center rounded-md border border-border bg-surface/90 text-text-muted transition-[color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text active:scale-[0.97] disabled:opacity-35 disabled:active:scale-100 lg:h-8 lg:w-8"
             >
               <ZoomOut size={15} strokeWidth={1.75} />
@@ -610,7 +618,7 @@ export default function PollenMap() {
               type="button"
               onClick={resetZoom}
               disabled={!zoomedIn}
-              aria-label="Reset zoom"
+              aria-label="Reset Zoom"
               className="focus-ring flex h-10 w-10 items-center justify-center rounded-md border border-border bg-surface/90 text-text-muted transition-[color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text active:scale-[0.97] disabled:opacity-35 disabled:active:scale-100 lg:h-8 lg:w-8"
             >
               <Maximize2 size={14} strokeWidth={1.75} />
@@ -693,8 +701,8 @@ export default function PollenMap() {
                     textAnchor="middle"
                     className="pointer-events-none"
                     style={{
-                      fontFamily: "var(--font-mono)",
-                      fontWeight: 500,
+                      fontFamily: "var(--font-body)",
+                      fontWeight: 600,
                       fontSize: 14 / view.k,
                       fill: "var(--text)",
                       fillOpacity: sampled ? 1 : 0.55,
@@ -737,7 +745,7 @@ export default function PollenMap() {
           )}
           <span className="flex items-center gap-1.5">
             <span className="h-3 w-4 rounded-sm border border-border" style={{ background: ZERO_FILL }} />
-            None found
+            No pollen grains detected
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-3 w-4 rounded-sm border border-border" style={{ background: UNSAMPLED_FILL }} />
@@ -751,16 +759,24 @@ export default function PollenMap() {
         </div>
 
         {provinceWide && (
-          <p className="mt-2 text-[12.5px] text-text-muted">
+          <p className="mt-2 text-[13px] text-text-muted">
             {provinceWide.reportCount === 1 ? "1 report names" : `${provinceWide.reportCount} reports name`} only
             the province, not a town — listed as “No town given”.
           </p>
         )}
 
-        {notice && <p className="mt-2 text-[12.5px] text-text-muted">{notice}</p>}
+        {notice && <p className="mt-2 text-[13px] text-text-muted">{notice}</p>}
+
+        {sampleCount > 0 && (
+          <p className="mt-2 text-[13px] text-text-muted">
+            Includes {sampleCount} {sampleCount === 1 ? "report" : "reports"}{" "}
+            with sample detections (the
+            server&apos;s built-in reading, not results).
+          </p>
+        )}
 
         {unmapped.length > 0 && (
-          <p className="mt-2 text-[12.5px] text-text-muted">
+          <p className="mt-2 text-[13px] text-text-muted">
             Not shown on this map: {unmapped.map((p) => p.label).join(", ")} — no boundary matched
             that name.
           </p>
@@ -779,17 +795,14 @@ export default function PollenMap() {
                 >
                   Selected {unitSingular}
                 </div>
-                <h2
-                  className="truncate text-xl text-text"
-                  style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
-                >
+                <h2 className="t-plate-title truncate text-text">
                   {selectedPlace.label}
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => setSelected(null)}
-                aria-label="Clear selection"
+                aria-label="Clear Selection"
                 className="focus-ring flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-text-muted transition-[background-color,color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-surface-sunken hover:text-text active:scale-[0.9]"
               >
                 <X size={14} strokeWidth={1.75} />
@@ -798,13 +811,13 @@ export default function PollenMap() {
 
             <div className="mb-4 grid grid-cols-3 gap-3 rounded-md bg-surface-sunken px-3 py-3 text-center">
               <div>
-                <div className="text-[17px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                <div className="text-lg text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                   {selectedPlace.totalGrains}
                 </div>
                 <div className="text-[12px] text-text-muted">Grains</div>
               </div>
               <div>
-                <div className="text-[17px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                <div className="text-lg text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                   {selectedPlace.reportCount}
                 </div>
                 <div className="text-[12px] text-text-muted">
@@ -812,10 +825,10 @@ export default function PollenMap() {
                 </div>
               </div>
               <div>
-                <div className="text-[17px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                <div className="text-lg text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                   {Math.round(getWeightedAvgConfidence(selectedPlace.detections) * 100)}%
                 </div>
-                <div className="text-[12px] text-text-muted">Avg. conf.</div>
+                <div className="text-[12px] text-text-muted">Avg. Confidence</div>
               </div>
             </div>
 
@@ -827,7 +840,7 @@ export default function PollenMap() {
             </h3>
             {selectedPlace.detections.length === 0 ? (
               <p className="rounded-md border border-border bg-surface px-3 py-4 text-center text-[13px] text-text-muted">
-                No {activeLabel} recorded here.
+                {species === "all" ? "No pollen grains recorded here." : `No ${activeLabel} recorded here.`}
               </p>
             ) : (
               <ul className="flex flex-col gap-2">
@@ -845,11 +858,11 @@ export default function PollenMap() {
                             className="h-2.5 w-2.5 shrink-0 rounded-full"
                             style={{ backgroundColor: s.color }}
                           />
-                          <span className="truncate text-[13.5px] text-text">{s.scientificName}</span>
+                          <i className="t-binomial truncate text-[14px] text-text">{s.scientificName}</i>
                           <span className="truncate text-[13px] text-text-muted">{s.commonName}</span>
                         </span>
                         <span className="shrink-0 text-[13px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-                          {detection.grainCount}
+                          {detection.grainCount.toLocaleString()}
                         </span>
                       </div>
                       <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-border">
@@ -885,12 +898,12 @@ export default function PollenMap() {
               {building === selectedPlace.key ? (
                 <>
                   <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
-                  Building Report…
+                  Building PDF…
                 </>
               ) : (
                 <>
                   <FileDown size={14} strokeWidth={1.75} />
-                  Generate Report for {selectedPlace.label}
+                  Download Summary PDF for {selectedPlace.label}
                 </>
               )}
             </Button>
@@ -910,8 +923,8 @@ export default function PollenMap() {
           </div>
         ) : (
           <div>
-            <h2 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-              {filtersActive ? (scope.level === "country" ? "Provinces" : "Towns") : "Hotzones"}
+            <h2 className="t-plate-title text-text">
+              {filtersActive ? (scope.level === "country" ? "Provinces" : "Towns") : "Most Grains Counted"}
             </h2>
             <p className="mt-0.5 mb-3 text-[13px] text-text-muted">
               {filtersActive
@@ -950,14 +963,14 @@ export default function PollenMap() {
                 {building === "filtered" ? (
                   <>
                     <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
-                    Building Report…
+                    Building PDF…
                   </>
                 ) : (
                   <>
                     <FileDown size={14} strokeWidth={1.75} />
                     {filteredPlaces.length === 1
-                      ? `Generate Report for ${filteredPlaces[0].label}`
-                      : `Generate Report for These ${filteredPlaces.length} ${unitPlural === "towns" ? "Towns" : "Provinces"}`}
+                      ? `Download Summary PDF for ${filteredPlaces[0].label}`
+                      : `Download Summary PDF (${filteredPlaces.length} ${unitPlural === "towns" ? "Towns" : "Provinces"})`}
                   </>
                 )}
               </Button>
@@ -1022,17 +1035,23 @@ export default function PollenMap() {
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5">
                           <MapPin size={12} strokeWidth={1.75} className="shrink-0 text-text-faint" />
-                          <span className="truncate text-[13.5px] text-text">{row.label}</span>
+                          <span className="truncate text-[14px] text-text">{row.label}</span>
                         </span>
                         <span className="mt-0.5 block truncate text-[12.5px] text-text-muted">
-                          {row.stats ? describeTopPollen(row.stats.detections) : "Not sampled"}
+                          {!row.stats ? (
+                            "Not sampled"
+                          ) : row.stats.detections[0] ? (
+                            <SpeciesName species={findSpecies(speciesCatalog, row.stats.detections[0].speciesId)} />
+                          ) : (
+                            "No pollen grains detected"
+                          )}
                         </span>
                       </span>
                       <span className="shrink-0 text-right">
                         <span className="block text-[14px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-                          {row.stats ? row.stats.totalGrains : "—"}
+                          {row.stats ? row.stats.totalGrains.toLocaleString() : "—"}
                         </span>
-                        <span className="block text-[11.5px] text-text-muted">grains</span>
+                        <span className="block text-[12px] text-text-muted">grains</span>
                       </span>
                     </button>
                   </li>
@@ -1041,7 +1060,7 @@ export default function PollenMap() {
             )}
 
             {searching && matches.length > 0 && unsampledMatches > 0 && (
-              <p className="mt-3 text-[12.5px] text-text-muted">
+              <p className="mt-3 text-[13px] text-text-muted">
                 {unsampledMatches} more {unsampledMatches === 1 ? unitSingular : unitPlural} match
                 the search but {unsampledMatches === 1 ? "has" : "have"} no reports yet.{" "}
                 <button
@@ -1054,11 +1073,6 @@ export default function PollenMap() {
               </p>
             )}
 
-            {scope.level === "country" && matches.length > 0 && (
-              <p className="mt-3 text-[12.5px] text-text-muted">
-                Select a province to see which of its towns the pollen came from.
-              </p>
-            )}
           </div>
         )}
       </div>

@@ -38,7 +38,7 @@ function Section({
           <Icon size={16} strokeWidth={1.75} className="text-text-muted" />
         </span>
         <div>
-          <h2 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+          <h2 className="t-plate-title text-text">
             {title}
           </h2>
           <p className="mt-0.5 text-[13px] text-text-muted">{description}</p>
@@ -99,7 +99,7 @@ export default function SettingsWorkspace() {
           </div>
         </div>
 
-        <p className="mt-3 text-[12.5px] leading-relaxed text-text-muted">
+        <p className="t-prose mt-3 text-text-muted">
           Your name comes from your Google or Microsoft account and is the default researcher on
           new reports (you can change it per report).{" "}
           {institution ? (
@@ -117,20 +117,20 @@ export default function SettingsWorkspace() {
       <Section
         icon={Database}
         title="Data Export"
-        description="Reports are stored on the PolLens server and shared with every signed-in researcher. Export completed reports to keep a copy or analyze them in other software."
+        description="Reports are stored on the PolLens server and shared with every signed-in researcher. Export finalized reports (Completed or Needs Review) to keep a copy or analyze them in other software."
       >
         <div className="mb-4 grid grid-cols-2 gap-3 rounded-md bg-surface-sunken px-3 py-3 text-center">
           <div>
-            <div className="text-[17px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+            <div className="text-lg text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
               {reports ? finalised.length : loadFailed ? "—" : "…"}
             </div>
-            <div className="text-[12px] text-text-muted">Completed reports</div>
+            <div className="text-[12px] text-text-muted">Finalized Reports</div>
           </div>
           <div>
-            <div className="text-[17px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+            <div className="text-lg text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
               {reports ? reports.length - finalised.length : loadFailed ? "—" : "…"}
             </div>
-            <div className="text-[12px] text-text-muted">Pending (not exported)</div>
+            <div className="text-[12px] text-text-muted">Pending (Not Exported)</div>
           </div>
         </div>
 
@@ -144,7 +144,7 @@ export default function SettingsWorkspace() {
                 await exportReportsXlsx(finalised);
                 toast.success("Exported as Excel");
               } catch {
-                toast.error("Couldn't build the Excel file.");
+                toast.error("Couldn't build the Excel file. Try again.");
               } finally {
                 setExporting(false);
               }
@@ -152,7 +152,7 @@ export default function SettingsWorkspace() {
             className="focus-ring flex flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text-muted transition-[color,border-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text hover:border-border-strong active:scale-[0.97] disabled:opacity-50"
           >
             {exporting ? <Loader2 size={14} strokeWidth={1.75} className="animate-spin" /> : <Sheet size={14} strokeWidth={1.75} />}
-            Excel Workbook
+            Export Excel
           </button>
           <button
             type="button"
@@ -164,7 +164,7 @@ export default function SettingsWorkspace() {
             className="focus-ring flex flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text-muted transition-[color,border-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text hover:border-border-strong active:scale-[0.97] disabled:opacity-50"
           >
             <FileSpreadsheet size={14} strokeWidth={1.75} />
-            CSV for Analysis
+            Export CSV
           </button>
           <button
             type="button"
@@ -176,15 +176,15 @@ export default function SettingsWorkspace() {
             className="focus-ring flex flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text-muted transition-[color,border-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text hover:border-border-strong active:scale-[0.97] disabled:opacity-50"
           >
             <FileJson size={14} strokeWidth={1.75} />
-            JSON Copy
+            Export JSON
           </button>
         </div>
-        <p className="mt-2 flex items-start gap-1.5 text-[12.5px] text-text-muted">
+        <p className="mt-2 flex max-w-[68ch] items-start gap-1.5 text-[13px] text-text-muted">
           <Download size={12} strokeWidth={1.75} className="mt-0.5 shrink-0" />
           <span>
             {loadFailed
-              ? "Couldn't reach the server to load reports."
-              : "Exports cover every completed report, from all researchers. Slide images aren't included — download a report's PDF for those."}
+              ? "Couldn't reach the server to load reports. Reload the page to try again."
+              : "Exports cover every finalized report, from all researchers. Slide images aren't included — download a report's PDF for those."}
           </span>
         </p>
       </Section>

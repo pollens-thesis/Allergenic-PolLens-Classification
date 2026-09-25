@@ -51,8 +51,20 @@ async function errorMessage(res: Response, fallback: string): Promise<string> {
     | null;
   const first = firstFieldError(body?.errors);
   if (first) return first;
+  // DRF's stock 403 text doesn't say who may make the change.
+  if (res.status === 403) return "Only the researcher who created this report can change it.";
   return typeof body?.detail === "string" ? body.detail : fallback;
 }
+
+/** Field names in the report API, as the researcher sees them on screen. */
+const FIELD_LABELS: Record<string, string> = {
+  location: "Location",
+  collectedAt: "Collection date",
+  researcher: "Researcher",
+  weather: "Weather",
+  slides: "Slides",
+  status: "Status",
+};
 
 function firstFieldError(errors: unknown): string | null {
   if (typeof errors === "string") return errors;
@@ -64,9 +76,10 @@ function firstFieldError(errors: unknown): string | null {
     return null;
   }
   if (errors && typeof errors === "object") {
-    for (const value of Object.values(errors)) {
+    for (const [field, value] of Object.entries(errors)) {
       const found = firstFieldError(value);
-      if (found) return found;
+      // Name the field, so "This field may not be blank." says which one.
+      if (found) return FIELD_LABELS[field] ? `${FIELD_LABELS[field]}: ${found}` : found;
     }
   }
   return null;

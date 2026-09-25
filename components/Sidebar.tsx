@@ -112,7 +112,6 @@ export default function Sidebar() {
   const accountCard = (
     <Link
       href={SETTINGS_HREF}
-      aria-label="Account and settings"
       aria-current={pathname === SETTINGS_HREF ? "page" : undefined}
       onClick={() => setMenuOpen(false)}
       className={`focus-ring group flex items-center gap-2.5 rounded-md px-2 py-2 transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
@@ -127,7 +126,7 @@ export default function Sidebar() {
       </span>
       <div className="min-w-0 flex-1 leading-tight">
         <div className="truncate text-[13px] text-text">{name}</div>
-        <div className="truncate text-[12px] text-text-muted">Account &amp; settings</div>
+        <div className="truncate text-[12px] text-text-muted">Account &amp; Settings</div>
       </div>
       <Settings
         size={15}
@@ -154,7 +153,7 @@ export default function Sidebar() {
         <button
           type="button"
           onClick={() => setMenuOpen(true)}
-          aria-label="Open navigation"
+          aria-label="Open Navigation"
           aria-expanded={menuOpen}
           className="focus-ring flex h-10 w-10 items-center justify-center rounded-md text-text transition-colors duration-[var(--duration-fast)] hover:bg-surface-sunken active:scale-[0.97]"
         >
@@ -168,7 +167,7 @@ export default function Sidebar() {
           <div className="fixed inset-0 z-50 lg:hidden">
             <motion.button
               type="button"
-              aria-label="Close navigation"
+              aria-label="Close Navigation"
               onClick={() => setMenuOpen(false)}
               className="absolute inset-0 h-full w-full bg-black/30 backdrop-blur-sm"
               initial={{ opacity: 0 }}
@@ -194,7 +193,7 @@ export default function Sidebar() {
                   ? { duration: 0 }
                   : { type: "spring", stiffness: 400, damping: 40 }
               }
-              className="absolute inset-y-0 right-0 flex w-[17rem] max-w-[85vw] flex-col justify-between border-l border-border bg-surface px-5 py-5 shadow-xl"
+              className="absolute inset-y-0 right-0 flex w-[17rem] max-w-[85vw] flex-col justify-between border-l border-border bg-surface px-5 py-5"
             >
               <div className="min-h-0 overflow-y-auto">
                 <div className="mb-6 flex items-center justify-between gap-3">
@@ -204,7 +203,7 @@ export default function Sidebar() {
                   <button
                     type="button"
                     onClick={() => setMenuOpen(false)}
-                    aria-label="Close navigation"
+                    aria-label="Close Navigation"
                     className="focus-ring flex h-10 w-10 items-center justify-center rounded-md text-text transition-colors duration-[var(--duration-fast)] hover:bg-surface-sunken active:scale-[0.97]"
                   >
                     <X size={18} strokeWidth={1.75} />

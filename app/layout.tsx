@@ -7,12 +7,12 @@ import "./globals.css";
 // docs/design-system.md): Atkinson Hyperlegible was designed and tested by the
 // Braille Institute to keep easily-confused characters (0/O, 1/l/I, 5/S, 8/B)
 // distinct — which is exactly what sample IDs, species codes and readings are
-// made of. One superfamily for text and data, so the console reads as one
-// system; italic is loaded for scientific names.
+// made of. Scientific names are set in the serif italic, so only the upright
+// Atkinson is loaded. The Latin subset covers Philippine place names (ñ).
 const atkinson = Atkinson_Hyperlegible_Next({
   variable: "--font-atkinson",
-  subsets: ["latin", "latin-ext"],
-  style: ["normal", "italic"],
+  subsets: ["latin"],
+  style: ["normal"],
   // next/font has no metrics for Atkinson to size-match a fallback; name one.
   adjustFontFallback: false,
   fallback: ["system-ui", "Segoe UI", "Arial", "sans-serif"],
@@ -29,8 +29,12 @@ const atkinsonMono = Atkinson_Hyperlegible_Mono({
 // small plate captions are each drawn for their size — the atlas voice.
 const serif = Source_Serif_4({
   variable: "--font-serif",
-  subsets: ["latin", "latin-ext"],
+  subsets: ["latin"],
   style: ["normal", "italic"],
+  // The optical-size axis is what makes one family work from the 3.4rem
+  // sign-in title down to 14px captions.
+  axes: ["opsz"],
+  fallback: ["Georgia", "Cambria", "serif"],
 });
 
 export const metadata: Metadata = {

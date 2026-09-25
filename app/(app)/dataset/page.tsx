@@ -12,7 +12,7 @@ export default function DatasetPage() {
       <PageHeader
         width="medium"
         title="Allergen Reference"
-        description="The full taxonomic scope this console classifies against, with how many grains of each detected across all completed reports."
+        description="The full taxonomic scope this console classifies against, with how many grains of each detected across all finalized reports (Completed or Needs Review)."
       />
       <PageBody width="medium">
         <AllergenReference />

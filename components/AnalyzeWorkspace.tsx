@@ -135,13 +135,13 @@ function WeatherStatusLine({
 }) {
   const when = collectedDate
     ? formatCollectedAt(collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate)
-    : "now";
+    : null;
   let message: React.ReactNode;
   if (status === "loading") {
     message = (
       <>
         <Loader2 size={12} strokeWidth={2} className="animate-spin" />
-        Fetching the weather at {place?.label} for {when}…
+        {when ? `Fetching the weather at ${place?.label} for ${when}…` : `Fetching the current weather at ${place?.label}…`}
       </>
     );
   } else if (status === "failed") {
@@ -153,7 +153,7 @@ function WeatherStatusLine({
   } else if (source === "auto") {
     message = (
       <>
-        <CloudSun size={12} strokeWidth={2} className="text-accent" />
+        <CloudSun size={12} strokeWidth={2} className="text-text-muted" />
         Filled from Open-Meteo for {when}
         {collectedTime ? "" : " (midday — no time set)"}. Edit any field to override.
       </>
@@ -174,7 +174,7 @@ function WeatherStatusLine({
           className="focus-ring inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-accent hover:bg-accent-muted"
         >
           <RefreshCw size={12} strokeWidth={2} />
-          {source === "edited" ? "Replace with Open-Meteo" : "Refresh"}
+          Fill from Open-Meteo
         </button>
       )}
     </div>
@@ -249,8 +249,8 @@ function SpecimenListRow({
               </span>
             )}
             {item.status === "analyzed" && (
-              <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-                {grains} {grains === 1 ? "grain" : "grains"} · {item.detections.length}{" "}
+              <span>
+                {grains.toLocaleString()} {grains === 1 ? "grain" : "grains"} · {item.detections.length}{" "}
                 {item.detections.length === 1 ? "type" : "types"}
               </span>
             )}
@@ -314,6 +314,7 @@ export default function AnalyzeWorkspace() {
 
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const canAnalyze = items.length > 0 && !!collectedDate && !isAnalyzing;
+  const analyzedCount = items.filter((item) => item.analysis).length;
   const failedCount = items.filter((item) => item.status === "failed").length;
   // Every slide has a reading but the batch wasn't stored (the store step failed).
   const allAnalyzed = items.length > 0 && items.every((item) => item.analysis);
@@ -534,8 +535,8 @@ export default function AnalyzeWorkspace() {
       setIsAnalyzing(false);
       const count = failures.length === 1 ? "1 slide" : `${failures.length} slides`;
       setAnalyzeError(
-        `${count} couldn't be analyzed — ${failures[0]} Retry, or remove ${
-          failures.length === 1 ? "it" : "them"
+        `${count} couldn't be analyzed. ${failures[0].replace(/\.?$/, ".")} Select Retry, or remove ${
+          failures.length === 1 ? "that slide" : "those slides"
         } to continue with the rest.`,
       );
       return;
@@ -570,9 +571,9 @@ export default function AnalyzeWorkspace() {
       if (error instanceof SessionExpiredError) return;
       // The readings are kept on each slide, so trying again won't re-run detection.
       setAnalyzeError(
-        `The analysis ran but couldn't be stored — ${
-          error instanceof Error ? error.message : "try again."
-        }`,
+        `All slides were analyzed, but the report couldn't be saved. ${
+          error instanceof Error ? error.message : "Try again."
+        } Your detections are kept here — select Save Report Again.`,
       );
       return;
     }
@@ -588,12 +589,10 @@ export default function AnalyzeWorkspace() {
         <div className="rounded-lg border border-processing/30 bg-processing-bg px-4 py-3">
           <div className="mb-2 flex items-center gap-2">
             <FileText size={15} strokeWidth={1.75} className="shrink-0 text-processing" />
-            <h2 className="text-[13.5px] font-semibold text-text">
-              Pending Analyses{" "}
-              <span className="font-normal text-text-muted">
-                — analyzed but not generated yet ({pendingReports.length})
-              </span>
+            <h2 className="text-[14px] font-semibold text-text">
+              Pending Analyses ({pendingReports.length})
             </h2>
+            <span className="text-[13px] text-text-muted">Analyzed; report not generated yet.</span>
           </div>
           <ul className="flex flex-col divide-y divide-processing/15">
             {pendingReports.map((report) => (
@@ -602,26 +601,28 @@ export default function AnalyzeWorkspace() {
                   <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{report.sampleId}</span>
                   <span className="text-text-muted">
                     {" "}· {report.slides.length} {report.slides.length === 1 ? "slide" : "slides"} ·{" "}
-                    {report.location || "No location yet"} · collected {formatCollectedAt(report.collectedAt)}
+                    {report.location || "No location recorded"} · Collected {formatCollectedAt(report.collectedAt)}
                   </span>
                 </span>
                 <span className="flex shrink-0 items-center gap-1.5">
                   {confirmingDiscard === report.sampleId ? (
                     <>
-                      <span className="text-[12.5px] text-text-muted">Discard it?</span>
+                      <span className="text-[13px] text-text-muted">
+                        Discard analysis {report.sampleId}? Its slide images and detections are deleted for good.
+                      </span>
                       <button
                         type="button"
                         onClick={() => void discardPending(report.sampleId)}
                         className="focus-ring rounded-md border border-danger/30 px-2 py-1 text-[12.5px] text-danger hover:bg-danger-bg"
                       >
-                        Yes, Discard
+                        Discard Analysis
                       </button>
                       <button
                         type="button"
                         onClick={() => setConfirmingDiscard(null)}
                         className="focus-ring rounded-md px-2 py-1 text-[12.5px] text-text-muted hover:text-text"
                       >
-                        Keep
+                        Keep Analysis
                       </button>
                     </>
                   ) : (
@@ -637,7 +638,7 @@ export default function AnalyzeWorkspace() {
                     href={`/upload/result?report=${report.sampleId}`}
                     className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-border-strong bg-surface px-3 py-1 text-[12.5px] text-text transition active:scale-[0.97] hover:bg-surface-sunken"
                   >
-                    Resume
+                    Resume Analysis
                     <ArrowRight size={13} strokeWidth={1.75} />
                   </Link>
                 </span>
@@ -655,7 +656,7 @@ export default function AnalyzeWorkspace() {
           <fieldset disabled={isAnalyzing} className="m-0 min-w-0 border-0 p-0">
           <div className="mb-4 flex items-baseline justify-between gap-3">
             <h2 className="text-lg font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
-              Specimen Images
+              Slide Images
             </h2>
             {items.length > 0 && (
               <button
@@ -698,8 +699,8 @@ export default function AnalyzeWorkspace() {
               <span className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-sunken">
                 <ImagePlus size={20} strokeWidth={1.75} className="text-text-muted" />
               </span>
-              <span className="text-[13.5px] text-text-muted">
-                Drag and drop microscope images, or click to browse
+              <span className="text-[14px] text-text-muted">
+                Drop slide images here, or select to browse
               </span>
               <span className="text-[12.5px] text-text-muted">
                 JPG or PNG, up to {MAX_IMAGE_MB} MB each. Select several to analyze a batch.
@@ -750,13 +751,15 @@ export default function AnalyzeWorkspace() {
               Collection Details
             </h3>
             <p className="mb-2.5 text-[12.5px] text-text-muted">
-              When and where the batch was collected — applies to every specimen in it. You can
+              When and where the batch was collected — applies to every slide in it. You can
               still correct any of it on the next page before generating the report.
             </p>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="block">
-                <span className="mb-1 block text-[12.5px] text-text-muted">Location</span>
+                <span className="mb-1 block text-[12.5px] text-text-muted">
+                  Location <span className="text-text-faint">(needed to generate the report)</span>
+                </span>
                 <LocationSearch
                   value={location}
                   onChange={handleLocationChange}
@@ -827,7 +830,7 @@ export default function AnalyzeWorkspace() {
                 </select>
               </label>
               <MeasurementField
-                label="Temp (°C)"
+                label="Temperature (°C)"
                 value={weather.temperatureC}
                 onChange={(next) => updateWeather("temperatureC", next)}
               />
@@ -849,7 +852,7 @@ export default function AnalyzeWorkspace() {
           </fieldset>
 
           {uploadError && (
-            <p role="alert" className="mt-3 flex items-start gap-2 text-[12.5px] text-danger">
+            <p role="alert" className="t-prose mt-3 flex items-start gap-2 text-danger">
               <TriangleAlert size={13} strokeWidth={2} className="mt-px shrink-0" />
               {uploadError}
             </p>
@@ -858,7 +861,7 @@ export default function AnalyzeWorkspace() {
           {analyzeError && (
             <p
               role="alert"
-              className="mt-5 flex items-start gap-2 rounded-md border border-danger/30 bg-danger-bg px-3 py-2.5 text-[12.5px] text-danger"
+              className="mt-5 flex items-start gap-2 rounded-md border border-danger/30 bg-danger-bg px-3 py-2.5 text-[13.5px] leading-relaxed text-danger"
             >
               <TriangleAlert size={14} strokeWidth={2} className="mt-px shrink-0" />
               {analyzeError}
@@ -875,42 +878,42 @@ export default function AnalyzeWorkspace() {
             {isAnalyzing ? (
               <>
                 <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
-                Analyzing…
+                {analyzedCount < items.length
+                  ? `Analyzing Slide ${analyzedCount + 1} of ${items.length}…`
+                  : "Saving Report…"}
               </>
             ) : (
               <>
                 <Microscope size={16} strokeWidth={1.75} />
                 {allAnalyzed
-                  ? "Try Storing Again"
+                  ? "Save Report Again"
                   : failedCount > 0
                   ? failedCount === 1
                     ? "Retry Failed Slide"
                     : `Retry ${failedCount} Failed Slides`
                   : items.length > 1
-                    ? `Analyze ${items.length} Specimens`
-                    : "Analyze Specimen"}
+                    ? `Analyze ${items.length} Slides`
+                    : "Analyze Slide"}
               </>
             )}
           </Button>
 
-          <p className="mt-2 text-center text-[12.5px] text-text-muted">
-            The results open on their own page, where you add notes and generate the report.
+          <p className="mt-2 text-center text-[13px] text-text-muted">
+            Each slide is analyzed separately; the batch is saved as one report you review on the
+            next page, where you add notes and generate it.
           </p>
         </div>
 
         {/* Right: what is about to be analyzed */}
         <div className="rounded-lg border border-border bg-surface p-5 xl:col-span-2">
-          <h2 className="mb-4 text-lg font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
+          <h2 className="t-plate-title mb-4 text-text">
             Preview
           </h2>
 
           {!selected ? (
             <div className="flex flex-col items-center justify-center gap-2 rounded-lg bg-surface-sunken px-6 py-14 text-center">
               <Microscope size={22} strokeWidth={1.5} className="text-text-faint" />
-              <p className="text-[13px] text-text-muted">
-                Upload one or more microscope images. Pick a slide from the list to see it here
-                before the analysis runs.
-              </p>
+              <p className="text-[14px] text-text-muted">Select a slide to preview it here.</p>
             </div>
           ) : (
             <div>
@@ -924,7 +927,7 @@ export default function AnalyzeWorkspace() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={selected.imageUrl}
-                    alt={`Specimen ${selected.file.name}`}
+                    alt={`Slide image ${selected.file.name}`}
                     className="max-h-64 w-full object-contain"
                   />
                   <span className="absolute top-2 right-2 inline-flex items-center gap-1.5 rounded border border-white/20 bg-black/60 px-2 py-1 text-[12px] text-white opacity-90 group-hover:opacity-100">
@@ -956,10 +959,6 @@ export default function AnalyzeWorkspace() {
                 </div>
               </dl>
 
-              <p className="mt-4 rounded-md bg-surface-sunken px-3 py-2.5 text-[12.5px] text-text-muted">
-                Each slide is counted and identified separately, then the whole batch is stored as a
-                single report.
-              </p>
             </div>
           )}
         </div>

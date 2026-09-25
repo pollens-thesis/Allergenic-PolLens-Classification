@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Check,
   CloudOff,
   CloudSun,
@@ -21,7 +20,6 @@ import {
   getTotalGrains,
   getWeightedAvgConfidence,
   sortByAbundance,
-  speciesLabel,
   weatherConditionOptions,
   type SpeciesId,
   type Specimen,
@@ -39,6 +37,8 @@ import SpecimenInspector from "@/components/SpecimenInspector";
 import LocationSearch, { findPlace, loadPlaces, type Place } from "@/components/LocationSearch";
 import { fetchWeather } from "@/lib/analysis";
 import RiskBadge from "@/components/RiskBadge";
+import SummaryTile from "@/components/SummaryTile";
+import SpeciesName from "@/components/SpeciesName";
 import StatusBadge from "@/components/StatusBadge";
 import { overlayColor, overlayColors, type OverlayColors } from "@/lib/slide-colors";
 import { Button } from "@/components/Button";
@@ -108,7 +108,7 @@ function DetectionRow({
                   {species.scientificName}
                 </span>
                 <span
-                  className="shrink-0 text-[11.5px] tracking-wider text-text-muted"
+                  className="shrink-0 text-[12px] tracking-wider text-text-muted"
                   style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
                 >
                   {species.code}
@@ -173,17 +173,6 @@ function MeasurementField({
         className={fieldClass}
       />
     </label>
-  );
-}
-
-function SummaryTile({ value, label }: { value: string | number; label: string }) {
-  return (
-    <div>
-      <div className="text-[17px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-        {value}
-      </div>
-      <div className="text-[12px] text-text-muted">{label}</div>
-    </div>
   );
 }
 
@@ -443,7 +432,7 @@ export default function AnalysisResultWorkspace({
       toast.error(error instanceof Error ? error.message : "Couldn't discard the analysis.");
       return;
     }
-    toast.success("Analysis discarded");
+    toast.success(report ? `Analysis ${report.sampleId} discarded` : "Analysis discarded");
     router.push("/upload");
   }
 
@@ -451,7 +440,7 @@ export default function AnalysisResultWorkspace({
     return (
       <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-16 text-center">
         <CloudOff size={22} strokeWidth={1.5} className="text-text-faint" />
-        <p className="text-[13.5px] text-text-muted">{loadError}</p>
+        <p className="t-prose text-text-muted">{loadError}</p>
         <Button type="button" intent="secondary" size="sm" onClick={() => window.location.reload()}>
           Try Again
         </Button>
@@ -472,8 +461,10 @@ export default function AnalysisResultWorkspace({
     return (
       <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-16 text-center">
         <Microscope size={22} strokeWidth={1.5} className="text-text-faint" />
-        <p className="text-[13.5px] text-text-muted">
-          There is no pending analysis here. Run one from Analyze Specimen, or open a report.
+        <p className="t-prose text-text-muted">
+          {sampleId
+            ? `Analysis ${sampleId} wasn't found — it may have been discarded, or its report already generated.`
+            : "No analysis selected. Run one from Analyze Specimen, or open a report."}
         </p>
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Link
@@ -481,13 +472,13 @@ export default function AnalysisResultWorkspace({
             className="focus-ring inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-accent-fg transition active:scale-[0.97] hover:bg-[var(--accent-hover)]"
           >
             <Microscope size={14} strokeWidth={1.75} />
-            Analyze a Specimen
+            Analyze Slides
           </Link>
           <Link
             href="/reports"
             className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 text-[13px] text-text-muted transition active:scale-[0.97] hover:text-text"
           >
-            Reports
+            Open Reports
           </Link>
         </div>
       </div>
@@ -503,6 +494,12 @@ export default function AnalysisResultWorkspace({
   // One palette for the whole batch: a type keeps its colour on every slide.
   const colors = overlayColors(aggregateSlideDetections(report.slides));
   const canGenerate = Boolean(collectedDate) && location.trim() !== "" && !isGenerating;
+  // Said beside the disabled button, not only further down in Collection Details.
+  const generateBlocker = !collectedDate
+    ? "Add the collection date to generate the report."
+    : location.trim() === ""
+      ? "Add a location to generate the report."
+      : null;
   const top = aggregateSlideDetections(report.slides)[0];
 
   const generateButton = (size: "sm" | "md") => (
@@ -517,7 +514,7 @@ export default function AnalysisResultWorkspace({
       {isGenerating ? (
         <>
           <Loader2 size={15} strokeWidth={1.75} className="animate-spin" />
-          Generating…
+          Generating Report…
         </>
       ) : (
         <>
@@ -542,7 +539,7 @@ export default function AnalysisResultWorkspace({
       <div className="rounded-lg border border-border bg-surface p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0 flex-1">
-            <h2 className="text-2xl font-semibold tracking-tight text-text">
+            <h2 className="text-2xl font-semibold tracking-tight text-text lining-nums">
               {report.slides.length === 1 ? "1 Slide Analyzed" : `${report.slides.length} Slides Analyzed`}
             </h2>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -553,7 +550,11 @@ export default function AnalysisResultWorkspace({
             </div>
             <p className="mt-1 text-[13px] text-text-muted">
               {batchGrains} {batchGrains === 1 ? "grain" : "grains"} counted across the batch
-              {top ? ` · mostly ${speciesLabel(findSpecies(speciesCatalog, top.speciesId))}` : ""}
+              {top && (
+                <>
+                  {" "}· mostly <SpeciesName species={findSpecies(speciesCatalog, top.speciesId)} />
+                </>
+              )}
             </p>
             <p className="mt-1.5 flex items-center gap-1.5 text-[12px] text-text-faint" aria-live="polite">
               {saveState === "saving" && (
@@ -566,29 +567,35 @@ export default function AnalysisResultWorkspace({
                   <Check size={11} strokeWidth={2} /> All changes saved
                 </>
               )}
-              {saveState === "failed" && <span className="text-danger">{saveError}</span>}
-              {saveState === "idle" && "Stored on the server — you can resume it later from Analyze."}
+              {saveState === "failed" && (
+                <span className="text-danger">Changes not saved — {saveError} Edit any field to try again.</span>
+              )}
+              {saveState === "idle" && "Saved as Pending — resume it any time from Analyze Specimen."}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 md:max-w-[50%] md:shrink-0 md:justify-end">
             {confirmingDiscard ? (
               <>
-                <span className="text-[13px] text-text-muted">Discard this analysis?</span>
+                <span className="text-[13px] text-text-muted">
+                  Discard analysis {report.sampleId}? Its {report.slides.length}{" "}
+                  {report.slides.length === 1 ? "slide image" : "slide images"}, detections and notes are deleted
+                  for good.
+                </span>
                 <button
                   type="button"
                   onClick={handleDiscard}
                   disabled={isDiscarding}
                   className="focus-ring rounded-md border border-danger/30 bg-surface px-3 py-2 text-[13px] font-medium text-danger transition active:scale-[0.97] hover:bg-danger-bg"
                 >
-                  Yes, Discard
+                  Discard Analysis
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmingDiscard(false)}
                   className="focus-ring rounded-md px-2 py-2 text-[13px] text-text-muted transition active:scale-[0.97] hover:text-text"
                 >
-                  Keep It
+                  Keep Analysis
                 </button>
               </>
             ) : (
@@ -641,7 +648,7 @@ export default function AnalysisResultWorkspace({
           {/* The slide itself leads: it is what every number below is read against. */}
           <div className="rounded-lg border border-border bg-surface p-5 xl:sticky xl:top-48">
             <div className="mb-4 flex items-baseline justify-between gap-3">
-              <h3 className="text-lg font-semibold tracking-tight text-text">Specimen Image</h3>
+              <h3 className="t-plate-title text-text">Slide Image</h3>
               {/* The slide's plate number, as an atlas numbers its figures. */}
               <span className="plate-label text-[15px]">
                 Slide {slideIndex + 1}
@@ -665,7 +672,7 @@ export default function AnalysisResultWorkspace({
                   {detections[0] && (
                     <>
                       {" "}· mostly{" "}
-                      <i>{findSpecies(speciesCatalog, detections[0].speciesId).scientificName}</i>
+                      <SpeciesName species={findSpecies(speciesCatalog, detections[0].speciesId)} commonName={false} />
                     </>
                   )}
                 </>
@@ -692,7 +699,7 @@ export default function AnalysisResultWorkspace({
           <div className="flex min-w-0 flex-col gap-6">
             <div className="rounded-lg border border-border bg-surface p-5">
               <div className="mb-4 flex items-baseline justify-between gap-3">
-                <h3 className="text-lg font-semibold tracking-tight text-text">Pollen Detected</h3>
+                <h3 className="t-plate-title text-text">Pollen Detected</h3>
                 {report.slides.length > 1 && (
                   <span className="plate-label text-[15px]">Slide {slideIndex + 1}</span>
                 )}
@@ -706,7 +713,7 @@ export default function AnalysisResultWorkspace({
 
               {detections.length === 0 ? (
                 <p className="rounded-md border border-border bg-surface px-3 py-4 text-center text-[13px] text-text-muted">
-                  Nothing detected on this slide — no pollen grains were found.
+                  No pollen grains detected on this slide.
                 </p>
               ) : (
                 <>
@@ -729,7 +736,7 @@ export default function AnalysisResultWorkspace({
             </div>
 
             <div className="rounded-lg border border-border bg-surface p-5">
-              <h3 className="mb-1 text-lg font-semibold tracking-tight text-text">Notes</h3>
+              <h3 id="slide-note-heading" className="t-plate-title mb-1 text-text">Slide Note</h3>
               <p className="mb-2.5 text-[12.5px] text-text-muted">
                 Recorded against this slide
                 {report.slides.length > 1 ? " only — each slide keeps its own note." : "."}
@@ -742,6 +749,7 @@ export default function AnalysisResultWorkspace({
                   setNotes((current) => ({ ...current, [selected.id]: text }));
                   edit({ notes: { [selected.id]: text } });
                 }}
+                aria-labelledby="slide-note-heading"
                 placeholder="Slide preparation, staining, obscured grains, anything unusual…"
                 className={`${fieldClass} resize-y`}
               />
@@ -752,7 +760,7 @@ export default function AnalysisResultWorkspace({
 
       {/* The details entered on Analyze, still editable until the report is generated. */}
       <div className="rounded-lg border border-border bg-surface p-5">
-        <h3 className="text-lg font-semibold tracking-tight text-text">Collection Details</h3>
+        <h3 className="t-plate-title text-text">Collection Details</h3>
         <p className="mt-0.5 mb-4 text-[13px] text-text-muted">
           What you entered before analyzing — correct anything here; changes save as you go.
         </p>
@@ -808,9 +816,9 @@ export default function AnalysisResultWorkspace({
         </div>
 
         {!collectedDate ? (
-          <p className="mt-2 text-[12.5px] text-danger">Set the collection date before generating the report.</p>
+          <p className="mt-2 text-[13px] text-danger">Add the collection date to generate the report.</p>
         ) : !location.trim() ? (
-          <p className="mt-2 text-[12.5px] text-danger">Set the location before generating the report.</p>
+          <p className="mt-2 text-[13px] text-danger">Add a location to generate the report.</p>
         ) : (
           <p className="mt-2 text-[12.5px] text-text-muted">
             Collected {formatCollectedAt(collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate)}
@@ -854,7 +862,7 @@ export default function AnalysisResultWorkspace({
                   ))}
                 </select>
               </label>
-              <MeasurementField label="Temp (°C)" value={weather.temperatureC} onChange={(next) => updateWeather("temperatureC", next)} />
+              <MeasurementField label="Temperature (°C)" value={weather.temperatureC} onChange={(next) => updateWeather("temperatureC", next)} />
               <MeasurementField
                 label="Humidity (%)"
                 value={weather.humidityPct}
@@ -871,17 +879,14 @@ export default function AnalysisResultWorkspace({
               className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[13px] text-text-muted hover:border-border-strong hover:text-text"
             >
               <Plus size={13} strokeWidth={2} />
-              Add Conditions
+              Add Weather
             </button>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Link href="/upload" className="focus-ring inline-flex items-center gap-1.5 rounded text-[13px] text-text-muted transition hover:text-text">
-          <ArrowLeft size={14} strokeWidth={1.75} />
-          Back to Analyze Specimen
-        </Link>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+        {generateBlocker && <p className="text-[13px] text-text-muted">{generateBlocker}</p>}
         {generateButton("md")}
       </div>
     </div>

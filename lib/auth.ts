@@ -74,7 +74,7 @@ export async function exchangeMicrosoftIdToken(
   const tokens = (await res.json()) as GoogleTokenPair;
   const claims = decodeJwtPayload(idToken);
   const email = typeof claims.preferred_username === "string" ? claims.preferred_username.toLowerCase() : "";
-  if (!email) throw new GoogleSignInError("Microsoft did not return a sign-in name.");
+  if (!email) throw new GoogleSignInError("Microsoft didn't share your account's email. Try again, or use Google.");
   const name = typeof claims.name === "string" ? claims.name.trim() : "";
   return { email, name, tokens };
 }

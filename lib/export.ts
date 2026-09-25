@@ -74,6 +74,7 @@ type Value = string | number | null;
 const DETECTION_COLUMNS = [
   "sample_id",
   "status",
+  "sample_detections",
   "collection_date",
   "collection_time",
   "location",
@@ -107,6 +108,7 @@ function detectionRows(reports: Specimen[]): Value[][] {
       const shared: Value[] = [
         report.sampleId,
         report.status,
+        report.sampleDetections ? "true" : "false",
         getCollectionDate(report.collectedAt),
         getCollectionTime(report.collectedAt),
         report.location,
@@ -169,6 +171,7 @@ export function exportReportsCsv(reports: Specimen[]): void {
 const REPORT_COLUMNS = [
   "Sample ID",
   "Status",
+  "Sample Detections",
   "Collection Date",
   "Collection Time",
   "Location",
@@ -190,7 +193,8 @@ function reportRows(reports: Specimen[]): Value[][] {
     const top = getTopDetection(detections);
     return [
       report.sampleId,
-      report.status,
+      report.status === "Needs review" ? "Needs Review" : report.status,
+      report.sampleDetections ? "Yes" : "No",
       getCollectionDate(report.collectedAt),
       getCollectionTime(report.collectedAt),
       report.location,

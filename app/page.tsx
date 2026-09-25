@@ -33,13 +33,13 @@ export default function LoginPage() {
             style={{ fontFamily: "var(--font-display)" }}
           >
             Every grain,{" "}
-            <span className="text-[var(--hero-grain-soft)]">read</span> and
+            <em className="t-binomial font-semibold">read</em> and
             classified.
           </h1>
           <p className="mt-5 max-w-md text-[15px] leading-relaxed text-hero-fg-muted">
             PolLens helps researchers identify airborne pollen allergens from
             microscope imagery, using a Roboflow-trained detection model.
-            Sign in to classify specimens, review model calls, and build a
+            Sign in to classify slides, review detections, and build a
             dataset that supports future allergen studies.
           </p>
         </div>
@@ -74,7 +74,7 @@ export default function LoginPage() {
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-text-muted">
               Sign in with the Google or Microsoft account your institution
-              works from. The console greets you by that account&apos;s name.
+              works from.
             </p>
           </div>
 

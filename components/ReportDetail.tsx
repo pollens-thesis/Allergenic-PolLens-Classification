@@ -49,8 +49,10 @@ import {
 import { exportReportsXlsx } from "@/lib/export";
 import { SessionExpiredError } from "@/lib/api";
 import RiskBadge from "@/components/RiskBadge";
+import SummaryTile from "@/components/SummaryTile";
+import SpeciesName from "@/components/SpeciesName";
 import { downloadReportPdf } from "@/lib/pdf";
-import StatusBadge from "@/components/StatusBadge";
+import StatusBadge, { SampleBadge } from "@/components/StatusBadge";
 import SpecimenImageViewer from "@/components/SpecimenImageViewer";
 import SpecimenInspector from "@/components/SpecimenInspector";
 import { overlayColor, overlayColors, type OverlayColors } from "@/lib/slide-colors";
@@ -100,7 +102,7 @@ function DetectionRow({
             {species.scientificName}
           </span>
           <span
-            className="text-[11.5px] tracking-wider text-text-muted"
+            className="text-[12px] tracking-wider text-text-muted"
             style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
           >
             {species.code}
@@ -116,15 +118,15 @@ function DetectionRow({
             className="text-[14px] text-text"
             style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
           >
-            {detection.grainCount}
+            {detection.grainCount.toLocaleString()}
           </span>
-          <span className="ml-1 text-[11.5px] text-text-faint sm:ml-0 sm:block">
+          <span className="ml-1 text-[12px] text-text-muted sm:ml-0 sm:block">
             {detection.grainCount === 1 ? "grain" : "grains"}
           </span>
         </div>
         <div className="w-24 flex-1 sm:flex-none">
-          <div className="mb-1 flex items-center justify-between text-[11.5px] text-text-muted">
-            <span>conf.</span>
+          <div className="mb-1 flex items-center justify-between text-[12px] text-text-muted">
+            <span>Confidence</span>
             <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{confidencePct}%</span>
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-sunken">
@@ -180,17 +182,6 @@ function MetaItem({
   );
 }
 
-function SummaryTile({ value, label }: { value: string | number; label: string }) {
-  return (
-    <div>
-      <div className="text-[17px] text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-        {value}
-      </div>
-      <div className="text-[12px] text-text-muted">{label}</div>
-    </div>
-  );
-}
-
 export default function ReportDetail({ sampleId }: { sampleId: string }) {
   const [report, setReport] = useState<Specimen | null | undefined>(undefined);
   const speciesCatalog = useSpeciesCatalog();
@@ -235,7 +226,9 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
     setChanging(true);
     try {
       setReport(await updateReport(report.sampleId, { status }));
-      toast.success(status === "Completed" ? "Marked as completed" : "Flagged for review");
+      toast.success(
+        status === "Completed" ? `Report ${report.sampleId} marked Completed` : `Report ${report.sampleId} flagged Needs Review`,
+      );
     } catch (error) {
       if (!(error instanceof SessionExpiredError)) {
         toast.error(error instanceof Error ? error.message : "Couldn't change the status.");
@@ -279,7 +272,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
         );
       }
     } catch {
-      toast.error("Couldn't build the PDF.");
+      toast.error("Couldn't build the PDF. Try again.");
     } finally {
       setDownloading(null);
     }
@@ -291,7 +284,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
     try {
       await exportReportsXlsx([report], `${report.sampleId}.xlsx`);
     } catch {
-      toast.error("Couldn't build the Excel file.");
+      toast.error("Couldn't build the Excel file. Try again.");
     } finally {
       setDownloading(null);
     }
@@ -301,7 +294,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-16 text-center">
         <CloudOff size={22} strokeWidth={1.5} className="text-text-faint" />
-        <p className="text-[13.5px] text-text-muted">{loadError}</p>
+        <p className="t-prose text-text-muted">{loadError}</p>
         <Button type="button" intent="secondary" size="sm" onClick={() => window.location.reload()}>
           Try Again
         </Button>
@@ -322,7 +315,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-16 text-center">
         <FileText size={22} strokeWidth={1.5} className="text-text-faint" />
-        <p className="text-[13.5px] text-text-muted">
+        <p className="t-prose text-text-muted">
           No report found for{" "}
           <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{sampleId}</span>.
         </p>
@@ -348,7 +341,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
   return (
     <div className="flex flex-col gap-6">
       {report.sampleDetections && (
-        <p className="flex items-start gap-2 rounded-md border border-processing/30 bg-processing-bg px-3 py-2.5 text-[12.5px] text-processing">
+        <p className="flex items-start gap-2 rounded-md border border-processing/30 bg-processing-bg px-3 py-2.5 text-[13.5px] leading-relaxed text-processing">
           <FlaskConical size={14} strokeWidth={2} className="mt-px shrink-0" />
           Sample detections — this report was analyzed while the trained model wasn&apos;t
           deployed, so its counts are the server&apos;s built-in example reading, not results.
@@ -358,11 +351,12 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
       <div className="rounded-lg border border-border bg-surface p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0 flex-1">
-            <h2 className="text-2xl font-semibold text-text">
-              {report.location || "Location not recorded"}
+            <h2 className="text-2xl font-semibold tracking-tight text-text">
+              {report.location || "No location recorded"}
             </h2>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <StatusBadge status={report.status} />
+              {report.sampleDetections && <SampleBadge />}
               <span className="text-[12.5px] text-text-muted">
                 Analyzed {new Date(report.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </span>
@@ -402,17 +396,17 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                 <AlertDialog.Portal>
                   <AlertDialog.Backdrop className="fixed inset-0 z-40 bg-black/40 transition-opacity duration-[var(--duration-base)] ease-[var(--ease-out)] data-[starting-style]:opacity-0 data-[ending-style]:opacity-0" />
                   <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-50 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-surface p-5 shadow-lg outline-none transition-all duration-[var(--duration-base)] ease-[var(--ease-out)] data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0">
-                    <AlertDialog.Title className="text-[15px] font-medium text-text">
+                    <AlertDialog.Title className="t-plate-title text-text">
                       Delete report {report.sampleId}?
                     </AlertDialog.Title>
-                    <AlertDialog.Description className="mt-2 text-[13px] leading-relaxed text-text-muted">
+                    <AlertDialog.Description className="t-prose mt-2 text-text-muted">
                       This permanently deletes the report and its {report.slides.length}{" "}
                       {report.slides.length === 1 ? "slide image" : "slide images"} for every
                       researcher. It can&apos;t be undone.
                     </AlertDialog.Description>
                     <div className="mt-4 flex justify-end gap-2">
                       <AlertDialog.Close className="focus-ring rounded-md border border-border bg-surface px-3 py-1.5 text-[13px] text-text-muted hover:text-text">
-                        Cancel
+                        Keep Report
                       </AlertDialog.Close>
                       <Button type="button" intent="destructive" size="sm" disabled={changing} onClick={handleDelete}>
                         <Trash2 size={13} strokeWidth={1.75} />
@@ -429,7 +423,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
               ) : (
                 <FileSpreadsheet size={14} strokeWidth={1.75} />
               )}
-              Excel
+              Export Excel
             </Button>
             <Button type="button" size="sm" intent="accent" onClick={handleDownloadPdf} disabled={downloading !== null}>
               {downloading === "pdf" ? (
@@ -450,8 +444,8 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
 
       {/* Combined results */}
       <div className="rounded-lg border border-border bg-surface p-5">
-        <h3 className="mb-4 text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-          Results
+        <h3 className="t-plate-title mb-4 text-text">
+          Detections
         </h3>
 
         <div className="mb-4 grid grid-cols-2 gap-3 rounded-md bg-surface-sunken px-3 py-3 text-center sm:grid-cols-4">
@@ -479,7 +473,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
 
       {/* Everything the researcher entered on the Analyze screen. */}
       <div className="rounded-lg border border-border bg-surface p-5">
-        <h3 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+        <h3 className="t-plate-title text-text">
           Collection Details
         </h3>
         <p className="mt-0.5 mb-4 text-[13px] text-text-muted">
@@ -500,7 +494,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
             label="Time Collected"
             value={collectionTime ? formatTime(collectionTime) : "Not recorded"}
           />
-          <MetaItem icon={MapPin} label="Location" value={report.location || "Not specified"} />
+          <MetaItem icon={MapPin} label="Location" value={report.location || "No location recorded"} />
           <MetaItem icon={User} label="Researcher" value={report.researcher} />
         </div>
 
@@ -530,8 +524,8 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
 
       {/* Per slide: its reading on the left, the boxed image on the right */}
       <div className="rounded-lg border border-border bg-surface p-5">
-        <h3 className="mb-1 text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-          Specimen Images
+        <h3 className="t-plate-title mb-1 text-text">
+          Slide Images
         </h3>
         <p className="mb-4 text-[13px] text-text-muted">
           {report.slides.length === 1
@@ -550,7 +544,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
             return (
               <div key={slide.id} className="border-t border-border pt-5 first:border-t-0 first:pt-0">
                 <div className="mb-3 flex flex-wrap items-center gap-3 text-[13px]">
-                  <span className="plate-label text-[16px]">Slide {index + 1}</span>
+                  <span className="plate-label text-[15px]">Slide {index + 1}</span>
                   <span className="flex items-center gap-1.5 text-text-muted">
                     <Microscope size={13} strokeWidth={1.75} className="text-text-faint" />
                     {slideGrains} {slideGrains === 1 ? "grain" : "grains"} ·{" "}
@@ -562,7 +556,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                 <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
                   <div className="min-w-0">
                     {slide.detections.length === 0 ? (
-                      <p className="text-[13px] text-text-muted">No pollen grains detected.</p>
+                      <p className="text-[14px] text-text-muted">No pollen grains detected on this slide.</p>
                     ) : (
                       <ul className="flex flex-col gap-2">
                         {slide.detections.map((detection) => (
@@ -588,12 +582,12 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                         className="caption-label text-[14.5px] mb-1"
                         
                       >
-                        Researcher&apos;s Note
+                        Slide Note
                       </div>
                       {slide.notes ? (
-                        <p className="text-[13px] whitespace-pre-wrap text-text">{slide.notes}</p>
+                        <p className="t-prose whitespace-pre-wrap text-text">{slide.notes}</p>
                       ) : (
-                        <p className="text-[13px] text-text-muted">No note recorded.</p>
+                        <p className="text-[14px] text-text-muted">No note recorded.</p>
                       )}
                     </div>
                   </div>
@@ -618,7 +612,10 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                           {slide.detections[0] && (
                             <>
                               {" "}· mostly{" "}
-                              <i>{findSpecies(speciesCatalog, slide.detections[0].speciesId).scientificName}</i>
+                              <SpeciesName
+                                species={findSpecies(speciesCatalog, slide.detections[0].speciesId)}
+                                commonName={false}
+                              />
                             </>
                           )}
                         </>

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowRight, CloudOff, Loader2 } from "lucide-react";
 import { formatCollectedAt, toReportRow, type Specimen } from "@/lib/data";
 import { listReports } from "@/lib/store";
-import StatusBadge from "@/components/StatusBadge";
+import StatusBadge, { SampleBadge } from "@/components/StatusBadge";
 
 const RECENT_COUNT = 5;
 
@@ -37,7 +37,7 @@ export default function DashboardRecentReports() {
   return (
     <div className="rounded-lg border border-border bg-surface p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+        <h2 className="t-plate-title text-text">
           Recent Reports
         </h2>
         <Link
@@ -50,19 +50,34 @@ export default function DashboardRecentReports() {
       </div>
 
       {error ? (
-        <p className="flex items-center justify-center gap-2 py-10 text-center text-[13px] text-text-muted">
-          <CloudOff size={15} strokeWidth={1.75} className="shrink-0 text-text-faint" />
-          {error}
-        </p>
+        <div className="flex flex-col items-center gap-3 py-10 text-center">
+          <p className="flex items-center gap-2 text-[14px] text-text-muted">
+            <CloudOff size={15} strokeWidth={1.75} className="shrink-0 text-text-faint" />
+            {error}
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="focus-ring rounded-md border border-border bg-surface px-3 py-1.5 text-[13px] text-text transition hover:bg-surface-sunken"
+          >
+            Try Again
+          </button>
+        </div>
       ) : reports === null ? (
         <div className="flex items-center justify-center gap-2 py-10 text-[13px] text-text-muted">
           <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
           Loading reports…
         </div>
       ) : reports.length === 0 ? (
-        <p className="py-10 text-center text-[13px] text-text-muted">
-          No reports yet — analyze a specimen to create one.
-        </p>
+        <div className="flex flex-col items-center gap-3 py-10 text-center">
+          <p className="text-[14px] text-text-muted">No reports yet — analyze slides to create one.</p>
+          <Link
+            href="/upload"
+            className="focus-ring rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-accent-fg transition hover:bg-[var(--accent-hover)]"
+          >
+            Analyze Slides
+          </Link>
+        </div>
       ) : (
         <ul className="flex flex-col divide-y divide-border">
           {reports.slice(0, RECENT_COUNT).map((specimen) => {
@@ -81,12 +96,15 @@ export default function DashboardRecentReports() {
                     >
                       {row.sampleId}
                     </span>
-                    <span className="mt-0.5 block truncate text-[12.5px] text-text-muted">
-                      {row.location || "No location yet"}
+                    <span className="mt-0.5 block truncate text-[13px] text-text-muted">
+                      {row.location || "No location recorded"}
                       <span className="text-text-faint"> · {formatCollectedAt(row.collectedAt)}</span>
                     </span>
                   </div>
-                  <StatusBadge status={row.status} />
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    {row.sampleDetections && <SampleBadge />}
+                    <StatusBadge status={row.status} />
+                  </span>
                 </Link>
               </li>
             );

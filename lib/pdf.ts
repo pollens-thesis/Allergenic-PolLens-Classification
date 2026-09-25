@@ -88,6 +88,11 @@ function rule(cursor: Cursor) {
   cursor.y += 5;
 }
 
+/** Status as the app shows it ("Needs Review", not the stored "Needs review"). */
+function statusLabel(status: Specimen["status"]): string {
+  return status === "Needs review" ? "Needs Review" : status;
+}
+
 function heading(cursor: Cursor, text: string) {
   ensureSpace(cursor, 16);
   cursor.doc.setFont("helvetica", "bold");
@@ -128,7 +133,7 @@ function masthead(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor("#8fa396");
-  doc.text("POLLENS  ·  RESEARCH CONSOLE", MARGIN, 10);
+  doc.text("PolLens  ·  Research Console", MARGIN, 10);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
@@ -448,7 +453,7 @@ function placeSlideImage(
   doc.setTextColor(MUTED);
   doc.text(
     grains && grains.length > 0
-      ? `${grains.length} ${grains.length === 1 ? "grain" : "grains"} boxed, coloured by pollen type`
+      ? `${grains.length} ${grains.length === 1 ? "grain" : "grains"} boxed, colored by pollen type`
       : "Grain positions were not recorded for this slide",
     x,
     cursor.y,
@@ -505,10 +510,11 @@ export async function downloadReportPdf(
   const weather = report.weather;
 
   masthead(cursor, {
-    title: "Specimen Report",
+    title: "Pollen Count Report",
     rightTop: report.sampleId,
-    rightBottom: report.status,
+    rightBottom: statusLabel(report.status),
   });
+  if (report.sampleDetections) paragraph(cursor, "Sample detections — analyzed before the trained model was deployed, so these counts are the server's built-in example reading, not results.", true);
 
   // --- At a glance --------------------------------------------------------
   summaryTiles(cursor, [
@@ -524,13 +530,13 @@ export async function downloadReportPdf(
   metaGrid(cursor, [
     ["Date Collected", shortDate(report.collectedAt)],
     ["Time Collected", collectionTime ? formatTime(collectionTime) : "Not recorded"],
-    ["Location", report.location || "Not specified"],
+    ["Location", report.location || "No location recorded"],
     ["Researcher", report.researcher],
     ["Weather", weather ? weather.condition : "Not recorded"],
     ["Temperature", weather?.temperatureC != null ? `${weather.temperatureC}°C` : "—"],
     ["Humidity", weather?.humidityPct != null ? `${weather.humidityPct}% RH` : "—"],
     ["Wind", weather?.windKph != null ? `${weather.windKph} km/h` : "—"],
-    ["Status", report.status],
+    ["Status", statusLabel(report.status)],
     [
       "Slides",
       `${report.slides.length} ${report.slides.length === 1 ? "slide" : "slides"} in this report`,
@@ -538,7 +544,7 @@ export async function downloadReportPdf(
   ]);
 
   // --- Combined results ---------------------------------------------------
-  heading(cursor, "Results — Whole Report");
+  heading(cursor, "Detections — Whole Report");
   if (top) {
     const species = getSpecies(top.speciesId);
     paragraph(
@@ -690,7 +696,7 @@ export async function downloadSelectionReportPdf({
     // first would misrepresent the rest.
     title: places.length === 1 ? places[0].label : "Selected Reports",
     scopeLabel: `${reports.length} ${reports.length === 1 ? "report" : "reports"}`,
-    selectionNote: `Chosen from the report list${span}. Each report's slides, images and notes are in its own specimen PDF.`,
+    selectionNote: `Chosen from the report list${span}. Each report's slides, images and notes are in its own report PDF.`,
     speciesLabel: "All Pollen",
     places,
     reports,
@@ -857,6 +863,14 @@ export async function downloadLocationReportPdf(input: LocationReportInput): Pro
     rightTop: documentLabel,
     rightBottom: input.speciesLabel,
   });
+  const sampleReports = input.reports.filter((r) => r.sampleDetections).length;
+  if (sampleReports > 0) {
+    paragraph(
+      cursor,
+      `Includes ${sampleReports} ${sampleReports === 1 ? "report" : "reports"} with sample detections (the server's built-in example reading, not results).`,
+      true,
+    );
+  }
 
   summaryTiles(cursor, [
     { value: String(totalGrains), label: "Total Grains" },

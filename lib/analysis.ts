@@ -123,14 +123,16 @@ async function detectionFailure(res: Response): Promise<DetectionError> {
   const body = (await res.json().catch(() => null)) as { detail?: unknown } | null;
   const detail = typeof body?.detail === "string" ? body.detail : "";
   if (res.status === 503) {
-    return new DetectionError("Detection isn't set up on the server yet (Roboflow settings are missing).");
+    return new DetectionError("Detection is unavailable on the server right now. Contact the PolLens team.");
   }
   if (res.status === 502 || res.status === 504) {
-    return new DetectionError("The detection model didn't respond. Try again in a moment.");
+    return new DetectionError(
+      "The detection model didn't respond. The server may be waking up — try again in a minute.",
+    );
   }
-  if (res.status === 413) return new DetectionError("This image is too large to analyze.");
+  if (res.status === 413) return new DetectionError("This image is over the server's size limit. Use a smaller JPEG or PNG.");
   if (res.status === 400) return new DetectionError(detail || "This image couldn't be read.");
-  return new DetectionError(detail || `Detection failed (HTTP ${res.status}).`);
+  return new DetectionError(detail || "The server couldn't analyze this slide. Try again, or remove it to continue.");
 }
 
 // --- Public API ------------------------------------------------------------
@@ -150,7 +152,7 @@ export async function analyzeSpecimen(file: File): Promise<AnalysisResult> {
     res = await apiFetch("/api/v1/reports/detect/", { method: "POST", body });
   } catch (error) {
     if (error instanceof SessionExpiredError) throw error;
-    throw new DetectionError("Couldn't reach the analysis server. Check your connection and try again.");
+    throw new DetectionError("Couldn't reach the PolLens server. Check your connection and try again.");
   }
   if (!res.ok) throw await detectionFailure(res);
 

@@ -25,7 +25,7 @@ export default function RiskBadge({
   return (
     <span
       className={clsx(
-        "inline-flex items-center rounded px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap",
+        "inline-flex items-center rounded px-2 py-0.5 text-[12px] font-medium whitespace-nowrap",
         RISK_STYLES[level],
         className,
       )}

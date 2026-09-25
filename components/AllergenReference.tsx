@@ -24,7 +24,7 @@ export default function AllergenReference() {
             <th className="px-4 py-3 font-medium">Species</th>
             <th className="px-4 py-3 font-medium">Code</th>
             <th className="px-4 py-3 font-medium">Risk Level</th>
-            <th className="px-4 py-3 text-right font-medium">Grains in All Reports</th>
+            <th className="px-4 py-3 text-right font-medium">Grains in Finalized Reports</th>
           </tr>
         </thead>
         <tbody>
@@ -41,7 +41,7 @@ export default function AllergenReference() {
                     className="h-2.5 w-2.5 shrink-0 rounded-full"
                     style={{ backgroundColor: sp.color }}
                   />
-                  <span className="text-text italic">{sp.scientificName}</span>
+                  <i className="t-binomial text-[15px] text-text">{sp.scientificName}</i>
                 </div>
               </td>
               <td className="px-4 py-3 text-text-muted" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>

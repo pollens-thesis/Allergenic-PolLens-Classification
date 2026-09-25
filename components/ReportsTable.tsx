@@ -21,7 +21,8 @@ import {
 } from "@/lib/data";
 import { downloadSelectionReportPdf } from "@/lib/pdf";
 import { exportReportsXlsx } from "@/lib/export";
-import StatusBadge from "@/components/StatusBadge";
+import StatusBadge, { SampleBadge } from "@/components/StatusBadge";
+import SpeciesName from "@/components/SpeciesName";
 import { Button } from "@/components/Button";
 
 const STATUS_FILTERS: (ReportStatus | "All")[] = ["All", "Pending", "Completed", "Needs review"];
@@ -216,7 +217,7 @@ export default function ReportsTable({
   async function handleGenerate(format: "pdf" | "xlsx") {
     const { reports: chosen, skipped } = chosenReports();
     if (chosen.length === 0) {
-      toast.error("Only pending analyses are ticked — generate them first to export.");
+      toast.error("Only pending analyses are selected — generate their reports first to export them.");
       return;
     }
     if (skipped > 0) {
@@ -228,7 +229,7 @@ export default function ReportsTable({
       if (format === "pdf") await downloadSelectionReportPdf({ reports: chosen });
       else await exportReportsXlsx(chosen);
     } catch {
-      toast.error(format === "pdf" ? "Couldn't build the PDF." : "Couldn't build the Excel file.");
+      toast.error(format === "pdf" ? "Couldn't build the PDF. Try again." : "Couldn't build the Excel file. Try again.");
     } finally {
       setBuilding(null);
     }
@@ -240,9 +241,9 @@ export default function ReportsTable({
         <div>
           {/* The page title already says "Reports"; this card's heading is its count. */}
           <h2 className="sr-only">Reports</h2>
-          <p className="text-[15px] text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+          <p className="t-plate-title text-text lining-nums">
             {filtered.length} of {rows.length} {rows.length === 1 ? "report" : "reports"}
-            {picked.size > 0 && ` · ${picked.size} chosen`}
+            {picked.size > 0 && ` · ${picked.size} selected`}
           </p>
         </div>
 
@@ -352,7 +353,7 @@ export default function ReportsTable({
       {picked.size > 0 && (
         <div className="mb-3 flex flex-col gap-2 rounded-md border border-border bg-surface-sunken px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[13px] text-text-muted">
-            {picked.size} {picked.size === 1 ? "report" : "reports"} chosen
+            {picked.size} {picked.size === 1 ? "report" : "reports"} selected
             {pickedVisible.length !== picked.size &&
               ` · ${picked.size - pickedVisible.length} outside the current filters`}
           </p>
@@ -362,7 +363,7 @@ export default function ReportsTable({
               onClick={() => setPicked(new Set())}
               className="focus-ring rounded-md px-2 py-1.5 text-[13px] text-text-muted transition-colors hover:text-text"
             >
-              Clear
+              Clear Selection
             </button>
             <Button
               type="button"
@@ -376,7 +377,7 @@ export default function ReportsTable({
               ) : (
                 <FileSpreadsheet size={14} strokeWidth={1.75} />
               )}
-              Excel
+              Export Excel
             </Button>
             <Button type="button" onClick={() => handleGenerate("pdf")} disabled={building !== null} size="sm">
               {building === "pdf" ? (
@@ -387,7 +388,7 @@ export default function ReportsTable({
               ) : (
                 <>
                   <FileDown size={14} strokeWidth={1.75} />
-                  PDF Report
+                  Download Summary PDF
                 </>
               )}
             </Button>
@@ -422,7 +423,7 @@ export default function ReportsTable({
                   {/* Negative margin against inner padding: the box stays 16px
                       but the thing a thumb has to hit is 40. */}
                   <label className="-m-2 shrink-0 cursor-pointer p-2">
-                    <span className="sr-only">Choose report {r.sampleId}</span>
+                    <span className="sr-only">Select report {r.sampleId}</span>
                     <input
                       type="checkbox"
                       checked={picked.has(r.sampleId)}
@@ -438,11 +439,16 @@ export default function ReportsTable({
                       >
                         {r.sampleId}
                       </span>
-                      <StatusBadge status={r.status} />
+                      <span className="flex items-center gap-1.5">
+                        {r.sampleDetections && <SampleBadge />}
+                        <StatusBadge status={r.status} />
+                      </span>
                     </div>
-                    <div className="mt-1 text-[13px] text-text">{r.topPollen}</div>
+                    <div className="mt-1 text-[13px] text-text">
+                      {r.topSpecies ? <SpeciesName species={r.topSpecies} /> : r.topPollen}
+                    </div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-text-muted">
-                      <span>{r.location || "No location yet"}</span>
+                      <span>{r.location || "No location recorded"}</span>
                       <span aria-hidden>·</span>
                       <span>
                         {formatDate(r.collectedAt)}
@@ -454,12 +460,12 @@ export default function ReportsTable({
                         className="text-text"
                         style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
                       >
-                        {r.totalGrains}
+                        {r.totalGrains.toLocaleString()}
                       </span>{" "}
                       grains
                       {r.slideCount > 1 && ` · ${r.slideCount} slides`}
                       {r.sampleId === highlightId && (
-                        <span className="ml-2 rounded-full bg-accent-muted px-2 py-0.5 text-[11.5px] text-[var(--accent-hover)]">
+                        <span className="ml-2 rounded-full bg-accent-muted px-2 py-0.5 text-[12px] text-[var(--accent-hover)]">
                           Just Generated
                         </span>
                       )}
@@ -491,7 +497,7 @@ export default function ReportsTable({
                   }}
                   onChange={toggleAllVisible}
                   disabled={visibleIds.length === 0}
-                  aria-label="Choose every report matching the filters"
+                  aria-label="Select all reports shown"
                   className="focus-ring h-3.5 w-3.5 accent-[var(--accent)]"
                 />
               </th>
@@ -499,7 +505,7 @@ export default function ReportsTable({
               <th className="py-2 pr-3 font-medium">Collected</th>
               <th className="py-2 pr-3 font-medium">Location</th>
               <th className="py-2 pr-3 font-medium">Top Pollen Detected</th>
-              <th className="py-2 pr-3 font-medium">Total Grains</th>
+              <th className="py-2 pr-6 text-right font-medium">Total Grains</th>
               <th className="py-2 pr-0 font-medium">Status</th>
             </tr>
           </thead>
@@ -524,7 +530,7 @@ export default function ReportsTable({
                       type="checkbox"
                       checked={picked.has(r.sampleId)}
                       onChange={() => togglePicked(r.sampleId)}
-                      aria-label={`Choose report ${r.sampleId}`}
+                      aria-label={`Select report ${r.sampleId}`}
                       className="focus-ring h-3.5 w-3.5 accent-[var(--accent)]"
                     />
                   </td>
@@ -533,26 +539,29 @@ export default function ReportsTable({
                       {r.sampleId}
                     </Link>
                     {r.sampleId === highlightId && (
-                      <span className="ml-2 rounded-full bg-accent-muted px-2 py-0.5 text-[11.5px] text-[var(--accent-hover)]">
+                      <span className="ml-2 rounded-full bg-accent-muted px-2 py-0.5 text-[12px] text-[var(--accent-hover)]">
                         Just Generated
                       </span>
                     )}
                   </td>
                   <CollectedCell collectedAt={r.collectedAt} />
-                  <td className="py-2.5 pr-3 whitespace-nowrap text-text-muted">{r.location || "—"}</td>
+                  <td className="py-2.5 pr-3 whitespace-nowrap text-text-muted">{r.location || "No location recorded"}</td>
                   <td className="py-2.5 pr-3 text-text">
-                    {r.topPollen}
+                    {r.topSpecies ? <SpeciesName species={r.topSpecies} /> : r.topPollen}
                     {r.slideCount > 1 && (
                       <span className="mt-0.5 block text-[12.5px] text-text-muted">
                         across {r.slideCount} slides
                       </span>
                     )}
                   </td>
-                  <td className="py-2.5 pr-3 whitespace-nowrap text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-                    {r.totalGrains}
+                  <td className="py-2.5 pr-6 text-right whitespace-nowrap text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                    {r.totalGrains.toLocaleString()}
                   </td>
                   <td className="py-2.5 pr-0">
-                    <StatusBadge status={r.status} />
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <StatusBadge status={r.status} />
+                      {r.sampleDetections && <SampleBadge />}
+                    </span>
                   </td>
                 </motion.tr>
               ))}
@@ -564,11 +573,19 @@ export default function ReportsTable({
       {/* Outside both renderings, so an empty result says so at either size. */}
       {filtered.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-10 text-center">
-          <p className="text-[13px] text-text-muted">
+          <p className="text-[14px] text-text-muted">
             {hasActiveFilters
               ? "No reports match those filters."
-              : "No reports yet — analyze a specimen to create one."}
+              : "No reports yet — analyze slides to create one."}
           </p>
+          {!hasActiveFilters && (
+            <Link
+              href="/upload"
+              className="focus-ring inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-accent-fg transition hover:bg-[var(--accent-hover)]"
+            >
+              Analyze Slides
+            </Link>
+          )}
           {hasActiveFilters && (
             <button
               type="button"
@@ -583,8 +600,8 @@ export default function ReportsTable({
       )}
 
       {rows.length > 0 && picked.size === 0 && (
-        <p className="mt-3 text-[12.5px] text-text-faint">
-          Tick the reports you want in a summary PDF or Excel file, or filter first and use the header
+        <p className="t-prose mt-3 text-text-muted">
+          Select the reports you want in a summary PDF or Excel file, or filter first and use the header
           checkbox to take the whole result. Pending analyses are left out of exports.
         </p>
       )}

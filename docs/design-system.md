@@ -1,5 +1,11 @@
 # PolLens Design System — Laboratory Rationale
 
+> **Superseded (2026-09-25).** The console was restyled as "Pollen Atlas Plates". The
+> authoritative visual system — palette, type roles, components and rules — is now
+> [`DESIGN.md`](../DESIGN.md) (with `.impeccable/design.json`). The teal accent, cool-grey
+> background and single Atkinson family described below are historical. The legibility
+> reasoning for Atkinson Hyperlegible still applies to UI text and data.
+
 PolLens is used every day in a palynology laboratory: researchers read microscope
 slides, check what the detection model found, and record reports. The interface
 follows established practice from laboratory, microscopy and control-room software,

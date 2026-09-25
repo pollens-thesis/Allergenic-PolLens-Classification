@@ -109,7 +109,7 @@ export default function SpecimenImageViewer({
   const chipHighlight = (
     <motion.span
       layoutId={`species-chip-${viewerId}`}
-      className="absolute inset-0 -z-10 rounded bg-surface shadow-sm"
+      className="absolute inset-0 -z-10 rounded border border-border-strong bg-surface"
       transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 40 }}
     />
   );
@@ -167,7 +167,7 @@ export default function SpecimenImageViewer({
           >
             <GrainOverlay
               imageUrl={imageUrl}
-              alt={`Specimen ${fileName}`}
+              alt={`Slide image ${fileName}`}
               grains={boxes}
               colors={palette}
               showLabels={showLabels}
@@ -194,7 +194,7 @@ export default function SpecimenImageViewer({
           <div className="flex h-40 w-full flex-col items-center justify-center gap-1.5 bg-surface-sunken text-center">
             <ImageOff size={18} strokeWidth={1.5} className="text-text-faint" />
             <span className="px-3 text-[12.5px] text-text-muted">
-              Image not stored for this record
+              Image not stored for this report
             </span>
           </div>
         )}
@@ -215,14 +215,14 @@ export default function SpecimenImageViewer({
                 )}
               >
                 <Tag size={12} strokeWidth={1.75} />
-                Labels
+                Box Labels
               </button>
               <span
                 className="text-[12.5px] whitespace-nowrap tabular-nums"
                 style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
               >
                 {activeGrainId ? `${activeGrainId} · ` : ""}
-                {shownCount}/{boxes.length} shown
+                {shownCount} of {boxes.length} boxes shown
               </span>
             </span>
           )}
