@@ -108,8 +108,12 @@ between the thesis proposal paper and the frontend.
     with `status: "Pending"` (location may be blank while Pending);
     `POST` without `status` still stores a Completed report in one step.
     Completing requires a non-blank location. `Processing` was dropped
-    (never written; migration 0007 maps it to Pending). Monthly counts
-    only count `Completed`.
+    (never written; migration 0007 maps it to Pending). "Finalised" =
+    `Completed` + `Needs review` everywhere (monthly counts, the frontend's
+    stats/map/exports) — Pending is never counted.
+  - **`sampleDetections`** (added 2026-09-25, `Report.sample_detections`):
+    set on create when the batch's detections came from `ROBOFLOW_MOCK`;
+    returned on every report so the UI keeps warning about it.
   - **`PATCH /api/v1/reports/<id>/`** (JSON, `ReportUpdateSerializer`):
     optional `collectedAt`, `location`, `researcher`, `weather` (null
     clears), `slides: [{id, notes}]`, `status` (validated transition).
@@ -170,8 +174,8 @@ between the thesis proposal paper and the frontend.
     trailing 12 calendar months ending at the current month, oldest
     first, summing `Detection.grain_count` per species per month
     (`Substr('slide__report__collected_at', 1, 7)` grouping, same pattern
-    as the `from`/`to` filter above), only over `status='Completed'`
-    reports. Response shape matches `MonthlyPollenCount`: `{"month": "Sep",
+    as the `from`/`to` filter above), only over finalised (`Completed`/`Needs review`)
+    reports, in Manila time. Response shape matches `MonthlyPollenCount`: `{"month": "Sep",
     "series": {"amaranthus_spinosus": 0, ...}}` — `series` is keyed
     dynamically off the `Species` table (`all_species_ids()` in
     `reports/views.py`, ordered by `Species.sort_order`), zero-filled for
@@ -314,8 +318,23 @@ between the thesis proposal paper and the frontend.
     condition-mapping cases for clear/light-clouds/heavy-clouds/rain/
     high-wind), plus (2026-09-24) box clipping, image type/size checks,
     duplicate species, Pending create, `owner=me`, every PATCH transition
-    and permission, DELETE removing files, and the risk migration. Run
-    with `python manage.py test`.
+    and permission, DELETE removing files, and the risk migration; and
+    (2026-09-25 QA pass: `QARegressionTests`, `TokenRefreshQATests`,
+    `WeatherQATests`) malformed PATCH bodies, impossible dates, non-object
+    bodies, no orphan files on a rejected create, the sample flag,
+    pixel/decompression limits, storage errors on delete, refresh after
+    deletion or allowlist removal, and weather rounding/range edges. Tests
+    write uploads to a temp `MEDIA_ROOT`. Run with `python manage.py test`.
+  - **Hardening (2026-09-25):** `USER_AUTHENTICATION_RULE` =
+    `accounts.access.user_can_authenticate` (active + allowlisted, so token
+    refresh also stops for removed users); refresh of a deleted user → 401;
+    `NUM_PROXIES=1` in production; anon rate 600/hour;
+    `MAX_SLIDE_IMAGE_PIXELS` (60 MP); CORS has no localhost default in
+    production and `CORS_ALLOWED_ORIGIN_REGEXES` is `;`-separated; a
+    production deploy without `AWS_STORAGE_BUCKET_NAME` raises check warning
+    `pollens.W001`; admin deletes remove image files; sample ids and monthly
+    counts use Manila time; weather rounds to the nearest hour and rejects
+    pre-1940 dates.
 - **API style:** REST, DRF ViewSets/Serializers unless a specific endpoint
   needs something custom.
 - **Folder structure:** Django project scaffolded at `api/` with settings
