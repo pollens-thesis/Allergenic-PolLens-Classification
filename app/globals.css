@@ -40,13 +40,13 @@
      the slide's own colours are perceived */
   --viewer-bg: #2a2a28;
 
-  /* Sign-in frontispiece — an ink plate with paper type */
-  --hero-bg: #171717;
-  --hero-bg-deep: #0f0f0e;
-  --hero-fg: #fafaf7;
-  --hero-fg-muted: #a9a8a1;
-  --hero-grain: #c98a6f;      /* oxide-tinted grains */
-  --hero-grain-soft: #e7c3b3;
+  /* Sign-in frontispiece — a paper plate, ink type, oxide grains */
+  --hero-bg: #e3e1da;
+  --hero-bg-deep: #d9d7cf;
+  --hero-fg: #171717;
+  --hero-fg-muted: #4d4c47;
+  --hero-grain: #8c2f1b;
+  --hero-grain-soft: #9c4a33;
 
   /* Journal serif for titles and captions; Atkinson for UI text and data */
   --font-display: var(--font-serif);
@@ -129,6 +129,7 @@ h1, h2, h3 {
   letter-spacing: -0.01em;
 }
 
+@layer components {
 /* Plate and figure numbers — small caps in the accent ("PL. 2 · FIG. 1") */
 .plate-label {
   font-family: var(--font-display);
@@ -143,6 +144,7 @@ h1, h2, h3 {
   font-variant-caps: all-small-caps;
   letter-spacing: 0.06em;
   color: var(--text-muted);
+}
 }
 
 ::selection {

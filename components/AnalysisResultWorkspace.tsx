@@ -39,6 +39,7 @@ import SpecimenInspector from "@/components/SpecimenInspector";
 import LocationSearch, { findPlace, loadPlaces, type Place } from "@/components/LocationSearch";
 import { fetchWeather } from "@/lib/analysis";
 import RiskBadge from "@/components/RiskBadge";
+import StatusBadge from "@/components/StatusBadge";
 import { overlayColor, overlayColors, type OverlayColors } from "@/lib/slide-colors";
 import { Button } from "@/components/Button";
 import { toast } from "sonner";
@@ -46,7 +47,7 @@ import { toast } from "sonner";
 const fieldClass =
   "focus-ring w-full rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text placeholder:text-text-faint";
 
-const sectionHeadingClass = "mb-2 text-[12px] tracking-[0.2em] text-text-muted uppercase";
+const sectionHeadingClass = "caption-label text-[14.5px] mb-2";
 
 const AUTOSAVE_MS = 600;
 
@@ -98,14 +99,20 @@ function DetectionRow({
               style={{ backgroundColor: overlayColor(colors, detection.speciesId) }}
             />
             <div className="min-w-0">
-              <div
-                className="text-[11.5px] tracking-widest text-text-muted uppercase"
-                style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-              >
-                {species.code}
-              </div>
-              <div className="truncate text-[14px] font-semibold tracking-tight text-text italic">
-                {species.scientificName}
+              {/* The binomial in the atlas serif italic; the code follows it as its key mark. */}
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                <span
+                  className="text-[15.5px] text-text italic"
+                  style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
+                >
+                  {species.scientificName}
+                </span>
+                <span
+                  className="shrink-0 text-[11.5px] tracking-wider text-text-muted"
+                  style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
+                >
+                  {species.code}
+                </span>
               </div>
               {species.commonName && (
                 <div className="truncate text-[13px] text-text-muted">{species.commonName}</div>
@@ -535,15 +542,15 @@ export default function AnalysisResultWorkspace({
       <div className="rounded-lg border border-border bg-surface p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0 flex-1">
-            <div
-              className="text-[12px] tracking-widest text-text-muted uppercase"
-              style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-            >
-              Pending · {report.sampleId}
-            </div>
-            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-text">
+            <h2 className="text-2xl font-semibold tracking-tight text-text">
               {report.slides.length === 1 ? "1 Slide Analyzed" : `${report.slides.length} Slides Analyzed`}
             </h2>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <StatusBadge status="Pending" />
+              <span className="text-[13px] text-text-muted" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                {report.sampleId}
+              </span>
+            </div>
             <p className="mt-1 text-[13px] text-text-muted">
               {batchGrains} {batchGrains === 1 ? "grain" : "grains"} counted across the batch
               {top ? ` · mostly ${speciesLabel(findSpecies(speciesCatalog, top.speciesId))}` : ""}
@@ -651,6 +658,18 @@ export default function AnalysisResultWorkspace({
               onSelectSpecies={setHighlighted}
               onExpand={() => setInspectorOpen(true)}
               onImageError={handleImageError}
+              caption={
+                <>
+                  <span className="plate-label mr-1.5">Slide {slideIndex + 1}</span>
+                  {selected.fileName} · {totalGrains} {totalGrains === 1 ? "grain" : "grains"}
+                  {detections[0] && (
+                    <>
+                      {" "}· mostly{" "}
+                      <i>{findSpecies(speciesCatalog, detections[0].speciesId).scientificName}</i>
+                    </>
+                  )}
+                </>
+              }
             />
             <SpecimenInspector
               open={inspectorOpen}
@@ -675,7 +694,7 @@ export default function AnalysisResultWorkspace({
               <div className="mb-4 flex items-baseline justify-between gap-3">
                 <h3 className="text-lg font-semibold tracking-tight text-text">Pollen Detected</h3>
                 {report.slides.length > 1 && (
-                  <span className="text-[13px] text-text-muted">Slide {slideIndex + 1}</span>
+                  <span className="plate-label text-[15px]">Slide {slideIndex + 1}</span>
                 )}
               </div>
 
@@ -800,7 +819,7 @@ export default function AnalysisResultWorkspace({
 
         <div className="mt-4">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <h4 className={`${sectionHeadingClass} mb-0`} style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+            <h4 className={`${sectionHeadingClass} mb-0`}>
               Conditions at Collection
             </h4>
             {place && collectedDate && (

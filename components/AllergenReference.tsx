@@ -18,8 +18,8 @@ export default function AllergenReference() {
       <table className="w-full min-w-[34rem] text-left text-[13px]">
         <thead>
           <tr
-            className="border-b border-border text-[11.5px] tracking-widest text-text-muted uppercase"
-            style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
+            className="caption-label text-[14px] border-b border-border"
+            
           >
             <th className="px-4 py-3 font-medium">Species</th>
             <th className="px-4 py-3 font-medium">Code</th>

@@ -33,7 +33,7 @@ export default function DashboardStats() {
 
   const dash = failed ? "—" : "…";
   return (
-    <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border xl:grid-cols-4">
       <StatCard
         label="Reports Generated"
         value={stats ? stats.totalSpecimens.toLocaleString() : dash}

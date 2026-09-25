@@ -36,6 +36,7 @@ export default function SpecimenImageViewer({
   onSelectSpecies,
   onExpand,
   onImageError,
+  caption,
 }: {
   imageUrl?: string;
   fileName: string;
@@ -47,6 +48,8 @@ export default function SpecimenImageViewer({
   selectedSpeciesId: SpeciesId | null;
   onSelectSpecies: (speciesId: SpeciesId | null) => void;
   onExpand?: () => void;
+  /** Figure caption under the plate; the file name when omitted. */
+  caption?: React.ReactNode;
   onImageError?: () => void;
 }) {
   const reduceMotion = useReducedMotion();
@@ -197,7 +200,9 @@ export default function SpecimenImageViewer({
         )}
 
         <div className="flex items-center justify-between gap-3 border-t border-border px-3 py-2 text-[13px] text-text-muted">
-          <span className="truncate">{fileName}</span>
+          <span className="min-w-0 text-[14px] text-pretty text-text" style={{ fontFamily: "var(--font-display)" }}>
+            {caption ?? fileName}
+          </span>
           {hasBoxes && (
             <span className="flex shrink-0 items-center gap-3">
               <button

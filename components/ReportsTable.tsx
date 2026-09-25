@@ -476,8 +476,8 @@ export default function ReportsTable({
         <table className="w-full border-collapse text-left text-[13px]">
           <thead>
             <tr
-              className="border-b border-border text-[12px] tracking-widest text-text-faint uppercase"
-              style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
+              className="caption-label text-[14.5px] border-b border-border"
+              
             >
               <th className="w-8 py-2 pr-2">
                 <input

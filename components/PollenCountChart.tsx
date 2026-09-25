@@ -51,7 +51,7 @@ function CustomTooltip({
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-md border border-border bg-surface px-3 py-2 shadow-sm">
-      <div className="mb-1 text-[12px] tracking-widest text-text-muted uppercase" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+      <div className="caption-label text-[14.5px] mb-1" >
         {label}
       </div>
       <div className="flex flex-col gap-0.5">
@@ -151,7 +151,7 @@ export default function PollenCountChart() {
               onClick={() => setRange(r.value)}
               className={`focus-ring rounded-[5px] px-2.5 py-1 text-[13px] transition-[transform,background-color,color] duration-[var(--duration-fast)] ease-[var(--ease-out)] active:scale-[0.97] ${
                 range === r.value
-                  ? "bg-accent text-accent-fg"
+                  ? "bg-text text-bg"
                   : "text-text-muted hover:bg-surface-sunken hover:text-text"
               }`}
             >
@@ -223,6 +223,7 @@ export default function PollenCountChart() {
                     strokeWidth={2.25}
                     dot={{ r: 3, fill: s.color, strokeWidth: 0 }}
                     activeDot={{ r: 5 }}
+                    isAnimationActive={false}
                   />
                 ))}
               </LineChart>

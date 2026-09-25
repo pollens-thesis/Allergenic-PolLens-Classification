@@ -20,20 +20,22 @@ export default function DashboardPage() {
         {/* Primary action: Start New Analysis */}
         <Link
           href="/upload"
-          className="focus-ring group flex flex-col gap-4 rounded-md border border-border bg-text px-6 py-5 transition-[background-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-text/85 active:scale-[0.97] active:bg-text/90 sm:flex-row sm:items-center sm:justify-between"
+          className="focus-ring group flex flex-col gap-4 rounded-lg border border-border bg-surface px-6 py-5 transition-[border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:border-border-strong active:scale-[0.99] sm:flex-row sm:items-center sm:justify-between"
         >
           <div className="flex items-center gap-4">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent/20">
-              <ScanLine size={20} strokeWidth={1.75} className="text-accent" />
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface-sunken">
+              <ScanLine size={20} strokeWidth={1.75} className="text-text" />
             </span>
             <div>
-              <div className="text-[15px] font-medium text-bg">Start New Analysis</div>
-              <div className="text-[13px] text-bg/75">
+              <div className="text-[17px] text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+                Start New Analysis
+              </div>
+              <div className="text-[13px] text-text-muted">
                 Upload a microscope image to count and identify the pollen grains it contains
               </div>
             </div>
           </div>
-          <span className="flex items-center gap-1.5 self-start rounded-md bg-bg/10 px-3.5 py-2 text-[13px] text-bg transition group-hover:bg-bg/15 sm:self-auto">
+          <span className="flex items-center gap-1.5 self-start rounded-md bg-accent px-3.5 py-2 text-[13px] text-accent-fg transition group-hover:bg-[var(--accent-hover)] sm:self-auto">
             Begin
             <ArrowRight size={14} strokeWidth={1.75} />
           </span>

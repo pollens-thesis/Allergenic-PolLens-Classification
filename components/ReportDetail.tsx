@@ -90,19 +90,24 @@ function DetectionRow({
           className="h-3 w-3 shrink-0 rounded-[2px] ring-1 ring-black/20"
           style={{ backgroundColor: overlayColor(colors, detection.speciesId) }}
         />
-        <div className="min-w-0 text-left">
+        {/* Name, code and risk wrap as whole words inside the row's own width, so a
+            half-width slide column never breaks a binomial or runs it into the badge. */}
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 text-left">
           <span
-            className="mr-2 text-[11.5px] tracking-widest text-text-faint uppercase"
+            className="text-[15.5px] whitespace-nowrap text-text italic"
+            style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
+          >
+            {species.scientificName}
+          </span>
+          <span
+            className="text-[11.5px] tracking-wider text-text-muted"
             style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
           >
             {species.code}
           </span>
-          <span className="text-[14px] font-semibold text-text italic">{species.scientificName}</span>
-          {species.commonName && (
-            <span className="ml-1.5 text-[13px] text-text-muted">{species.commonName}</span>
-          )}
+          {species.commonName && <span className="text-[13px] text-text-muted">{species.commonName}</span>}
+          <RiskBadge level={species.riskLevel} className="shrink-0" />
         </div>
-        <RiskBadge level={species.riskLevel} className="hidden shrink-0 lg:inline-flex" />
       </div>
 
       <div className="flex shrink-0 items-center gap-4 pl-5 sm:pl-0">
@@ -166,7 +171,7 @@ function MetaItem({
     <div className="flex items-start gap-2.5">
       <Icon size={15} strokeWidth={1.75} className="mt-0.5 shrink-0 text-text-faint" />
       <div className="min-w-0">
-        <div className="text-[12px] tracking-widest text-text-faint uppercase" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+        <div className="caption-label text-[14.5px]" >
           {label}
         </div>
         <div className="text-[13px] text-text">{value}</div>
@@ -188,6 +193,7 @@ function SummaryTile({ value, label }: { value: string | number; label: string }
 
 export default function ReportDetail({ sampleId }: { sampleId: string }) {
   const [report, setReport] = useState<Specimen | null | undefined>(undefined);
+  const speciesCatalog = useSpeciesCatalog();
   // The pollen type each slide's overlay is isolating, keyed by slide id.
   const [highlighted, setHighlighted] = useState<Record<string, SpeciesId | null>>({});
   const [downloading, setDownloading] = useState<"pdf" | "xlsx" | null>(null);
@@ -425,7 +431,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
               )}
               Excel
             </Button>
-            <Button type="button" size="sm" onClick={handleDownloadPdf} disabled={downloading !== null}>
+            <Button type="button" size="sm" intent="accent" onClick={handleDownloadPdf} disabled={downloading !== null}>
               {downloading === "pdf" ? (
                 <>
                   <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
@@ -579,8 +585,8 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
 
                     <div className="mt-4">
                       <div
-                        className="mb-1 text-[12px] tracking-widest text-text-faint uppercase"
-                        style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
+                        className="caption-label text-[14.5px] mb-1"
+                        
                       >
                         Researcher&apos;s Note
                       </div>
@@ -605,6 +611,18 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                         setInspector({ slideId: slide.id, speciesId: selectedSpecies })
                       }
                       onImageError={handleImageError}
+                      caption={
+                        <>
+                          <span className="plate-label mr-1.5">Slide {index + 1}</span>
+                          {slide.fileName} · {slideGrains} {slideGrains === 1 ? "grain" : "grains"}
+                          {slide.detections[0] && (
+                            <>
+                              {" "}· mostly{" "}
+                              <i>{findSpecies(speciesCatalog, slide.detections[0].speciesId).scientificName}</i>
+                            </>
+                          )}
+                        </>
+                      }
                     />
                   </div>
                 </div>

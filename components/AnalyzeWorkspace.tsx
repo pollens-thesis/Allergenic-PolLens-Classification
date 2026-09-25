@@ -80,7 +80,7 @@ const EMPTY_WEATHER: WeatherConditions = {
 const fieldClass =
   "focus-ring w-full rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text placeholder:text-text-faint";
 
-const sectionHeadingClass = "mb-2 text-[12px] tracking-[0.2em] text-text-muted uppercase";
+const sectionHeadingClass = "caption-label text-[14.5px] mb-2";
 
 /** Number input that keeps an empty box as `null` rather than 0. */
 function MeasurementField({
@@ -746,7 +746,7 @@ export default function AnalyzeWorkspace() {
 
           {/* Collection details — shared by every slide in the batch. */}
           <div className="mt-5">
-            <h3 className={sectionHeadingClass} style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+            <h3 className={sectionHeadingClass}>
               Collection Details
             </h3>
             <p className="mb-2.5 text-[12.5px] text-text-muted">

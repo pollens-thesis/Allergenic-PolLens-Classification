@@ -2,28 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { LucideIcon } from "lucide-react";
-import { cva, type VariantProps } from "class-variance-authority";
-import clsx from "clsx";
 import { animate, useReducedMotion } from "motion/react";
 
-const iconVariants = cva("shrink-0", {
-  variants: {
-    variant: {
-      default: "text-text-muted",
-      accent: "text-accent",
-    },
-  },
-  defaultVariants: { variant: "default" },
-});
-
-interface StatCardProps extends VariantProps<typeof iconVariants> {
+interface StatCardProps {
   label: string;
   value: string;
   sublabel?: string;
-  icon: LucideIcon;
+  /** Kept for callers; the ruled plate reads without decorative icons. */
+  icon?: LucideIcon;
 }
 
-export default function StatCard({ label, value, sublabel, icon: Icon, variant }: StatCardProps) {
+export default function StatCard({ label, value, sublabel }: StatCardProps) {
   const [display, setDisplay] = useState(value);
   const prevValue = useRef(value);
   const mounted = useRef(false);
@@ -60,11 +49,9 @@ export default function StatCard({ label, value, sublabel, icon: Icon, variant }
   }, [value, reduceMotion]);
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-5">
-      <div className="flex items-center justify-between">
-        <span className="caption-label text-[15px]">{label}</span>
-        <Icon size={16} strokeWidth={1.75} className={clsx(iconVariants({ variant }))} />
-      </div>
+    // One cell of a ruled plate (DashboardStats draws the hairlines between cells).
+    <div className="bg-surface p-5">
+      <span className="caption-label text-[15px]">{label}</span>
       <div className="mt-2 text-4xl text-text lining-nums tabular-nums" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
         {display}
       </div>

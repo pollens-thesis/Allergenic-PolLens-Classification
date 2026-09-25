@@ -774,8 +774,8 @@ export default function PollenMap() {
             <div className="mb-4 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div
-                  className="text-[12px] tracking-widest text-text-muted uppercase"
-                  style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
+                  className="caption-label text-[14.5px]"
+                  
                 >
                   Selected {unitSingular}
                 </div>
@@ -820,8 +820,8 @@ export default function PollenMap() {
             </div>
 
             <h3
-              className="mb-2 text-[12px] tracking-[0.2em] text-text-muted uppercase"
-              style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
+              className="caption-label text-[14.5px] mb-2"
+              
             >
               Most Pollen Detected Here
             </h3>

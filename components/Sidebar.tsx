@@ -96,11 +96,11 @@ export default function Sidebar() {
             onClick={() => setMenuOpen(false)}
             className={`focus-ring flex items-center gap-3 rounded-md px-3 py-2.5 text-[13.5px] font-medium transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
               active
-                ? "bg-accent-muted text-text"
+                ? "bg-surface-sunken text-text"
                 : "text-text-muted hover:bg-surface-sunken hover:text-text"
             }`}
           >
-            <ItemIcon size={16} strokeWidth={1.75} className={active ? "text-accent" : ""} />
+            <ItemIcon size={16} strokeWidth={1.75} className={active ? "text-text" : ""} />
             {item.label}
           </Link>
         );
@@ -116,11 +116,11 @@ export default function Sidebar() {
       aria-current={pathname === SETTINGS_HREF ? "page" : undefined}
       onClick={() => setMenuOpen(false)}
       className={`focus-ring group flex items-center gap-2.5 rounded-md px-2 py-2 transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
-        pathname === SETTINGS_HREF ? "bg-accent-muted" : "hover:bg-surface-sunken"
+        pathname === SETTINGS_HREF ? "bg-surface-sunken" : "hover:bg-surface-sunken"
       }`}
     >
       <span
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-muted text-[13px] font-medium text-accent"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface-sunken text-[13px] font-medium text-text"
         style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
       >
         {getInitials(name)}
@@ -133,7 +133,7 @@ export default function Sidebar() {
         size={15}
         strokeWidth={1.75}
         className={`shrink-0 transition-colors ${
-          pathname === SETTINGS_HREF ? "text-accent" : "text-text-faint group-hover:text-text-muted"
+          pathname === SETTINGS_HREF ? "text-text" : "text-text-faint group-hover:text-text-muted"
         }`}
       />
     </Link>

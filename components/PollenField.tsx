@@ -13,11 +13,11 @@ type Grain = {
 };
 
 const GRAINS: Grain[] = [
-  { x: 12, y: 20, scale: 1.15, rotate: 8, kind: "spiny", tag: "AMBR·03", dur: 16, gdur: 7, dx: 8, dy: -10, dr: 5 },
-  { x: 70, y: 14, scale: 0.85, rotate: -12, kind: "porate", tag: "BETU·11", dur: 13, gdur: 5.5, dx: -6, dy: 8, dr: -6 },
-  { x: 85, y: 46, scale: 1.3, rotate: 20, kind: "ribbed", tag: "POAC·02", dur: 18, gdur: 8, dx: 10, dy: 6, dr: 4 },
+  { x: 12, y: 20, scale: 1.15, rotate: 8, kind: "spiny", tag: "TRID·03", dur: 16, gdur: 7, dx: 8, dy: -10, dr: 5 },
+  { x: 70, y: 14, scale: 0.85, rotate: -12, kind: "porate", tag: "IMPE·11", dur: 13, gdur: 5.5, dx: -6, dy: 8, dr: -6 },
+  { x: 85, y: 46, scale: 1.3, rotate: 20, kind: "ribbed", tag: "COCO·02", dur: 18, gdur: 8, dx: 10, dy: 6, dr: 4 },
   { x: 34, y: 62, scale: 0.7, rotate: -4, kind: "porate", dur: 11, gdur: 4.5, dx: -5, dy: -6, dr: 8 },
-  { x: 58, y: 74, scale: 1, rotate: 30, kind: "spiny", tag: "AMBR·07", dur: 15, gdur: 6.5, dx: 7, dy: 9, dr: -5 },
+  { x: 58, y: 74, scale: 1, rotate: 30, kind: "spiny", tag: "TRID·07", dur: 15, gdur: 6.5, dx: 7, dy: 9, dr: -5 },
   { x: 8, y: 78, scale: 0.6, rotate: 10, kind: "ribbed", dur: 12, gdur: 5, dx: -4, dy: -8, dr: 6 },
   { x: 92, y: 82, scale: 0.55, rotate: -20, kind: "spiny", dur: 10, gdur: 4, dx: 5, dy: 5, dr: -8 },
   { x: 46, y: 12, scale: 0.5, rotate: 5, kind: "ribbed", dur: 9, gdur: 4.2, dx: -6, dy: 4, dr: 5 },
@@ -81,7 +81,7 @@ export default function PollenField() {
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at 30% 20%, rgba(201,138,111,0.08), transparent 55%), radial-gradient(ellipse at 80% 70%, rgba(231,195,179,0.05), transparent 50%), var(--hero-bg)",
+            "radial-gradient(ellipse at 30% 20%, rgba(140,47,27,0.06), transparent 55%), radial-gradient(ellipse at 80% 70%, rgba(140,47,27,0.04), transparent 50%), var(--hero-bg)",
         }}
       />
       {GRAINS.map((g, i) => (
@@ -103,7 +103,7 @@ export default function PollenField() {
             width={44 * g.scale}
             height={44 * g.scale}
             viewBox="-22 -22 44 44"
-            style={{ transform: `rotate(${g.rotate}deg)`, filter: "drop-shadow(0 0 6px rgba(201,138,111,0.22))" }}
+            style={{ transform: `rotate(${g.rotate}deg)`, filter: "drop-shadow(0 1px 1px rgba(23,23,23,0.18))" }}
           >
             <GrainShape kind={g.kind} />
           </svg>

@@ -46,7 +46,6 @@ export default function LoginPage() {
 
         <div
           className="relative z-10 hidden gap-8 border-t border-hero-fg/10 pt-5 sm:flex"
-          style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
         >
           {[
             ["Classes tracked", `${speciesCatalog.length} taxa`],
@@ -54,8 +53,13 @@ export default function LoginPage() {
             ["Access", "Research use"],
           ].map(([label, value]) => (
             <div key={label}>
-              <div className="text-[11.5px] tracking-widest text-hero-fg-muted uppercase">{label}</div>
-              <div className="mt-1 text-sm text-hero-fg/90">{value}</div>
+              <div className="caption-label text-[14px] text-hero-fg-muted">{label}</div>
+              <div
+                className="mt-1 text-sm text-hero-fg/90"
+                style={/\d/.test(value) ? { fontFamily: "var(--font-mono)", fontWeight: 500 } : undefined}
+              >
+                {value}
+              </div>
             </div>
           ))}
         </div>
@@ -78,7 +82,7 @@ export default function LoginPage() {
 
           <div className="my-7 flex items-center gap-3 text-text-faint">
             <span className="h-px flex-1 bg-border" />
-            <span className="text-[11.5px] tracking-widest uppercase" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+            <span className="caption-label text-[14px]" >
               Field notes
             </span>
             <span className="h-px flex-1 bg-border" />
