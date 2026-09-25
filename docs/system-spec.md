@@ -36,7 +36,10 @@ a formula-injection guard. Details in `api/CLAUDE.md` and the commit messages.
 2. Map: choropleth + static PSGC boundaries vs. the paper's dark map with pins and a
    top-3 card (test cases TC-US-10 / TC-BB-11 no longer apply as written).
 3. Theme: the paper asks for a high-contrast dark theme (§5.1.1.3) but its prototype
-   is light; the app is light (lab-neutral gray) with a dark image viewer.
+   is light. **Decided 2026-09-25 (user, via the Impeccable direction round):** light,
+   because the work happens under bright bench light, restyled as "Pollen Atlas
+   Plates" (plate-paper panels, journal serif titles, oxide accent; all text AA).
+   Still worth confirming with the adviser since it departs from the paper.
 4. Archive with year-over-year comparison (not built).
 5. ~~Weather for a past collection date~~ — **resolved 2026-09-25**: weather now comes from Open-Meteo (free, keyless) for the collection date and time at the picked place (forecast model for recent dates, ERA5 archive for older ones), still editable by the researcher; OpenWeather removed.
 6. System-information display in Settings.
