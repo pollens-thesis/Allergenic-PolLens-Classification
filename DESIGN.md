@@ -116,6 +116,21 @@ components:
     textColor: "{colors.on-oxide}"
     rounded: "{rounded.md}"
     padding: "8px 16px"
+  button-caution:
+    backgroundColor: "{colors.plate-paper}"
+    textColor: "{colors.status-red}"
+    rounded: "{rounded.md}"
+    padding: "8px 16px"
+  button-confirm:
+    backgroundColor: "{colors.plate-paper}"
+    textColor: "{colors.status-green}"
+    rounded: "{rounded.md}"
+    padding: "8px 16px"
+  button-resume:
+    backgroundColor: "{colors.plate-paper}"
+    textColor: "{colors.status-ochre}"
+    rounded: "{rounded.md}"
+    padding: "8px 16px"
   button-sm:
     padding: "6px 12px"
   plate:
@@ -260,7 +275,8 @@ Plates are cut square. Radii are the barest softening that keeps edges from alia
 Quiet and exact, with no gradient and no shadow.
 - **Shape:** square-cut (2px). Medium weight. 14px text at 8px × 16px, or 12.5px at 6px × 12px for small.
 - **Accent (primary action):** oxide with white text, darkening on hover and on press. One per view: the action the page exists for.
-- **Secondary:** plate paper, ink text and a hairline frame. Hover raises the border to Hairline Strong and fills with Well. This is the default for everything else (Mark Completed, Excel).
+- **Secondary:** plate paper, ink text and a hairline frame. Hover raises the border to Hairline Strong and fills with Well. This is the default for neutral actions (Export Excel/CSV/JSON, Try Again, Keep Analysis).
+- **Consequence outlines (caution / confirm / resume):** plate paper with text and a 40% frame in a status hue, filling with that hue's wash on hover. The colour says what the action does to the record, in the same hue as the stamp it leads to: **caution** (status red) for leaving or removing (Sign Out, Discard, Delete, Flag for Review), **confirm** (status green) for Mark Completed, **resume** (status ochre) for Resume Analysis. Each keeps its label and icon, so colour is never the only cue.
 - **Destructive:** status red with white text. Hover drops to 90% opacity.
 - **Ink / Ghost:** an ink button (ink ground, page-grey text) and a ghost button (caption-grey text that fills with Well on hover) exist in the primitive for rare use.
 - **Motion:** colour transitions at 120ms on `cubic-bezier(0.16, 1, 0.3, 1)`, and a 0.97 press scale. Disabled buttons drop to 50% opacity.

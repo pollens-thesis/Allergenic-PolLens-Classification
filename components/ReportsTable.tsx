@@ -23,7 +23,7 @@ import { downloadSelectionReportPdf } from "@/lib/pdf";
 import { exportReportsXlsx } from "@/lib/export";
 import StatusBadge, { SampleBadge } from "@/components/StatusBadge";
 import SpeciesName from "@/components/SpeciesName";
-import { Button } from "@/components/Button";
+import { Button, buttonVariants } from "@/components/Button";
 
 const STATUS_FILTERS: (ReportStatus | "All")[] = ["All", "Pending", "Completed", "Needs review"];
 
@@ -581,7 +581,7 @@ export default function ReportsTable({
           {!hasActiveFilters && (
             <Link
               href="/upload"
-              className="focus-ring inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-accent-fg transition hover:bg-[var(--accent-hover)]"
+              className={`${buttonVariants({ intent: "accent", size: "sm" })} focus-ring`}
             >
               Analyze Slides
             </Link>

@@ -41,7 +41,7 @@ import SummaryTile from "@/components/SummaryTile";
 import SpeciesName from "@/components/SpeciesName";
 import StatusBadge from "@/components/StatusBadge";
 import { overlayColor, overlayColors, type OverlayColors } from "@/lib/slide-colors";
-import { Button } from "@/components/Button";
+import { Button, buttonVariants } from "@/components/Button";
 import { toast } from "sonner";
 
 const fieldClass =
@@ -469,14 +469,14 @@ export default function AnalysisResultWorkspace({
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Link
             href="/upload"
-            className="focus-ring inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-accent-fg transition active:scale-[0.97] hover:bg-[var(--accent-hover)]"
+            className={`${buttonVariants({ intent: "accent", size: "sm" })} focus-ring`}
           >
             <Microscope size={14} strokeWidth={1.75} />
             Analyze Slides
           </Link>
           <Link
             href="/reports"
-            className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 text-[13px] text-text-muted transition active:scale-[0.97] hover:text-text"
+            className={`${buttonVariants({ intent: "secondary", size: "sm" })} focus-ring`}
           >
             Open Reports
           </Link>
@@ -586,14 +586,14 @@ export default function AnalysisResultWorkspace({
                   type="button"
                   onClick={handleDiscard}
                   disabled={isDiscarding}
-                  className="focus-ring rounded-md border border-danger/30 bg-surface px-3 py-2 text-[13px] font-medium text-danger transition active:scale-[0.97] hover:bg-danger-bg"
+                  className={`${buttonVariants({ intent: "destructive", size: "sm" })} focus-ring`}
                 >
                   Discard Analysis
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmingDiscard(false)}
-                  className="focus-ring rounded-md px-2 py-2 text-[13px] text-text-muted transition active:scale-[0.97] hover:text-text"
+                  className={`${buttonVariants({ intent: "secondary", size: "sm" })} focus-ring`}
                 >
                   Keep Analysis
                 </button>
@@ -602,7 +602,7 @@ export default function AnalysisResultWorkspace({
               <button
                 type="button"
                 onClick={() => setConfirmingDiscard(true)}
-                className="focus-ring flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text-muted transition active:scale-[0.97] hover:text-text"
+                className={`${buttonVariants({ intent: "caution", size: "sm" })} focus-ring`}
               >
                 <Trash2 size={14} strokeWidth={1.75} />
                 Discard

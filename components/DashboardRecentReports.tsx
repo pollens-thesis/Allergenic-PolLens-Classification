@@ -6,6 +6,7 @@ import { ArrowRight, CloudOff, Loader2 } from "lucide-react";
 import { formatCollectedAt, toReportRow, type Specimen } from "@/lib/data";
 import { listReports } from "@/lib/store";
 import StatusBadge, { SampleBadge } from "@/components/StatusBadge";
+import { buttonVariants } from "@/components/Button";
 
 const RECENT_COUNT = 5;
 
@@ -58,7 +59,7 @@ export default function DashboardRecentReports() {
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="focus-ring rounded-md border border-border bg-surface px-3 py-1.5 text-[13px] text-text transition hover:bg-surface-sunken"
+            className={`${buttonVariants({ intent: "secondary", size: "sm" })} focus-ring`}
           >
             Try Again
           </button>
@@ -73,7 +74,7 @@ export default function DashboardRecentReports() {
           <p className="text-[14px] text-text-muted">No reports yet — analyze slides to create one.</p>
           <Link
             href="/upload"
-            className="focus-ring rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-accent-fg transition hover:bg-[var(--accent-hover)]"
+            className={`${buttonVariants({ intent: "accent", size: "sm" })} focus-ring`}
           >
             Analyze Slides
           </Link>

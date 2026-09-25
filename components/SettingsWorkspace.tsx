@@ -19,6 +19,7 @@ import { useSettings } from "@/lib/settings";
 import { signOut } from "@/lib/session";
 import { listReports } from "@/lib/store";
 import { exportReportsCsv, exportReportsJson, exportReportsXlsx } from "@/lib/export";
+import { buttonVariants } from "@/components/Button";
 
 function Section({
   icon: Icon,
@@ -149,7 +150,7 @@ export default function SettingsWorkspace() {
                 setExporting(false);
               }
             }}
-            className="focus-ring flex flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text-muted transition-[color,border-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text hover:border-border-strong active:scale-[0.97] disabled:opacity-50"
+            className={`${buttonVariants({ intent: "secondary", size: "md" })} focus-ring flex-1`}
           >
             {exporting ? <Loader2 size={14} strokeWidth={1.75} className="animate-spin" /> : <Sheet size={14} strokeWidth={1.75} />}
             Export Excel
@@ -161,7 +162,7 @@ export default function SettingsWorkspace() {
               exportReportsCsv(finalised);
               toast.success("Exported as CSV");
             }}
-            className="focus-ring flex flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text-muted transition-[color,border-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text hover:border-border-strong active:scale-[0.97] disabled:opacity-50"
+            className={`${buttonVariants({ intent: "secondary", size: "md" })} focus-ring flex-1`}
           >
             <FileSpreadsheet size={14} strokeWidth={1.75} />
             Export CSV
@@ -173,7 +174,7 @@ export default function SettingsWorkspace() {
               exportReportsJson(finalised);
               toast.success("Exported as JSON");
             }}
-            className="focus-ring flex flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text-muted transition-[color,border-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text hover:border-border-strong active:scale-[0.97] disabled:opacity-50"
+            className={`${buttonVariants({ intent: "secondary", size: "md" })} focus-ring flex-1`}
           >
             <FileJson size={14} strokeWidth={1.75} />
             Export JSON
@@ -210,7 +211,7 @@ export default function SettingsWorkspace() {
               // account (e.g. the live species catalog) along with the session.
               window.location.replace("/");
             }}
-            className="focus-ring inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text-muted transition-[color,border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-text hover:border-border-strong active:scale-[0.97]"
+            className={`${buttonVariants({ intent: "caution", size: "md" })} focus-ring`}
           >
             {signingOut ? (
               <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />

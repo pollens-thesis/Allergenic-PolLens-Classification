@@ -29,7 +29,7 @@ import { SessionExpiredError } from "@/lib/api";
 import { createReport, deleteReport, listReports } from "@/lib/store";
 import { displayName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
-import { Button } from "@/components/Button";
+import { Button, buttonVariants } from "@/components/Button";
 import ImageLightbox from "@/components/ImageLightbox";
 import LocationSearch, { type Place } from "@/components/LocationSearch";
 
@@ -613,14 +613,14 @@ export default function AnalyzeWorkspace() {
                       <button
                         type="button"
                         onClick={() => void discardPending(report.sampleId)}
-                        className="focus-ring rounded-md border border-danger/30 px-2 py-1 text-[12.5px] text-danger hover:bg-danger-bg"
+                        className={`${buttonVariants({ intent: "destructive", size: "sm" })} focus-ring`}
                       >
                         Discard Analysis
                       </button>
                       <button
                         type="button"
                         onClick={() => setConfirmingDiscard(null)}
-                        className="focus-ring rounded-md px-2 py-1 text-[12.5px] text-text-muted hover:text-text"
+                        className={`${buttonVariants({ intent: "secondary", size: "sm" })} focus-ring`}
                       >
                         Keep Analysis
                       </button>
@@ -629,14 +629,14 @@ export default function AnalyzeWorkspace() {
                     <button
                       type="button"
                       onClick={() => setConfirmingDiscard(report.sampleId)}
-                      className="focus-ring rounded-md px-2 py-1 text-[12.5px] text-text-muted hover:text-danger"
+                      className={`${buttonVariants({ intent: "caution", size: "sm" })} focus-ring`}
                     >
                       Discard
                     </button>
                   )}
                   <Link
                     href={`/upload/result?report=${report.sampleId}`}
-                    className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-border-strong bg-surface px-3 py-1 text-[12.5px] text-text transition active:scale-[0.97] hover:bg-surface-sunken"
+                    className={`${buttonVariants({ intent: "resume", size: "sm" })} focus-ring`}
                   >
                     Resume Analysis
                     <ArrowRight size={13} strokeWidth={1.75} />

@@ -6,6 +6,7 @@ import DashboardStats from "@/components/DashboardStats";
 import DashboardRecentReports from "@/components/DashboardRecentReports";
 import PollenCountChart from "@/components/PollenCountChart";
 import { PageBody, PageHeader } from "@/components/PageFrame";
+import { buttonVariants } from "@/components/Button";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -35,7 +36,7 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-          <span className="flex items-center gap-1.5 self-start rounded-md bg-accent px-3.5 py-2 text-[13px] text-accent-fg transition group-hover:bg-[var(--accent-hover)] sm:self-auto">
+          <span className={`${buttonVariants({ intent: "accent", size: "md" })} focus-ring self-start sm:self-auto`}>
             Analyze Slides
             <ArrowRight size={14} strokeWidth={1.75} />
           </span>

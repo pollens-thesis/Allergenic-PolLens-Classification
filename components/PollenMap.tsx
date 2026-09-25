@@ -53,6 +53,7 @@ import { useMapZoom } from "./useMapZoom";
 import { Button } from "./Button";
 import SpeciesName from "@/components/SpeciesName";
 import LocationSearch, { type Place } from "./LocationSearch";
+import { buttonVariants } from "@/components/Button";
 
 const fieldClass =
   "focus-ring rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text";
@@ -377,7 +378,7 @@ export default function PollenMap() {
         <button
           type="button"
           onClick={() => window.location.reload()}
-          className="focus-ring rounded-md border border-border bg-surface px-3 py-1.5 text-[13px] text-text transition hover:bg-surface-sunken"
+          className={`${buttonVariants({ intent: "secondary", size: "sm" })} focus-ring`}
         >
           Try Again
         </button>

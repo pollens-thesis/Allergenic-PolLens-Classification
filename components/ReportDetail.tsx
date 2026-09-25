@@ -56,7 +56,7 @@ import StatusBadge, { SampleBadge } from "@/components/StatusBadge";
 import SpecimenImageViewer from "@/components/SpecimenImageViewer";
 import SpecimenInspector from "@/components/SpecimenInspector";
 import { overlayColor, overlayColors, type OverlayColors } from "@/lib/slide-colors";
-import { Button } from "@/components/Button";
+import { Button, buttonVariants } from "@/components/Button";
 
 /**
  * One pollen type in a reading. When `onSelect` is given the row doubles as the
@@ -367,19 +367,19 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
             {report.status === "Pending" && report.canEdit && (
               <Link
                 href={`/upload/result?report=${report.sampleId}`}
-                className="focus-ring inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-2 text-[13px] font-medium text-accent-fg hover:bg-[var(--accent-hover)]"
+                className={`${buttonVariants({ intent: "resume", size: "sm" })} focus-ring`}
               >
                 Resume Analysis
               </Link>
             )}
             {report.canEdit && report.status === "Completed" && (
-              <Button type="button" intent="secondary" size="sm" disabled={changing} onClick={() => changeStatus("Needs review")}>
+              <Button type="button" intent="caution" size="sm" disabled={changing} onClick={() => changeStatus("Needs review")}>
                 <Flag size={14} strokeWidth={1.75} />
                 Flag for Review
               </Button>
             )}
             {report.canEdit && report.status === "Needs review" && (
-              <Button type="button" intent="secondary" size="sm" disabled={changing} onClick={() => changeStatus("Completed")}>
+              <Button type="button" intent="confirm" size="sm" disabled={changing} onClick={() => changeStatus("Completed")}>
                 <CircleCheck size={14} strokeWidth={1.75} />
                 Mark Completed
               </Button>
@@ -388,7 +388,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
               <AlertDialog.Root open={deleteOpen} onOpenChange={setDeleteOpen}>
                 <AlertDialog.Trigger
                   disabled={changing}
-                  className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-danger/30 bg-surface px-3 py-1.5 text-[13px] text-danger hover:bg-danger-bg disabled:opacity-40"
+                  className={`${buttonVariants({ intent: "caution", size: "sm" })} focus-ring`}
                 >
                   <Trash2 size={14} strokeWidth={1.75} />
                   Delete

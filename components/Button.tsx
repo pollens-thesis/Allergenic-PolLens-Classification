@@ -8,7 +8,7 @@ import clsx from "clsx";
  * friends) button markup that had been copy-pasted across the upload,
  * reports, map, and settings workspaces.
  */
-const buttonVariants = cva(
+export const buttonVariants = cva(
   [
     "inline-flex items-center justify-center gap-2 rounded-md font-medium",
     "transition-[transform,background-color,border-color,color,opacity]",
@@ -24,6 +24,12 @@ const buttonVariants = cva(
         secondary:
           "bg-surface text-text border border-border hover:border-border-strong hover:bg-surface-sunken",
         destructive: "bg-danger text-white hover:opacity-90",
+        // Outline intents whose colour says what the action does to the record,
+        // in the same hues as the status stamps (StatusBadge): leaving or
+        // removing (red), completing (green), returning to a pending item (ochre).
+        caution: "bg-surface text-danger border border-danger/40 hover:border-danger hover:bg-danger-bg",
+        confirm: "bg-surface text-success border border-success/40 hover:border-success hover:bg-success-bg",
+        resume: "bg-surface text-processing border border-processing/40 hover:border-processing hover:bg-processing-bg",
         ghost: "text-text-muted hover:text-text hover:bg-surface-sunken",
       },
       size: {

@@ -4,58 +4,271 @@
   "title": "Design System: PolLens",
   "extensions": {
     "colorMeta": {
-      "oxide": { "role": "primary", "displayName": "Oxide", "canonical": "#8c2f1b", "cssVar": "--accent", "tonalRamp": ["#2e0f09", "#5e1f13", "#742617", "#8c2f1b", "#b0513b", "#cf8474", "#e7bdb3", "#f7e9e5"] },
-      "page-grey": { "role": "neutral", "displayName": "Page Grey", "canonical": "#ecebe6", "cssVar": "--bg", "tonalRamp": ["#262622", "#4d4c47", "#77766f", "#a09f97", "#c6c5be", "#dcdbd5", "#ecebe6", "#f7f7f3"] },
-      "plate-paper": { "role": "neutral", "displayName": "Plate Paper", "canonical": "#fafaf7", "cssVar": "--surface" },
-      "well": { "role": "neutral", "displayName": "Well", "canonical": "#f1f0eb", "cssVar": "--surface-sunken" },
-      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "#d9d8d2", "cssVar": "--border" },
-      "hairline-strong": { "role": "neutral", "displayName": "Hairline Strong", "canonical": "#b3b1a8", "cssVar": "--border-strong" },
-      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#171717", "cssVar": "--text" },
-      "caption-grey": { "role": "neutral", "displayName": "Caption Grey", "canonical": "#4d4c47", "cssVar": "--text-muted" },
-      "faint-grey": { "role": "neutral", "displayName": "Faint Grey", "canonical": "#5f5e59", "cssVar": "--text-faint" },
-      "viewer-surround": { "role": "neutral", "displayName": "Viewer Surround", "canonical": "#2a2a28", "cssVar": "--viewer-bg" },
-      "status-green": { "role": "status", "displayName": "Status Green (Completed)", "canonical": "#1f6a3a", "cssVar": "--success" },
-      "status-ochre": { "role": "status", "displayName": "Status Ochre (Pending)", "canonical": "#8a5a00", "cssVar": "--processing" },
-      "status-red": { "role": "status", "displayName": "Status Red (Needs Review / destructive)", "canonical": "#b3261e", "cssVar": "--danger" },
-      "frontispiece-paper": { "role": "neutral", "displayName": "Frontispiece Paper (sign-in only)", "canonical": "#e3e1da", "cssVar": "--hero-bg" },
-      "frontispiece-grain": { "role": "illustration", "displayName": "Frontispiece Grain (sign-in only)", "canonical": "#8c2f1b", "cssVar": "--hero-grain" }
+      "oxide": {
+        "role": "primary",
+        "displayName": "Oxide",
+        "canonical": "#8c2f1b",
+        "cssVar": "--accent",
+        "tonalRamp": [
+          "#2e0f09",
+          "#5e1f13",
+          "#742617",
+          "#8c2f1b",
+          "#b0513b",
+          "#cf8474",
+          "#e7bdb3",
+          "#f7e9e5"
+        ]
+      },
+      "page-grey": {
+        "role": "neutral",
+        "displayName": "Page Grey",
+        "canonical": "#ecebe6",
+        "cssVar": "--bg",
+        "tonalRamp": [
+          "#262622",
+          "#4d4c47",
+          "#77766f",
+          "#a09f97",
+          "#c6c5be",
+          "#dcdbd5",
+          "#ecebe6",
+          "#f7f7f3"
+        ]
+      },
+      "plate-paper": {
+        "role": "neutral",
+        "displayName": "Plate Paper",
+        "canonical": "#fafaf7",
+        "cssVar": "--surface"
+      },
+      "well": {
+        "role": "neutral",
+        "displayName": "Well",
+        "canonical": "#f1f0eb",
+        "cssVar": "--surface-sunken"
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#d9d8d2",
+        "cssVar": "--border"
+      },
+      "hairline-strong": {
+        "role": "neutral",
+        "displayName": "Hairline Strong",
+        "canonical": "#b3b1a8",
+        "cssVar": "--border-strong"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#171717",
+        "cssVar": "--text"
+      },
+      "caption-grey": {
+        "role": "neutral",
+        "displayName": "Caption Grey",
+        "canonical": "#4d4c47",
+        "cssVar": "--text-muted"
+      },
+      "faint-grey": {
+        "role": "neutral",
+        "displayName": "Faint Grey",
+        "canonical": "#5f5e59",
+        "cssVar": "--text-faint"
+      },
+      "viewer-surround": {
+        "role": "neutral",
+        "displayName": "Viewer Surround",
+        "canonical": "#2a2a28",
+        "cssVar": "--viewer-bg"
+      },
+      "status-green": {
+        "role": "status",
+        "displayName": "Status Green (Completed)",
+        "canonical": "#1f6a3a",
+        "cssVar": "--success"
+      },
+      "status-ochre": {
+        "role": "status",
+        "displayName": "Status Ochre (Pending)",
+        "canonical": "#8a5a00",
+        "cssVar": "--processing"
+      },
+      "status-red": {
+        "role": "status",
+        "displayName": "Status Red (Needs Review / destructive)",
+        "canonical": "#b3261e",
+        "cssVar": "--danger"
+      },
+      "frontispiece-paper": {
+        "role": "neutral",
+        "displayName": "Frontispiece Paper (sign-in only)",
+        "canonical": "#e3e1da",
+        "cssVar": "--hero-bg"
+      },
+      "frontispiece-grain": {
+        "role": "illustration",
+        "displayName": "Frontispiece Grain (sign-in only)",
+        "canonical": "#8c2f1b",
+        "cssVar": "--hero-grain"
+      }
     },
     "dataPalettes": {
-      "slideOverlay": { "source": "lib/slide-colors.ts OVERLAY_PALETTE", "purpose": "Okabe-Ito without black; per-report abundance order; every box also carries its species code.", "values": ["#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7"] },
-      "catalogSeries": { "source": "lib/data.ts Species.color", "purpose": "Chart series; nine hues cycled over 23 taxa; legends always name the taxon.", "values": ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948", "#0891b2"] },
-      "mapIntensity": { "source": "lib/geo.ts INTENSITY_RAMP", "purpose": "Quantile classes, light to dark; zero and unsampled fills are distinct answers.", "values": ["#cdeeee", "#8fd4d4", "#45abab", "#0e6f6f"], "zeroFill": "#e4e4e7", "unsampledFill": "#f4f4f5" }
+      "slideOverlay": {
+        "source": "lib/slide-colors.ts OVERLAY_PALETTE",
+        "purpose": "Okabe-Ito without black; per-report abundance order; every box also carries its species code.",
+        "values": [
+          "#E69F00",
+          "#56B4E9",
+          "#009E73",
+          "#F0E442",
+          "#0072B2",
+          "#D55E00",
+          "#CC79A7"
+        ]
+      },
+      "catalogSeries": {
+        "source": "lib/data.ts Species.color",
+        "purpose": "Chart series; nine hues cycled over 23 taxa; legends always name the taxon.",
+        "values": [
+          "#2a78d6",
+          "#eb6834",
+          "#1baf7a",
+          "#eda100",
+          "#e87ba4",
+          "#008300",
+          "#4a3aa7",
+          "#e34948",
+          "#0891b2"
+        ]
+      },
+      "mapIntensity": {
+        "source": "lib/geo.ts INTENSITY_RAMP",
+        "purpose": "Quantile classes, light to dark; zero and unsampled fills are distinct answers.",
+        "values": [
+          "#cdeeee",
+          "#8fd4d4",
+          "#45abab",
+          "#0e6f6f"
+        ],
+        "zeroFill": "#e4e4e7",
+        "unsampledFill": "#f4f4f5"
+      }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "Sign-in frontispiece headline only." },
-      "headline": { "displayName": "Page Title", "purpose": "Every page h1 in the page header; identifier titles switch to mono." },
-      "figure": { "displayName": "Figure", "purpose": "Headline numbers in the ruled stat plate." },
-      "title": { "displayName": "Plate Title", "purpose": "Heading of each plate." },
-      "binomial": { "displayName": "Binomial", "purpose": "Scientific names, always serif italic, followed by the mono species code." },
-      "caption": { "displayName": "Caption", "purpose": "Figure caption strip under a specimen plate." },
-      "plate-label": { "displayName": "Plate Label", "purpose": "Oxide serif small caps for plate/figure numbers (.plate-label)." },
-      "body": { "displayName": "Body", "purpose": "All UI text; tabular numerals globally." },
-      "body-small": { "displayName": "Body Small", "purpose": "Dense rows, fields, captions of controls." },
-      "mono": { "displayName": "Mono", "purpose": "IDs, species codes, counts and figures only." }
+      "display": {
+        "displayName": "Display",
+        "purpose": "Sign-in frontispiece headline only."
+      },
+      "headline": {
+        "displayName": "Page Title",
+        "purpose": "Every page h1 in the page header; identifier titles switch to mono."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Headline numbers in the ruled stat plate."
+      },
+      "title": {
+        "displayName": "Plate Title",
+        "purpose": "Heading of each plate."
+      },
+      "binomial": {
+        "displayName": "Binomial",
+        "purpose": "Scientific names, always serif italic, followed by the mono species code."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Figure caption strip under a specimen plate."
+      },
+      "plate-label": {
+        "displayName": "Plate Label",
+        "purpose": "Oxide serif small caps for plate/figure numbers (.plate-label)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "All UI text; tabular numerals globally."
+      },
+      "body-small": {
+        "displayName": "Body Small",
+        "purpose": "Dense rows, fields, captions of controls."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "IDs, species codes, counts and figures only."
+      }
     },
     "classes": [
-      { "name": "plate-label", "value": "font-family: var(--font-display); font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--accent);", "purpose": "Plate and figure numbers." },
-      { "name": "caption-label", "value": "font-family: var(--font-display); font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--text-muted);", "purpose": "Field and section labels inside plates." },
-      { "name": "focus-ring", "value": "outline: 2px solid var(--accent); outline-offset: 3px; (on :focus-visible)", "purpose": "Focus for every interactive element." },
-      { "name": "selection", "value": "::selection { background: #8c2f1b2e; color: var(--text); }", "purpose": "Oxide text selection." }
+      {
+        "name": "plate-label",
+        "value": "font-family: var(--font-display); font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--accent);",
+        "purpose": "Plate and figure numbers."
+      },
+      {
+        "name": "caption-label",
+        "value": "font-family: var(--font-display); font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--text-muted);",
+        "purpose": "Field and section labels inside plates."
+      },
+      {
+        "name": "focus-ring",
+        "value": "outline: 2px solid var(--accent); outline-offset: 3px; (on :focus-visible)",
+        "purpose": "Focus for every interactive element."
+      },
+      {
+        "name": "selection",
+        "value": "::selection { background: #8c2f1b2e; color: var(--text); }",
+        "purpose": "Oxide text selection."
+      }
     ],
     "shadows": [],
     "motion": [
-      { "name": "ease-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Default easing for state transitions, drawer fade and count-up." },
-      { "name": "ease-in-out", "value": "cubic-bezier(0.65, 0, 0.35, 1)", "purpose": "Symmetric transitions." },
-      { "name": "duration-fast", "value": "120ms", "purpose": "Hover and colour changes on buttons and nav." },
-      { "name": "duration-base", "value": "180ms", "purpose": "Overlay fades." },
-      { "name": "duration-slow", "value": "260ms", "purpose": "Upper bound; nothing runs longer except the stat count-up (500ms)." },
-      { "name": "press-scale", "value": "scale(0.97)", "purpose": "Active state on buttons and chips." }
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Default easing for state transitions, drawer fade and count-up."
+      },
+      {
+        "name": "ease-in-out",
+        "value": "cubic-bezier(0.65, 0, 0.35, 1)",
+        "purpose": "Symmetric transitions."
+      },
+      {
+        "name": "duration-fast",
+        "value": "120ms",
+        "purpose": "Hover and colour changes on buttons and nav."
+      },
+      {
+        "name": "duration-base",
+        "value": "180ms",
+        "purpose": "Overlay fades."
+      },
+      {
+        "name": "duration-slow",
+        "value": "260ms",
+        "purpose": "Upper bound; nothing runs longer except the stat count-up (500ms)."
+      },
+      {
+        "name": "press-scale",
+        "value": "scale(0.97)",
+        "purpose": "Active state on buttons and chips."
+      }
     ],
     "breakpoints": [
-      { "name": "sm", "value": "640px" },
-      { "name": "lg", "value": "1024px", "purpose": "Rail replaces the mobile bar; page header becomes sticky." },
-      { "name": "xl", "value": "1280px", "purpose": "Plate + key split (3fr/2fr); stat plate goes to four columns." }
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px",
+        "purpose": "Rail replaces the mobile bar; page header becomes sticky."
+      },
+      {
+        "name": "xl",
+        "value": "1280px",
+        "purpose": "Plate + key split (3fr/2fr); stat plate goes to four columns."
+      }
     ]
   },
   "components": [
@@ -82,6 +295,14 @@
       "description": "Irreversible actions, confirmed in a dialog.",
       "html": "<button class=\"ds-btn-destructive\">Delete Report</button>",
       "css": ".ds-btn-destructive { display: inline-flex; align-items: center; gap: 8px; background: var(--danger, #b3261e); color: #fff; font-family: var(--font-body, 'Atkinson Hyperlegible Next', system-ui, sans-serif); font-size: 14px; font-weight: 500; padding: 8px 16px; border: none; border-radius: 2px; cursor: pointer; transition: opacity 120ms cubic-bezier(0.16,1,0.3,1), transform 120ms; } .ds-btn-destructive:hover { opacity: 0.9; } .ds-btn-destructive:active { transform: scale(0.97); } .ds-btn-destructive:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; }"
+    },
+    {
+      "name": "Consequence Buttons",
+      "kind": "button",
+      "refersTo": "button-caution",
+      "description": "Outline buttons whose status hue names the consequence: caution (red) leaves or removes, confirm (green) completes, resume (ochre) returns to a pending item.",
+      "html": "<button class=\"ds-btn-caution\">Sign Out</button> <button class=\"ds-btn-confirm\">Mark Completed</button> <button class=\"ds-btn-resume\">Resume Analysis</button>",
+      "css": ".ds-btn-caution,.ds-btn-confirm,.ds-btn-resume { display:inline-flex; align-items:center; gap:8px; background:var(--surface,#fafaf7); font-family:var(--font-body,'Atkinson Hyperlegible Next',system-ui,sans-serif); font-size:14px; font-weight:500; padding:8px 16px; border-radius:2px; cursor:pointer; transition:background-color 120ms cubic-bezier(0.16,1,0.3,1), border-color 120ms, transform 120ms; } .ds-btn-caution { color:var(--danger,#b3261e); border:1px solid rgb(179 38 30 / 0.4); } .ds-btn-caution:hover { border-color:var(--danger,#b3261e); background:var(--danger-bg,#b3261e14); } .ds-btn-confirm { color:var(--success,#1f6a3a); border:1px solid rgb(31 106 58 / 0.4); } .ds-btn-confirm:hover { border-color:var(--success,#1f6a3a); background:var(--success-bg,#1f6a3a14); } .ds-btn-resume { color:var(--processing,#8a5a00); border:1px solid rgb(138 90 0 / 0.4); } .ds-btn-resume:hover { border-color:var(--processing,#8a5a00); background:var(--processing-bg,#8a5a0014); } .ds-btn-caution:active,.ds-btn-confirm:active,.ds-btn-resume:active { transform:scale(0.97); }"
     },
     {
       "name": "Text Field",
@@ -149,11 +370,31 @@
       "Species colours and the map ramp are data, never decoration."
     ],
     "rules": [
-      { "name": "The One Oxide Rule", "body": "Oxide marks a plate or figure number, the page's primary action, an inline text action, a selection, or focus. It does nothing else. It never tints a heading word, an icon or a background for mood.", "section": "colors" },
-      { "name": "The Data Is Not Decoration Rule", "body": "Species colours and the map ramp only encode data. They never style chrome, and chrome colours never stand in for a species. Wherever a data colour appears, a code, name or number says the same thing.", "section": "colors" },
-      { "name": "The Small-Caps Label Rule", "body": "Labels are serif small caps, never tracked uppercase sans. Oxide small caps number a plate. Grey small caps name a field. A label names real content directly beneath it. It is never a decorative line above a heading.", "section": "typography" },
-      { "name": "The Mono Means Identifier Rule", "body": "The mono face is for things you would copy, compare or count: IDs, species codes, counts and figures. It is not for prose, buttons or headings. The PolLens wordmark (mono, uppercase, 0.18em tracking) is an identity asset and sets no precedent.", "section": "typography" },
-      { "name": "The Hairline Plate Rule", "body": "A panel is a square-cut plate with a 1px hairline frame on plate paper. There are no soft drop shadows, glows or floating cards. If something needs separating, give it a rule or a well.", "section": "elevation" }
+      {
+        "name": "The One Oxide Rule",
+        "body": "Oxide marks a plate or figure number, the page's primary action, an inline text action, a selection, or focus. It does nothing else. It never tints a heading word, an icon or a background for mood.",
+        "section": "colors"
+      },
+      {
+        "name": "The Data Is Not Decoration Rule",
+        "body": "Species colours and the map ramp only encode data. They never style chrome, and chrome colours never stand in for a species. Wherever a data colour appears, a code, name or number says the same thing.",
+        "section": "colors"
+      },
+      {
+        "name": "The Small-Caps Label Rule",
+        "body": "Labels are serif small caps, never tracked uppercase sans. Oxide small caps number a plate. Grey small caps name a field. A label names real content directly beneath it. It is never a decorative line above a heading.",
+        "section": "typography"
+      },
+      {
+        "name": "The Mono Means Identifier Rule",
+        "body": "The mono face is for things you would copy, compare or count: IDs, species codes, counts and figures. It is not for prose, buttons or headings. The PolLens wordmark (mono, uppercase, 0.18em tracking) is an identity asset and sets no precedent.",
+        "section": "typography"
+      },
+      {
+        "name": "The Hairline Plate Rule",
+        "body": "A panel is a square-cut plate with a 1px hairline frame on plate paper. There are no soft drop shadows, glows or floating cards. If something needs separating, give it a rule or a well.",
+        "section": "elevation"
+      }
     ],
     "dos": [
       "Do keep the page grey (#ecebe6), plates on plate paper (#fafaf7) and frames at a 1px hairline (#d9d8d2).",
