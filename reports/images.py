@@ -35,11 +35,21 @@ def check_slide_image(upload):
         upload.seek(0)
         with Image.open(upload) as img:
             fmt = img.format
+            width, height = img.size
             img.verify()  # structural check without decoding every pixel
+    except Image.DecompressionBombError:
+        raise SlideImageError(f'"{upload.name}" has too many pixels to analyze.', too_large=True)
     except (UnidentifiedImageError, OSError, SyntaxError, ValueError):
         raise SlideImageError(f'"{upload.name}" is not a readable image.')
     finally:
         upload.seek(0)
+    # A tiny compressed file can still expand to an enormous image in memory.
+    if width * height > settings.MAX_SLIDE_IMAGE_PIXELS:
+        raise SlideImageError(
+            f'"{upload.name}" is {width}×{height} pixels; the limit is '
+            f'{settings.MAX_SLIDE_IMAGE_PIXELS // 1_000_000} megapixels.',
+            too_large=True,
+        )
     if fmt not in ALLOWED_FORMATS:
         raise SlideImageError(f'"{upload.name}" is {fmt or "an unsupported format"}; use JPEG or PNG.')
     return ALLOWED_FORMATS[fmt]

@@ -16,6 +16,15 @@ def _domain_allowed(domain, allowed):
     return any(domain == entry or domain.endswith('.' + entry) for entry in allowed)
 
 
+def user_can_authenticate(user):
+    """
+    SimpleJWT's USER_AUTHENTICATION_RULE: an active, allowlisted user. Also
+    applied when refreshing tokens, so someone removed from the list can't
+    keep a session alive by refreshing.
+    """
+    return user is not None and user.is_active and is_allowed(user.email)
+
+
 def is_allowed(email):
     email = (email or '').strip().lower()
     if '@' not in email:

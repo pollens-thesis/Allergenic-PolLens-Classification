@@ -1,4 +1,6 @@
 import calendar
+import logging
+from collections.abc import Mapping
 import datetime
 import json
 import re
@@ -21,6 +23,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .images import SlideImageError, check_slide_image
+
+logger = logging.getLogger(__name__)
+MANILA = zoneinfo.ZoneInfo('Asia/Manila')
+# Reports that describe finished work — what charts and maps count.
+FINALISED_STATUSES = ('Completed', 'Needs review')
 from .models import STATUS_CHOICES, Detection, Report, Species
 from .serializers import (
     ReportCreateSerializer,
@@ -41,6 +48,14 @@ def image_error_response(exc):
             else status.HTTP_400_BAD_REQUEST
         ),
     )
+
+
+def delete_image_files(images):
+    for image in images:
+        try:
+            image.storage.delete(image.name)
+        except Exception:  # noqa: BLE001 — storage backends raise anything
+            logger.exception('Could not delete %s', image.name)
 
 
 def all_species_ids():
@@ -116,6 +131,11 @@ class ReportListCreateView(APIView):
         # many=True fields as bracket-notation keys ("slides[0]...") rather
         # than reading our single JSON-encoded field. A plain dict avoids
         # that HTML-form code path.
+        if not isinstance(request.data, Mapping):
+            return Response(
+                {'detail': 'Send the report as multipart form data.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         data = {key: request.data[key] for key in request.data}
         for key in ('weather', 'slides'):
             raw = data.get(key)
@@ -273,10 +293,16 @@ class DetectView(APIView):
                     status=status.HTTP_502_BAD_GATEWAY,
                 )
 
+        if not isinstance(payload, dict) or not isinstance(payload.get('predictions', []), list):
+            return Response(
+                {'detail': 'Detection service is unavailable.'},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
         image_size = payload.get('image') or {}
         predictions = [
             {field: p[field] for field in ROBOFLOW_PREDICTION_FIELDS if field in p}
             for p in payload.get('predictions', [])
+            if isinstance(p, dict)
         ]
         return Response({
             'image': {'width': image_size.get('width'), 'height': image_size.get('height')},
@@ -291,7 +317,8 @@ OPEN_METEO_ARCHIVE_URL = 'https://archive-api.open-meteo.com/v1/archive'
 # The forecast service keeps roughly the last 92 days and the next 16; older
 # dates come from the reanalysis archive (which lags a few days behind).
 FORECAST_PAST_DAYS = 90
-FORECAST_FUTURE_DAYS = 15
+FORECAST_FUTURE_DAYS = 14  # a day's margin: Open-Meteo counts its 16 days in UTC
+EARLIEST_WEATHER_DATE = datetime.date(1940, 1, 1)  # start of the ERA5 archive
 WEATHER_TIMEZONE = 'Asia/Manila'
 DEFAULT_HOUR = 12  # no collection time recorded: midday
 HOURLY_FIELDS = 'temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code,cloud_cover'
@@ -355,7 +382,11 @@ class WeatherView(APIView):
         try:
             day = datetime.date.fromisoformat(raw_date) if raw_date else now.date()
             if raw_time:
-                hour = datetime.time.fromisoformat(raw_time).hour
+                # Nearest hourly reading: 12:40 → 13:00, 23:30 → 00:00 the next day.
+                when = datetime.datetime.combine(day, datetime.time.fromisoformat(raw_time).replace(tzinfo=None))
+                if when.minute >= 30:
+                    when += datetime.timedelta(hours=1)
+                day, hour = when.date(), when.hour
             else:
                 hour = now.hour if not raw_date else DEFAULT_HOUR
         except ValueError:
@@ -364,6 +395,11 @@ class WeatherView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if day < EARLIEST_WEATHER_DATE:
+            return Response(
+                {'detail': 'Weather records start in 1940.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         age = (now.date() - day).days
         if age < -FORECAST_FUTURE_DAYS:
             return Response(
@@ -391,7 +427,13 @@ class WeatherView(APIView):
                 {'detail': 'Weather service is unavailable.'},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
-        if upstream.status_code != 200:
+        if upstream.status_code == 400:
+            # Open-Meteo refuses dates outside its range with a 400.
+            return Response(
+                {'detail': 'No weather data for that date.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if upstream.status_code != 200 or not isinstance(payload, dict):
             return Response(
                 {'detail': 'Weather service is unavailable.'},
                 status=status.HTTP_502_BAD_GATEWAY,
@@ -447,7 +489,7 @@ class ReportMonthlyCountsView(APIView):
 
     def get(self, request):
         all_species = all_species_ids()
-        now = timezone.now()
+        now = timezone.localtime(timezone.now(), MANILA)
         months = []
         year, month = now.year, now.month
         for _ in range(12):
@@ -460,7 +502,7 @@ class ReportMonthlyCountsView(APIView):
         target_year_months = [f'{year:04d}-{month:02d}' for year, month in months]
         rows = (
             Detection.objects
-            .filter(species_id__in=all_species, slide__report__status='Completed')
+            .filter(species_id__in=all_species, slide__report__status__in=FINALISED_STATUSES)
             .annotate(year_month=Substr('slide__report__collected_at', 1, 7))
             .filter(year_month__in=target_year_months)
             .values('year_month', 'species_id')
@@ -550,6 +592,7 @@ class ReportDetailView(APIView):
         images = [slide.image for slide in report.slides.all() if slide.image]
         with transaction.atomic():
             report.delete()
-            # Files go only once the rows are really gone.
-            transaction.on_commit(lambda: [image.storage.delete(image.name) for image in images])
+            # Files go only once the rows are really gone; a storage error is
+            # logged, never turned into a 500 for a delete that already happened.
+            transaction.on_commit(lambda: delete_image_files(images), robust=True)
         return Response(status=status.HTTP_204_NO_CONTENT)

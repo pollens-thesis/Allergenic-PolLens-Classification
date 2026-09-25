@@ -1,4 +1,5 @@
 import jwt
+from django.db import IntegrityError
 from django.conf import settings
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
@@ -29,7 +30,11 @@ def issue_session(email, institution, full_name=''):
     full_name = (full_name or '').strip()[:255]
     user = User.objects.filter(email__iexact=email).first()
     if user is None:
-        user = User.objects.create(email=email, institution=institution, full_name=full_name)
+        try:
+            user = User.objects.create(email=email, institution=institution, full_name=full_name)
+        except IntegrityError:
+            # Two first sign-ins at once: the other request created it.
+            user = User.objects.get(email__iexact=email)
     else:
         changed = []
         if institution and user.institution != institution:
@@ -129,6 +134,7 @@ def verify_microsoft_id_token(token, client_id):
         _microsoft_signing_key(token),
         algorithms=['RS256'],
         audience=client_id,
+        leeway=60,  # tolerate a slightly slow server clock
         options={'require': ['exp', 'iat', 'aud', 'iss', 'tid']},
     )
     tid = claims['tid']

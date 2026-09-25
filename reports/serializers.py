@@ -1,3 +1,6 @@
+import datetime
+import re
+
 from django.db import transaction
 from rest_framework import serializers
 
@@ -90,6 +93,15 @@ class SlideInputSerializer(serializers.Serializer):
         return detections
 
 
+def check_collected_at(value):
+    """The regex only checks the shape; this rejects impossible dates like 2026-99-99."""
+    try:
+        datetime.datetime.strptime(value, '%Y-%m-%dT%H:%M' if 'T' in value else '%Y-%m-%d')
+    except ValueError:
+        raise serializers.ValidationError('Not a real date/time.')
+    return value
+
+
 def require_location(status, location):
     if status in ('Completed', 'Needs review') and not (location or '').strip():
         raise serializers.ValidationError(
@@ -113,9 +125,21 @@ class ReportCreateSerializer(serializers.Serializer):
     weather = WeatherInputSerializer(allow_null=True, required=False, default=None)
     slides = SlideInputSerializer(many=True, min_length=1)
     status = serializers.ChoiceField(choices=['Pending', 'Completed'], default='Completed')
+    sampleDetections = serializers.BooleanField(default=False, source='sample_detections')
+
+    def validate_collectedAt(self, value):
+        return check_collected_at(value)
 
     def validate(self, attrs):
         require_location(attrs['status'], attrs['location'])
+        # Every slide's image must be present before anything is written, so a
+        # rejected batch never leaves files behind in storage.
+        files = self.context.get('files', {})
+        missing = [i for i in range(len(attrs['slides'])) if files.get(str(i)) is None]
+        if missing:
+            raise serializers.ValidationError(
+                {'slides': [f'Missing image file for slide index {missing[0]}.']}
+            )
         return attrs
 
     def create(self, validated_data):
@@ -132,6 +156,7 @@ class ReportCreateSerializer(serializers.Serializer):
                 location=validated_data['location'].strip(),
                 researcher=validated_data['researcher'].strip() or 'Unknown',
                 status=validated_data['status'],
+                sample_detections=validated_data.get('sample_detections', False),
                 weather_condition=weather['condition'] if weather else None,
                 weather_temperature_c=weather.get('temperature_c') if weather else None,
                 weather_humidity_pct=weather.get('humidity_pct') if weather else None,
@@ -187,7 +212,25 @@ class ReportUpdateSerializer(serializers.Serializer):
     slides = SlideNotesInputSerializer(many=True, required=False)
     status = serializers.ChoiceField(choices=STATUS_CHOICES, required=False)
 
+    def validate_collectedAt(self, value):
+        return check_collected_at(value)
+
     def validate(self, attrs):
+        # Partial updates skip missing keys *inside* nested objects too, so the
+        # raw body is checked: a weather object is all four readings or null,
+        # and every slide entry names its id and its notes.
+        raw = self.initial_data if isinstance(self.initial_data, dict) else {}
+        weather = raw.get('weather')
+        if 'weather' in raw and weather is not None:
+            needed = {'condition', 'temperatureC', 'humidityPct', 'windKph'}
+            if not isinstance(weather, dict) or not needed <= set(weather):
+                raise serializers.ValidationError(
+                    {'weather': ['Send condition, temperatureC, humidityPct and windKph, or null.']}
+                )
+        for entry in raw.get('slides') or []:
+            if not isinstance(entry, dict) or not {'id', 'notes'} <= set(entry):
+                raise serializers.ValidationError({'slides': ['Each slide needs an id and notes.']})
+
         report = self.instance
         new_status = attrs.get('status', report.status)
         if new_status != report.status and new_status not in STATUS_TRANSITIONS[report.status]:
@@ -198,11 +241,10 @@ class ReportUpdateSerializer(serializers.Serializer):
 
         numbers = {}
         for slide in attrs.get('slides', []):
-            prefix = f'{report.sample_id}-S'
-            number = slide['id'][len(prefix):] if slide['id'].startswith(prefix) else ''
-            if not number.isdigit() or not report.slides.filter(number=int(number)).exists():
+            match = re.fullmatch(re.escape(report.sample_id) + r'-S([0-9]+)', slide['id'])
+            if not match or not report.slides.filter(number=int(match.group(1))).exists():
                 raise serializers.ValidationError({'slides': [f'Unknown slide "{slide["id"]}".']})
-            numbers[int(number)] = slide['notes'].strip()
+            numbers[int(match.group(1))] = slide['notes'].strip()
         attrs['slide_notes'] = numbers
         return attrs
 
@@ -212,10 +254,12 @@ class ReportUpdateSerializer(serializers.Serializer):
             if field in data:
                 setattr(report, field, data[field])
                 fields.append(field)
-        for field in ('location', 'researcher'):
-            if field in data:
-                setattr(report, field, data[field].strip())
-                fields.append(field)
+        if 'location' in data:
+            report.location = data['location'].strip()
+            fields.append('location')
+        if 'researcher' in data:
+            report.researcher = data['researcher'].strip() or 'Unknown'  # same rule as create
+            fields.append('researcher')
         if 'weather' in data:
             weather = data['weather']
             report.weather_condition = weather['condition'] if weather else None
@@ -296,6 +340,7 @@ class ReportSerializer(serializers.Serializer):
     weather = serializers.SerializerMethodField()
     researcher = serializers.CharField()
     status = serializers.CharField()
+    sampleDetections = serializers.BooleanField(source='sample_detections')
     createdAt = serializers.DateTimeField(source='created_at')
     # Whether the caller may edit/delete it — the owner itself isn't exposed.
     canEdit = serializers.SerializerMethodField()

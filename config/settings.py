@@ -181,7 +181,9 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.ScopedRateThrottle',
     ),
     'DEFAULT_THROTTLE_RATES': {
-        'anon': os.environ.get('THROTTLE_ANON', '120/hour'),
+        # Per IP — a whole campus can share one NAT address, and token
+        # refreshes count here too.
+        'anon': os.environ.get('THROTTLE_ANON', '600/hour'),
         'user': os.environ.get('THROTTLE_USER', '5000/hour'),
         'detect': os.environ.get('THROTTLE_DETECT', '600/hour'),
         'login': os.environ.get('THROTTLE_LOGIN', '30/minute'),
@@ -195,12 +197,20 @@ if sys.argv[1:2] == ['test']:
     REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {
         scope: '100000/minute' for scope in REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']
     }
+    # Uploaded test images go to a throwaway folder, never the real media/.
+    import atexit
+    import shutil
+    import tempfile
+    MEDIA_ROOT = Path(tempfile.mkdtemp(prefix='pollens-test-media-'))
+    atexit.register(shutil.rmtree, MEDIA_ROOT, ignore_errors=True)
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
+    'USER_AUTHENTICATION_RULE': 'accounts.access.user_can_authenticate',
+    'TOKEN_REFRESH_SERIALIZER': 'accounts.serializers.SafeTokenRefreshSerializer',
 }
 
 
@@ -208,11 +218,16 @@ SIMPLE_JWT = {
 # Frontend (app/PolLens/, Next.js) runs on a different origin in dev.
 
 CORS_ALLOWED_ORIGINS = env_list(
-    'CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000'
+    'CORS_ALLOWED_ORIGINS',
+    # The localhost default is for development only; production must name its site.
+    'http://localhost:3000,http://127.0.0.1:3000' if DEBUG else '',
 )
 # Optional, e.g. r"^https://pollens-[a-z0-9-]+\.vercel\.app$" for Vercel
 # preview deployments, whose URLs change per branch.
-CORS_ALLOWED_ORIGIN_REGEXES = env_list('CORS_ALLOWED_ORIGIN_REGEXES')
+# Separated by ";" — a regex can itself contain commas ({1,3}).
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r.strip() for r in os.environ.get('CORS_ALLOWED_ORIGIN_REGEXES', '').split(';') if r.strip()
+]
 
 # The API itself is token-authenticated (no CSRF), but the Django admin uses
 # sessions and, served over HTTPS, needs its own origin listed here (added
@@ -328,6 +343,7 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
 # Per-image limit enforced by reports.images.check_slide_image (the settings
 # above only tune buffering). 25 MB is the paper's upload limit.
 MAX_SLIDE_IMAGE_BYTES = int(os.environ.get('MAX_SLIDE_IMAGE_MB', '25')) * 1024 * 1024
+MAX_SLIDE_IMAGE_PIXELS = int(os.environ.get('MAX_SLIDE_IMAGE_MEGAPIXELS', '60')) * 1_000_000
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -338,6 +354,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # makes request.is_secure() — and so the absolute image URLs — say https.
 
 if not DEBUG:
+    # Exactly one proxy (Render's) sits in front: throttles key on the real
+    # client address, not on a spoofable X-Forwarded-For string.
+    REST_FRAMEWORK['NUM_PROXIES'] = 1
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = env_bool('DJANGO_SECURE_SSL_REDIRECT', True)
     SECURE_REDIRECT_EXEMPT = [r'^healthz/$']  # the platform health check may probe over HTTP

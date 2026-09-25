@@ -3,6 +3,7 @@ import datetime
 import io
 import json
 import tempfile
+import zoneinfo
 from unittest.mock import Mock, patch
 
 import requests
@@ -14,6 +15,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from accounts.models import User
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import Detection, Grain, Report, Slide, next_sample_id
 from .views import all_species_ids
@@ -639,7 +641,7 @@ class WeatherViewTests(APITestCase):
     def test_recent_date_uses_forecast_and_picks_the_requested_hour(self, mock_get):
         mock_get.return_value = Mock(status_code=200, json=lambda: make_open_meteo_payload())
 
-        response = self.get(date='2026-09-20', time='12:40')
+        response = self.get(date='2026-09-20', time='12:20')
 
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(mock_get.call_args.args[0], 'https://api.open-meteo.com/v1/forecast')
@@ -890,3 +892,149 @@ class SpeciesRiskMigrationTests(APITestCase):
         self.client.force_authenticate(user=User.objects.create(email='r@up.edu.ph'))
         levels = {s['riskLevel'] for s in self.client.get('/api/v1/reports/species/').data}
         self.assertEqual(levels, {'Not assessed'})
+
+
+@override_settings(ROBOFLOW_MOCK=True)
+class QARegressionTests(APITestCase):
+    """Defects found in the 2026-09-25 QA pass; each must stay fixed."""
+
+    def setUp(self):
+        self.owner = User.objects.create(email='owner@up.edu.ph', institution='up.edu.ph')
+        self.client.force_authenticate(user=self.owner)
+        self.report = make_report(status='Pending', location='')
+        self.report.owner = self.owner
+        self.report.save()
+        self.url = f'/api/v1/reports/{self.report.sample_id}/'
+
+    def patch_report(self, body):
+        return self.client.patch(self.url, body, format='json')
+
+    # --- PATCH input shapes that used to 500 ---------------------------------
+    def test_partial_weather_is_400_and_empty_weather_does_not_wipe(self):
+        self.patch_report({'weather': {'condition': 'Sunny', 'temperatureC': 30, 'humidityPct': 60, 'windKph': 5}})
+        self.assertEqual(self.patch_report({'weather': {'temperatureC': 31}}).status_code, 400)
+        self.assertEqual(self.patch_report({'weather': {}}).status_code, 400)
+        self.report.refresh_from_db()
+        self.assertEqual(self.report.weather_condition, 'Sunny')
+
+    def test_slide_notes_need_id_and_notes(self):
+        sid = f'{self.report.sample_id}-S1'
+        self.assertEqual(self.patch_report({'slides': [{'id': sid}]}).status_code, 400)
+        self.assertEqual(self.patch_report({'slides': [{'notes': 'x'}]}).status_code, 400)
+
+    def test_unicode_digit_slide_id_is_400(self):
+        self.assertEqual(self.patch_report({'slides': [{'id': f'{self.report.sample_id}-S²', 'notes': 'x'}]}).status_code, 400)
+
+    def test_impossible_collected_at_is_400(self):
+        self.assertEqual(self.patch_report({'collectedAt': '2026-99-99'}).status_code, 400)
+        self.assertEqual(self.patch_report({'collectedAt': '2026-02-30T10:00'}).status_code, 400)
+
+    def test_blank_researcher_becomes_unknown(self):
+        self.assertEqual(self.patch_report({'researcher': '  '}).data['researcher'], 'Unknown')
+
+    # --- create ----------------------------------------------------------------
+    def test_non_object_body_is_400(self):
+        response = self.client.post('/api/v1/reports/', [1, 2], format='json')
+        self.assertEqual(response.status_code, 400)
+
+    def test_missing_later_image_writes_no_files(self):
+        storage = self.report.slides.get().image.storage
+        before = set(storage.listdir('reports')[0]) if storage.exists('reports') else set()
+        payload = make_report_payload(slides=json.dumps([make_slide_payload(), make_slide_payload()]))
+        payload['0'] = make_test_image()  # slide 1 ('1') has no image
+        response = self.client.post('/api/v1/reports/', payload, format='multipart')
+        self.assertEqual(response.status_code, 400)
+        after = set(storage.listdir('reports')[0]) if storage.exists('reports') else set()
+        self.assertEqual(after, before)
+
+    def test_sample_detections_flag_round_trips(self):
+        payload = make_report_payload(sampleDetections='true', status='Pending')
+        payload['0'] = make_test_image()
+        response = self.client.post('/api/v1/reports/', payload, format='multipart')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertIs(response.data['sampleDetections'], True)
+        self.assertIs(self.client.get(self.url).data['sampleDetections'], False)
+
+    # --- images ----------------------------------------------------------------
+    @override_settings(MAX_SLIDE_IMAGE_PIXELS=100)
+    def test_too_many_pixels_is_413(self):
+        buffer = io.BytesIO()
+        Image.new('RGB', (20, 20)).save(buffer, format='PNG')
+        upload = SimpleUploadedFile('big.png', buffer.getvalue(), content_type='image/png')
+        response = self.client.post('/api/v1/reports/detect/', {'image': upload}, format='multipart')
+        self.assertEqual(response.status_code, 413)
+
+    def test_decompression_bomb_is_rejected_not_500(self):
+        with patch('reports.images.Image.open', side_effect=Image.DecompressionBombError('boom')):
+            response = self.client.post('/api/v1/reports/detect/', {'image': make_test_image()}, format='multipart')
+        self.assertEqual(response.status_code, 413)
+
+    # --- delete ------------------------------------------------------------------
+    def test_storage_error_on_delete_is_still_204(self):
+        with patch('django.core.files.storage.FileSystemStorage.delete', side_effect=OSError('down')):
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.delete(self.url)
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(Report.objects.filter(pk=self.report.pk).exists())
+
+    # --- detect --------------------------------------------------------------------
+    @override_settings(ROBOFLOW_MOCK=False, ROBOFLOW_API_KEY='k', ROBOFLOW_MODEL_ID='w/m', ROBOFLOW_MODEL_VERSION='1')
+    @patch('reports.views.requests.post')
+    def test_non_object_roboflow_payload_is_502(self, mock_post):
+        mock_post.return_value = Mock(status_code=200, json=lambda: ['nope'])
+        response = self.client.post('/api/v1/reports/detect/', {'image': make_test_image()}, format='multipart')
+        self.assertEqual(response.status_code, 502)
+
+    # --- monthly counts include Needs review -------------------------------------
+    def test_monthly_counts_include_needs_review(self):
+        month = timezone.localtime(timezone.now(), zoneinfo.ZoneInfo('Asia/Manila')).strftime('%Y-%m')
+        make_report(status='Needs review', collected_at=f'{month}-01')
+        data = self.client.get('/api/v1/reports/monthly-counts/').data
+        self.assertEqual(data[-1]['series']['amaranthus_spinosus'], 3)
+
+
+@override_settings(SIGNIN_ALLOWED_DOMAINS=['up.edu.ph'], SIGNIN_ALLOWED_EMAILS=[])
+class TokenRefreshQATests(APITestCase):
+    url = '/api/v1/auth/token/refresh/'
+
+    def test_deleted_user_refresh_is_401(self):
+        user = User.objects.create(email='gone@up.edu.ph')
+        refresh = str(RefreshToken.for_user(user))
+        user.delete()
+        self.assertEqual(self.client.post(self.url, {'refresh': refresh}, format='json').status_code, 401)
+
+    def test_user_removed_from_allowlist_cannot_refresh(self):
+        user = User.objects.create(email='someone@up.edu.ph')
+        refresh = str(RefreshToken.for_user(user))
+        with override_settings(SIGNIN_ALLOWED_DOMAINS=['mseuf.edu.ph']):
+            self.assertEqual(self.client.post(self.url, {'refresh': refresh}, format='json').status_code, 401)
+
+
+@patch('reports.views.timezone.now', lambda: FROZEN_NOW)
+class WeatherQATests(APITestCase):
+    url = '/api/v1/reports/weather/'
+
+    def setUp(self):
+        self.client.force_authenticate(user=User.objects.create(email='w@up.edu.ph'))
+
+    def get(self, **params):
+        return self.client.get(self.url, {'lat': '13.95', 'lon': '121.42', **params})
+
+    @patch('reports.views.requests.get')
+    def test_rounds_to_the_nearest_hour(self, mock_get):
+        mock_get.return_value = Mock(status_code=200, json=lambda: make_open_meteo_payload())
+        self.assertEqual(self.get(date='2026-09-20', time='11:40').data['observedAt'], '2026-09-20T12:00')
+
+    @patch('reports.views.requests.get')
+    def test_late_evening_rolls_to_next_day(self, mock_get):
+        mock_get.return_value = Mock(status_code=200, json=lambda: make_open_meteo_payload('2026-09-21'))
+        self.get(date='2026-09-20', time='23:45')
+        self.assertEqual(mock_get.call_args.kwargs['params']['start_date'], '2026-09-21')
+
+    def test_before_1940_is_400(self):
+        self.assertEqual(self.get(date='1900-01-01').status_code, 400)
+
+    @patch('reports.views.requests.get')
+    def test_upstream_400_is_404(self, mock_get):
+        mock_get.return_value = Mock(status_code=400, json=lambda: {'error': True, 'reason': 'out of range'})
+        self.assertEqual(self.get(date='2026-09-20').status_code, 404)

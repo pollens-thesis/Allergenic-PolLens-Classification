@@ -1,4 +1,5 @@
 import pathlib
+import zoneinfo
 
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
@@ -55,7 +56,9 @@ def next_sample_id(year=None):
     as the first statement inside the same transaction that creates the
     Report, so a rolled-back create doesn't leave a permanent gap.
     """
-    year = year or timezone.now().year
+    # The lab's calendar year (Asia/Manila), not UTC's: a report saved on
+    # 1 January before 08:00 belongs to the new year.
+    year = year or timezone.localtime(timezone.now(), zoneinfo.ZoneInfo('Asia/Manila')).year
     with transaction.atomic():
         seq, _ = ReportSequence.objects.select_for_update().get_or_create(
             year=year, defaults={'last_number': 0},
@@ -88,6 +91,9 @@ class Report(models.Model):
     location = models.CharField(max_length=255, blank=True)  # required to complete, not while Pending
     researcher = models.CharField(max_length=255)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Completed')
+    # The detections came from the detect endpoint's built-in sample
+    # (ROBOFLOW_MOCK), not a trained model — shown as a warning on the report.
+    sample_detections = models.BooleanField(default=False)
 
     weather_condition = models.CharField(
         max_length=20, choices=WEATHER_CONDITION_CHOICES, null=True, blank=True,

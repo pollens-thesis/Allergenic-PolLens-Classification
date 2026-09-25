@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 
 from .models import User
 
@@ -18,3 +20,13 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ('email', 'fullName', 'institution')
         read_only_fields = fields
+
+
+class SafeTokenRefreshSerializer(TokenRefreshSerializer):
+    """A refresh token for a deleted account is a 401, not a 500."""
+
+    def validate(self, attrs):
+        try:
+            return super().validate(attrs)
+        except User.DoesNotExist:
+            raise AuthenticationFailed('This account no longer exists.', code='user_not_found')

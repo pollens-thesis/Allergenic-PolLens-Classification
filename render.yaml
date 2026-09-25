@@ -8,7 +8,7 @@ services:
     plan: free
     region: singapore
     buildCommand: ./build.sh
-    # --timeout 60: above the 30 s Roboflow/OpenWeather upstream timeouts.
+    # --timeout 60: above the 30 s Roboflow upstream timeouts.
     startCommand: gunicorn config.wsgi:application --workers 2 --timeout 60
     healthCheckPath: /healthz/
     envVars:
