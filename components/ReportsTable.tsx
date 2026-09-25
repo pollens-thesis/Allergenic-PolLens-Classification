@@ -238,10 +238,9 @@ export default function ReportsTable({
     <div className="rounded-lg border border-border bg-surface p-5">
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-            Reports
-          </h2>
-          <p className="mt-0.5 text-[13px] text-text-muted">
+          {/* The page title already says "Reports"; this card's heading is its count. */}
+          <h2 className="sr-only">Reports</h2>
+          <p className="text-[15px] text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
             {filtered.length} of {rows.length} {rows.length === 1 ? "report" : "reports"}
             {picked.size > 0 && ` · ${picked.size} chosen`}
           </p>
@@ -399,7 +398,7 @@ export default function ReportsTable({
       {/* Phones get cards, not a seven-column table sideways-scrolled through a
           360px window: every field a row carries stays on screen, and the whole
           card is the tap target the row is on a desktop. */}
-      <ul className="flex flex-col gap-2 lg:hidden">
+      <ul className="flex flex-col gap-2 xl:hidden">
         <AnimatePresence initial={false}>
           {filtered.map((r) => {
             const time = getCollectionTime(r.collectedAt);
@@ -473,7 +472,7 @@ export default function ReportsTable({
         </AnimatePresence>
       </ul>
 
-      <div className="hidden lg:block">
+      <div className="hidden overflow-x-auto xl:block">
         <table className="w-full border-collapse text-left text-[13px]">
           <thead>
             <tr
@@ -535,7 +534,7 @@ export default function ReportsTable({
                     </Link>
                     {r.sampleId === highlightId && (
                       <span className="ml-2 rounded-full bg-accent-muted px-2 py-0.5 text-[11.5px] text-[var(--accent-hover)]">
-                        just saved
+                        Just Generated
                       </span>
                     )}
                   </td>

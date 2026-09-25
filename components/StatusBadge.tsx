@@ -2,7 +2,7 @@ import { cva } from "class-variance-authority";
 import type { ReportStatus } from "@/lib/data";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded px-2.5 py-1 text-[12px] font-medium",
+  "inline-flex items-center whitespace-nowrap rounded px-2.5 py-1 text-[12px] font-medium",
   {
     variants: {
       status: {

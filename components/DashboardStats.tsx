@@ -33,18 +33,12 @@ export default function DashboardStats() {
 
   const dash = failed ? "—" : "…";
   return (
-    <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
       <StatCard
         label="Reports Generated"
         value={stats ? stats.totalSpecimens.toLocaleString() : dash}
         sublabel={failed ? "Couldn't reach the server" : "Completed or in review · all researchers"}
         icon={Microscope}
-      />
-      <StatCard
-        label="Pollen Types"
-        value={String(catalog.length)}
-        sublabel="In the reference catalog"
-        icon={Leaf}
       />
       <StatCard
         label="This Week"
@@ -57,6 +51,12 @@ export default function DashboardStats() {
         value={stats ? (stats.avgConfidence ? `${Math.round(stats.avgConfidence * 100)}%` : "—") : dash}
         sublabel="Over every detected grain"
         icon={Percent}
+      />
+      <StatCard
+        label="Pollen Types"
+        value={String(catalog.length)}
+        sublabel="In the reference catalog"
+        icon={Leaf}
       />
     </div>
   );

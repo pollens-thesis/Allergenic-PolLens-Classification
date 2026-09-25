@@ -350,8 +350,8 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
       )}
       {/* Header */}
       <div className="rounded-lg border border-border bg-surface p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0 flex-1">
             <h2 className="text-2xl font-semibold text-text">
               {report.location || "Location not recorded"}
             </h2>
@@ -363,7 +363,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
             </div>
           </div>
 
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 md:max-w-[55%] md:shrink-0 md:justify-end">
             {report.status === "Pending" && report.canEdit && (
               <Link
                 href={`/upload/result?report=${report.sampleId}`}
@@ -442,6 +442,35 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
         </div>
       </div>
 
+      {/* Combined results */}
+      <div className="rounded-lg border border-border bg-surface p-5">
+        <h3 className="mb-4 text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+          Results
+        </h3>
+
+        <div className="mb-4 grid grid-cols-2 gap-3 rounded-md bg-surface-sunken px-3 py-3 text-center sm:grid-cols-4">
+          <SummaryTile value={totalGrains} label="Total Grains" />
+          <SummaryTile value={aggregated.length} label="Pollen Types" />
+          <SummaryTile value={`${Math.round(overallConfidence * 100)}%`} label="Avg. Confidence" />
+          <SummaryTile
+            value={report.slides.length}
+            label={report.slides.length === 1 ? "Slide" : "Slides"}
+          />
+        </div>
+
+        {aggregated.length === 0 ? (
+          <p className="rounded-md border border-border bg-surface px-3 py-4 text-center text-[13px] text-text-muted">
+            No pollen grains detected in this report.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {aggregated.map((detection) => (
+              <DetectionRow key={detection.speciesId} detection={detection} colors={colors} />
+            ))}
+          </ul>
+        )}
+      </div>
+
       {/* Everything the researcher entered on the Analyze screen. */}
       <div className="rounded-lg border border-border bg-surface p-5">
         <h3 className="text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
@@ -493,35 +522,6 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
         </div>
       </div>
 
-      {/* Combined results */}
-      <div className="rounded-lg border border-border bg-surface p-5">
-        <h3 className="mb-4 text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
-          Results
-        </h3>
-
-        <div className="mb-4 grid grid-cols-2 gap-3 rounded-md bg-surface-sunken px-3 py-3 text-center sm:grid-cols-4">
-          <SummaryTile value={totalGrains} label="Total Grains" />
-          <SummaryTile value={aggregated.length} label="Pollen Types" />
-          <SummaryTile value={`${Math.round(overallConfidence * 100)}%`} label="Avg. Confidence" />
-          <SummaryTile
-            value={report.slides.length}
-            label={report.slides.length === 1 ? "Slide" : "Slides"}
-          />
-        </div>
-
-        {aggregated.length === 0 ? (
-          <p className="rounded-md border border-border bg-surface px-3 py-4 text-center text-[13px] text-text-muted">
-            No pollen grains detected in this report.
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {aggregated.map((detection) => (
-              <DetectionRow key={detection.speciesId} detection={detection} colors={colors} />
-            ))}
-          </ul>
-        )}
-      </div>
-
       {/* Per slide: its reading on the left, the boxed image on the right */}
       <div className="rounded-lg border border-border bg-surface p-5">
         <h3 className="mb-1 text-lg text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
@@ -534,7 +534,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
           Select a pollen type to box its grains on the slide.
         </p>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
           {report.slides.map((slide, index) => {
             const slideGrains = getTotalGrains(slide.detections);
             const selectedSpecies = highlighted[slide.id] ?? null;
@@ -542,7 +542,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
               setHighlighted((current) => ({ ...current, [slide.id]: speciesId }));
 
             return (
-              <div key={slide.id} className="rounded-lg border border-border bg-surface p-4">
+              <div key={slide.id} className="border-t border-border pt-5 first:border-t-0 first:pt-0">
                 <div className="mb-3 flex flex-wrap items-center gap-3 text-[13px]">
                   <span
                     className="rounded-full bg-surface-sunken px-2.5 py-1 text-[12px] text-text-muted"
@@ -558,8 +558,8 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-5">
-                  <div className="min-w-0 xl:col-span-3">
+                <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+                  <div className="min-w-0">
                     {slide.detections.length === 0 ? (
                       <p className="text-[13px] text-text-muted">No pollen grains detected.</p>
                     ) : (
@@ -597,7 +597,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                     </div>
                   </div>
 
-                  <div className="min-w-0 xl:col-span-2">
+                  <div className="min-w-0">
                     <SpecimenImageViewer
                       imageUrl={imageUrls[slide.id]}
                       fileName={slide.fileName}

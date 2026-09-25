@@ -71,25 +71,22 @@ export default function DashboardRecentReports() {
               <li key={row.sampleId}>
                 <Link
                   href={`/reports/${row.sampleId}`}
-                  className="focus-ring -mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-2.5 transition-colors hover:bg-surface-sunken"
+                  className="focus-ring -mx-2 flex items-start justify-between gap-3 rounded-md px-2 py-2.5 transition-colors hover:bg-surface-sunken"
                 >
-                  <div className="flex min-w-0 items-center gap-3">
+                  {/* Two lines, so the place and date stay readable in a narrow column. */}
+                  <div className="min-w-0">
                     <span
-                      className="shrink-0 text-[13px] text-text"
+                      className="block text-[13px] text-text"
                       style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
                     >
                       {row.sampleId}
                     </span>
-                    <span className="truncate text-[13px] text-text-muted">
+                    <span className="mt-0.5 block truncate text-[12.5px] text-text-muted">
                       {row.location || "No location yet"}
+                      <span className="text-text-faint"> · {formatCollectedAt(row.collectedAt)}</span>
                     </span>
                   </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="hidden text-[12.5px] text-text-faint sm:inline">
-                      {formatCollectedAt(row.collectedAt)}
-                    </span>
-                    <StatusBadge status={row.status} />
-                  </div>
+                  <StatusBadge status={row.status} />
                 </Link>
               </li>
             );

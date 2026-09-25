@@ -533,8 +533,8 @@ export default function AnalysisResultWorkspace({
 
       {/* Header: what was analyzed, and the way out of the screen */}
       <div className="rounded-lg border border-border bg-surface p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0 flex-1">
             <div
               className="text-[12px] tracking-widest text-text-muted uppercase"
               style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
@@ -564,7 +564,7 @@ export default function AnalysisResultWorkspace({
             </p>
           </div>
 
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 md:max-w-[50%] md:shrink-0 md:justify-end">
             {confirmingDiscard ? (
               <>
                 <span className="text-[13px] text-text-muted">Discard this analysis?</span>
@@ -630,76 +630,76 @@ export default function AnalysisResultWorkspace({
       </div>
 
       {selected && (
-        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-5">
-          {/* Left: what the analysis found */}
-          <div className="rounded-lg border border-border bg-surface p-5 xl:col-span-3">
-            <div className="mb-4 flex items-baseline justify-between gap-3">
-              <h3 className="text-lg font-semibold tracking-tight text-text">Pollen Detected</h3>
-              {report.slides.length > 1 && (
-                <span className="text-[13px] text-text-muted">Slide {slideIndex + 1}</span>
-              )}
-            </div>
-
-            <div className="mb-4 grid grid-cols-3 gap-3 rounded-md bg-surface-sunken px-3 py-3 text-center">
-              <SummaryTile value={totalGrains} label="Grains" />
-              <SummaryTile value={detections.length} label={detections.length === 1 ? "Pollen Type" : "Pollen Types"} />
-              <SummaryTile value={`${Math.round(confidence * 100)}%`} label="Avg. Confidence" />
-            </div>
-
-            {detections.length === 0 ? (
-              <p className="rounded-md border border-border bg-surface px-3 py-4 text-center text-[13px] text-text-muted">
-                Nothing detected on this slide — no pollen grains were found.
-              </p>
-            ) : (
-              <>
-                <p className="mb-2 text-[12.5px] text-text-muted">Select a type to box its grains on the image.</p>
-                <ul className="flex flex-col gap-2">
-                  {detections.map((detection) => (
-                    <DetectionRow
-                      key={detection.speciesId}
-                      detection={detection}
-                      colors={colors}
-                      selected={highlighted === detection.speciesId}
-                      onSelect={() =>
-                        setHighlighted((current) => (current === detection.speciesId ? null : detection.speciesId))
-                      }
-                    />
-                  ))}
-                </ul>
-              </>
-            )}
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+          {/* The slide itself leads: it is what every number below is read against. */}
+          <div className="rounded-lg border border-border bg-surface p-5 xl:sticky xl:top-48">
+            <h3 className="mb-4 text-lg font-semibold tracking-tight text-text">Specimen Image</h3>
+            <SpecimenImageViewer
+              imageUrl={selected.imageUrl}
+              fileName={selected.fileName}
+              grains={selected.grains}
+              detections={detections}
+              colors={colors}
+              selectedSpeciesId={highlighted}
+              onSelectSpecies={setHighlighted}
+              onExpand={() => setInspectorOpen(true)}
+              onImageError={handleImageError}
+            />
+            <SpecimenInspector
+              open={inspectorOpen}
+              onOpenChange={setInspectorOpen}
+              colors={colors}
+              initialSlideId={selected.id}
+              initialSpeciesId={highlighted}
+              slides={report.slides.map((slide, index) => ({
+                id: slide.id,
+                label: `Slide ${index + 1}`,
+                fileName: slide.fileName,
+                imageUrl: slide.imageUrl,
+                grains: slide.grains,
+                detections: slide.detections,
+              }))}
+            />
           </div>
 
-          {/* Right: the slide itself, and the note about it */}
-          <div className="flex flex-col gap-6 xl:col-span-2">
+          {/* What the analysis found, then the note about this slide */}
+          <div className="flex min-w-0 flex-col gap-6">
             <div className="rounded-lg border border-border bg-surface p-5">
-              <h3 className="mb-4 text-lg font-semibold tracking-tight text-text">Specimen Image</h3>
-              <SpecimenImageViewer
-                imageUrl={selected.imageUrl}
-                fileName={selected.fileName}
-                grains={selected.grains}
-                detections={detections}
-                colors={colors}
-                selectedSpeciesId={highlighted}
-                onSelectSpecies={setHighlighted}
-                onExpand={() => setInspectorOpen(true)}
-                onImageError={handleImageError}
-              />
-              <SpecimenInspector
-                open={inspectorOpen}
-                onOpenChange={setInspectorOpen}
-                colors={colors}
-                initialSlideId={selected.id}
-                initialSpeciesId={highlighted}
-                slides={report.slides.map((slide, index) => ({
-                  id: slide.id,
-                  label: `Slide ${index + 1}`,
-                  fileName: slide.fileName,
-                  imageUrl: slide.imageUrl,
-                  grains: slide.grains,
-                  detections: slide.detections,
-                }))}
-              />
+              <div className="mb-4 flex items-baseline justify-between gap-3">
+                <h3 className="text-lg font-semibold tracking-tight text-text">Pollen Detected</h3>
+                {report.slides.length > 1 && (
+                  <span className="text-[13px] text-text-muted">Slide {slideIndex + 1}</span>
+                )}
+              </div>
+
+              <div className="mb-4 grid grid-cols-3 gap-3 rounded-md bg-surface-sunken px-3 py-3 text-center">
+                <SummaryTile value={totalGrains} label="Grains" />
+                <SummaryTile value={detections.length} label={detections.length === 1 ? "Pollen Type" : "Pollen Types"} />
+                <SummaryTile value={`${Math.round(confidence * 100)}%`} label="Avg. Confidence" />
+              </div>
+
+              {detections.length === 0 ? (
+                <p className="rounded-md border border-border bg-surface px-3 py-4 text-center text-[13px] text-text-muted">
+                  Nothing detected on this slide — no pollen grains were found.
+                </p>
+              ) : (
+                <>
+                  <p className="mb-2 text-[12.5px] text-text-muted">Select a type to box its grains on the image.</p>
+                  <ul className="flex flex-col gap-2">
+                    {detections.map((detection) => (
+                      <DetectionRow
+                        key={detection.speciesId}
+                        detection={detection}
+                        colors={colors}
+                        selected={highlighted === detection.speciesId}
+                        onSelect={() =>
+                          setHighlighted((current) => (current === detection.speciesId ? null : detection.speciesId))
+                        }
+                      />
+                    ))}
+                  </ul>
+                </>
+              )}
             </div>
 
             <div className="rounded-lg border border-border bg-surface p-5">

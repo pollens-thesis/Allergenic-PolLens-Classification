@@ -9,7 +9,7 @@ export default function DashboardGreeting() {
   const name = displayName(settings);
 
   return (
-    <h1 className="text-3xl text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
+    <h1 className="text-3xl tracking-tight text-balance text-text" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>
       Welcome Back, {name}
     </h1>
   );

@@ -12,7 +12,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen w-full flex-col lg:flex-row">
       {/* Left: dark hero */}
-      <section className="relative flex min-h-[38vh] w-full flex-col justify-between overflow-hidden bg-hero-bg px-8 py-8 lg:min-h-screen lg:w-[58%] lg:px-16 lg:py-12">
+      <section className="relative flex w-full flex-col justify-between gap-10 overflow-hidden bg-hero-bg px-6 py-8 sm:px-10 lg:min-h-screen lg:w-[58%] lg:gap-0 lg:px-16 lg:py-12">
         <PollenField />
 
         <div className="relative z-10 flex items-center gap-2.5">
@@ -65,7 +65,7 @@ export default function LoginPage() {
       <section className="flex w-full flex-1 items-center justify-center bg-bg px-6 py-14 lg:w-[42%] lg:px-12">
         <div className="w-full max-w-sm">
           <div className="mb-8">
-            <h2 className="text-3xl font-semibold tracking-tight text-text">
+            <h2 className="text-3xl font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
               Sign In to Continue
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-text-muted">

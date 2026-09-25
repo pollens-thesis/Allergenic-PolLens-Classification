@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import Sidebar from "@/components/Sidebar";
 import ReportDetail from "@/components/ReportDetail";
+import { PageBody, PageHeader } from "@/components/PageFrame";
 
 export async function generateMetadata({
   params,
@@ -21,25 +19,11 @@ export default async function ReportDetailPage({
   const { sampleId } = await params;
 
   return (
-    <div className="grid min-h-screen w-full grid-cols-1 bg-bg lg:grid-cols-[15rem_1fr]">
-      <Sidebar />
-
-      <main className="min-w-0 px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
-        <div className="mb-6">
-          <Link
-            href="/reports"
-            className="focus-ring mb-3 inline-flex items-center gap-1.5 rounded text-[13px] text-text-muted transition-colors hover:text-text"
-          >
-            <ArrowLeft size={14} strokeWidth={1.75} />
-            Back to Reports
-          </Link>
-          <h1 className="text-3xl text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 600 }}>
-            {sampleId}
-          </h1>
-        </div>
-
+    <>
+      <PageHeader back={{ href: "/reports", label: "Back to Reports" }} title={sampleId} mono />
+      <PageBody>
         <ReportDetail sampleId={sampleId} />
-      </main>
-    </div>
+      </PageBody>
+    </>
   );
 }

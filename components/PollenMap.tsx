@@ -491,12 +491,12 @@ export default function PollenMap() {
                 : `Towns shaded by grains of ${activeLabel}.`}
             </p>
           </div>
-          <label className="shrink-0">
+          <label className="w-full sm:w-auto sm:max-w-[18rem] sm:shrink-0">
             <span className="sr-only">Pollen Type</span>
             <select
               value={species}
               onChange={(e) => setSpecies(e.target.value as SpeciesId | "all")}
-              className={fieldClass}
+              className={`${fieldClass} w-full`}
             >
               <option value="all">All Pollen</option>
               {speciesCatalog.map((s) => (
@@ -998,7 +998,7 @@ export default function PollenMap() {
               // keeps the ranking in view. Stacked under the map on a phone it
               // would be a scroll area inside a scrolling page, so the list
               // simply runs on.
-              <ol className="flex flex-col gap-2 lg:max-h-[68vh] lg:overflow-y-auto">
+              <ol className="flex flex-col gap-2 xl:max-h-[68vh] xl:overflow-y-auto">
                 {matches.map((row, index) => (
                   <li key={row.key}>
                     <button

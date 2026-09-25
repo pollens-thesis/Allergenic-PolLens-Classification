@@ -14,8 +14,8 @@ export default function AllergenReference() {
   const counts = useReportGrainCounts();
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-surface">
-      <table className="w-full text-left text-[13px]">
+    <div className="overflow-x-auto rounded-lg border border-border bg-surface">
+      <table className="w-full min-w-[34rem] text-left text-[13px]">
         <thead>
           <tr
             className="border-b border-border text-[11.5px] tracking-widest text-text-muted uppercase"
@@ -32,7 +32,7 @@ export default function AllergenReference() {
             <tr
               key={sp.id}
               id={sp.id}
-              className="scroll-mt-24 border-b border-border/70 last:border-0 target:bg-accent-muted"
+              className="scroll-mt-24 border-b lg:scroll-mt-48 border-border/70 last:border-0 target:bg-accent-muted"
             >
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2.5">
