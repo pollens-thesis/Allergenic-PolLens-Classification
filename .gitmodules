@@ -1,6 +1,0 @@
-[submodule "app/PolLens"]
-	path = app/PolLens
-	url = https://github.com/ninoninonino19/PolLens.git
-[submodule "api"]
-	path = api
-	url = https://github.com/0ban4/PolLens-Thesis.git
