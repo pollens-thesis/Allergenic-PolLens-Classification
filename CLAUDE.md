@@ -27,6 +27,8 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
 
 - Backend code → `api/`; frontend code → `app/PolLens/`; docs → `docs/`.
   Commit and push from anywhere in the repo.
+- Day-to-day workflow (issues → branch → PR with `Fixes #N` → the Scrumban
+  board in GitHub Projects) is in `CONTRIBUTING.md`.
 - Keep backend and frontend changes in separate commits (see the exception
   below), so each side's history stays readable.
 - **The repo is public.** Never commit secrets: `api/.env`,

@@ -20,6 +20,9 @@ Everything is in **one repo**: `pollens-thesis/Allergenic-PolLens-Classification
 from anywhere — there is nothing to "bump". Keep backend and frontend changes
 in separate commits.
 
+**Workflow:** issues, branches, PRs and the Scrumban board — see
+`CONTRIBUTING.md` (put `Fixes #N` in the PR so the board updates).
+
 ```bash
 git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.git
 ```

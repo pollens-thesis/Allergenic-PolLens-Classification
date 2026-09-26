@@ -95,6 +95,9 @@ gitignored; only `.env.example` is tracked).
 
 ## Before you push
 
+Work from an issue and follow `../../CONTRIBUTING.md` (branch `feat/<issue>-…`,
+`Fixes #N` in the PR) so the project board stays current.
+
 ```bash
 npx tsc --noEmit
 npm run lint
