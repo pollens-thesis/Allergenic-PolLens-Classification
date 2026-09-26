@@ -1,0 +1,54 @@
+# Render Blueprint for the PolLens API — see ../docs/deployment.md in the
+# root repo for the full runbook. Values marked `sync: false` are secrets you
+# paste into the Render dashboard when creating the Blueprint.
+services:
+  - type: web
+    name: pollens-api
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: ./build.sh
+    # --timeout 60: above the 30 s Roboflow upstream timeouts.
+    startCommand: gunicorn config.wsgi:application --workers 2 --timeout 60
+    healthCheckPath: /healthz/
+    envVars:
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      # Neon Postgres — the connection string from the Neon dashboard's
+      # Connect panel, e.g. postgresql://user:password@ep-....neon.tech/dbname?sslmode=require
+      - key: DATABASE_URL
+        sync: false
+      # The Vercel frontend's URL, e.g. https://your-project.vercel.app — copy it from Vercel, do not guess (no trailing slash).
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      # Microsoft Entra app registration (Application/client ID); blank = Microsoft sign-in off.
+      - key: MICROSOFT_CLIENT_ID
+        sync: false
+      # Who may sign in. A domain also admits its subdomains; both empty admits nobody.
+      - key: SIGNIN_ALLOWED_DOMAINS
+        value: up.edu.ph,mseuf.edu.ph
+      - key: SIGNIN_ALLOWED_EMAILS
+        sync: false
+      # Cloudflare R2 (S3-compatible) for slide images.
+      - key: AWS_STORAGE_BUCKET_NAME
+        sync: false
+      - key: AWS_S3_ENDPOINT_URL
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      # Canned Roboflow-shaped responses until the model is deployed; then set
+      # the three ROBOFLOW_* values and flip this to "false".
+      - key: ROBOFLOW_MOCK
+        value: "true"
+      - key: ROBOFLOW_API_KEY
+        sync: false
+      - key: ROBOFLOW_MODEL_ID
+        sync: false
+      - key: ROBOFLOW_MODEL_VERSION
+        sync: false
