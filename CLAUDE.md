@@ -29,6 +29,11 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   Commit and push from anywhere in the repo.
 - Day-to-day workflow (issues → branch → PR with `Fixes #N` → the Scrumban
   board in GitHub Projects) is in `CONTRIBUTING.md`.
+- **Board automation — do this without being asked:** for any task beyond a
+  tiny fix, follow `CONTRIBUTING.md` → *For coding agents*: find or create the
+  issue, move its card to In Progress (respect the 2-per-person limit), branch
+  `feat/N-…`, commit with `(#N)`, open a PR with `Fixes #N`, move the card to
+  Review, and report the links. Merge only when the user says so.
 - Keep backend and frontend changes in separate commits (see the exception
   below), so each side's history stays readable.
 - **The repo is public.** Never commit secrets: `api/.env`,

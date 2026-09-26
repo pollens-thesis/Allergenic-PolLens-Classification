@@ -22,6 +22,8 @@ in separate commits.
 
 **Workflow:** issues, branches, PRs and the Scrumban board — see
 `CONTRIBUTING.md` (put `Fixes #N` in the PR so the board updates).
+Agents: do the board steps in `CONTRIBUTING.md` → *For coding agents*
+automatically (issue → In Progress → PR `Fixes #N` → Review), without being asked.
 
 ```bash
 git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.git
