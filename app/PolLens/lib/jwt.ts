@@ -7,8 +7,11 @@
 export function decodeJwtPayload(token: string): Record<string, unknown> {
   try {
     const payload = token.split(".")[1] ?? "";
-    const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
-    return JSON.parse(json);
+    // atob() yields one character per byte, so multi-byte UTF-8 ("ñ") would come
+    // out garbled ("Ã±"); decode the bytes as UTF-8 instead.
+    const binary = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
   } catch {
     return {};
   }
