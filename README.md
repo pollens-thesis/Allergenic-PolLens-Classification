@@ -32,7 +32,7 @@ npx tsc --noEmit  # typecheck
 | `/reports` | **Reports** — every report (shared across researchers), filterable by status/location/date, PDF and Excel export. |
 | `/reports/[sampleId]` | One report in full; its creator can flag it for review, mark it completed, or delete it. |
 | `/map` | **Pollen Map** — the Philippines shaded by grains counted in completed reports, drilling into a province's towns. |
-| `/dataset` | **Allergen Reference** — the 23-species catalog with grains counted across all reports. |
+| `/dataset` | **Allergen Reference** — a searchable 6 × 4 atlas of the 23 species (photo, names, risk, code, grains in finalized reports); each card opens the full record. |
 | `/settings` | Profile, Excel/CSV/JSON export, sign out. |
 
 ## What it does
@@ -72,17 +72,19 @@ columns scrolled sideways.
 
 ## Documentation
 
+- **[AGENTS.md](AGENTS.md)** — start here: the agent/teammate brief (rules the UI
+  must keep, how to run and verify, open tasks, what was delivered).
+- [PRODUCT.md](PRODUCT.md) and [DESIGN.md](DESIGN.md) — product context and the
+  current visual system ("Pollen Atlas Plates").
 - **[docs/overview.md](docs/overview.md)** — what the app does today, the data
   model, where the seams to a real backend are, and what is still unbuilt.
-  Start here.
 - [docs/pollen-map.md](docs/pollen-map.md) — the shipped boundary data: where it
   came from, what was missing, how the hot zones are shaded, and how zoom and
   search work.
-- [docs/allergen-reference-plan.md](docs/allergen-reference-plan.md) — the plan
-  for `/dataset` (a first version is shipped).
-- [docs/design-system.md](docs/design-system.md) — the laboratory UI rationale
-  (typography, colour, overlay palette) with sources.
-- [AGENTS.md](AGENTS.md) — conventions for anyone writing code here.
+- [docs/allergen-reference-plan.md](docs/allergen-reference-plan.md) — the
+  original plan for `/dataset` (superseded by the species atlas; see AGENTS.md).
+- [docs/design-system.md](docs/design-system.md) — the earlier laboratory UI
+  rationale (superseded by DESIGN.md; the legibility reasoning still applies).
 
 ## Status
 

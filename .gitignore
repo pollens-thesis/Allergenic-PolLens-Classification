@@ -27,3 +27,12 @@ dev-server.log
 .env*.local
 # Vercel project link (per-machine)
 .vercel
+
+# Local AI-tool state (logs, worktrees)
+.claude/
+# Impeccable run artifacts (QA screenshots, decision pages, live sessions); the
+# design record (DESIGN.md, .impeccable/design.json, surfaces/, critique/) stays tracked
+.impeccable/review/
+.impeccable/questions/
+.impeccable/live/sessions/
+.impeccable/mocks/
