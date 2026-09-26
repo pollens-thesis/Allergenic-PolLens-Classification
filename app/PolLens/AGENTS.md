@@ -134,6 +134,11 @@ the backend change first.
 5. **Adviser decisions** still open are listed in `PRODUCT.md` and
    `docs/system-spec.md` (architecture sign-off, map pins vs. choropleth,
    theme, archive, system-info display, evaluation targets).
+6. **Open sign-in (planned, not built)** — the owner plans to let any Google
+   account sign in. It's a backend switch first (adviser item 12 in
+   `docs/system-spec.md`); when it lands, sign-in page copy that says who may
+   sign in, and the "not authorised" message, may need updating. Don't change
+   them before the backend does.
 
 ## Delivered in the Sept 25–26 session (verified)
 
