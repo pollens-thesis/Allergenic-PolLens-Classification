@@ -38,6 +38,23 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   builds the frontend from `app/PolLens/` (Root Directory `app/PolLens`). A
   push to `master` redeploys both. See `docs/deployment.md`.
 
+## Current state (2026-09-26)
+
+- **Live and verified:** frontend https://pollens-theta.vercel.app, API
+  https://pollens-api.onrender.com (`/healthz/` ok). Render and Vercel were
+  re-pointed to this monorepo on 2026-09-26 (Root Directories `api` and
+  `app/PolLens`); a push to `master` deploys both.
+- **Who owns what:** backend (`api/`) — 0ban4; frontend (`app/PolLens/`) —
+  ninoninonino19 (handed over 2026-09-26, `pollens-thesis` org owner). The old
+  repos are archived. `pollens-thesis/Allergenic-PolLens-Classification-archive`
+  (the pre-unification root, which still contains the private documents in old
+  branches) **must stay private**.
+- **Open work:** the adviser/team list in `docs/system-spec.md` (Audit section)
+  and the frontend open tasks in `app/PolLens/AGENTS.md`.
+- **Planned, not built:** opening sign-in to any Google account (adviser item
+  12 in `docs/system-spec.md`). Today only the allowlist signs in
+  (`up.edu.ph`, `mseuf.edu.ph` + `SIGNIN_ALLOWED_EMAILS`).
+
 ## Source of Truth: Paper vs. Frontend
 
 - The thesis proposal (`docs/private/CCMS-CS-2026-008-PROPOSAL-MANUSCRIPT.pdf`,

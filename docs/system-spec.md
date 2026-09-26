@@ -30,6 +30,15 @@ province-only location ("Quezon") is province-level; saves on the result page ar
 serialized so a failed Generate can't later complete a report; CSV has a UTF-8 BOM and
 a formula-injection guard. Details in `api/CLAUDE.md` and the commit messages.
 
+**Repo & hosting 2026-09-26:** the three repos were unified into one public
+monorepo, `pollens-thesis/Allergenic-PolLens-Classification` (GitHub organization,
+branch `master`, full history kept, no submodules). The thesis proposal, the
+invitation letter and a screenshot were stripped from the history and are kept
+only in the gitignored `docs/private/`. Render (Root Directory `api`) and Vercel
+(Root Directory `app/PolLens`) now build from it and were verified live; a push to
+`master` deploys both. The old repos are archived; the pre-unification root repo
+(`…-archive`) must stay private. Frontend work was handed to ninoninonino19.
+
 **Still for the adviser/team (not built, not guessed):**
 1. Architecture sign-off: Django API on Render + Next.js on Vercel vs. the paper's
    all-on-Vercel description (also Objective 4's "deploy it at Vercel").
@@ -57,6 +66,15 @@ a formula-injection guard. Details in `api/CLAUDE.md` and the commit messages.
     names, botanical descriptions and credited Wikimedia Commons photos (Species
     fields, editable in Django admin; marked for UPLB verification). **Season and
     allergenic risk are still open** — risk stays "Not assessed".
+12. **Open sign-in to any Google account** — planned by the user (2026-09-26),
+    **not built**. Today sign-in is an allowlist (`up.edu.ph`, `mseuf.edu.ph` and
+    subdomains, plus `SIGNIN_ALLOWED_EMAILS`), and both lists empty admits nobody
+    (fails closed on purpose). Opening it needs: an explicit `SIGNIN_ALLOW_ALL`
+    switch in `api/accounts/access.py` (not "empty means everyone"); the Google
+    OAuth consent screen set to *In production*; and a scope decision, since the
+    paper's users are researchers. Consequences to weigh: every signed-in user sees
+    the whole shared corpus and can upload to R2 / write to Neon (free-tier quotas);
+    Microsoft sign-in would open to any work/school account.
 
 ## Paper Features vs. Frontend Implementation
 

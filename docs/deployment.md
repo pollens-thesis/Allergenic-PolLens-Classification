@@ -1,5 +1,10 @@
 # Deploying PolLens
 
+**Status:** live since 2026-09-25 (https://pollens-theta.vercel.app, API
+https://pollens-api.onrender.com). Since 2026-09-26 both services build from the
+monorepo `pollens-thesis/Allergenic-PolLens-Classification`, branch `master`; a
+push to `master` redeploys both. This runbook is for setting it up again.
+
 Where each part runs:
 
 | Part | Where | Repo |
@@ -9,7 +14,7 @@ Where each part runs:
 | Database | **Neon** Postgres (project already provisioned) | — |
 | Slide images | **Cloudflare R2** (S3-compatible, private bucket) | — |
 
-The code side is done: both repos build and are configured from environment
+The code side is done: the repo builds and are configured from environment
 variables (see `api/CLAUDE.md` → *Deployment*). What's left is creating the
 accounts and pasting values, in this order. It takes about 30–45 minutes.
 
@@ -209,6 +214,8 @@ Open `VERCEL_URL` and check each step:
 | PDF has no images | R2 CORS policy is missing `VERCEL_URL`. |
 | First request hangs ~1 min | Free-tier cold start, see step 2. |
 | Render build fails at `migrate` | Wrong `DATABASE_URL` (a typo, or the password contains a character Neon percent-encoded — paste the string exactly as Neon shows it), or the Neon project is suspended. Check the Neon dashboard. |
+| Render log: `./build.sh: No such file or directory` (and Python 3.14 "default", Node being installed) | Render is building the repo root. Settings → Build & Deploy → **Root Directory `api`**, then deploy again. |
+| Vercel build can't find Next.js / builds the wrong folder | Settings → Build and Deployment → **Root Directory `app/PolLens`**. |
 | Session keeps expiring | Renewal needs the API reachable. Check Render's logs. |
 
 ## Notes
@@ -226,3 +233,7 @@ Open `VERCEL_URL` and check each step:
   API, set `CORS_ALLOWED_ORIGIN_REGEXES` on Render, e.g.
   `^https://pollens-[a-z0-9-]+\.vercel\.app$`, and add those origins in
   Google Console if you want to sign in on previews.
+- **Deploying a change:** push to `master`, or on Vercel use Deployments →
+  **Create Deployment** with branch `master`. Don't use **Redeploy** on the old
+  deployments made with the Vercel CLI before 2026-09-26: that rebuilds the
+  uploaded files, not the GitHub code.

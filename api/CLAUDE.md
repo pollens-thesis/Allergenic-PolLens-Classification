@@ -45,7 +45,10 @@ between the thesis proposal paper and the frontend.
     both empty admits nobody. Enforced at both sign-ins (403) **and** on
     every request by `accounts.authentication.AllowlistedJWTAuthentication`
     (the DRF default auth class), so removing someone takes effect on their
-    next request (401).
+    next request (401). **Planned (2026-09-26), not built:** opening sign-in
+    to any Google account — add an explicit `SIGNIN_ALLOW_ALL` switch rather
+    than making empty lists mean "everyone" (keep fail-closed); see adviser
+    item 12 in `../docs/system-spec.md`.
   - **Throttling:** DRF anon/user rates plus scopes `login` (both sign-in
     views) and `detect`; overridable via `THROTTLE_*` env vars; effectively
     unlimited when running `manage.py test`.
@@ -379,7 +382,7 @@ between the thesis proposal paper and the frontend.
 
 ## Deployment (added 2026-09-24)
 
-Target: this repo on **Render** (`render.yaml` Blueprint, free web service),
+Target: `api/` of the monorepo on **Render** (Root Directory `api`) (`render.yaml` Blueprint, free web service),
 database on **Neon** (existing), slide images on **Cloudflare R2**. The
 click-by-click runbook is `../docs/deployment.md`.
 
