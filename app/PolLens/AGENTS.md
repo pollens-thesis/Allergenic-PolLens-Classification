@@ -155,3 +155,4 @@ the backend change first.
 | Polish + typeset + clarify (type roles, serif binomials, sample labels everywhere, clearer copy) | Done | `4ec43aa` |
 | Colorized action buttons by consequence (incl. Sign Out) | Done | `3ba3bc0` |
 | Allergen Reference as a 6 × 4 searchable species atlas with photos and full records | Done | `2d4d62d` (+ backend `7d17cdb`) |
+| Accented names garbled after sign-in ("NiÃ±o") — `lib/jwt.ts` now decodes JWT claims as UTF-8; keep it that way, don't go back to plain `atob` | Done | `5c23fd9` (issue #1, PR #2) |

@@ -208,6 +208,7 @@ Open `VERCEL_URL` and check each step:
 | Sign-in fails with *Invalid Google token* | Vercel and Render use different Google client IDs. |
 | *This account isn't authorised to use PolLens* | The email isn't on the allowlist: add its domain to `SIGNIN_ALLOWED_DOMAINS` or the address to `SIGNIN_ALLOWED_EMAILS` on Render. |
 | Microsoft popup: *redirect URI mismatch* | Add `VERCEL_URL/auth/microsoft` as an SPA redirect URI (step 4.4). |
+| Google popup: *Access blocked* / *app not verified* | The OAuth consent screen is in **Testing**, so only listed test users can sign in. Google Cloud Console → OAuth consent screen → **Test users** → add the person, or publish the app (**In production**; email/profile scopes need no review). Locally, sign in from exactly `http://localhost:3000`. |
 | Microsoft: *Need admin approval* | The school tenant requires admin consent for new apps; ask its IT, or use Google. |
 | API returns **400 Bad Request** | Host not allowed. Render's own hostname is added automatically; a custom domain needs adding to `DJANGO_ALLOWED_HOSTS`. |
 | Report images broken / 403 | Check the `AWS_*` values on Render: the endpoint must use the account ID, and the token must cover the bucket. |
