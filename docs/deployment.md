@@ -4,8 +4,8 @@ Where each part runs:
 
 | Part | Where | Repo |
 |---|---|---|
-| Frontend (Next.js) | **Vercel** | `ninoninonino19/PolLens` (`app/PolLens/`) |
-| API (Django) | **Render** (free web service) | `0ban4/PolLens-Thesis` (`api/`) |
+| Frontend (Next.js) | **Vercel** | `pollens-thesis/Allergenic-PolLens-Classification`, Root Directory `app/PolLens` |
+| API (Django) | **Render** (free web service) | `pollens-thesis/Allergenic-PolLens-Classification`, Root Directory `api` |
 | Database | **Neon** Postgres (project already provisioned) | — |
 | Slide images | **Cloudflare R2** (S3-compatible, private bucket) | — |
 
@@ -106,11 +106,14 @@ MSEUF IT blocks it, Google sign-in still works.
 
 ## 2. Render: the API
 
-1. Sign in at <https://render.com> with GitHub, as the account that owns
-   `0ban4/PolLens-Thesis`.
-2. **New** → **Blueprint** → pick `0ban4/PolLens-Thesis`. Render reads
-   `render.yaml` and proposes one web service, `pollens-api` (free plan,
-   Singapore region).
+1. Sign in at <https://render.com> with GitHub, and give Render's GitHub app
+   access to the `pollens-thesis` organization's repo.
+2. **New** → **Web Service** → pick `pollens-thesis/Allergenic-PolLens-Classification`, set **Root Directory**
+   to `api`, runtime Python, build command `./build.sh`, start command
+   `gunicorn config.wsgi:application --workers 2 --timeout 60`, health check
+   `/healthz/`, free plan, Singapore region (the same settings as
+   `api/render.yaml`). An existing service is re-pointed under **Settings →
+   Build & Deploy** (Repository, Branch `master`, Root Directory `api`).
 3. Fill in the values it asks for:
 
    | Key | Value |
@@ -138,11 +141,13 @@ Starter plan ($7/mo) stays awake.
 
 ## 3. Vercel: the frontend
 
-1. Sign in at <https://vercel.com> with GitHub. **Importing
-   `ninoninonino19/PolLens` needs access to that repo.** Either the frontend
-   developer adds you as a collaborator, or they do this step themselves.
-2. **Add New** → **Project** → import `PolLens`. Framework preset: **Next.js**
-   (detected). Leave the root directory and build settings at their defaults.
+1. Sign in at <https://vercel.com> with GitHub, and give Vercel's GitHub app
+   access to the `pollens-thesis` organization's repo.
+2. **Add New** → **Project** → import `pollens-thesis/Allergenic-PolLens-Classification`. Framework preset:
+   **Next.js**. Set **Root Directory** to `app/PolLens`. An existing project is
+   re-pointed under **Settings → Git** (connect the repo, production branch
+   `master`) and **Settings → Build and Deployment** (Root Directory
+   `app/PolLens`).
 3. **Environment Variables**:
    - `NEXT_PUBLIC_API_BASE_URL` = `RENDER_URL` (no trailing slash)
    - `NEXT_PUBLIC_GOOGLE_CLIENT_ID` = same Google client ID as in step 2

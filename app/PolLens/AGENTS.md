@@ -7,11 +7,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 # PolLens frontend — agent brief
 
 PolLens is a research console for identifying airborne allergenic pollen in
-microscope slide images. This repo (`ninoninonino19/PolLens`) is the Next.js
-frontend. It lives as a submodule at `app/PolLens/` of the root repo
-`0ban4/Allergenic-PolLens-Classification`; the Django API is the sibling
-submodule `api/` (`0ban4/PolLens-Thesis`). Read the root `AGENTS.md` for the
-repo layout and the submodule commit order.
+microscope slide images. This folder is the Next.js frontend, inside the
+single project repo `pollens-thesis/Allergenic-PolLens-Classification` (the Django API is the
+sibling folder `api/`). Read the root `AGENTS.md` for the layout; there are
+no submodules and nothing to "bump".
 
 Live: https://pollens-theta.vercel.app · API: https://pollens-api.onrender.com
 (Render free tier — the first request after idle takes about a minute).
@@ -109,15 +108,16 @@ and 11px sign-in grain tags (`PollenField`).
 
 ## Deploying
 
-Vercel is connected to this repo: a push to `main` deploys to production.
-After pushing here, the root repo's submodule pointer also needs bumping (the
-project owner does this, or see the root `AGENTS.md`).
+Vercel builds this folder (Root Directory `app/PolLens`) from the `master`
+branch of the project repo: a push to `master` deploys to production. Work on
+a branch and merge (or open a pull request) when it's ready.
 
 ## Backend contract
 
-The API is owned by the backend repo (`api/`). Don't guess fields — they are
+The API lives in `api/` of the same repo. Don't guess fields — they are
 documented in `api/CLAUDE.md` and `docs/system-spec.md`. If the frontend needs
-something new from the API, ask the backend owner (0ban4).
+something new from the API, agree it with the backend owner (0ban4) and deploy
+the backend change first.
 
 ## Open tasks (frontend)
 

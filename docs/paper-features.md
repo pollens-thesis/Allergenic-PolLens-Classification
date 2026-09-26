@@ -1,5 +1,7 @@
 # Paper Features — Extracted from CCMS-CS-2026-008-PROPOSAL-MANUSCRIPT.pdf
 
+> The proposal PDF is kept privately in `docs/private/` (not in the public repo).
+
 Extraction performed by reading the thesis proposal PDF only, per Phase 1 of
 `docs/reconciliation-plan.md`. No frontend or backend code was consulted.
 

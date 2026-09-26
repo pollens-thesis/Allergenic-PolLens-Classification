@@ -12,7 +12,7 @@ extraction doesn't bias the other.
 
 Prompt:
 
-> Read `docs/CCMS-CS-2026-008-PROPOSAL-MANUSCRIPT.pdf` only. Do not look at or reference any
+> Read `docs/private/CCMS-CS-2026-008-PROPOSAL-MANUSCRIPT.pdf` only. Do not look at or reference any
 > frontend or backend code in this repo.
 >
 > Extract every planned feature/module described in the paper. Output a
@@ -27,7 +27,7 @@ Then clear context.
 
 Prompt:
 
-> Explore `app/PolLens/` only. Do not read `docs/CCMS-CS-2026-008-PROPOSAL-MANUSCRIPT.pdf` or
+> Explore `app/PolLens/` only. Do not read `docs/private/CCMS-CS-2026-008-PROPOSAL-MANUSCRIPT.pdf` or
 > `docs/paper-features.md`.
 >
 > List every implemented feature, page, and component. For each, note:

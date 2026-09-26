@@ -1,2 +1,7 @@
-# Local Claude Code session state, not project content.
-/.claude/
+# Local AI-tool state (Claude Code etc.), at any level — not project content
+.claude/
+
+# Private project documents (thesis proposal, letters, screenshots) — shared
+# privately, never published
+docs/private/
+/Pics/

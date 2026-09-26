@@ -13,49 +13,35 @@ This root directory contains two related but separately-developed parts:
 
 ## Git Repository Structure
 
-As of 2026-08-31, `D:\Thesis` itself is a git repo
-(`0ban4/Allergenic-PolLens-Classification` on GitHub), and `app/PolLens/`
-and `api/` are each **separate git repos wired in as submodules** — not
-plain subfolders. Each keeps its own independent history and remote:
-
-| Path | Repo | Owner |
-|---|---|---|
-| `D:\Thesis` (root) | `0ban4/Allergenic-PolLens-Classification` | this project (ties everything together) |
-| `api/` | `0ban4/PolLens-Thesis` | backend (this account) |
-| `app/PolLens/` | `ninoninonino19/PolLens` | frontend dev |
-
-**Which folder to `cd` into depends on what you're changing:**
-- Backend code → `api/`, commit/push there.
-- Frontend code → `app/PolLens/`, commit/push there.
-- `docs/` or this root `CLAUDE.md` → the root (`D:\Thesis`), commit/push there.
-
-**The submodule gotcha:** the root repo doesn't store `api/`'s or
-`app/PolLens/`'s files — only a pointer (gitlink) to *which commit* of
-each to use. After committing and pushing inside `api/` or `app/PolLens/`,
-the root repo will show that path as "modified" until the pointer is also
-bumped there:
+Since 2026-09-26 the whole project is **one repository** (a monorepo):
+`pollens-thesis/Allergenic-PolLens-Classification` on GitHub, owned by the `pollens-thesis` organization, public,
+default branch `master`. `api/` and `app/PolLens/` are ordinary folders —
+**not submodules** — so a change anywhere is one commit and one push, with no
+pointer "bumps". Their full histories were merged in when the repo was
+unified; the old repos (`0ban4/PolLens-Thesis`, `ninoninonino19/PolLens`) are
+archived, read-only.
 
 ```
-cd api  (or app/PolLens)
-git add -A && git commit -m "..." && git push        # commit+push inside the submodule first
-cd ..   (back to root)
-git add api                                            # (or app/PolLens)
-git commit -m "Bump api submodule to ..." && git push  # then bump the pointer
+git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.git
 ```
 
-**Push submodule commits before bumping the root pointer.** A root commit
-that points at a submodule commit which was never pushed to that
-submodule's own remote will break `git clone --recurse-submodules` for
-anyone else — this happened once already (a local-only `app/PolLens`
-commit got pointed to from root before being pushed to
-`ninoninonino19/PolLens`) and was caught by manually test-cloning the
-root repo fresh. When in doubt, test-clone `git clone --recurse-submodules
-<root-repo-url>` into a scratch directory to confirm both submodules
-resolve.
+- Backend code → `api/`; frontend code → `app/PolLens/`; docs → `docs/`.
+  Commit and push from anywhere in the repo.
+- Keep backend and frontend changes in separate commits (see the exception
+  below), so each side's history stays readable.
+- **The repo is public.** Never commit secrets: `api/.env`,
+  `app/PolLens/.env.local`, `db.sqlite3`, `media/`, `venv/`, `node_modules/`,
+  `.next/`, `.vercel/` are gitignored. Private project documents (the thesis
+  proposal PDF, letters, screenshots) live in the gitignored `docs/private/`
+  and are shared privately, never committed.
+- Deploys: Render builds the API from `api/` (Root Directory `api`); Vercel
+  builds the frontend from `app/PolLens/` (Root Directory `app/PolLens`). A
+  push to `master` redeploys both. See `docs/deployment.md`.
 
 ## Source of Truth: Paper vs. Frontend
 
-- `docs/CCMS-CS-2026-008-PROPOSAL-MANUSCRIPT.pdf` — the original thesis proposal. Written before
+- The thesis proposal (`docs/private/CCMS-CS-2026-008-PROPOSAL-MANUSCRIPT.pdf`,
+  kept out of the public repo; ask the team for it) — the original thesis proposal. Written before
   development began; NOT updated to reflect later revisions.
 - `app/PolLens/` — the actual, current frontend implementation. Has been
   revised since the paper was written (adviser consultation changes),
@@ -92,10 +78,6 @@ Rules for these edits:
 - Make the change in its own commit, separate from any backend commits in
   the same session, with a clear message (e.g. "wire real Google OAuth
   into lib/account.ts — was mocked").
-- **Push the commit to `app/PolLens/`'s own remote** (`ninoninonino19/PolLens`)
-  before bumping the root repo's submodule pointer — see Git Repository
-  Structure above. A root commit pointing at an unpushed `app/PolLens/`
-  commit breaks `git clone --recurse-submodules` for anyone else.
 - Note the change in docs/system-spec.md's Decision/Notes for that
   feature, so it's visible there rather than only in git history.
 - If uncertain whether an edit falls inside this scope, stop and ask
