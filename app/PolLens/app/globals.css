@@ -1,0 +1,211 @@
+@import "tailwindcss";
+
+:root {
+  /*
+   * Pollen Atlas Plates. The console reads like a palynology reference atlas:
+   * plate-paper panels with hairline frames on a quiet grey page, ink text,
+   * and one oxide accent kept for plate/figure numbers, focus and the primary
+   * action. The species overlay palette stays the only strong colour in the
+   * data. Light, because the work happens under bright bench light.
+   */
+
+  /* Surfaces — grey page, plate-paper panels */
+  --bg: #ecebe6;              /* page background */
+  --surface: #fafaf7;         /* plates: panels, inputs, table rows, sidebar */
+  --surface-sunken: #f1f0eb;  /* wells: stat strips, summary tiles */
+  --border: #d9d8d2;          /* hairline plate frame and rules */
+  --border-strong: #b3b1a8;   /* hover/active/selected borders */
+
+  /* Text — all pass WCAG AA (4.5:1+) on bg, surface and surface-sunken */
+  --text: #171717;
+  --text-muted: #4d4c47;
+  --text-faint: #5f5e59;
+
+  /* The one accent (oxide) — plate numbers, actions, focus, selection */
+  --accent: #8c2f1b;
+  --accent-hover: #742617;
+  --accent-active: #5e1f13;
+  --accent-muted: #8c2f1b17; /* ~9% */
+  --accent-fg: #ffffff;
+
+  /* Status — each also carries a label and a stamp pattern (StatusBadge) */
+  --success: #1f6a3a;
+  --success-bg: #1f6a3a14;
+  --processing: #8a5a00;      /* ochre — pending, never the accent */
+  --processing-bg: #8a5a0014;
+  --danger: #b3261e;
+  --danger-bg: #b3261e14;
+
+  /* Image viewer surround — neutral, unsaturated, so it doesn't shift how
+     the slide's own colours are perceived */
+  --viewer-bg: #2a2a28;
+
+  /* Sign-in frontispiece — a paper plate, ink type, oxide grains */
+  --hero-bg: #e3e1da;
+  --hero-bg-deep: #d9d7cf;
+  --hero-fg: #171717;
+  --hero-fg-muted: #4d4c47;
+  --hero-grain: #8c2f1b;
+  --hero-grain-soft: #9c4a33;
+
+  /* Journal serif for titles and captions; Atkinson for UI text and data */
+  --font-display: var(--font-serif);
+  --font-body: var(--font-atkinson);
+  --font-mono: var(--font-atkinson-mono);
+
+  /* Motion (Emil Kowalski house rules: never ease-in, custom curves, <300ms) */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 260ms;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-active: var(--accent-active);
+  --color-accent-muted: var(--accent-muted);
+  --color-accent-fg: var(--accent-fg);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-processing: var(--processing);
+  --color-processing-bg: var(--processing-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-viewer: var(--viewer-bg);
+  --color-hero-bg: var(--hero-bg);
+  --color-hero-bg-deep: var(--hero-bg-deep);
+  --color-hero-fg: var(--hero-fg);
+  --color-hero-fg-muted: var(--hero-fg-muted);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+
+  /* Plates are cut square; the barest softening keeps edges from aliasing */
+  --radius-sm: 1px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 3px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+}
+
+/*
+ * min-height, not height: capping the body at the viewport makes the page
+ * shell exactly as tall as the sidebar, which leaves a `position: sticky`
+ * sidebar no room to travel inside its containing block — it just scrolls
+ * away. The body has to grow with its content for the sidebar to stay pinned.
+ */
+body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  /* Readings, counts and ids line up in columns and don't jitter as they change */
+  font-variant-numeric: tabular-nums;
+}
+
+/* Titles are set like an atlas: the journal serif, a touch tight */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+@layer components {
+/* Plate and figure numbers — small caps in the accent ("PL. 2 · FIG. 1") */
+.plate-label {
+  font-family: var(--font-display);
+  font-variant-caps: all-small-caps;
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+/* Type roles (DESIGN.md "Typography"). Sizes live here so a role reads the
+   same on every screen. */
+.t-plate-title {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  line-height: 1.5;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Scientific names: the atlas serif italic, at the size of the line they sit in */
+.t-binomial {
+  font-family: var(--font-display);
+  font-style: italic;
+}
+
+/* Sentences a researcher has to read: notices, help, errors, notes */
+.t-prose {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  max-width: 68ch;
+  text-wrap: pretty;
+}
+
+/* Caption labels — the same small caps, in caption grey */
+.caption-label {
+  font-family: var(--font-display);
+  font-variant-caps: all-small-caps;
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+}
+
+::selection {
+  background: #8c2f1b2e;
+  color: var(--text);
+}
+
+html {
+  scrollbar-color: var(--border-strong) transparent;
+  accent-color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drift {
+    animation: none !important;
+  }
+}
+
+@keyframes drift {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  50%  { transform: translate(var(--dx, 6px), var(--dy, -8px)) rotate(var(--dr, 6deg)); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes glow {
+  0%, 100% { opacity: var(--op-a, 0.55); }
+  50% { opacity: var(--op-b, 0.95); }
+}
+
+.drift {
+  animation: drift var(--dur, 14s) ease-in-out infinite,
+             glow var(--gdur, 6s) ease-in-out infinite;
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}

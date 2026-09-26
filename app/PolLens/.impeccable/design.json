@@ -1,0 +1,430 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-25T20:30:00+08:00",
+  "title": "Design System: PolLens",
+  "extensions": {
+    "colorMeta": {
+      "oxide": {
+        "role": "primary",
+        "displayName": "Oxide",
+        "canonical": "#8c2f1b",
+        "cssVar": "--accent",
+        "tonalRamp": [
+          "#2e0f09",
+          "#5e1f13",
+          "#742617",
+          "#8c2f1b",
+          "#b0513b",
+          "#cf8474",
+          "#e7bdb3",
+          "#f7e9e5"
+        ]
+      },
+      "page-grey": {
+        "role": "neutral",
+        "displayName": "Page Grey",
+        "canonical": "#ecebe6",
+        "cssVar": "--bg",
+        "tonalRamp": [
+          "#262622",
+          "#4d4c47",
+          "#77766f",
+          "#a09f97",
+          "#c6c5be",
+          "#dcdbd5",
+          "#ecebe6",
+          "#f7f7f3"
+        ]
+      },
+      "plate-paper": {
+        "role": "neutral",
+        "displayName": "Plate Paper",
+        "canonical": "#fafaf7",
+        "cssVar": "--surface"
+      },
+      "well": {
+        "role": "neutral",
+        "displayName": "Well",
+        "canonical": "#f1f0eb",
+        "cssVar": "--surface-sunken"
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#d9d8d2",
+        "cssVar": "--border"
+      },
+      "hairline-strong": {
+        "role": "neutral",
+        "displayName": "Hairline Strong",
+        "canonical": "#b3b1a8",
+        "cssVar": "--border-strong"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#171717",
+        "cssVar": "--text"
+      },
+      "caption-grey": {
+        "role": "neutral",
+        "displayName": "Caption Grey",
+        "canonical": "#4d4c47",
+        "cssVar": "--text-muted"
+      },
+      "faint-grey": {
+        "role": "neutral",
+        "displayName": "Faint Grey",
+        "canonical": "#5f5e59",
+        "cssVar": "--text-faint"
+      },
+      "viewer-surround": {
+        "role": "neutral",
+        "displayName": "Viewer Surround",
+        "canonical": "#2a2a28",
+        "cssVar": "--viewer-bg"
+      },
+      "status-green": {
+        "role": "status",
+        "displayName": "Status Green (Completed)",
+        "canonical": "#1f6a3a",
+        "cssVar": "--success"
+      },
+      "status-ochre": {
+        "role": "status",
+        "displayName": "Status Ochre (Pending)",
+        "canonical": "#8a5a00",
+        "cssVar": "--processing"
+      },
+      "status-red": {
+        "role": "status",
+        "displayName": "Status Red (Needs Review / destructive)",
+        "canonical": "#b3261e",
+        "cssVar": "--danger"
+      },
+      "frontispiece-paper": {
+        "role": "neutral",
+        "displayName": "Frontispiece Paper (sign-in only)",
+        "canonical": "#e3e1da",
+        "cssVar": "--hero-bg"
+      },
+      "frontispiece-grain": {
+        "role": "illustration",
+        "displayName": "Frontispiece Grain (sign-in only)",
+        "canonical": "#8c2f1b",
+        "cssVar": "--hero-grain"
+      }
+    },
+    "dataPalettes": {
+      "slideOverlay": {
+        "source": "lib/slide-colors.ts OVERLAY_PALETTE",
+        "purpose": "Okabe-Ito without black; per-report abundance order; every box also carries its species code.",
+        "values": [
+          "#E69F00",
+          "#56B4E9",
+          "#009E73",
+          "#F0E442",
+          "#0072B2",
+          "#D55E00",
+          "#CC79A7"
+        ]
+      },
+      "catalogSeries": {
+        "source": "lib/data.ts Species.color",
+        "purpose": "Chart series; nine hues cycled over 23 taxa; legends always name the taxon.",
+        "values": [
+          "#2a78d6",
+          "#eb6834",
+          "#1baf7a",
+          "#eda100",
+          "#e87ba4",
+          "#008300",
+          "#4a3aa7",
+          "#e34948",
+          "#0891b2"
+        ]
+      },
+      "mapIntensity": {
+        "source": "lib/geo.ts INTENSITY_RAMP",
+        "purpose": "Quantile classes, light to dark; zero and unsampled fills are distinct answers.",
+        "values": [
+          "#cdeeee",
+          "#8fd4d4",
+          "#45abab",
+          "#0e6f6f"
+        ],
+        "zeroFill": "#e4e4e7",
+        "unsampledFill": "#f4f4f5"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Sign-in frontispiece headline only."
+      },
+      "headline": {
+        "displayName": "Page Title",
+        "purpose": "Every page h1 in the page header; identifier titles switch to mono."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Headline numbers in the ruled stat plate."
+      },
+      "title": {
+        "displayName": "Plate Title",
+        "purpose": "Heading of each plate."
+      },
+      "binomial": {
+        "displayName": "Binomial",
+        "purpose": "Scientific names, always serif italic, followed by the mono species code."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Figure caption strip under a specimen plate."
+      },
+      "plate-label": {
+        "displayName": "Plate Label",
+        "purpose": "Oxide serif small caps for plate/figure numbers (.plate-label)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "All UI text; tabular numerals globally."
+      },
+      "body-small": {
+        "displayName": "Body Small",
+        "purpose": "Dense rows, fields, captions of controls."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "IDs, species codes, counts and figures only."
+      }
+    },
+    "classes": [
+      {
+        "name": "plate-label",
+        "value": "font-family: var(--font-display); font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--accent);",
+        "purpose": "Plate and figure numbers."
+      },
+      {
+        "name": "caption-label",
+        "value": "font-family: var(--font-display); font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--text-muted);",
+        "purpose": "Field and section labels inside plates."
+      },
+      {
+        "name": "focus-ring",
+        "value": "outline: 2px solid var(--accent); outline-offset: 3px; (on :focus-visible)",
+        "purpose": "Focus for every interactive element."
+      },
+      {
+        "name": "selection",
+        "value": "::selection { background: #8c2f1b2e; color: var(--text); }",
+        "purpose": "Oxide text selection."
+      }
+    ],
+    "shadows": [],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Default easing for state transitions, drawer fade and count-up."
+      },
+      {
+        "name": "ease-in-out",
+        "value": "cubic-bezier(0.65, 0, 0.35, 1)",
+        "purpose": "Symmetric transitions."
+      },
+      {
+        "name": "duration-fast",
+        "value": "120ms",
+        "purpose": "Hover and colour changes on buttons and nav."
+      },
+      {
+        "name": "duration-base",
+        "value": "180ms",
+        "purpose": "Overlay fades."
+      },
+      {
+        "name": "duration-slow",
+        "value": "260ms",
+        "purpose": "Upper bound; nothing runs longer except the stat count-up (500ms)."
+      },
+      {
+        "name": "press-scale",
+        "value": "scale(0.97)",
+        "purpose": "Active state on buttons and chips."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px",
+        "purpose": "Rail replaces the mobile bar; page header becomes sticky."
+      },
+      {
+        "name": "xl",
+        "value": "1280px",
+        "purpose": "Plate + key split (3fr/2fr); stat plate goes to four columns."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Accent Button",
+      "kind": "button",
+      "refersTo": "button-accent",
+      "description": "The one primary action on a page (Download PDF, Save, Analyze).",
+      "html": "<button class=\"ds-btn-accent\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"/><polyline points=\"7 10 12 15 17 10\"/><line x1=\"12\" y1=\"15\" x2=\"12\" y2=\"3\"/></svg>Download PDF</button>",
+      "css": ".ds-btn-accent { display: inline-flex; align-items: center; gap: 8px; background: var(--accent, #8c2f1b); color: var(--accent-fg, #fff); font-family: var(--font-body, 'Atkinson Hyperlegible Next', system-ui, sans-serif); font-size: 14px; font-weight: 500; padding: 8px 16px; border: none; border-radius: 2px; cursor: pointer; transition: background-color 120ms cubic-bezier(0.16,1,0.3,1), transform 120ms cubic-bezier(0.16,1,0.3,1); } .ds-btn-accent:hover { background: var(--accent-hover, #742617); } .ds-btn-accent:active { background: var(--accent-active, #5e1f13); transform: scale(0.97); } .ds-btn-accent:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Default for every other action (Mark Completed, Excel).",
+      "html": "<button class=\"ds-btn-secondary\">Mark Completed</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; gap: 8px; background: var(--surface, #fafaf7); color: var(--text, #171717); font-family: var(--font-body, 'Atkinson Hyperlegible Next', system-ui, sans-serif); font-size: 14px; font-weight: 500; padding: 8px 16px; border: 1px solid var(--border, #d9d8d2); border-radius: 2px; cursor: pointer; transition: background-color 120ms cubic-bezier(0.16,1,0.3,1), border-color 120ms cubic-bezier(0.16,1,0.3,1), transform 120ms; } .ds-btn-secondary:hover { border-color: var(--border-strong, #b3b1a8); background: var(--surface-sunken, #f1f0eb); } .ds-btn-secondary:active { transform: scale(0.97); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; }"
+    },
+    {
+      "name": "Destructive Button",
+      "kind": "button",
+      "refersTo": "button-destructive",
+      "description": "Irreversible actions, confirmed in a dialog.",
+      "html": "<button class=\"ds-btn-destructive\">Delete Report</button>",
+      "css": ".ds-btn-destructive { display: inline-flex; align-items: center; gap: 8px; background: var(--danger, #b3261e); color: #fff; font-family: var(--font-body, 'Atkinson Hyperlegible Next', system-ui, sans-serif); font-size: 14px; font-weight: 500; padding: 8px 16px; border: none; border-radius: 2px; cursor: pointer; transition: opacity 120ms cubic-bezier(0.16,1,0.3,1), transform 120ms; } .ds-btn-destructive:hover { opacity: 0.9; } .ds-btn-destructive:active { transform: scale(0.97); } .ds-btn-destructive:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; }"
+    },
+    {
+      "name": "Consequence Buttons",
+      "kind": "button",
+      "refersTo": "button-caution",
+      "description": "Outline buttons whose status hue names the consequence: caution (red) leaves or removes, confirm (green) completes, resume (ochre) returns to a pending item.",
+      "html": "<button class=\"ds-btn-caution\">Sign Out</button> <button class=\"ds-btn-confirm\">Mark Completed</button> <button class=\"ds-btn-resume\">Resume Analysis</button>",
+      "css": ".ds-btn-caution,.ds-btn-confirm,.ds-btn-resume { display:inline-flex; align-items:center; gap:8px; background:var(--surface,#fafaf7); font-family:var(--font-body,'Atkinson Hyperlegible Next',system-ui,sans-serif); font-size:14px; font-weight:500; padding:8px 16px; border-radius:2px; cursor:pointer; transition:background-color 120ms cubic-bezier(0.16,1,0.3,1), border-color 120ms, transform 120ms; } .ds-btn-caution { color:var(--danger,#b3261e); border:1px solid rgb(179 38 30 / 0.4); } .ds-btn-caution:hover { border-color:var(--danger,#b3261e); background:var(--danger-bg,#b3261e14); } .ds-btn-confirm { color:var(--success,#1f6a3a); border:1px solid rgb(31 106 58 / 0.4); } .ds-btn-confirm:hover { border-color:var(--success,#1f6a3a); background:var(--success-bg,#1f6a3a14); } .ds-btn-resume { color:var(--processing,#8a5a00); border:1px solid rgb(138 90 0 / 0.4); } .ds-btn-resume:hover { border-color:var(--processing,#8a5a00); background:var(--processing-bg,#8a5a0014); } .ds-btn-caution:active,.ds-btn-confirm:active,.ds-btn-resume:active { transform:scale(0.97); }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Every form field: hairline frame on plate paper, label above.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Researcher</span><input class=\"ds-input\" type=\"text\" placeholder=\"Name on the report\"></label>",
+      "css": ".ds-field { display: block; } .ds-field-label { display: block; margin-bottom: 4px; font-family: var(--font-body, 'Atkinson Hyperlegible Next', system-ui, sans-serif); font-size: 12.5px; color: var(--text-muted, #4d4c47); } .ds-input { width: 100%; background: var(--surface, #fafaf7); color: var(--text, #171717); font-family: var(--font-body, 'Atkinson Hyperlegible Next', system-ui, sans-serif); font-size: 13px; padding: 8px 12px; border: 1px solid var(--border, #d9d8d2); border-radius: 2px; } .ds-input::placeholder { color: var(--text-faint, #5f5e59); } .ds-input:hover { border-color: var(--border-strong, #b3b1a8); } .ds-input:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; }"
+    },
+    {
+      "name": "Rail Navigation",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Pinned plate-paper rail; active item on the well in ink.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\"/></svg>Dashboard</a><a class=\"ds-nav-item\" aria-current=\"page\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"/><polyline points=\"14 2 14 8 20 8\"/></svg>Reports</a><a class=\"ds-nav-item\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><polygon points=\"1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6\"/></svg>Pollen Map</a></nav>",
+      "css": ".ds-nav { display: flex; flex-direction: column; gap: 4px; width: 220px; padding: 20px; background: var(--surface, #fafaf7); border-right: 1px solid var(--border, #d9d8d2); } .ds-nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 2px; font-family: var(--font-body, 'Atkinson Hyperlegible Next', system-ui, sans-serif); font-size: 13.5px; font-weight: 500; color: var(--text-muted, #4d4c47); text-decoration: none; transition: background-color 120ms cubic-bezier(0.16,1,0.3,1), color 120ms cubic-bezier(0.16,1,0.3,1); } .ds-nav-item:hover, .ds-nav-item[aria-current=page] { background: var(--surface-sunken, #f1f0eb); color: var(--text, #171717); } .ds-nav-item:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; }"
+    },
+    {
+      "name": "Status Stamps",
+      "kind": "chip",
+      "refersTo": "status-stamp-completed",
+      "description": "Pending dashed, Completed solid, Needs Review hatched; always worded.",
+      "html": "<span class=\"ds-stamp ds-stamp-pending\">Pending</span> <span class=\"ds-stamp ds-stamp-completed\">Completed</span> <span class=\"ds-stamp ds-stamp-review\">Needs Review</span>",
+      "css": ".ds-stamp { display: inline-flex; align-items: center; white-space: nowrap; padding: 2px 8px; border: 1px solid; border-radius: 1px; font-size: 12px; font-weight: 500; font-family: var(--font-body, 'Atkinson Hyperlegible Next', system-ui, sans-serif); } .ds-stamp-pending { border-style: dashed; border-color: var(--processing, #8a5a00); color: var(--processing, #8a5a00); } .ds-stamp-completed { border-color: var(--success, #1f6a3a); background: var(--success-bg, #1f6a3a14); color: var(--success, #1f6a3a); } .ds-stamp-review { border-color: var(--danger, #b3261e); color: var(--danger, #b3261e); background: repeating-linear-gradient(135deg, var(--danger-bg, #b3261e14) 0 4px, transparent 4px 8px); }"
+    },
+    {
+      "name": "Species Filter Chip",
+      "kind": "chip",
+      "description": "Filters a plate's boxes by type: swatch, mono code, faint count.",
+      "html": "<div class=\"ds-chips\"><button class=\"ds-chip\" aria-pressed=\"true\">All Types</button><button class=\"ds-chip\" aria-pressed=\"false\"><span class=\"ds-swatch\" style=\"background:#E69F00\"></span><span class=\"ds-code\">AXON</span><span class=\"ds-count\">11</span></button><button class=\"ds-chip\" aria-pressed=\"false\"><span class=\"ds-swatch\" style=\"background:#56B4E9\"></span><span class=\"ds-code\">BRAC</span><span class=\"ds-count\">4</span></button></div>",
+      "css": ".ds-chips { display: flex; flex-wrap: wrap; gap: 6px; } .ds-chip { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--border, #d9d8d2); border-radius: 2px; background: rgba(250,250,247,0.5); color: var(--text-muted, #4d4c47); font-family: var(--font-body, 'Atkinson Hyperlegible Next', system-ui, sans-serif); font-size: 12.5px; cursor: pointer; transition: border-color 120ms, color 120ms; } .ds-chip:hover { border-color: var(--border-strong, #b3b1a8); color: var(--text, #171717); } .ds-chip[aria-pressed=true] { border-color: var(--border-strong, #b3b1a8); background: var(--surface, #fafaf7); color: var(--text, #171717); } .ds-chip:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; } .ds-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; } .ds-code { font-family: var(--font-mono, 'Atkinson Hyperlegible Mono', ui-monospace, monospace); font-weight: 500; } .ds-count { color: var(--text-faint, #5f5e59); font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Specimen Plate",
+      "kind": "card",
+      "refersTo": "plate",
+      "description": "Hairline plate with serif title, oxide plate number, slide on the neutral surround and a ruled caption strip.",
+      "html": "<section class=\"ds-plate\"><div class=\"ds-plate-head\"><h3 class=\"ds-plate-title\">Specimen Image</h3><span class=\"ds-plate-label\">Slide 1 of 2</span></div><div class=\"ds-figure\"><div class=\"ds-slide\"></div><div class=\"ds-caption\"><span><span class=\"ds-plate-label\">Slide 1</span> slide-1.png · 15 grains · mostly <i>Axonopus compressus</i></span><span class=\"ds-readout\">15/15 shown</span></div></div></section>",
+      "css": ".ds-plate { background: var(--surface, #fafaf7); border: 1px solid var(--border, #d9d8d2); border-radius: 2px; padding: 20px; max-width: 560px; } .ds-plate-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 16px; } .ds-plate-title { margin: 0; font-family: var(--font-display, 'Source Serif 4', Georgia, serif); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; color: var(--text, #171717); } .ds-plate-label { font-family: var(--font-display, 'Source Serif 4', Georgia, serif); font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--accent, #8c2f1b); font-size: 15px; margin-right: 6px; } .ds-figure { border: 1px solid var(--border, #d9d8d2); border-radius: 2px; overflow: hidden; } .ds-slide { height: 220px; background: var(--viewer-bg, #2a2a28); } .ds-caption { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; border-top: 1px solid var(--border, #d9d8d2); font-family: var(--font-display, 'Source Serif 4', Georgia, serif); font-size: 14px; color: var(--text, #171717); } .ds-readout { font-family: var(--font-mono, 'Atkinson Hyperlegible Mono', ui-monospace, monospace); font-weight: 500; font-size: 12.5px; color: var(--text-muted, #4d4c47); white-space: nowrap; }"
+    },
+    {
+      "name": "Key Row",
+      "kind": "custom",
+      "description": "One detection beside the plate: swatch, serif-italic binomial, mono code and count; selected row in oxide wash.",
+      "html": "<button class=\"ds-key\" aria-pressed=\"false\"><span class=\"ds-key-swatch\" style=\"background:#E69F00\"></span><span class=\"ds-key-name\"><i>Axonopus compressus</i><span class=\"ds-key-code\">AXON</span></span><span class=\"ds-key-count\">11<small>grains</small></span></button><button class=\"ds-key\" aria-pressed=\"true\"><span class=\"ds-key-swatch\" style=\"background:#56B4E9\"></span><span class=\"ds-key-name\"><i>Brachiaria mutica</i><span class=\"ds-key-code\">BRAC</span></span><span class=\"ds-key-count\">4<small>grains</small></span></button>",
+      "css": ".ds-key { display: flex; align-items: flex-start; gap: 10px; width: 100%; max-width: 420px; margin-bottom: 6px; padding: 10px 12px; text-align: left; background: var(--surface, #fafaf7); border: 1px solid var(--border, #d9d8d2); border-radius: 2px; cursor: pointer; transition: border-color 120ms, background-color 120ms; } .ds-key:hover { border-color: var(--border-strong, #b3b1a8); } .ds-key[aria-pressed=true] { border-color: var(--accent, #8c2f1b); background: var(--accent-muted, #8c2f1b17); } .ds-key:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; } .ds-key-swatch { width: 12px; height: 12px; margin-top: 5px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,0.2); flex-shrink: 0; } .ds-key-name { flex: 1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; font-family: var(--font-display, 'Source Serif 4', Georgia, serif); font-size: 15.5px; font-weight: 600; color: var(--text, #171717); } .ds-key-code { font-family: var(--font-mono, 'Atkinson Hyperlegible Mono', ui-monospace, monospace); font-size: 11.5px; font-weight: 500; letter-spacing: 0.05em; color: var(--text-muted, #4d4c47); } .ds-key-count { text-align: right; font-family: var(--font-mono, 'Atkinson Hyperlegible Mono', ui-monospace, monospace); font-size: 14px; font-weight: 500; color: var(--text, #171717); } .ds-key-count small { display: block; font-family: var(--font-body, 'Atkinson Hyperlegible Next', system-ui, sans-serif); font-size: 12px; font-weight: 400; color: var(--text-muted, #4d4c47); }"
+    },
+    {
+      "name": "Ruled Stat Plate",
+      "kind": "card",
+      "description": "Headline figures in one hairline frame, cells divided by 1px rules; small-caps labels, serif lining figures, no icons.",
+      "html": "<div class=\"ds-stats\"><div class=\"ds-stat\"><span class=\"ds-stat-label\">Reports Generated</span><div class=\"ds-stat-value\">142</div><div class=\"ds-stat-sub\">Completed or in review</div></div><div class=\"ds-stat\"><span class=\"ds-stat-label\">This Week</span><div class=\"ds-stat-value\">9</div><div class=\"ds-stat-sub\">Stored in the last 7 days</div></div><div class=\"ds-stat\"><span class=\"ds-stat-label\">Avg. Confidence</span><div class=\"ds-stat-value\">82%</div><div class=\"ds-stat-sub\">Over every detected grain</div></div><div class=\"ds-stat\"><span class=\"ds-stat-label\">Pollen Types</span><div class=\"ds-stat-value\">23</div><div class=\"ds-stat-sub\">In the reference catalog</div></div></div>",
+      "css": ".ds-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border, #d9d8d2); border: 1px solid var(--border, #d9d8d2); border-radius: 2px; overflow: hidden; } .ds-stat { background: var(--surface, #fafaf7); padding: 20px; } .ds-stat-label { font-family: var(--font-display, 'Source Serif 4', Georgia, serif); font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--text-muted, #4d4c47); font-size: 15px; } .ds-stat-value { margin-top: 8px; font-family: var(--font-display, 'Source Serif 4', Georgia, serif); font-size: 36px; font-weight: 600; font-variant-numeric: lining-nums tabular-nums; color: var(--text, #171717); } .ds-stat-sub { margin-top: 4px; font-family: var(--font-body, 'Atkinson Hyperlegible Next', system-ui, sans-serif); font-size: 13px; color: var(--text-muted, #4d4c47); }"
+    },
+    {
+      "name": "Species Card",
+      "kind": "card",
+      "refersTo": "plate",
+      "description": "Allergen Reference grid card: photo, binomial (serif italic, primary) over plant names (caption grey, secondary), risk stamp, and a footer with swatch + code and grain count. Opens the full record.",
+      "html": "<button class=\"ds-species-card\"><span class=\"ds-species-photo\"></span><span class=\"ds-species-body\"><i class=\"ds-binomial\">Mimosa pudica</i><span class=\"ds-plant\">Sensitive plant · Makahiya</span><span class=\"ds-foot\"><span>MIMO</span><span>0 grains</span></span></span></button>",
+      "css": ".ds-species-card{display:flex;flex-direction:column;width:180px;overflow:hidden;border:1px solid var(--border,#d9d8d2);border-radius:2px;background:var(--surface,#fafaf7);text-align:left;cursor:pointer;padding:0} .ds-species-card:hover{border-color:var(--border-strong,#b3b1a8)} .ds-species-photo{aspect-ratio:4/3;background:var(--surface-sunken,#f1f0eb);border-bottom:1px solid var(--border,#d9d8d2)} .ds-species-body{display:flex;flex-direction:column;padding:10px 12px 12px} .ds-binomial{font-family:var(--font-display,'Source Serif 4',Georgia,serif);font-style:italic;font-weight:600;font-size:16px;color:var(--text,#171717)} .ds-plant{font-size:13px;color:var(--text-muted,#4d4c47);margin-top:2px} .ds-foot{display:flex;justify-content:space-between;margin-top:12px;padding-top:8px;border-top:1px solid var(--border,#d9d8d2);font-size:12px;font-family:var(--font-mono,monospace)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Pollen Atlas Plates",
+    "overview": "PolLens reads like a palynology reference atlas that is still being written. Each analysed slide is a numbered plate in a hairline frame with a serif caption beneath a thin rule. Each report is an atlas entry, and the detections sit beside the plate as its key. The page is a quiet warm grey. Plates are off-white paper. Type is ink. The only chromatic voice in the chrome is one oxide red, and it is kept for plate and figure numbers, the primary action and focus. Strong colour elsewhere is data: the species palette on slides and charts, and the intensity ramp on the map.\n\nThe world is light because the work happens under bright bench light, next to a microscope. Density is that of a working console, not a brochure. Tables, key rows and measurement grids are tight, set in a legibility-tested sans with tabular figures. The journal serif carries titles, captions, scientific names and plate labels, so the atlas voice shows up wherever something is being named. It stays out of controls and running text.\n\nNothing is decorative or invented. A researcher reads every count against the plate it came from. The system rejects the clinical SaaS dashboard look: soft rounded cards, a blue accent, iconified stat tiles and drop shadows. It also adds no instrument furniture that the data cannot back, such as scale bars or magnification readouts.",
+    "keyCharacteristics": [
+      "Warm grey page, plate-paper panels, hairline frames and no soft shadows.",
+      "One oxide accent for plate/figure numbers, the primary action and focus.",
+      "Source Serif 4 for titles, captions, binomials and small-caps labels. Atkinson Hyperlegible Next for UI. Atkinson Hyperlegible Mono for IDs, codes and figures.",
+      "Square-cut corners (1–3px).",
+      "Status stamps that differ by pattern (dashed, solid, hatched) as well as by colour.",
+      "Species colours and the map ramp are data, never decoration."
+    ],
+    "rules": [
+      {
+        "name": "The One Oxide Rule",
+        "body": "Oxide marks a plate or figure number, the page's primary action, an inline text action, a selection, or focus. It does nothing else. It never tints a heading word, an icon or a background for mood.",
+        "section": "colors"
+      },
+      {
+        "name": "The Data Is Not Decoration Rule",
+        "body": "Species colours and the map ramp only encode data. They never style chrome, and chrome colours never stand in for a species. Wherever a data colour appears, a code, name or number says the same thing.",
+        "section": "colors"
+      },
+      {
+        "name": "The Small-Caps Label Rule",
+        "body": "Labels are serif small caps, never tracked uppercase sans. Oxide small caps number a plate. Grey small caps name a field. A label names real content directly beneath it. It is never a decorative line above a heading.",
+        "section": "typography"
+      },
+      {
+        "name": "The Mono Means Identifier Rule",
+        "body": "The mono face is for things you would copy, compare or count: IDs, species codes, counts and figures. It is not for prose, buttons or headings. The PolLens wordmark (mono, uppercase, 0.18em tracking) is an identity asset and sets no precedent.",
+        "section": "typography"
+      },
+      {
+        "name": "The Hairline Plate Rule",
+        "body": "A panel is a square-cut plate with a 1px hairline frame on plate paper. There are no soft drop shadows, glows or floating cards. If something needs separating, give it a rule or a well.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep the page grey (#ecebe6), plates on plate paper (#fafaf7) and frames at a 1px hairline (#d9d8d2).",
+      "Do spend oxide (#8c2f1b) only on plate/figure numbers, the one primary action, inline text actions, selection and focus.",
+      "Do number plates in oxide serif small caps (\"Slide 2 of 3\") and label fields in grey serif small caps.",
+      "Do set scientific names in serif italic, followed by the mono species code.",
+      "Do set IDs, species codes, counts and figures in Atkinson Hyperlegible Mono with tabular numerals.",
+      "Do give every status a stamp pattern and a word as well as a colour.",
+      "Do caption each specimen plate under a hairline rule with file, grain count and dominant species.",
+      "Do keep the viewer surround a neutral dark (#2a2a28) so slide colour reads true.",
+      "Do keep the theme light. The console is used under bright bench light."
+    ],
+    "donts": [
+      "Don't use soft drop shadows, glows or floating rounded cards. Separate with hairlines and wells.",
+      "Don't round plates, buttons or fields beyond 3px.",
+      "Don't use species colours or the map ramp for chrome, emphasis or mood, and don't let colour be the only carrier of a species, status or class.",
+      "Don't colour a headline word, an icon or a background in oxide for emphasis.",
+      "Don't set labels as tracked uppercase sans, or put a decorative label line above a heading.",
+      "Don't use the mono face for prose, buttons or section headings.",
+      "Don't draw scale bars, magnification readouts or calibrated units on slide images. The images carry no calibration.",
+      "Don't add icons to stat figures or show placeholder numbers while data is loading.",
+      "Don't introduce a dark theme or a second accent colour."
+    ]
+  }
+}
