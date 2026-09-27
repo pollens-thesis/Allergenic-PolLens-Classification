@@ -47,7 +47,7 @@ const NO_FILTERS: Filters = {
 };
 
 const controlClass =
-  "focus-ring rounded-md border border-border bg-surface px-2 py-1.5 text-[13px] text-text";
+  "focus-ring h-9 min-w-0 rounded-md border border-border bg-surface px-2 text-[13px] text-text";
 
 /** Case- and accent-insensitive form for search: "Baños" matches "banos". */
 function fold(text: string): string {
@@ -99,14 +99,23 @@ export default function ReportsTable({
   reports,
   highlightId,
   initialQuery = "",
+  initialStatus = "All",
+  initialFrom = "",
+  initialTo = "",
 }: {
   reports: Specimen[];
   /** Sample id to flag as just generated, e.g. after redirecting from the result page. */
   highlightId?: string | null;
   /** Prefills the search box — the Pollen map links here filtered by town. */
   initialQuery?: string;
+  /** Dashboard links prefill the review status and inclusive collection dates. */
+  initialStatus?: ReportStatus | "All";
+  initialFrom?: string;
+  initialTo?: string;
 }) {
-  const [filters, setFilters] = useState<Filters>({ ...NO_FILTERS, query: initialQuery });
+  const [filters, setFilters] = useState<Filters>({
+    ...NO_FILTERS, query: initialQuery, status: initialStatus, from: initialFrom, to: initialTo,
+  });
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [building, setBuilding] = useState<"pdf" | "xlsx" | null>(null);
   const router = useRouter();
@@ -236,7 +245,7 @@ export default function ReportsTable({
   }
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-5">
+    <div className="card-panel p-4 sm:p-5">
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           {/* The page title already says "Reports"; this card's heading is its count. */}
@@ -264,45 +273,47 @@ export default function ReportsTable({
         </label>
       </div>
 
-      {/* Filters: status, where, and when. Stacked on a phone, one row from md
-          up — the status chips scroll sideways rather than wrapping into a
-          two-line block that shifts everything below it. */}
-      <div className="mb-3 flex flex-col gap-2 md:flex-row md:flex-wrap md:items-end">
-        <div className="-mx-1 overflow-x-auto px-1 pb-0.5">
-          <div className="flex w-max gap-0.5 rounded-md border border-border bg-surface p-0.5">
-            {STATUS_FILTERS.map((option) => {
-              const active = filters.status === option;
-              return (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => patch({ status: option })}
-                  aria-pressed={active}
-                  className={clsx(
-                    "focus-ring relative rounded px-2 py-1.5 text-[12.5px] whitespace-nowrap sm:px-2.5 sm:text-[13px]",
-                    active ? "text-bg" : "text-text-muted transition-colors hover:text-text",
-                  )}
-                >
-                  {active && (
-                    <motion.span
-                      layoutId="status-filter-pill"
-                      className="absolute inset-0 rounded bg-text"
-                      transition={{ type: "spring", stiffness: 500, damping: 40 }}
-                    />
-                  )}
-                  <span className="relative z-10">{option === "Needs review" ? "Needs Review" : option}</span>
-                </button>
-              );
-            })}
+      {/* Keep each filter's label above a same-height control. On medium screens
+          status and dates get a full row; wide screens bring the filters together. */}
+      <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(18rem,1.2fr)_minmax(10rem,0.75fr)_minmax(19rem,1.4fr)_auto] xl:items-end">
+        <fieldset className="min-w-0 md:col-span-2 xl:col-span-1">
+          <legend className="mb-1 text-[12.5px] text-text-muted">Status</legend>
+          <div className="-mx-1 overflow-x-auto px-1 pb-0.5 xl:mx-0 xl:overflow-visible xl:px-0 xl:pb-0">
+            <div className="flex h-9 w-max gap-0.5 rounded-md border border-border bg-surface p-0.5">
+              {STATUS_FILTERS.map((option) => {
+                const active = filters.status === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => patch({ status: option })}
+                    aria-pressed={active}
+                    className={clsx(
+                      "focus-ring relative h-full rounded px-2 text-[12.5px] whitespace-nowrap sm:px-2.5 sm:text-[13px]",
+                      active ? "text-bg" : "text-text-muted transition-colors hover:text-text",
+                    )}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="status-filter-pill"
+                        className="absolute inset-0 rounded bg-text"
+                        transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                      />
+                    )}
+                    <span className="relative z-10">{option === "Needs review" ? "Needs Review" : option}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </fieldset>
 
-        <label className="flex flex-col gap-1 md:flex-row md:items-center md:gap-1.5">
+        <label className="flex min-w-0 flex-col gap-1">
           <span className="text-[12.5px] text-text-muted">Location</span>
           <select
             value={filters.location}
             onChange={(e) => patch({ location: e.target.value })}
-            className={`${controlClass} w-full md:w-auto`}
+            className={`${controlClass} w-full bg-surface`}
           >
             <option value={ALL_LOCATIONS}>All Locations</option>
             {locations.map((location) => (
@@ -313,34 +324,39 @@ export default function ReportsTable({
           </select>
         </label>
 
-        <div className="grid grid-cols-2 gap-2 md:flex md:items-end md:gap-2">
-          <label className="flex flex-col gap-1 md:flex-row md:items-center md:gap-1.5">
-            <span className="text-[12.5px] whitespace-nowrap text-text-muted">Collected From</span>
-            <input
-              type="date"
-              value={filters.from}
-              max={filters.to || undefined}
-              onChange={(e) => patch({ from: e.target.value })}
-              className={`${controlClass} w-full md:w-auto`}
-            />
-          </label>
-          <label className="flex flex-col gap-1 md:flex-row md:items-center md:gap-1.5">
-            <span className="text-[12.5px] text-text-muted">To</span>
-            <input
-              type="date"
-              value={filters.to}
-              min={filters.from || undefined}
-              onChange={(e) => patch({ to: e.target.value })}
-              className={`${controlClass} w-full md:w-auto`}
-            />
-          </label>
-        </div>
+        <fieldset className="min-w-0 xl:col-span-1">
+          <legend className="mb-1 text-[12.5px] text-text-muted">Collection Date</legend>
+          <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
+            <label className="flex min-w-0 items-center gap-1.5">
+              <span className="w-8 shrink-0 text-[12.5px] text-text-muted">From</span>
+              <input
+                type="date"
+                aria-label="Collected From"
+                value={filters.from}
+                max={filters.to || undefined}
+                onChange={(e) => patch({ from: e.target.value })}
+                className={`${controlClass} w-full flex-1 bg-surface`}
+              />
+            </label>
+            <label className="flex min-w-0 items-center gap-1.5">
+              <span className="w-8 shrink-0 text-[12.5px] text-text-muted">To</span>
+              <input
+                type="date"
+                aria-label="Collected To"
+                value={filters.to}
+                min={filters.from || undefined}
+                onChange={(e) => patch({ to: e.target.value })}
+                className={`${controlClass} w-full flex-1 bg-surface`}
+              />
+            </label>
+          </div>
+        </fieldset>
 
         {hasActiveFilters && (
           <button
             type="button"
             onClick={clearFilters}
-            className="focus-ring flex items-center justify-center gap-1 rounded-md px-2 py-2 text-[13px] text-text-muted transition-colors hover:text-text md:py-1.5"
+            className="focus-ring flex h-9 items-center justify-center gap-1 rounded-md px-2 text-[13px] text-text-muted transition-colors hover:text-text md:col-span-2 xl:col-span-1 xl:justify-self-end"
           >
             <X size={13} strokeWidth={1.75} />
             Clear Filters
@@ -482,7 +498,7 @@ export default function ReportsTable({
         <table className="w-full border-collapse text-left text-[13px]">
           <thead>
             <tr
-              className="caption-label text-[14.5px] border-b border-border"
+              className="caption-label text-[13px] border-b border-border"
               
             >
               <th className="w-8 py-2 pr-2">
@@ -600,9 +616,8 @@ export default function ReportsTable({
       )}
 
       {rows.length > 0 && picked.size === 0 && (
-        <p className="t-prose mt-3 text-text-muted">
-          Select the reports you want in a summary PDF or Excel file, or filter first and use the header
-          checkbox to take the whole result. Pending analyses are left out of exports.
+        <p className="mt-3 text-[12px] text-text-muted">
+          Select reports for a PDF or Excel summary. Pending analyses aren&apos;t exported.
         </p>
       )}
     </div>

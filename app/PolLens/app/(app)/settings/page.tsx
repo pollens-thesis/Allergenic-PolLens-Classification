@@ -12,7 +12,6 @@ export default function SettingsPage() {
       <PageHeader
         width="narrow"
         title="Settings"
-        description="The account this browser is signed in with, and exports of the shared reports."
       />
       <PageBody width="narrow">
         <SettingsWorkspace />

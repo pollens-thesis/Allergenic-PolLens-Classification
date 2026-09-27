@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import PollenField from "@/components/PollenField";
 import SignInForm from "@/components/SignInForm";
-import { speciesCatalog } from "@/lib/data";
 
 export const metadata: Metadata = {
   // The layout's "%s · PolLens" template only applies below the root segment.
@@ -11,8 +10,7 @@ export const metadata: Metadata = {
 export default function LoginPage() {
   return (
     <main className="flex min-h-screen w-full flex-col lg:flex-row">
-      {/* Left: dark hero */}
-      <section className="relative flex w-full flex-col justify-between gap-10 overflow-hidden bg-hero-bg px-6 py-8 sm:px-10 lg:min-h-screen lg:w-[58%] lg:gap-0 lg:px-16 lg:py-12">
+      <section className="relative flex w-full flex-col justify-between gap-10 overflow-hidden bg-hero-bg px-6 py-8 sm:px-10 lg:min-h-screen lg:w-[58%] lg:gap-0 lg:px-16 lg:py-10">
         <PollenField />
 
         <div className="relative z-10 flex items-center gap-2.5">
@@ -32,76 +30,34 @@ export default function LoginPage() {
             className="text-4xl leading-[1.08] font-semibold tracking-tight text-hero-fg sm:text-5xl lg:text-[3.4rem]"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Every grain,{" "}
-            <em className="t-binomial font-semibold">read</em> and
-            classified.
+            Pollen slide analysis
           </h1>
-          <p className="mt-5 max-w-md text-[15px] leading-relaxed text-hero-fg-muted">
-            PolLens helps researchers identify airborne pollen allergens from
-            microscope imagery, using a Roboflow-trained detection model.
-            Sign in to classify slides, review detections, and build a
-            dataset that supports future allergen studies.
+          <p className="mt-4 max-w-md text-[15px] leading-relaxed text-hero-fg-muted">
+            Analyze microscope slides, review detections, and maintain shared collection records.
           </p>
         </div>
 
-        <div
-          className="relative z-10 hidden gap-8 border-t border-hero-fg/10 pt-5 sm:flex"
-        >
-          {[
-            ["Classes tracked", `${speciesCatalog.length} taxa`],
-            ["Model", "YOLO via Roboflow"],
-            ["Access", "Research use"],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <div className="caption-label text-[14px] text-hero-fg-muted">{label}</div>
-              <div
-                className="mt-1 text-sm text-hero-fg/90"
-                style={/\d/.test(value) ? { fontFamily: "var(--font-mono)", fontWeight: 500 } : undefined}
-              >
-                {value}
-              </div>
-            </div>
-          ))}
+        <div className="relative z-10 hidden border-t border-hero-fg/10 pt-4 text-[13px] text-hero-fg-muted sm:block">
+          Research workspace · PolLens
         </div>
       </section>
 
       {/* Right: sign-in card */}
       <section className="flex w-full flex-1 items-center justify-center bg-bg px-6 py-14 lg:w-[42%] lg:px-12">
         <div className="w-full max-w-sm">
-          <div className="mb-8">
-            <h2 className="text-3xl font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
-              Sign In to Continue
+          <div className="mb-6">
+            <h2 className="text-[1.65rem] font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
+              Sign In
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-text-muted">
-              Sign in with the Google or Microsoft account your institution
-              works from.
+            <p className="mt-1 text-[13px] leading-relaxed text-text-muted">
+              Use your Google or Microsoft research account.
             </p>
           </div>
 
           <SignInForm />
 
-          <div className="my-7 flex items-center gap-3 text-text-faint">
-            <span className="h-px flex-1 bg-border" />
-            <span className="caption-label text-[14px]" >
-              Field notes
-            </span>
-            <span className="h-px flex-1 bg-border" />
-          </div>
-
-          <ul className="space-y-3 text-[13px] leading-relaxed text-text-muted">
-            <li className="flex gap-2.5">
-              <span className="mt-[3px] h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-              Google and Microsoft sign-in are the only ways in for this
-              thesis build — no password accounts.
-            </li>
-            <li className="flex gap-2.5">
-              <span className="mt-[3px] h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-              Access is limited to UP and MSEUF accounts and researchers added by the project team.
-            </li>
-          </ul>
-
-          <p className="mt-10 text-center text-[12px] text-text-faint">
-            PolLens &middot; Thesis Project &middot; {new Date().getFullYear()}
+          <p className="mt-4 text-center text-[12px] text-text-muted">
+            Access for UP, MSEUF, and approved research accounts.
           </p>
         </div>
       </section>

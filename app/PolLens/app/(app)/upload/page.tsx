@@ -9,10 +9,7 @@ export const metadata: Metadata = {
 export default function UploadPage() {
   return (
     <>
-      <PageHeader
-        title="Analyze Specimen"
-        description="Upload one or more microscope images to count and identify the pollen grains they contain."
-      />
+      <PageHeader title="Analyze Specimen" />
       <PageBody>
         <AnalyzeWorkspace />
       </PageBody>

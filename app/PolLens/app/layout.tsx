@@ -1,38 +1,29 @@
 import type { Metadata } from "next";
-import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next, Source_Serif_4 } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans, Source_Serif_4 } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 
-// Typefaces chosen for legibility evidence, not style (see
-// docs/design-system.md): Atkinson Hyperlegible was designed and tested by the
-// Braille Institute to keep easily-confused characters (0/O, 1/l/I, 5/S, 8/B)
-// distinct — which is exactly what sample IDs, species codes and readings are
-// made of. Scientific names are set in the serif italic, so only the upright
-// Atkinson is loaded. The Latin subset covers Philippine place names (ñ).
-const atkinson = Atkinson_Hyperlegible_Next({
-  variable: "--font-atkinson",
-  subsets: ["latin"],
-  style: ["normal"],
-  // next/font has no metrics for Atkinson to size-match a fallback; name one.
-  adjustFontFallback: false,
+// A technical sans carries controls and running text. Keep the serif for
+// scientific names, where it helps the binomial read as a distinct data type.
+const plexSans = IBM_Plex_Sans({
+  variable: "--font-plex-sans",
+  weight: "variable",
+  subsets: ["latin", "latin-ext"],
   fallback: ["system-ui", "Segoe UI", "Arial", "sans-serif"],
 });
 
-const atkinsonMono = Atkinson_Hyperlegible_Mono({
-  variable: "--font-atkinson-mono",
-  subsets: ["latin"],
-  adjustFontFallback: false,
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
+  weight: ["400", "500", "600"],
+  subsets: ["latin", "latin-ext"],
   fallback: ["ui-monospace", "Consolas", "monospace"],
 });
 
-// Titles and captions: a journal serif with optical sizes, so page titles and
-// small plate captions are each drawn for their size — the atlas voice.
+// Serif italic is reserved for binomials and botanical names.
 const serif = Source_Serif_4({
   variable: "--font-serif",
   subsets: ["latin"],
   style: ["normal", "italic"],
-  // The optical-size axis is what makes one family work from the 3.4rem
-  // sign-in title down to 14px captions.
   axes: ["opsz"],
   fallback: ["Georgia", "Cambria", "serif"],
 });
@@ -54,7 +45,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${atkinson.variable} ${atkinsonMono.variable} ${serif.variable} h-full`}
+      className={`${plexSans.variable} ${plexMono.variable} ${serif.variable} h-full`}
     >
       <body className="min-h-full flex flex-col">
         {children}

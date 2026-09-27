@@ -17,8 +17,7 @@ export default async function AnalysisResultPage({
     <>
       <PageHeader
         back={{ href: "/upload", label: "Back to Analyze Specimen" }}
-        title="Analysis Result"
-        description="Everything the analysis found, beside the slide it came from. Add your notes, check the details, then generate the report."
+        title="Review Analysis"
       />
       <PageBody>
         <AnalysisResultWorkspace sampleId={report ?? null} sampleDetections={sample === "1"} />

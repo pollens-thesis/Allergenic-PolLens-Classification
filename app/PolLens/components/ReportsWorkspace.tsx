@@ -3,11 +3,17 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CloudOff, Loader2 } from "lucide-react";
-import { type Specimen } from "@/lib/data";
+import { REPORT_STATUSES, type ReportStatus, type Specimen } from "@/lib/data";
 import { listReports } from "@/lib/store";
 import { SessionExpiredError } from "@/lib/api";
 import ReportsTable from "@/components/ReportsTable";
 import { Button } from "@/components/Button";
+
+function dateFilter(value: string | null): string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value ? value : "";
+}
 
 /**
  * Every report on the server (shared across researchers), loaded after mount
@@ -20,6 +26,10 @@ export default function ReportsWorkspace() {
   const searchParams = useSearchParams();
   const savedId = searchParams.get("saved");
   const initialQuery = searchParams.get("q") ?? "";
+  const statusParam = searchParams.get("status");
+  const initialStatus: ReportStatus | "All" = REPORT_STATUSES.find((status) => status === statusParam) ?? "All";
+  const initialFrom = dateFilter(searchParams.get("from"));
+  const initialTo = dateFilter(searchParams.get("to"));
 
   useEffect(() => {
     let cancelled = false;
@@ -38,7 +48,7 @@ export default function ReportsWorkspace() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-16 text-center">
+      <div className="card-panel flex flex-col items-center gap-3 px-6 py-16 text-center">
         <CloudOff size={22} strokeWidth={1.5} className="text-text-faint" />
         <p className="text-[13.5px] text-text-muted">{error}</p>
         <Button
@@ -58,7 +68,7 @@ export default function ReportsWorkspace() {
 
   if (reports === null) {
     return (
-      <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-6 py-16 text-[13px] text-text-muted">
+      <div className="card-panel flex items-center justify-center gap-2 px-6 py-16 text-[13px] text-text-muted">
         <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
         Loading reports…
       </div>
@@ -66,13 +76,15 @@ export default function ReportsWorkspace() {
   }
 
   return (
-    // Keyed on the query so following a link that changes ?q= (e.g. from the
-    // Pollen Map) re-seeds the search box instead of keeping stale text.
+    // Re-seed filters when a dashboard or map link changes the URL.
     <ReportsTable
-      key={initialQuery}
+      key={JSON.stringify([initialQuery, initialStatus, initialFrom, initialTo])}
       reports={reports}
       highlightId={savedId}
       initialQuery={initialQuery}
+      initialStatus={initialStatus}
+      initialFrom={initialFrom}
+      initialTo={initialTo}
     />
   );
 }

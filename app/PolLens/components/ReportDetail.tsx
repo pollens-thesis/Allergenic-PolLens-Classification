@@ -173,7 +173,7 @@ function MetaItem({
     <div className="flex items-start gap-2.5">
       <Icon size={15} strokeWidth={1.75} className="mt-0.5 shrink-0 text-text-faint" />
       <div className="min-w-0">
-        <div className="caption-label text-[14.5px]" >
+        <div className="caption-label text-[13px]" >
           {label}
         </div>
         <div className="text-[13px] text-text">{value}</div>
@@ -292,7 +292,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
 
   if (loadError) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-16 text-center">
+      <div className="card-panel flex flex-col items-center gap-3 px-6 py-16 text-center">
         <CloudOff size={22} strokeWidth={1.5} className="text-text-faint" />
         <p className="t-prose text-text-muted">{loadError}</p>
         <Button type="button" intent="secondary" size="sm" onClick={() => window.location.reload()}>
@@ -304,7 +304,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
 
   if (report === undefined) {
     return (
-      <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-6 py-16 text-[13px] text-text-muted">
+      <div className="card-panel flex items-center justify-center gap-2 px-6 py-16 text-[13px] text-text-muted">
         <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
         Loading report…
       </div>
@@ -313,7 +313,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
 
   if (report === null) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-16 text-center">
+      <div className="card-panel flex flex-col items-center gap-3 px-6 py-16 text-center">
         <FileText size={22} strokeWidth={1.5} className="text-text-faint" />
         <p className="t-prose text-text-muted">
           No report found for{" "}
@@ -339,16 +339,15 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
   const weather = report.weather;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {report.sampleDetections && (
-        <p className="flex items-start gap-2 rounded-md border border-processing/30 bg-processing-bg px-3 py-2.5 text-[13.5px] leading-relaxed text-processing">
+        <p className="flex items-center gap-2 rounded-md border border-processing/30 bg-processing-bg px-3 py-2 text-[12px] leading-snug text-processing">
           <FlaskConical size={14} strokeWidth={2} className="mt-px shrink-0" />
-          Sample detections — this report was analyzed while the trained model wasn&apos;t
-          deployed, so its counts are the server&apos;s built-in example reading, not results.
+          Sample detections · The trained model wasn&apos;t deployed. Counts are illustrative.
         </p>
       )}
       {/* Header */}
-      <div className="rounded-lg border border-border bg-surface p-5">
+      <div className="card-panel p-4 sm:p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0 flex-1">
             <h2 className="text-2xl font-semibold tracking-tight text-text">
@@ -443,7 +442,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
       </div>
 
       {/* Combined results */}
-      <div className="rounded-lg border border-border bg-surface p-5">
+      <div className="card-panel p-4 sm:p-5">
         <h3 className="t-plate-title mb-4 text-text">
           Detections
         </h3>
@@ -472,7 +471,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
       </div>
 
       {/* Everything the researcher entered on the Analyze screen. */}
-      <div className="rounded-lg border border-border bg-surface p-5">
+      <div className="card-panel p-4 sm:p-5">
         <h3 className="t-plate-title text-text">
           Collection Details
         </h3>
@@ -523,7 +522,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
       </div>
 
       {/* Per slide: its reading on the left, the boxed image on the right */}
-      <div className="rounded-lg border border-border bg-surface p-5">
+      <div className="card-panel p-4 sm:p-5">
         <h3 className="t-plate-title mb-1 text-text">
           Slide Images
         </h3>
@@ -544,7 +543,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
             return (
               <div key={slide.id} className="border-t border-border pt-5 first:border-t-0 first:pt-0">
                 <div className="mb-3 flex flex-wrap items-center gap-3 text-[13px]">
-                  <span className="plate-label text-[15px]">Slide {index + 1}</span>
+                  <span className="plate-label text-[12px]">Slide {index + 1}</span>
                   <span className="flex items-center gap-1.5 text-text-muted">
                     <Microscope size={13} strokeWidth={1.75} className="text-text-faint" />
                     {slideGrains} {slideGrains === 1 ? "grain" : "grains"} ·{" "}
@@ -579,7 +578,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
 
                     <div className="mt-4">
                       <div
-                        className="caption-label text-[14.5px] mb-1"
+                        className="caption-label text-[13px] mb-1"
                         
                       >
                         Slide Note

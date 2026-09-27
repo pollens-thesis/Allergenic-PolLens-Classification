@@ -33,8 +33,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-border bg-surface p-5">
-      <div className="mb-4 flex items-start gap-3">
+    <section className="card-panel p-4 sm:p-5">
+      <div className="mb-3 flex items-start gap-3">
         <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-sunken">
           <Icon size={16} strokeWidth={1.75} className="text-text-muted" />
         </span>
@@ -82,7 +82,7 @@ export default function SettingsWorkspace() {
       <Section
         icon={UserRound}
         title="Profile"
-        description="Read from the account you signed in with."
+        description="Signed-in research account."
       >
         <div className="flex items-center gap-3.5 rounded-md border border-border bg-surface px-3.5 py-3">
           <span
@@ -101,15 +101,13 @@ export default function SettingsWorkspace() {
         </div>
 
         <p className="t-prose mt-3 text-text-muted">
-          Your name comes from your Google or Microsoft account and is the default researcher on
-          new reports (you can change it per report).{" "}
+          Default researcher for new reports. Change it on a report when needed.{" "}
           {institution ? (
             <>
-              Institution: <span className="font-medium text-text">{institution}</span>, from the
-              domain of your address.
+              Institution: <span className="font-medium text-text">{institution}</span>.
             </>
           ) : (
-            <>This address isn&rsquo;t on an institution domain, so no institution is shown.</>
+            <>No institution domain detected.</>
           )}
         </p>
       </Section>
@@ -118,9 +116,9 @@ export default function SettingsWorkspace() {
       <Section
         icon={Database}
         title="Data Export"
-        description="Reports are stored on the PolLens server and shared with every signed-in researcher. Export finalized reports (Completed or Needs Review) to keep a copy or analyze them in other software."
+        description="Download finalized shared reports."
       >
-        <div className="mb-4 grid grid-cols-2 gap-3 rounded-md bg-surface-sunken px-3 py-3 text-center">
+        <div className="card-well mb-4 grid grid-cols-2 gap-3 px-3 py-3 text-center">
           <div>
             <div className="text-lg text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
               {reports ? finalised.length : loadFailed ? "—" : "…"}
@@ -185,7 +183,7 @@ export default function SettingsWorkspace() {
           <span>
             {loadFailed
               ? "Couldn't reach the server to load reports. Reload the page to try again."
-              : "Exports cover every finalized report, from all researchers. Slide images aren't included — download a report's PDF for those."}
+              : "Includes all researchers. Slide images are in report PDFs."}
           </span>
         </p>
       </Section>
@@ -194,7 +192,7 @@ export default function SettingsWorkspace() {
       <Section
         icon={LogOut}
         title="Account"
-        description="Signing out revokes this browser's session on the server and forgets it here. Your reports — including pending analyses — stay on the server."
+        description="Your reports stay on the server when you sign out."
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-[13px] text-text-muted">
