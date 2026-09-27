@@ -9,10 +9,7 @@ export const metadata: Metadata = {
 export default function DatasetPage() {
   return (
     <>
-      <PageHeader
-        title="Allergen Reference"
-        description="The 23 pollen types this console classifies, with how many grains of each were counted in finalized reports. Select a species for its full record."
-      />
+      <PageHeader title="Allergen Reference" />
       <PageBody>
         <AllergenReference />
       </PageBody>

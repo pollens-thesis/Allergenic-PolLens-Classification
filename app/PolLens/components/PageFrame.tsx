@@ -35,7 +35,7 @@ export function PageHeader({
   mono = false,
   width = "wide",
 }: {
-  /** The page's h1 text — or a ready-made heading element (the dashboard greeting). */
+  /** The page's h1 text or a ready-made heading element. */
   title: React.ReactNode;
   description?: React.ReactNode;
   back?: { href: string; label: string };
@@ -46,7 +46,7 @@ export function PageHeader({
   return (
     <header
       className={clsx(
-        "z-20 border-b border-border bg-bg/85 pt-6 pb-5 backdrop-blur-md sm:pt-8 lg:sticky lg:top-0 lg:pt-8 lg:pb-6",
+        "z-20 border-b border-border bg-bg/90 pt-4 pb-3 backdrop-blur-md sm:pt-5 lg:sticky lg:top-0 lg:pt-5 lg:pb-4",
         GUTTER,
       )}
     >
@@ -62,7 +62,7 @@ export function PageHeader({
         )}
         {typeof title === "string" ? (
           <h1
-            className={clsx("text-3xl tracking-tight text-balance text-text", mono && "break-all")}
+            className={clsx("text-[1.65rem] leading-tight tracking-tight text-balance text-text", mono && "break-all")}
             style={{ fontFamily: mono ? "var(--font-mono)" : "var(--font-display)", fontWeight: 600 }}
           >
             {title}
@@ -71,7 +71,7 @@ export function PageHeader({
           title
         )}
         {description && (
-          <p className="mt-1.5 max-w-prose text-sm text-pretty text-text-muted">{description}</p>
+          <p className="mt-1 max-w-[64ch] text-[13px] leading-snug text-pretty text-text-muted">{description}</p>
         )}
       </div>
     </header>
@@ -88,7 +88,7 @@ export function PageBody({
   className?: string;
 }) {
   return (
-    <div className={clsx("py-6 sm:py-8", GUTTER)}>
+    <div className={clsx("py-5 sm:py-6", GUTTER)}>
       <div className={clsx("w-full", WIDTH[width], className)}>{children}</div>
     </div>
   );

@@ -11,7 +11,6 @@ import {
   FlaskConical,
   Loader2,
   Microscope,
-  Plus,
   Trash2,
 } from "lucide-react";
 import {
@@ -47,7 +46,7 @@ import { toast } from "sonner";
 const fieldClass =
   "focus-ring w-full rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text placeholder:text-text-faint";
 
-const sectionHeadingClass = "caption-label text-[14.5px] mb-2";
+const sectionHeadingClass = "caption-label text-[13px] mb-2";
 
 const AUTOSAVE_MS = 600;
 
@@ -85,10 +84,10 @@ function DetectionRow({
         type="button"
         onClick={onSelect}
         aria-pressed={selected}
-        className={`focus-ring block w-full rounded-md border px-3 py-2.5 text-left transition ${
+        className={`focus-ring block w-full border-l-2 px-2.5 py-2.5 text-left transition-colors ${
           selected
-            ? "border-accent bg-accent-muted"
-            : "border-border bg-surface hover:border-border-strong"
+            ? "border-l-accent bg-accent-muted"
+            : "border-l-transparent hover:bg-surface-sunken"
         }`}
       >
         <div className="flex items-start justify-between gap-3">
@@ -145,17 +144,41 @@ function DetectionRow({
   );
 }
 
+/** A report slide preview; image failures fall back to a plain plate mark. */
+function SlideThumbnail({ imageUrl }: { imageUrl?: string }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  return (
+    <span className="relative flex h-12 w-[4.5rem] shrink-0 items-center justify-center overflow-hidden rounded-sm border border-border bg-surface-sunken">
+      {imageUrl && !imageFailed ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imageUrl}
+          alt=""
+          loading="lazy"
+          onError={() => setImageFailed(true)}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <Microscope size={15} strokeWidth={1.5} className="text-text-faint" aria-hidden="true" />
+      )}
+    </span>
+  );
+}
+
 /** Number input that keeps an empty box as `null` rather than 0. */
 function MeasurementField({
   label,
   value,
   onChange,
+  disabled = false,
   min,
   max,
 }: {
   label: string;
   value: number | null;
   onChange: (next: number | null) => void;
+  disabled?: boolean;
   min?: number;
   max?: number;
 }) {
@@ -168,9 +191,10 @@ function MeasurementField({
         min={min}
         max={max}
         value={value ?? ""}
+        disabled={disabled}
         placeholder="—"
         onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
-        className={fieldClass}
+        className={`${fieldClass} disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-text-faint`}
       />
     </label>
   );
@@ -438,7 +462,7 @@ export default function AnalysisResultWorkspace({
 
   if (loadError) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-16 text-center">
+      <div className="card-panel flex flex-col items-center gap-3 px-6 py-16 text-center">
         <CloudOff size={22} strokeWidth={1.5} className="text-text-faint" />
         <p className="t-prose text-text-muted">{loadError}</p>
         <Button type="button" intent="secondary" size="sm" onClick={() => window.location.reload()}>
@@ -450,7 +474,7 @@ export default function AnalysisResultWorkspace({
 
   if (report === undefined) {
     return (
-      <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-6 py-16 text-[13px] text-text-muted">
+      <div className="card-panel flex items-center justify-center gap-2 px-6 py-16 text-[13px] text-text-muted">
         <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
         Loading analysis…
       </div>
@@ -459,7 +483,7 @@ export default function AnalysisResultWorkspace({
 
   if (report === null) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-16 text-center">
+      <div className="card-panel flex flex-col items-center gap-3 px-6 py-16 text-center">
         <Microscope size={22} strokeWidth={1.5} className="text-text-faint" />
         <p className="t-prose text-text-muted">
           {sampleId
@@ -526,17 +550,16 @@ export default function AnalysisResultWorkspace({
   );
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {(sampleDetections || report.sampleDetections) && (
-        <p className="flex items-start gap-2 rounded-md border border-processing/30 bg-processing-bg px-3 py-2.5 text-[12.5px] text-processing">
+        <p className="flex items-center gap-2 rounded-md border border-processing/30 bg-processing-bg px-3 py-2 text-[12px] text-processing">
           <FlaskConical size={14} strokeWidth={2} className="mt-px shrink-0" />
-          Sample detections — the trained model isn&apos;t deployed yet, so the server returned its
-          built-in example reading. Don&apos;t treat these counts as results.
+          Sample detections · The trained model isn&apos;t deployed. Counts are illustrative.
         </p>
       )}
 
       {/* Header: what was analyzed, and the way out of the screen */}
-      <div className="rounded-lg border border-border bg-surface p-5">
+      <div className="card-panel p-4 sm:p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0 flex-1">
             <h2 className="text-2xl font-semibold tracking-tight text-text lining-nums">
@@ -612,45 +635,52 @@ export default function AnalysisResultWorkspace({
           </div>
         </div>
 
-        {/* Slide switcher — one report, but each slide has its own reading. */}
-        {report.slides.length > 1 && (
-          <div className="mt-4 flex flex-wrap gap-1.5 border-t border-border pt-4">
+      </div>
+
+      {report.slides.length > 1 && (
+        <nav aria-label="Slides in this analysis" className="-mx-1 overflow-x-auto px-1 pb-1">
+          <ul className="flex w-max min-w-full gap-2">
             {report.slides.map((slide, index) => {
               const active = slide.id === selected?.id;
               return (
-                <button
-                  key={slide.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedId(slide.id);
-                    setHighlighted(null);
-                  }}
-                  aria-current={active}
-                  className={`focus-ring flex max-w-[16rem] items-center gap-2 rounded-md border px-2.5 py-1.5 text-[13px] transition ${
-                    active
-                      ? "border-border-strong bg-surface text-text"
-                      : "border-border bg-surface-sunken text-text-muted hover:border-border-strong hover:text-text"
-                  }`}
-                >
-                  <span className="shrink-0 text-[12px] text-text-muted" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-                    S{index + 1}
-                  </span>
-                  <span className="truncate">{slide.fileName}</span>
-                </button>
+                <li key={slide.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedId(slide.id);
+                      setHighlighted(null);
+                    }}
+                    aria-current={active ? "true" : undefined}
+                    aria-label={`Slide ${index + 1}: ${slide.fileName}${active ? ", selected" : ""}`}
+                    title={slide.fileName}
+                    className={`focus-ring flex w-48 items-center gap-2 rounded-md border p-1.5 text-left transition-colors ${
+                      active
+                        ? "border-border-strong bg-surface text-text"
+                        : "border-border bg-surface-sunken text-text-muted hover:border-border-strong hover:text-text"
+                    }`}
+                  >
+                    <SlideThumbnail imageUrl={slide.imageUrl} />
+                    <span className="min-w-0">
+                      <span className="block text-[11px] text-text-faint" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                        SLIDE {index + 1}
+                      </span>
+                      <span className="mt-0.5 block truncate text-[12.5px]">{slide.fileName}</span>
+                    </span>
+                  </button>
+                </li>
               );
             })}
-          </div>
-        )}
-      </div>
+          </ul>
+        </nav>
+      )}
 
       {selected && (
-        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1.9fr)_minmax(21rem,1fr)]">
           {/* The slide itself leads: it is what every number below is read against. */}
-          <div className="rounded-lg border border-border bg-surface p-5 xl:sticky xl:top-48">
-            <div className="mb-4 flex items-baseline justify-between gap-3">
-              <h3 className="t-plate-title text-text">Slide Image</h3>
+          <div className="card-panel p-4 sm:p-5 xl:sticky xl:top-48">
+            <div className="mb-3 flex min-w-0 items-baseline justify-between gap-3">
               {/* The slide's plate number, as an atlas numbers its figures. */}
-              <span className="plate-label text-[15px]">
+              <span className="plate-label ml-auto text-[12px]">
                 Slide {slideIndex + 1}
                 {report.slides.length > 1 ? ` of ${report.slides.length}` : ""}
               </span>
@@ -665,18 +695,7 @@ export default function AnalysisResultWorkspace({
               onSelectSpecies={setHighlighted}
               onExpand={() => setInspectorOpen(true)}
               onImageError={handleImageError}
-              caption={
-                <>
-                  <span className="plate-label mr-1.5">Slide {slideIndex + 1}</span>
-                  {selected.fileName} · {totalGrains} {totalGrains === 1 ? "grain" : "grains"}
-                  {detections[0] && (
-                    <>
-                      {" "}· mostly{" "}
-                      <SpeciesName species={findSpecies(speciesCatalog, detections[0].speciesId)} commonName={false} />
-                    </>
-                  )}
-                </>
-              }
+              caption={selected.fileName}
             />
             <SpecimenInspector
               open={inspectorOpen}
@@ -695,30 +714,28 @@ export default function AnalysisResultWorkspace({
             />
           </div>
 
-          {/* What the analysis found, then the note about this slide */}
-          <div className="flex min-w-0 flex-col gap-6">
-            <div className="rounded-lg border border-border bg-surface p-5">
-              <div className="mb-4 flex items-baseline justify-between gap-3">
-                <h3 className="t-plate-title text-text">Pollen Detected</h3>
-                {report.slides.length > 1 && (
-                  <span className="plate-label text-[15px]">Slide {slideIndex + 1}</span>
-                )}
+          {/* The detection key and slide note stay together beside the image. */}
+          <div className="card-panel min-w-0 p-4 sm:p-5">
+            <section aria-labelledby="pollen-detected-heading">
+              <div className="mb-3 flex items-baseline justify-between gap-3">
+                <h3 id="pollen-detected-heading" className="t-plate-title text-text">Pollen Detected</h3>
+                <span className="plate-label text-[12px]">Slide {slideIndex + 1}</span>
               </div>
 
-              <div className="mb-4 grid grid-cols-3 gap-3 rounded-md bg-surface-sunken px-3 py-3 text-center">
+              <div className="mb-3 grid grid-cols-3 gap-2 border-y border-border py-2.5 text-center">
                 <SummaryTile value={totalGrains} label="Grains" />
                 <SummaryTile value={detections.length} label={detections.length === 1 ? "Pollen Type" : "Pollen Types"} />
                 <SummaryTile value={`${Math.round(confidence * 100)}%`} label="Avg. Confidence" />
               </div>
 
               {detections.length === 0 ? (
-                <p className="rounded-md border border-border bg-surface px-3 py-4 text-center text-[13px] text-text-muted">
+                <p className="py-3 text-center text-[13px] text-text-muted">
                   No pollen grains detected on this slide.
                 </p>
               ) : (
                 <>
-                  <p className="mb-2 text-[12.5px] text-text-muted">Select a type to box its grains on the image.</p>
-                  <ul className="flex flex-col gap-2">
+                  <p className="mb-2 text-[12px] text-text-muted">Select a type to highlight its grains.</p>
+                  <ul className="divide-y divide-border border-y border-border">
                     {detections.map((detection) => (
                       <DetectionRow
                         key={detection.speciesId}
@@ -733,33 +750,32 @@ export default function AnalysisResultWorkspace({
                   </ul>
                 </>
               )}
-            </div>
+            </section>
 
-            <div className="rounded-lg border border-border bg-surface p-5">
-              <h3 id="slide-note-heading" className="t-plate-title mb-1 text-text">Slide Note</h3>
-              <p className="mb-2.5 text-[12.5px] text-text-muted">
-                Recorded against this slide
-                {report.slides.length > 1 ? " only — each slide keeps its own note." : "."}
-              </p>
+            <section aria-labelledby="slide-note-heading" className="mt-5 border-t border-border pt-4">
+              <div className="mb-2 flex items-baseline justify-between gap-3">
+                <h3 id="slide-note-heading" className="t-plate-title text-text">Slide Note</h3>
+                {report.slides.length > 1 && <span className="text-[12px] text-text-muted">Slide {slideIndex + 1}</span>}
+              </div>
               <textarea
-                rows={6}
+                rows={4}
                 value={notes[selected.id] ?? ""}
                 onChange={(e) => {
                   const text = e.target.value;
                   setNotes((current) => ({ ...current, [selected.id]: text }));
                   edit({ notes: { [selected.id]: text } });
                 }}
-                aria-labelledby="slide-note-heading"
+                aria-label={`Note for slide ${slideIndex + 1}`}
                 placeholder="Slide preparation, staining, obscured grains, anything unusual…"
                 className={`${fieldClass} resize-y`}
               />
-            </div>
+            </section>
           </div>
         </div>
       )}
 
       {/* The details entered on Analyze, still editable until the report is generated. */}
-      <div className="rounded-lg border border-border bg-surface p-5">
+      <div className="card-panel p-4 sm:p-5">
         <h3 className="t-plate-title text-text">Collection Details</h3>
         <p className="mt-0.5 mb-4 text-[13px] text-text-muted">
           What you entered before analyzing — correct anything here; changes save as you go.
@@ -846,42 +862,39 @@ export default function AnalysisResultWorkspace({
               </button>
             )}
           </div>
-          {weather ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <label className="col-span-2 block sm:col-span-1">
-                <span className="mb-1 block text-[12.5px] text-text-muted">Weather</span>
-                <select
-                  value={weather.condition}
-                  onChange={(e) => updateWeather("condition", e.target.value as WeatherCondition)}
-                  className={fieldClass}
-                >
-                  {weatherConditionOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <MeasurementField label="Temperature (°C)" value={weather.temperatureC} onChange={(next) => updateWeather("temperatureC", next)} />
-              <MeasurementField
-                label="Humidity (%)"
-                value={weather.humidityPct}
-                onChange={(next) => updateWeather("humidityPct", next)}
-                min={0}
-                max={100}
-              />
-              <MeasurementField label="Wind (km/h)" value={weather.windKph} onChange={(next) => updateWeather("windKph", next)} min={0} />
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => updateWeather("condition", EMPTY_WEATHER.condition)}
-              className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[13px] text-text-muted hover:border-border-strong hover:text-text"
-            >
-              <Plus size={13} strokeWidth={2} />
-              Add Weather
-            </button>
-          )}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <label className="col-span-2 block sm:col-span-1">
+              <span className="mb-1 block text-[12.5px] text-text-muted">Weather</span>
+              <select
+                value={weather?.condition ?? ""}
+                onChange={(e) => {
+                  if (!e.target.value) {
+                    weatherRequest.current++;
+                    setWeather(null);
+                    edit({ weather: null });
+                  } else {
+                    updateWeather("condition", e.target.value as WeatherCondition);
+                  }
+                }}
+                className={fieldClass}
+              >
+                <option value="">Not recorded</option>
+                {weatherConditionOptions.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </label>
+            <MeasurementField label="Temperature (°C)" value={weather?.temperatureC ?? null} disabled={!weather} onChange={(next) => updateWeather("temperatureC", next)} />
+            <MeasurementField
+              label="Humidity (%)"
+              value={weather?.humidityPct ?? null}
+              disabled={!weather}
+              onChange={(next) => updateWeather("humidityPct", next)}
+              min={0}
+              max={100}
+            />
+            <MeasurementField label="Wind (km/h)" value={weather?.windKph ?? null} disabled={!weather} onChange={(next) => updateWeather("windKph", next)} min={0} />
+          </div>
         </div>
       </div>
 

@@ -46,7 +46,7 @@ type View = { scale: number; x: number; y: number };
 const FIT: View = { scale: 1, x: 0, y: 0 };
 
 const mono = { fontFamily: "var(--font-mono)", fontWeight: 500 } as const;
-const sectionLabel = "caption-label text-[14px] mb-2";
+const sectionLabel = "caption-label text-[13px] mb-2";
 
 /**
  * Full-screen specimen inspector: the slide on the right on a neutral dark

@@ -28,24 +28,24 @@ colors:
   frontispiece-grain-soft: "#9c4a33"
 typography:
   display:
-    fontFamily: "Source Serif 4, Georgia, serif"
-    fontSize: "3.4rem"
+    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontSize: "2.75rem"
     fontWeight: 600
     lineHeight: 1.08
-    letterSpacing: "-0.025em"
+    letterSpacing: "-0.02em"
   headline:
-    fontFamily: "Source Serif 4, Georgia, serif"
-    fontSize: "1.875rem"
+    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontSize: "1.65rem"
     fontWeight: 600
     letterSpacing: "-0.025em"
   figure:
-    fontFamily: "Source Serif 4, Georgia, serif"
-    fontSize: "2.25rem"
+    fontFamily: "IBM Plex Mono, ui-monospace, monospace"
+    fontSize: "1.75rem"
     fontWeight: 600
     fontFeature: "lnum, tnum"
   title:
-    fontFamily: "Source Serif 4, Georgia, serif"
-    fontSize: "1.125rem"
+    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontSize: "1rem"
     fontWeight: 600
     letterSpacing: "-0.025em"
   binomial:
@@ -53,25 +53,24 @@ typography:
     fontSize: "15.5px"
     fontWeight: 600
   caption:
-    fontFamily: "Source Serif 4, Georgia, serif"
-    fontSize: "14px"
+    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontSize: "13px"
     fontWeight: 400
   plate-label:
-    fontFamily: "Source Serif 4, Georgia, serif"
-    fontSize: "15px"
-    letterSpacing: "0.06em"
-    fontFeature: "all-small-caps"
+    fontFamily: "IBM Plex Mono, ui-monospace, monospace"
+    fontSize: "12px"
+    fontWeight: 500
   body:
-    fontFamily: "Atkinson Hyperlegible Next, system-ui, Segoe UI, Arial, sans-serif"
+    fontFamily: "IBM Plex Sans, system-ui, Segoe UI, Arial, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 400
     fontFeature: "tnum"
   body-small:
-    fontFamily: "Atkinson Hyperlegible Next, system-ui, Segoe UI, Arial, sans-serif"
+    fontFamily: "IBM Plex Sans, system-ui, Segoe UI, Arial, sans-serif"
     fontSize: "13px"
     fontWeight: 400
   mono:
-    fontFamily: "Atkinson Hyperlegible Mono, ui-monospace, Consolas, monospace"
+    fontFamily: "IBM Plex Mono, ui-monospace, Consolas, monospace"
     fontSize: "12.5px"
     fontWeight: 500
 rounded:
@@ -83,8 +82,8 @@ spacing:
   gutter-mobile: "16px"
   gutter-tablet: "24px"
   gutter-desktop: "40px"
-  plate-padding: "20px"
-  plate-gap: "24px"
+  plate-padding: "16px"
+  plate-gap: "16px"
   width-wide: "1440px"
   width-medium: "1024px"
   width-narrow: "768px"
@@ -169,23 +168,24 @@ components:
     padding: "2px 8px"
 ---
 
-# Design System: PolLens
+# Design System: PolLens Laboratory Console
 
 ## Overview
 
-**Creative North Star: "The Pollen Atlas Plates"**
+**Creative North Star: "The Laboratory Console"**
 
-PolLens reads like a palynology reference atlas that is still being written. Each analysed slide is a numbered plate in a hairline frame with a serif caption beneath a thin rule. Each report is an atlas entry, and the detections sit beside the plate as its key. The page is a quiet warm grey. Plates are off-white paper. Type is ink. The only chromatic voice in the chrome is one oxide red, and it is kept for plate and figure numbers, the primary action and focus. Strong colour elsewhere is data: the species palette on slides and charts, and the intensity ramp on the map.
+PolLens is a focused workspace for examining microscope slides and maintaining research records. It should feel precise, legible and calm at a bright lab bench. Short labels and a clear task hierarchy keep attention on the slide, its detections and the collection details. The warm grey page, paper surfaces, hairline rules and oxide action colour remain; species colours stay attached to data.
 
-The world is light because the work happens under bright bench light, next to a microscope. Density is that of a working console, not a brochure. Tables, key rows and measurement grids are tight, set in a legibility-tested sans with tabular figures. The journal serif carries titles, captions, scientific names and plate labels, so the atlas voice shows up wherever something is being named. It stays out of controls and running text.
+IBM Plex Sans carries the interface and IBM Plex Mono marks IDs, codes and figures. Source Serif 4 italic distinguishes scientific names from surrounding controls. Work surfaces use generous paper cards with a quiet shadow, while controls, data rows and microscope plates retain compact geometry. Information stays grouped by task. Required sample, status, missing-data and recovery messages remain visible.
 
-Nothing is decorative or invented. A researcher reads every count against the plate it came from. The system rejects the clinical SaaS dashboard look: soft rounded cards, a blue accent, iconified stat tiles and drop shadows. It also adds no instrument furniture that the data cannot back, such as scale bars or magnification readouts.
+Do not invent measurements, model performance, calibration marks or instrument readouts. The interface should show only what the image or report supports.
 
 **Key Characteristics:**
-- Warm grey page, plate-paper panels, hairline frames and no soft shadows.
+- Warm grey page, plate-paper cards, hairline frames and restrained card shadows.
 - One oxide accent for plate/figure numbers, the primary action and focus.
-- Source Serif 4 for titles, captions, binomials and small-caps labels. Atkinson Hyperlegible Next for UI. Atkinson Hyperlegible Mono for IDs, codes and figures.
-- Square-cut corners (1–3px).
+- IBM Plex Sans for the interface; IBM Plex Mono for IDs, codes and figures; Source Serif 4 italic for scientific names.
+- Short page titles, compact controls and secondary details behind clear disclosures.
+- Rounded work cards (20px); controls, stamps and embedded data marks keep compact corners (1–3px).
 - Status stamps that differ by pattern (dashed, solid, hatched) as well as by colour.
 - Species colours and the map ramp are data, never decoration.
 
@@ -204,7 +204,8 @@ A near-achromatic warm paper palette with one oxide accent. Status colours are m
 - **Hairline Strong** (#b3b1a8): hover, active and selected borders, and the scrollbar thumb.
 - **Ink** (#171717): all primary text and headings, and the ink button.
 - **Caption Grey** (#4d4c47): secondary text, descriptions and caption labels.
-- **Faint Grey** (#5f5e59): tertiary text, placeholders, counts inside chips and quiet icons. It still passes AA on every surface.
+- **Faint Grey** (#5f5e59): tertiary text, counts inside chips and quiet icons. It still passes AA on every surface.
+- **Placeholder Grey** (#6d6c66): empty-field hints, visibly lighter than entered ink text while keeping AA contrast on plate paper and wells.
 - **Viewer Surround** (#2a2a28): the neutral, unsaturated dark field behind slide images, so the surround does not shift how the stain reads.
 
 ### Status
@@ -227,26 +228,16 @@ A near-achromatic warm paper palette with one oxide accent. Status colours are m
 
 ## Typography
 
-**Display Font:** Source Serif 4 (with Georgia, serif), loaded in normal and italic with optical sizes
-**Body Font:** Atkinson Hyperlegible Next (with system-ui, Segoe UI, Arial, sans-serif)
-**Label/Mono Font:** Atkinson Hyperlegible Mono (with ui-monospace, Consolas, monospace)
+**Interface:** IBM Plex Sans (system UI fallback), 14px body text and 13px dense labels.
+**Identifiers:** IBM Plex Mono for sample IDs, species codes and aligned figures.
+**Taxonomy:** Source Serif 4 italic for scientific names only.
 
-**Character:** a journal serif that names things, next to a sans built by the Braille Institute to keep 0/O, 1/l/I, 5/S and 8/B apart, which is what sample IDs and species codes are made of. The body sets `tabular-nums` globally, so readings line up in columns and don't jitter as they change. There is no `antialiased` smoothing, because thinned strokes hurt small text on a light ground.
+Use a compact, practical hierarchy: page titles at 26px, section titles at 16px, and body copy at 14px. Field labels use sentence case at 13px. Plate labels are concise and use Plex Mono at 12px. Numbers use tabular figures. The root page does not apply font smoothing that thins small strokes on light surfaces.
 
-### Hierarchy
-- **Display** (serif 600, up to 3.4rem, line-height 1.08, tight tracking): the sign-in frontispiece headline only.
-- **Headline** (serif 600, 1.875rem, tight tracking): every page's h1 in the page header. A page titled by an identifier (a sample ID such as PLN-2026-0027) sets it in the mono face instead.
-- **Figure** (serif 600, 2.25rem, lining tabular numerals): the headline numbers in the ruled stat plate.
-- **Title** (serif 600, 1.125rem): the heading of each plate ("Results", "Specimen Image", "Collection Details"). h1–h3 all take the serif at -0.01em tracking.
-- **Binomial** (serif italic 600, 15.5px): scientific names in key rows. Always italic, always serif, with the species code following it in mono as its key mark.
-- **Caption** (serif 400, 14px): the figure caption strip under a plate. It gives file, grain count and dominant species, and the species is in italic.
-- **Plate label** (serif small caps, all-small-caps, 0.06em tracking, 15–16px, oxide): "Slide N" plate and figure numbers.
-- **Caption label** (the same small caps, in caption grey, 14.5–15px): field and section labels inside plates (DATE COLLECTED, RESEARCHER'S NOTE, stat labels).
-- **Body** (Atkinson 400, 14px; 13px in dense rows and fields): all UI text. Descriptions cap at `max-w-prose`.
-- **Mono** (Atkinson Mono 500, 11.5–14px): sample IDs, species codes, grain counts, shown/total readouts and dates on report rows.
+Copy should name the task or data directly. Keep essential status, sample, missing-data, export and recovery information in view; place secondary metrics or longer explanations in an explicitly labeled disclosure.
 
 ### Named Rules
-**The Small-Caps Label Rule.** Labels are serif small caps, never tracked uppercase sans. Oxide small caps number a plate. Grey small caps name a field. A label names real content directly beneath it. It is never a decorative line above a heading.
+**The Plain Label Rule.** Labels use sentence case and name the field or value directly. Use oxide only for the primary action, focus and concise slide references.
 
 **The Mono Means Identifier Rule.** The mono face is for things you would copy, compare or count: IDs, species codes, counts and figures. It is not for prose, buttons or headings. The PolLens wordmark (mono, uppercase, 0.18em tracking) is an identity asset and sets no precedent.
 
@@ -254,20 +245,20 @@ A near-achromatic warm paper palette with one oxide accent. Status colours are m
 
 The signed-in console is a two-column shell. A pinned plate-paper rail sits on the left from `lg` (1024px) up, and a content column sits to its right. Below `lg` the rail becomes a fixed 56px plate-paper bar with a right-hand drawer (17rem, max 85vw) that shows the same nav labels, never an icon-only tab bar.
 
-Every page uses one page frame. A full-bleed header band with a hairline bottom rule, sticky from `lg` up, holds the h1 and an optional back link and description. The body sits below it. Header and body share one of three left-aligned measures: **wide** for workspaces, tables and the map, **medium** for a single reference table, and **narrow** for settings and single-column forms. Gutters step 16 → 24 → 40px. Header padding is 24/20px, rising to 32/24px, and body vertical padding is 24–32px.
+Every page uses one page frame. A compact full-bleed header with a hairline bottom rule, sticky from `lg` up, holds the h1 and an optional back link or useful description. The body sits below it. Header and body share one of three left-aligned measures: **wide** for workspaces, tables and the map, **medium** for a single reference table, and **narrow** for settings and single-column forms. Gutters step 16 → 24 → 40px. Header padding is 16–20px; body vertical padding is 20–24px.
 
-Inside the body, content is stacked plates 24px apart, each padded 20px. The result view pairs the plate (3fr, sticky on `xl`) with its key (2fr). Report detail repeats slide sections divided by hairline rules. Rows are compact (key rows 10px × 12px, fields 8px × 12px).
+Inside the body, standalone work surfaces use the shared `card-panel` treatment and 16–20px task-specific padding. The result view pairs the slide (3fr, sticky on `xl`) with its key (2fr). Report detail groups each slide with its detections and notes. Tables, embedded data rows and fields stay compact while preserving comfortable targets.
 
 ## Elevation & Depth
 
-The system is flat. Depth is carried by tone and line: page grey behind, plate paper on top, sunken wells inside, and a 1px hairline frame around everything. Hover raises a border to Hairline Strong. It never raises a shadow. The only blur is the sticky page header's translucent page-grey band, which keeps content legible as it scrolls under.
+Depth stays quiet: page grey behind, plate paper on top, sunken wells inside, and a 1px hairline frame around each card. Shared cards use a 20px radius and a subtle two-layer shadow; hover strengthens the border and lifts the shadow slightly. Embedded rows, inputs, chips and the slide image frame keep their compact geometry. Avoid glows and decorative gradients. The only blur is the sticky page header's translucent page-grey band, which keeps content legible as it scrolls under.
 
 ### Named Rules
-**The Hairline Plate Rule.** A panel is a square-cut plate with a 1px hairline frame on plate paper. There are no soft drop shadows, glows or floating cards. If something needs separating, give it a rule or a well.
+**The Quiet Card Rule.** Use `card-panel` for a standalone work surface, with a 20px radius, hairline frame and restrained shadow. Use `card-well` for a secondary inset summary. Keep controls, rows, species marks and the microscope image frame compact; card styling should clarify hierarchy, not decorate data.
 
 ## Shapes
 
-Plates are cut square. Radii are the barest softening that keeps edges from aliasing: 1px for stamps and small marks, 2px for plates, buttons, fields and chips, and 3px at most. Circles are reserved for the wordmark's ring-and-dot, avatar initials and legend dots. Species swatches are 2px-cornered squares. The ruled stat plate is one hairline frame split into cells by 1px gaps that show the hairline through, like a ruled table in print.
+Standalone cards use a 20px radius. Controls, fields, buttons and compact data rows use 1–3px corners; the corners of microscope image frames remain restrained so the imagery stays central. Circles are reserved for the wordmark's ring-and-dot, avatar initials and legend dots. Species swatches are 2px-cornered squares. Secondary summaries use a softly rounded `card-well` inside their parent card.
 
 ## Components
 
@@ -286,15 +277,16 @@ Quiet and exact, with no gradient and no shadow.
 - **Style:** a hairline frame on half-transparent plate paper, 12.5px text, a 2px-cornered species swatch, the mono species code, then the count in faint grey.
 - **State:** the selected chip takes a Hairline Strong border and ink text over a plate-paper highlight that slides between chips on a spring. "All Types" leads the row.
 
-### Cards / Containers (plates)
-- **Corner Style:** 2px.
+### Cards / Containers (work cards + plates)
+- **Corner Style:** 20px for standalone work cards; 2px for the nested microscope image frame and compact data surfaces.
 - **Background:** plate paper on page grey. Wells inside use Well.
-- **Shadow Strategy:** none (see Elevation & Depth).
+- **Shadow Strategy:** subtle two-layer shadow on standalone cards, slightly deeper on interactive hover (see Elevation & Depth).
 - **Border:** a 1px hairline.
-- **Internal Padding:** 20px. The plate title (serif) sits on a baseline row with its oxide plate label at the right.
+- **Internal Padding:** 16–20px by default. The plate title uses IBM Plex Sans and sits on a baseline row with its mono slide label at the right.
+- **Dashboard metrics:** four equal cards at wide desktop sizes, two columns on tablet and a single column on narrow screens. Each card uses a large figure, one clear label and concise factual context.
 
 ### Inputs / Fields
-- **Style:** full-width plate paper, a 1px hairline frame, 2px corners, 8px × 12px padding, 13px ink text and faint-grey placeholders. The label sits above in 12.5px caption grey or as a caption label.
+- **Style:** full-width plate paper, a 1px hairline frame, 2px corners, 8px × 12px padding, 13px ink text and placeholder-grey hints. The label sits above in 12.5px caption grey or as a caption label.
 - **Focus:** the shared 2px oxide outline at a 3px offset.
 - **Native controls:** checkboxes and radios take `accent-color` oxide.
 
@@ -319,17 +311,17 @@ One detection per row, sitting beside the plate as its key. Each row has a speci
 ### Species Card (Allergen Reference)
 The Allergen Reference is an atlas of plates: a searchable grid, 6 across from `xl` (6 × 4 for the 23 species), 4 at `lg`, 3 at `sm`, 2 on phones. Each card is a hairline plate: a 4:3 photo over the **binomial** (serif italic 600, 16px, the primary) and the **plant names** below it (English · Filipino, 13px caption grey, the secondary), the risk stamp, and a footer rule with the species swatch and mono code on the left and the grain count on the right. The whole card is the button; it opens the full record in a dialog (photo with its credit line, plate-label code, binomial title, names, family, description, a ruled grid of readings, where it grows in the Philippines, and the source line). Search matches scientific name, English and Filipino names and code, accent- and case-insensitively. Photos are freely licensed (Wikimedia Commons) and always credited; a missing photo shows a "No photo yet" plate, never a stand-in.
 
-### Ruled Stat Plate
-Four figures (two on narrow screens) in one hairline frame, divided by 1px rules. Each cell has a grey small-caps label, a serif lining figure and a 13px sublabel. There are no icons. Values count up between real values only, never on first load, and show dashes rather than invented numbers while loading or on failure.
+### Dashboard Metrics
+The dashboard leads with four concise cards: finalized collections, slides, pollen grains, and the review queue split into Needs Review and Pending. Collection-site count sits with the selected collection-date period; location detail lives on the map. The 6/12-month switch belongs beside the “Collection Overview” heading, immediately above the data it filters. Follow with monthly grain counts, top pollen types and recent collections. Labels use sentence case, figures use IBM Plex Mono, and sample detections keep a visible warning.
 
 ## Do's and Don'ts
 
 ### Do:
 - **Do** keep the page grey (#ecebe6), plates on plate paper (#fafaf7) and frames at a 1px hairline (#d9d8d2).
 - **Do** spend oxide (#8c2f1b) only on plate/figure numbers, the one primary action, inline text actions, selection and focus.
-- **Do** number plates in oxide serif small caps ("Slide 2 of 3") and label fields in grey serif small caps.
+- **Do** use concise Plex Mono slide references ("Slide 2 of 3") and sentence-case Plex Sans field labels.
 - **Do** set scientific names in serif italic, followed by the mono species code.
-- **Do** set IDs, species codes, counts and figures in Atkinson Hyperlegible Mono with tabular numerals.
+- **Do** set IDs, species codes, counts and figures in IBM Plex Mono with tabular numerals.
 - **Do** give every status a stamp pattern and a word as well as a colour.
 - **Do** caption each specimen plate under a hairline rule with file, grain count and dominant species.
 - **Do** keep the viewer surround a neutral dark (#2a2a28) so slide colour reads true.

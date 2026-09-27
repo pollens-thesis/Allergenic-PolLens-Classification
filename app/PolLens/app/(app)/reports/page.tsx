@@ -20,10 +20,7 @@ function ReportsFallback() {
 export default function ReportsPage() {
   return (
     <>
-      <PageHeader
-        title="Reports"
-        description="Every analysis, from every researcher — pending and generated. Open a report for its images, full results, notes and conditions."
-      />
+      <PageHeader title="Reports" />
       <PageBody>
         {/* ReportsWorkspace reads ?saved= via useSearchParams, which opts the
             subtree into client-side rendering — hence the boundary. */}

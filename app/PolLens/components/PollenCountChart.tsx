@@ -1,275 +1,171 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
-import { AlertTriangle, Inbox } from "lucide-react";
-import type { MonthlyPollenCount } from "@/lib/data";
+import { useMemo } from "react";
+import { Inbox } from "lucide-react";
+import SpeciesName from "@/components/SpeciesName";
 import { speciesLabel } from "@/lib/data";
 import { useSpeciesCatalog } from "@/lib/species-catalog";
-import { fetchMonthlyPollenCounts } from "@/lib/backend";
-import { useSettings } from "@/lib/settings";
+import type { DashboardMonth, DashboardRange } from "@/lib/dashboard";
 
 /**
  * "loading" — first fetch in flight.
  * "live" — fetch succeeded with real, non-zero totals.
  * "empty-live" — fetch succeeded but there's genuinely nothing to plot yet.
- * "error" — fetch failed (keeps any data from an earlier successful fetch).
- * Distinguishing these is the point: a flat zero-line chart looks identical
- * to "broken" and to "no data yet".
+ * "error" — the shared dashboard request failed.
  */
 type Status = "loading" | "live" | "empty-live" | "error";
 
-const RANGES = [
-  { label: "6 Months", value: 6 },
-  { label: "12 Months", value: 12 },
-] as const;
+const MAX_SPECIES = 8;
 
-// No categorical palette stays mutually distinguishable much past 8
-// simultaneous lines (confirmed by the dataviz skill's own validator against
-// this app's colors) — with 23 species now in the catalog, show only the
-// most abundant ones in the visible window rather than all of them at once.
-const MAX_LINES = 8;
+function heatShade(count: number, maximum: number): string {
+  if (count <= 0 || maximum <= 0) return "var(--surface)";
 
-function CustomTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: { value: number; name: string; color: string }[];
-  label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-md border border-border bg-surface px-3 py-2 shadow-sm">
-      <div className="caption-label text-[14.5px] mb-1" >
-        {label}
-      </div>
-      <div className="flex flex-col gap-0.5">
-        {payload.map((p) => (
-          <div key={p.name} className="flex items-center gap-1.5 text-[13px] text-text/80">
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: p.color }} />
-            {p.name}: {p.value} {p.value === 1 ? "grain" : "grains"}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  const relativeCount = Math.log1p(count) / Math.log1p(maximum);
+  if (relativeCount >= 0.78) return "var(--border-strong)";
+  if (relativeCount >= 0.52) return "var(--border)";
+  if (relativeCount >= 0.26) {
+    return "color-mix(in srgb, var(--surface-sunken) 35%, var(--border) 65%)";
+  }
+  return "var(--surface-sunken)";
 }
 
 /**
- * Grains counted per species per month over the trailing year, from the
- * server (Completed and Needs review reports). These are counts of detected grains, not an
- * airborne concentration — nothing here measures a sampled air volume.
+ * Counts of detected grains per pollen type by collection month. They are
+ * counts from the collected slides, not an airborne concentration.
  */
-export default function PollenCountChart() {
-  const [range, setRange] = useState<number>(12);
-  const [data, setData] = useState<MonthlyPollenCount[]>([]);
-  const [status, setStatus] = useState<Status>("loading");
-  // Keyed on who is signed in, not the access token — that rotates every 15
-  // minutes and would refetch for nothing.
-  const { email } = useSettings();
+export default function PollenCountChart({ data, range, status, emptyMessage }: {
+  data: DashboardMonth[];
+  range: DashboardRange;
+  status: Status;
+  emptyMessage: string;
+}) {
   const catalog = useSpeciesCatalog();
-  const pollenSeries = useMemo(
-    () => catalog.map((sp) => ({ key: sp.id, label: speciesLabel(sp), color: sp.color })),
-    [catalog],
-  );
+  const visible = data;
+  const empty = status === "empty-live";
 
-  useEffect(() => {
-    // The page is behind the session guard, so an email is always present
-    // here; the guard is just for the first render before settings hydrate.
-    if (!email) return;
-    let cancelled = false;
-    fetchMonthlyPollenCounts()
-      .then((counts) => {
-        if (cancelled) return;
-        setData(counts);
-        const total = counts.reduce(
-          (sum, month) => sum + Object.values(month.series).reduce((a, b) => a + b, 0),
-          0,
-        );
-        setStatus(total > 0 ? "live" : "empty-live");
-        // (Whether the *visible* window is empty is decided at render time.)
-      })
-      .catch(() => {
-        // Keep showing the last-known data — a failed refresh shouldn't blank the chart.
-        if (!cancelled) setStatus("error");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [email]);
-
-  const visible = useMemo(() => data.slice(-range), [data, range]);
-  const visibleTotal = visible.reduce(
-    (sum, month) => sum + Object.values(month.series).reduce((a, b) => a + b, 0),
+  const rankedTypes = useMemo(() => catalog
+    .map((species) => ({
+      species,
+      total: visible.reduce((sum, month) => sum + (month.series[species.id] ?? 0), 0),
+    }))
+    .filter(({ total }) => total > 0)
+    .sort((a, b) => b.total - a.total || speciesLabel(a.species).localeCompare(speciesLabel(b.species))),
+  [catalog, visible]);
+  const typesToShow = rankedTypes.slice(0, MAX_SPECIES);
+  const maxCellCount = Math.max(
     0,
+    ...typesToShow.flatMap(({ species }) => visible.map((month) =>
+      month.collectionCount > 0 ? month.series[species.id] ?? 0 : 0,
+    )),
   );
-  // Counts older than six months leave the 6-month window empty.
-  const empty = status === "empty-live" || (status === "live" && visibleTotal === 0);
-
-  // Rank by total within the visible window so the busiest species (not an
-  // arbitrary catalog subset) get the limited line slots; falls back to the
-  // catalog's first MAX_LINES when everything is still zero (e.g. no reports
-  // yet), so the chart isn't blank before any real data exists.
-  const linesToShow = useMemo(() => {
-    const totals = new Map(pollenSeries.map((s) => [s.key, 0]));
-    for (const month of visible) {
-      for (const s of pollenSeries) {
-        totals.set(s.key, (totals.get(s.key) ?? 0) + (month.series[s.key] ?? 0));
-      }
-    }
-    const withData = pollenSeries
-      .filter((s) => (totals.get(s.key) ?? 0) > 0)
-      .sort((a, b) => (totals.get(b.key) ?? 0) - (totals.get(a.key) ?? 0));
-    return (withData.length > 0 ? withData : pollenSeries).slice(0, MAX_LINES);
-  }, [visible, pollenSeries]);
-
-  // How many types have grains in the window, to say when the chart shows only some of them.
-  const typesWithGrains = pollenSeries.filter((s) =>
-    visible.some((month) => (month.series[s.key] ?? 0) > 0),
-  ).length;
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-5">
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="t-plate-title text-text">
-            Historical Pollen Counts
-          </h2>
-          <p className="text-[13px] text-text-muted">Grains counted in generated reports, by month</p>
-        </div>
-        <div className="flex rounded-md border border-border bg-surface p-0.5">
-          {RANGES.map((r) => (
-            <button
-              key={r.value}
-              type="button"
-              onClick={() => setRange(r.value)}
-              aria-pressed={range === r.value}
-              className={`focus-ring rounded-sm px-2.5 py-1 text-[13px] transition-[transform,background-color,color] duration-[var(--duration-fast)] ease-[var(--ease-out)] active:scale-[0.97] ${
-                range === r.value
-                  ? "bg-text text-bg"
-                  : "text-text-muted hover:bg-surface-sunken hover:text-text"
-              }`}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
+    <div className="card-panel h-full p-4 sm:p-5">
+      <div className="mb-1">
+        <h2 className="t-plate-title text-text">Pollen Grain Counts</h2>
+        <p className="text-[12px] text-text-muted">By pollen type and collection month. Darker cells show higher counts.</p>
       </div>
 
-      {status === "error" && data.length > 0 && (
-        <p className="mt-2 flex items-center gap-1.5 text-[12.5px] text-text-muted">
-          <AlertTriangle size={13} strokeWidth={1.75} className="shrink-0 text-processing" />
-          Couldn&apos;t refresh — showing last known data.
-        </p>
-      )}
-
-      {status === "loading" || (status === "error" && data.length === 0) ? (
-        <div className="mt-3 flex h-56 flex-col items-center justify-center gap-1.5 rounded-md bg-surface-sunken text-center">
-          <span className="px-3 text-[12.5px] text-text-muted">
-            {status === "loading" ? "Loading monthly counts…" : "Couldn't reach the server to load the counts. Reload the page to try again."}
-          </span>
+      {status === "loading" ? (
+        <div className="mt-3 space-y-2" role="status" aria-label="Loading monthly counts" aria-busy="true">
+          {Array.from({ length: Math.min(range, 6) }, (_, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <div aria-hidden="true" className="h-3 w-28 animate-pulse rounded-sm bg-surface-sunken" />
+              <div aria-hidden="true" className="h-7 flex-1 animate-pulse rounded-sm bg-surface-sunken" />
+            </div>
+          ))}
+        </div>
+      ) : status === "error" ? (
+        <div className="mt-3 flex h-32 flex-col items-center justify-center gap-1.5 rounded-md bg-surface-sunken text-center">
+          <span className="px-3 text-[12.5px] text-text-muted">Monthly counts unavailable.</span>
         </div>
       ) : empty ? (
-        <div className="mt-3 flex h-56 flex-col items-center justify-center gap-1.5 rounded-md bg-surface-sunken text-center">
+        <div className="mt-3 flex h-32 flex-col items-center justify-center gap-1.5 rounded-md bg-surface-sunken text-center">
           <Inbox size={18} strokeWidth={1.5} className="text-text-faint" />
-          <span className="px-3 text-[12.5px] text-text-muted">
-            No pollen counts recorded yet for this window.
-          </span>
+          <span className="px-3 text-[12.5px] text-text-muted">{emptyMessage}</span>
         </div>
       ) : (
         <>
-          {/* The SVG below conveys nothing to assistive tech on its own; the
-              sr-only table beside it is the real accessible data. */}
-          <div className="mt-3" style={{ width: "100%", height: 320 }} aria-hidden="true">
-            <ResponsiveContainer width="100%" height="100%" debounce={1}>
-              <LineChart data={visible} margin={{ top: 10, right: 12, left: -12, bottom: 0 }}>
-                <CartesianGrid stroke="var(--border)" vertical={false} />
-                <XAxis
-                  dataKey="month"
-                  tick={{ fontSize: 12, fill: "var(--text-muted)", fontWeight: 500 }}
-                  tickLine={false}
-                  axisLine={{ stroke: "var(--border)" }}
-                />
-                <YAxis
-                  tick={{ fontSize: 12, fill: "var(--text-muted)", fontWeight: 500 }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={44}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend
-                  verticalAlign="bottom"
-                  height={32}
-                  iconType="circle"
-                  iconSize={8}
-                  wrapperStyle={{ fontSize: 13, paddingTop: 8 }}
-                  // Recharts colours the label to match its line, and some line
-                  // colors read too light on white for legend text. The dot
-                  // already carries the colour; the words only have to be readable.
-                  formatter={(value) => <span style={{ color: "var(--text)" }}>{value}</span>}
-                />
-                {linesToShow.map((s) => (
-                  <Line
-                    key={s.key}
-                    type="monotone"
-                    dataKey={(entry: MonthlyPollenCount) => entry.series[s.key] ?? 0}
-                    name={s.label}
-                    stroke={s.color}
-                    strokeWidth={2.25}
-                    dot={{ r: 3, fill: s.color, strokeWidth: 0 }}
-                    activeDot={{ r: 5 }}
-                    isAnimationActive={false}
-                  />
+          <div className="mt-3 overflow-x-auto" aria-label="Monthly pollen grain counts">
+            <table
+              className="w-full table-fixed border-separate border-spacing-0 text-left"
+              style={{ minWidth: `${176 + visible.length * 38}px` }}
+            >
+              <caption className="sr-only">
+                Monthly pollen grain counts by type for the trailing {range} months. Pending analyses are excluded.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col" className="sticky left-0 z-20 w-44 border-b border-r border-border bg-surface px-3 py-2 text-[12px] font-medium text-text-muted">
+                    Pollen Type
+                  </th>
+                  {visible.map((month) => (
+                    <th
+                      key={month.monthKey}
+                      scope="col"
+                      aria-label={`${month.monthKey}, ${month.collectionCount} ${month.collectionCount === 1 ? "collection" : "collections"}`}
+                      className="w-[38px] border-b border-r border-border bg-surface px-1 py-2 text-center text-[12px] font-medium text-text last:border-r-0"
+                    >
+                      <span className="block">{month.month}</span>
+                      <span aria-hidden="true" className="mt-0.5 block text-[10px] font-normal tabular-nums text-text-muted" style={{ fontFamily: "var(--font-mono)" }}>
+                        n={month.collectionCount}
+                      </span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {typesToShow.map(({ species }) => (
+                  <tr key={species.id}>
+                    <th scope="row" className="sticky left-0 z-10 border-b border-r border-border bg-surface px-3 py-2 text-left font-normal">
+                      <span className="flex min-w-0 items-start gap-2">
+                        <span
+                          aria-hidden="true"
+                          className="mt-1.5 h-2 w-2 shrink-0 rounded-full border border-black/10"
+                          style={{ backgroundColor: species.color }}
+                        />
+                        <SpeciesName species={species} commonName={false} className="break-words text-[12.5px] leading-snug text-text" />
+                      </span>
+                    </th>
+                    {visible.map((month) => {
+                      const hasCollection = month.collectionCount > 0;
+                      const count = hasCollection ? month.series[species.id] ?? 0 : 0;
+                      const cellText = hasCollection ? count.toLocaleString() : "—";
+                      const spokenValue = !hasCollection
+                        ? "No collection"
+                        : count === 0
+                          ? "No grains detected"
+                          : `${count} ${count === 1 ? "grain" : "grains"} detected`;
+
+                      return (
+                        <td
+                          key={month.monthKey}
+                          className="h-9 border-b border-r border-border px-1 text-center text-[12px] tabular-nums text-text last:border-r-0"
+                          style={{
+                            backgroundColor: hasCollection ? heatShade(count, maxCellCount) : "var(--surface)",
+                            fontFamily: "var(--font-mono)",
+                          }}
+                        >
+                          <span aria-hidden="true">{cellText}</span>
+                          <span className="sr-only">{spokenValue}</span>
+                        </td>
+                      );
+                    })}
+                  </tr>
                 ))}
-              </LineChart>
-            </ResponsiveContainer>
+              </tbody>
+            </table>
           </div>
 
-          {typesWithGrains > MAX_LINES && (
-            <p className="mt-1 text-[13px] text-text-muted">
-              Showing the {MAX_LINES} most-counted pollen types of {typesWithGrains} with grains in this window.
+          {rankedTypes.length > MAX_SPECIES && (
+            <p className="mt-1 text-[12px] text-text-muted">
+              Showing the {MAX_SPECIES} most-counted pollen types of {rankedTypes.length} with grains in this window.
             </p>
           )}
 
-          {/* Wrapped: a <table> ignores sr-only's 1px width and widened the page. */}
-          <div className="sr-only">
-          <table>
-            <caption>
-              Monthly pollen grain counts per species, trailing {range} months
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Month</th>
-                {linesToShow.map((s) => (
-                  <th scope="col" key={s.key}>
-                    {s.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((month) => (
-                <tr key={month.month}>
-                  <th scope="row">{month.month}</th>
-                  {linesToShow.map((s) => (
-                    <td key={s.key}>{month.series[s.key] ?? 0} grains</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+          <p className="mt-2 border-t border-border pt-2 text-[12px] text-text-muted">
+            <span style={{ fontFamily: "var(--font-mono)" }}>0</span> = no grains detected; <span style={{ fontFamily: "var(--font-mono)" }}>—</span> = no collection. Counts are not airborne concentrations.
+          </p>
         </>
       )}
     </div>

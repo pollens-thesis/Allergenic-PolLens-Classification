@@ -20,7 +20,7 @@ Live: https://pollens-theta.vercel.app · API: https://pollens-api.onrender.com
 | File | What it decides |
 |---|---|
 | `PRODUCT.md` | Who uses PolLens, its purpose, constraints, product principles, open adviser decisions |
-| `DESIGN.md` + `.impeccable/design.json` | The visual system ("Pollen Atlas Plates"): palette, type roles, components, named rules |
+| `DESIGN.md` + `.impeccable/design.json` | The visual system ("Laboratory Console"): palette, type roles, components, named rules |
 | `.impeccable/surfaces/app-app-layout-tsx.md` | The direction contract the current look was built from |
 | `../../docs/system-spec.md` (root repo) | Paper vs. frontend reconciliation; what's decided and what's still open |
 | `README.md` | Screens and how the app works |
@@ -46,11 +46,16 @@ paper — flag conflicts in `docs/system-spec.md` instead.
   `accent` primary; `caution` (red outline) leaving/removing — Sign Out,
   Discard, Delete, Flag for Review; `confirm` (green) Mark Completed; `resume`
   (ochre) Resume Analysis; `secondary` neutral; `destructive` final confirms.
-- **Type roles:** titles in Source Serif 4 (h1–h3 automatically); scientific
-  names in serif italic via `components/SpeciesName.tsx` / `.t-binomial`; UI
-  text in Atkinson Hyperlegible; **mono only for IDs, codes and figures**.
-  Sizes follow the ramp in `DESIGN.md` (the `impeccable detect` scan flags
-  off-ramp literals).
+- **Type roles:** IBM Plex Sans for interface text and headings; IBM Plex Mono
+  only for IDs, codes and figures; Source Serif 4 italic for scientific names
+  via `components/SpeciesName.tsx` / `.t-binomial`. Sizes follow `DESIGN.md`.
+- **Unicode text:** Preserve characters such as ñ, accented vowels and combining
+  marks in names, locations, botanical text and exports. Decode JWT payloads as
+  UTF-8 and refresh cached profile names from `/me/`. Accent folding is for
+  search matching only; never display or save the folded text.
+- **Copy:** short labels and task guidance. Keep required sample, status,
+  missing-data, export and recovery messages visible; put secondary metrics and
+  explanations behind a clearly named disclosure.
 - **Status is never colour alone** — stamps are dashed (Pending), solid
   (Completed), hatched (Needs Review).
 - **Copy:** Title Case for buttons and headings, American spelling
@@ -95,9 +100,6 @@ gitignored; only `.env.example` is tracked).
 
 ## Before you push
 
-Work from an issue and follow `../../CONTRIBUTING.md` (branch `feat/<issue>-…`,
-`Fixes #N` in the PR) so the project board stays current.
-
 ```bash
 npx tsc --noEmit
 npm run lint
@@ -124,20 +126,17 @@ the backend change first.
 
 ## Open tasks (frontend)
 
-1. **Weather "Not recorded"** — the Analyze weather select shows "Sunny" when
-   nothing is entered (nothing wrong is saved; weather is only stored once the
-   researcher or Open-Meteo sets it). Add a "Not recorded" option.
-2. **Unplaced reports on the map** — at country scope, reports whose location
+1. **Unplaced reports on the map** — at country scope, reports whose location
    isn't a recognized town/province are skipped silently; add a note
    ("N reports aren't on the map…").
-3. **Power-user and help affordances** (from the Sept 18 critique): keyboard
+2. **Power-user and help affordances** (from the Sept 18 critique): keyboard
    shortcuts, a small help/about entry. Low priority.
-4. **Adviser/UPLB data** — species season and allergenic risk; UPLB to verify
+3. **Adviser/UPLB data** — species season and allergenic risk; UPLB to verify
    the species reference text (editable in Django admin → Species, not in code).
-5. **Adviser decisions** still open are listed in `PRODUCT.md` and
+4. **Adviser decisions** still open are listed in `PRODUCT.md` and
    `docs/system-spec.md` (architecture sign-off, map pins vs. choropleth,
    theme, archive, system-info display, evaluation targets).
-6. **Open sign-in (planned, not built)** — the owner plans to let any Google
+5. **Open sign-in (planned, not built)** — the owner plans to let any Google
    account sign in. It's a backend switch first (adviser item 12 in
    `docs/system-spec.md`); when it lands, sign-in page copy that says who may
    sign in, and the "not authorised" message, may need updating. Don't change
@@ -155,4 +154,10 @@ the backend change first.
 | Polish + typeset + clarify (type roles, serif binomials, sample labels everywhere, clearer copy) | Done | `4ec43aa` |
 | Colorized action buttons by consequence (incl. Sign Out) | Done | `3ba3bc0` |
 | Allergen Reference as a 6 × 4 searchable species atlas with photos and full records | Done | `2d4d62d` (+ backend `7d17cdb`) |
-| Accented names garbled after sign-in ("NiÃ±o") — `lib/jwt.ts` now decodes JWT claims as UTF-8; keep it that way, don't go back to plain `atob` | Done | `5c23fd9` (issue #1, PR #2) |
+
+## Delivered Sept 27 (local changes)
+
+| Requirement | Status | Frontend commit |
+|---|---|---|
+| Laboratory Console redesign: IBM Plex interface/readout typography, concise task copy, compact panels, research dashboard with collection, species, location and recent report context | Done | working tree |
+| Weather defaults to “Not recorded”; measurements stay blank until entered, and missing weather is omitted from saved reports | Done | working tree |

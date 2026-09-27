@@ -2,8 +2,8 @@
 
 :root {
   /*
-   * Pollen Atlas Plates. The console reads like a palynology reference atlas:
-   * plate-paper panels with hairline frames on a quiet grey page, ink text,
+   * PolLens Laboratory Console. The console reads like a palynology reference atlas:
+   * plate-paper cards with hairline frames on a quiet grey page, ink text,
    * and one oxide accent kept for plate/figure numbers, focus and the primary
    * action. The species overlay palette stays the only strong colour in the
    * data. Light, because the work happens under bright bench light.
@@ -16,10 +16,16 @@
   --border: #d9d8d2;          /* hairline plate frame and rules */
   --border-strong: #b3b1a8;   /* hover/active/selected borders */
 
+  /* Elevated data cards — adapted from the rounded TimeTracker reference. */
+  --card-radius: 1.25rem;
+  --card-shadow: 0 1px 2px rgb(23 23 23 / 3%), 0 9px 24px rgb(23 23 23 / 4%);
+  --card-shadow-hover: 0 2px 4px rgb(23 23 23 / 4%), 0 12px 28px rgb(23 23 23 / 7%);
+
   /* Text — all pass WCAG AA (4.5:1+) on bg, surface and surface-sunken */
   --text: #171717;
   --text-muted: #4d4c47;
   --text-faint: #5f5e59;
+  --text-placeholder: #6d6c66;
 
   /* The one accent (oxide) — plate numbers, actions, focus, selection */
   --accent: #8c2f1b;
@@ -48,10 +54,11 @@
   --hero-grain: #8c2f1b;
   --hero-grain-soft: #9c4a33;
 
-  /* Journal serif for titles and captions; Atkinson for UI text and data */
-  --font-display: var(--font-serif);
-  --font-body: var(--font-atkinson);
-  --font-mono: var(--font-atkinson-mono);
+  /* Plex for the instrument interface and readouts; serif for taxonomy only. */
+  --font-display: var(--font-plex-sans);
+  --font-body: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+  --font-taxonomy: var(--font-serif);
 
   /* Motion (Emil Kowalski house rules: never ease-in, custom curves, <300ms) */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -70,6 +77,7 @@
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-text-faint: var(--text-faint);
+  --color-text-placeholder: var(--text-placeholder);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-active: var(--accent-active);
@@ -90,11 +98,34 @@
   --font-body: var(--font-body);
   --font-mono: var(--font-mono);
 
-  /* Plates are cut square; the barest softening keeps edges from aliasing */
+  /* Controls keep compact corners; standalone card panels use --radius-card. */
   --radius-sm: 1px;
   --radius-md: 2px;
   --radius-lg: 2px;
   --radius-xl: 3px;
+  --radius-card: var(--card-radius);
+}
+
+/* Shared panel treatment for data cards and work surfaces across the app. */
+.card-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  background-color: var(--surface);
+  box-shadow: var(--card-shadow);
+}
+
+.card-panel-interactive {
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+}
+
+.card-panel-interactive:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--card-shadow-hover);
+}
+
+.card-well {
+  border-radius: 0.875rem;
+  background-color: var(--surface-sunken);
 }
 
 * {
@@ -123,24 +154,25 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Titles are set like an atlas: the journal serif, a touch tight */
+/* Interface headings use the same technical sans as controls and labels. */
 h1, h2, h3 {
   font-family: var(--font-display);
   letter-spacing: -0.01em;
 }
 
 @layer components {
-/* Plate and figure numbers — small caps in the accent ("PL. 2 · FIG. 1") */
+/* Slide and figure references — compact mono in the accent. */
 .plate-label {
-  font-family: var(--font-display);
-  font-variant-caps: all-small-caps;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-caps: normal;
   font-variant-numeric: lining-nums tabular-nums;
-  letter-spacing: 0.06em;
+  letter-spacing: 0;
   color: var(--accent);
 }
 
-/* Type roles (DESIGN.md "Typography"). Sizes live here so a role reads the
-   same on every screen. */
+/* Type roles stay consistent from screen to screen. */
 .t-plate-title {
   font-family: var(--font-display);
   font-size: 1.125rem;
@@ -149,9 +181,9 @@ h1, h2, h3 {
   letter-spacing: -0.02em;
 }
 
-/* Scientific names: the atlas serif italic, at the size of the line they sit in */
+/* Scientific names keep a separate botanical voice. */
 .t-binomial {
-  font-family: var(--font-display);
+  font-family: var(--font-taxonomy);
   font-style: italic;
 }
 
@@ -163,12 +195,14 @@ h1, h2, h3 {
   text-wrap: pretty;
 }
 
-/* Caption labels — the same small caps, in caption grey */
+/* Field labels — sentence case in caption grey. */
 .caption-label {
-  font-family: var(--font-display);
-  font-variant-caps: all-small-caps;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-caps: normal;
   font-variant-numeric: lining-nums tabular-nums;
-  letter-spacing: 0.06em;
+  letter-spacing: 0;
   color: var(--text-muted);
 }
 }

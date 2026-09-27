@@ -78,21 +78,23 @@ const EMPTY_WEATHER: WeatherConditions = {
 };
 
 const fieldClass =
-  "focus-ring w-full rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text placeholder:text-text-faint";
+  "focus-ring w-full rounded-md border border-border bg-surface px-3 py-2 text-[13px] font-medium text-text placeholder:font-normal placeholder:text-text-placeholder";
 
-const sectionHeadingClass = "caption-label text-[14.5px] mb-2";
+const sectionHeadingClass = "caption-label text-[13px] mb-2";
 
 /** Number input that keeps an empty box as `null` rather than 0. */
 function MeasurementField({
   label,
   value,
   onChange,
+  disabled = false,
   min,
   max,
 }: {
   label: string;
   value: number | null;
   onChange: (next: number | null) => void;
+  disabled?: boolean;
   min?: number;
   max?: number;
 }) {
@@ -105,9 +107,10 @@ function MeasurementField({
         min={min}
         max={max}
         value={value ?? ""}
+        disabled={disabled}
         placeholder="—"
         onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
-        className={fieldClass}
+        className={`${fieldClass} disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-text-faint`}
       />
     </label>
   );
@@ -154,14 +157,14 @@ function WeatherStatusLine({
     message = (
       <>
         <CloudSun size={12} strokeWidth={2} className="text-text-muted" />
-        Filled from Open-Meteo for {when}
-        {collectedTime ? "" : " (midday — no time set)"}. Edit any field to override.
+        Open-Meteo for {when}
+        {collectedTime ? "" : " (midday — no time set)"}; editable.
       </>
     );
   } else if (source === "edited") {
-    message = <>Edited by researcher — overrides the Open-Meteo values.</>;
+    message = <>Researcher entered; overrides Open-Meteo.</>;
   } else {
-    message = <>Pick a place above to auto-fill the weather, or enter it manually.</>;
+    message = <>Select a place to prefill weather.</>;
   }
 
   return (
@@ -281,7 +284,7 @@ export default function AnalyzeWorkspace() {
   const [researcher, setResearcher] = useState("");
   const [collectedDate, setCollectedDate] = useState("");
   const [collectedTime, setCollectedTime] = useState("");
-  const [weather, setWeather] = useState<WeatherConditions>(EMPTY_WEATHER);
+  const [weather, setWeather] = useState<WeatherConditions | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -356,7 +359,7 @@ export default function AnalyzeWorkspace() {
     // The researcher's own reading: cancel any lookup still in flight so it
     // can't overwrite this, and never auto-fill over it again unless asked.
     weatherRequest.current++;
-    setWeather((current) => ({ ...current, [key]: value }));
+    setWeather((current) => ({ ...(current ?? EMPTY_WEATHER), [key]: value }));
     setWeatherSource("edited");
     setWeatherStatus("idle");
   }
@@ -379,7 +382,7 @@ export default function AnalyzeWorkspace() {
       // Don't keep another date's (or place's) readings under this one.
       setWeatherStatus("failed");
       if (weatherSourceRef.current === "auto") {
-        setWeather({ ...EMPTY_WEATHER });
+        setWeather(null);
         setWeatherSource("manual");
       }
     }
@@ -404,7 +407,7 @@ export default function AnalyzeWorkspace() {
       weatherRequest.current++;
       setWeatherStatus("idle");
       if (weatherSource === "auto") {
-        setWeather({ ...EMPTY_WEATHER });
+        setWeather(null);
         setWeatherSource("manual");
       }
     }
@@ -470,7 +473,7 @@ export default function AnalyzeWorkspace() {
     setItems([]);
     setSelectedId(null);
     setAnalyzeError(null);
-    setWeather({ ...EMPTY_WEATHER });
+    setWeather(null);
     setWeatherSource("manual");
     setWeatherPlace(null);
     setWeatherStatus("idle");
@@ -542,10 +545,8 @@ export default function AnalyzeWorkspace() {
       return;
     }
 
-    // Weather goes with the batch only if the researcher (or Open-Meteo) set it —
-    // an untouched form would otherwise store its "Sunny, blank" defaults.
-    const weatherSet =
-      weatherSource !== "manual" || JSON.stringify(batchWeather) !== JSON.stringify(EMPTY_WEATHER);
+    // Weather is omitted until the researcher or Open-Meteo records it.
+    const weatherSet = weatherSource !== "manual" || batchWeather !== null;
 
     let report: Specimen;
     try {
@@ -592,7 +593,6 @@ export default function AnalyzeWorkspace() {
             <h2 className="text-[14px] font-semibold text-text">
               Pending Analyses ({pendingReports.length})
             </h2>
-            <span className="text-[13px] text-text-muted">Analyzed; report not generated yet.</span>
           </div>
           <ul className="flex flex-col divide-y divide-processing/15">
             {pendingReports.map((report) => (
@@ -649,14 +649,14 @@ export default function AnalyzeWorkspace() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-5">
         {/* Left: batch + collection details */}
-        <div className="rounded-lg border border-border bg-surface p-5 xl:col-span-3">
+        <div className="card-panel p-4 sm:p-5 xl:col-span-3">
           {/* Frozen while a batch is analyzed: what's sent must be what's on screen. */}
           <fieldset disabled={isAnalyzing} className="m-0 min-w-0 border-0 p-0">
           <div className="mb-4 flex items-baseline justify-between gap-3">
             <h2 className="text-lg font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
-              Slide Images
+              Slides
             </h2>
             {items.length > 0 && (
               <button
@@ -672,7 +672,7 @@ export default function AnalyzeWorkspace() {
           <input
             ref={inputRef}
             type="file"
-            accept="image/jpeg,image/png"
+            accept="image/*"
             multiple
             className="hidden"
             onChange={(e) => handleFiles(e.target.files)}
@@ -700,10 +700,10 @@ export default function AnalyzeWorkspace() {
                 <ImagePlus size={20} strokeWidth={1.75} className="text-text-muted" />
               </span>
               <span className="text-[14px] text-text-muted">
-                Drop slide images here, or select to browse
+                Drop slide images here, or choose an image or take a photo
               </span>
-              <span className="text-[12.5px] text-text-muted">
-                JPG or PNG, up to {MAX_IMAGE_MB} MB each. Select several to analyze a batch.
+              <span className="text-[12px] text-text-muted">
+                JPG or PNG · up to {MAX_IMAGE_MB} MB each · multiple slides supported
               </span>
             </button>
           ) : (
@@ -746,19 +746,14 @@ export default function AnalyzeWorkspace() {
           )}
 
           {/* Collection details — shared by every slide in the batch. */}
-          <div className="mt-5">
+          <div className="mt-4">
             <h3 className={sectionHeadingClass}>
               Collection Details
             </h3>
-            <p className="mb-2.5 text-[12.5px] text-text-muted">
-              When and where the batch was collected — applies to every slide in it. You can
-              still correct any of it on the next page before generating the report.
-            </p>
-
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="block">
                 <span className="mb-1 block text-[12.5px] text-text-muted">
-                  Location <span className="text-text-faint">(needed to generate the report)</span>
+                  Location <span className="text-text-faint">(required)</span>
                 </span>
                 <LocationSearch
                   value={location}
@@ -818,10 +813,20 @@ export default function AnalyzeWorkspace() {
               <label className="col-span-2 block sm:col-span-1">
                 <span className="mb-1 block text-[12.5px] text-text-muted">Weather</span>
                 <select
-                  value={weather.condition}
-                  onChange={(e) => updateWeather("condition", e.target.value as WeatherCondition)}
+                  value={weather?.condition ?? ""}
+                  onChange={(e) => {
+                    if (!e.target.value) {
+                      weatherRequest.current++;
+                      setWeather(null);
+                      setWeatherSource("manual");
+                      setWeatherStatus("idle");
+                    } else {
+                      updateWeather("condition", e.target.value as WeatherCondition);
+                    }
+                  }}
                   className={fieldClass}
                 >
+                  <option value="">Not recorded</option>
                   {weatherConditionOptions.map((option) => (
                     <option key={option} value={option}>
                       {option}
@@ -831,19 +836,22 @@ export default function AnalyzeWorkspace() {
               </label>
               <MeasurementField
                 label="Temperature (°C)"
-                value={weather.temperatureC}
+                value={weather?.temperatureC ?? null}
+                disabled={!weather}
                 onChange={(next) => updateWeather("temperatureC", next)}
               />
               <MeasurementField
                 label="Humidity (%)"
-                value={weather.humidityPct}
+                value={weather?.humidityPct ?? null}
+                disabled={!weather}
                 onChange={(next) => updateWeather("humidityPct", next)}
                 min={0}
                 max={100}
               />
               <MeasurementField
                 label="Wind (km/h)"
-                value={weather.windKph}
+                value={weather?.windKph ?? null}
+                disabled={!weather}
                 onChange={(next) => updateWeather("windKph", next)}
                 min={0}
               />
@@ -873,7 +881,7 @@ export default function AnalyzeWorkspace() {
             intent="accent"
             disabled={!canAnalyze}
             onClick={handleAnalyze}
-            className={`${analyzeError ? "mt-3" : "mt-5"} w-full disabled:cursor-not-allowed`}
+            className={`${analyzeError ? "mt-3" : "mt-4"} w-full disabled:cursor-not-allowed`}
           >
             {isAnalyzing ? (
               <>
@@ -898,22 +906,18 @@ export default function AnalyzeWorkspace() {
             )}
           </Button>
 
-          <p className="mt-2 text-center text-[13px] text-text-muted">
-            Each slide is analyzed separately; the batch is saved as one report you review on the
-            next page, where you add notes and generate it.
-          </p>
         </div>
 
         {/* Right: what is about to be analyzed */}
-        <div className="rounded-lg border border-border bg-surface p-5 xl:col-span-2">
-          <h2 className="t-plate-title mb-4 text-text">
+        <div className="card-panel p-4 sm:p-5 xl:col-span-2">
+          <h2 className="t-plate-title mb-3 text-text">
             Preview
           </h2>
 
           {!selected ? (
             <div className="flex flex-col items-center justify-center gap-2 rounded-lg bg-surface-sunken px-6 py-14 text-center">
               <Microscope size={22} strokeWidth={1.5} className="text-text-faint" />
-              <p className="text-[14px] text-text-muted">Select a slide to preview it here.</p>
+              <p className="text-[13px] text-text-muted">Select a slide to preview.</p>
             </div>
           ) : (
             <div>

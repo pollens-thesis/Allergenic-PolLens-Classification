@@ -3,7 +3,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { updateSettings, useSettings } from "@/lib/settings";
+import { getSnapshot, updateSettings, useSettings } from "@/lib/settings";
 import { apiFetch } from "@/lib/api";
 import { isSignedIn } from "@/lib/session";
 
@@ -28,17 +28,27 @@ export default function SessionGuard({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const allowed = hydrated && isSignedIn(settings);
 
-  // Sessions started before names were stored: fetch it once from /me/.
-  const needsName = allowed && settings.name === undefined;
+  // Refresh the stored profile once per account when the console opens. Older
+  // sessions can still contain names garbled before JWT payloads used UTF-8.
   useEffect(() => {
-    if (!needsName) return;
+    if (!allowed || !settings.email) return;
+    const email = settings.email;
+    let cancelled = false;
     apiFetch("/api/v1/auth/me/")
       .then((res) => (res.ok ? res.json() : null))
-      .then((me: { fullName?: string } | null) => {
-        if (me) updateSettings({ name: me.fullName ?? "" });
+      .then((me: { email?: string; fullName?: string } | null) => {
+        if (cancelled || typeof me?.email !== "string" || typeof me.fullName !== "string") return;
+        const current = getSnapshot();
+        // A response for an old account must not update a newer session.
+        if (current.email !== email || me.email.toLowerCase() !== email.toLowerCase()) return;
+        const name = me.fullName.trim();
+        if (current.name !== name) updateSettings({ name });
       })
       .catch(() => {});
-  }, [needsName]);
+    return () => {
+      cancelled = true;
+    };
+  }, [allowed, settings.email]);
 
   useEffect(() => {
     if (!hydrated || allowed) return;

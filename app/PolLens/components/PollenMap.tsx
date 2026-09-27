@@ -373,7 +373,7 @@ export default function PollenMap() {
 
   if (failed) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-16 text-center">
+      <div className="card-panel flex flex-col items-center gap-3 px-6 py-16 text-center">
         <p className="text-[14px] text-text-muted">Couldn&apos;t load the map. Check your connection and try again.</p>
         <button
           type="button"
@@ -390,7 +390,7 @@ export default function PollenMap() {
   // no projection either; it still renders, with the way back and a message.
   if (!reports || !provinces || (scope.level === "country" && !projection)) {
     return (
-      <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-6 py-16 text-[13px] text-text-muted">
+      <div className="card-panel flex items-center justify-center gap-2 px-6 py-16 text-[13px] text-text-muted">
         <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
         Loading map…
       </div>
@@ -478,7 +478,7 @@ export default function PollenMap() {
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
       {/* Map */}
-      <div className="rounded-lg border border-border bg-surface p-5 xl:col-span-3">
+      <div className="card-panel min-w-0 p-4 sm:p-5 xl:col-span-3">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             {scope.level === "province" && (
@@ -496,7 +496,7 @@ export default function PollenMap() {
             </h2>
             <p className="mt-0.5 text-[13px] text-text-muted">
               {scope.level === "country"
-                ? `Provinces shaded by grains of ${activeLabel}. Select one to see its towns.`
+                ? `Grains of ${activeLabel} · Select a province for towns.`
                 : `Towns shaded by grains of ${activeLabel}.`}
             </p>
           </div>
@@ -769,10 +769,8 @@ export default function PollenMap() {
         {notice && <p className="mt-2 text-[13px] text-text-muted">{notice}</p>}
 
         {sampleCount > 0 && (
-          <p className="mt-2 text-[13px] text-text-muted">
-            Includes {sampleCount} {sampleCount === 1 ? "report" : "reports"}{" "}
-            with sample detections (the
-            server&apos;s built-in reading, not results).
+          <p className="mt-2 text-[12px] text-processing" role="note">
+            Sample detections in {sampleCount} {sampleCount === 1 ? "report" : "reports"}. Counts are illustrative.
           </p>
         )}
 
@@ -785,13 +783,13 @@ export default function PollenMap() {
       </div>
 
       {/* Selected place / ranking */}
-      <div className="rounded-lg border border-border bg-surface p-5 xl:col-span-2">
+      <div className="card-panel min-w-0 p-4 sm:p-5 xl:col-span-2">
         {selectedPlace ? (
           <div>
             <div className="mb-4 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div
-                  className="caption-label text-[14.5px]"
+                  className="caption-label text-[13px]"
                   
                 >
                   Selected {unitSingular}
@@ -834,7 +832,7 @@ export default function PollenMap() {
             </div>
 
             <h3
-              className="caption-label text-[14.5px] mb-2"
+              className="caption-label text-[13px] mb-2"
               
             >
               Most Pollen Detected Here
