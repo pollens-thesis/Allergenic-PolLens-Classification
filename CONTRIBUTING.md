@@ -27,8 +27,10 @@ it can't see plain commits.
   iterations (Sprint 1 = week of 27 Jul 2026; Sprint 10 starts 28 Sep). At the
   Monday check-in, set **Sprint** to the current one on the cards you commit to
   that week; finished work is grouped by sprint (View → Group by → Sprint).
-  History cards (drafts, from the git log) already have their sprint, **Area**
-  and **Finished** date. Sprints are defined up to Sprint 14 (26 Oct); add more
+  History cards (drafts, from the git log and project docs) cover code changes,
+  deployments and external-service setup only (no docs or housekeeping), and
+  already have their sprint, **Area** (Frontend, Backend, Deployment, Setup) and
+  **Finished** date. Sprints are defined up to Sprint 14 (26 Oct); add more
   in project Settings → Sprint when needed.
 - **Weekly check-in** (~15 min): refill Ready, sort Blocked, close stale cards.
 
