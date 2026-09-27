@@ -154,10 +154,12 @@ commit message and the issue still closes.
 ## For coding agents (Claude, Codex)
 
 Agents keep the board current **without being asked**, using the `gh` CLI as
-the signed-in person. Board: org `pollens-thesis`, project **"PolLens"** —
-find its number once per session with
-`gh project list --owner pollens-thesis` (below it's `$P`); repo
-`pollens-thesis/Allergenic-PolLens-Classification`.
+the signed-in person. Board: org `pollens-thesis`, project **"PolLens"**,
+number **1** (below it's `$P`, so `P=1`); repo
+`pollens-thesis/Allergenic-PolLens-Classification`. Set a card's status by name
+(tested):
+`gh project item-edit 1 --owner pollens-thesis --url <issue-or-PR-url> --field Status --value "Review"`
+(values: Backlog, Ready, In Progress, Review, Blocked, Done).
 
 **At the start of a task:**
 1. Find the issue: the number the person gave, or

@@ -46,14 +46,15 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   12 in `docs/system-spec.md`). Today only the allowlist signs in
   (`up.edu.ph`, `mseuf.edu.ph` + `SIGNIN_ALLOWED_EMAILS`).
 - **Workflow and board:** `CONTRIBUTING.md` is in use (first cycle: issue #1 →
-  PR #2, the accented-name fix `5c23fd9`). The GitHub Projects board "PolLens"
-  and the extra labels (`frontend`, `backend`, `devops`, `chore`, `blocked`,
-  `adviser`) are **not created yet**, and the `gh` login on the owner's laptop
-  lacks the `project` scope. Until the owner sets them up (one-time steps at
-  the end of `CONTRIBUTING.md`), do the issue and PR steps, skip the board
-  moves, use the existing `bug` / `enhancement` / `documentation` labels, and
-  remind the owner about the setup. A task list of past work with dates is in
-  the owner's local `PolLens-board` folder (not in the repo).
+  PR #2, the accented-name fix `5c23fd9`). The GitHub Projects board **"PolLens"
+  exists** (org `pollens-thesis`, project number **1**, columns Backlog → Ready →
+  In Progress (limit 2) → Review → Blocked → Done) with the labels `frontend`,
+  `backend`, `devops`, `chore`, `blocked`, `adviser`. The backlog is issues
+  #3–#13; agents move cards with `gh project item-edit` (needs the `project`
+  scope — the owner's `gh` login has it; Niño's machine needs
+  `gh auth refresh -h github.com -s project` once). Auto-add, item-closed and
+  PR-merged rules are on. Past-work task list: the owner's local
+  `PolLens-board` folder (not in the repo).
 - **Teammate:** Niño runs the project locally and signs in. If sign-in fails
   for someone new, see the Troubleshooting table in `docs/deployment.md`
   (Google "Access blocked" = add them as a test user).
