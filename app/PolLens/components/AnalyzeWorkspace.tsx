@@ -280,6 +280,7 @@ function SpecimenListRow({
 export default function AnalyzeWorkspace() {
   const [items, setItems] = useState<BatchItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [reportName, setReportName] = useState("");
   const [location, setLocation] = useState("");
   const [researcher, setResearcher] = useState("");
   const [collectedDate, setCollectedDate] = useState("");
@@ -316,7 +317,7 @@ export default function AnalyzeWorkspace() {
   const collectedAt = collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate;
 
   const selected = items.find((item) => item.id === selectedId) ?? null;
-  const canAnalyze = items.length > 0 && !!collectedDate && !isAnalyzing;
+  const canAnalyze = items.length > 0 && !!reportName.trim() && !!collectedDate && !isAnalyzing;
   const analyzedCount = items.filter((item) => item.analysis).length;
   const failedCount = items.filter((item) => item.status === "failed").length;
   // Every slide has a reading but the batch wasn't stored (the store step failed).
@@ -472,6 +473,7 @@ export default function AnalyzeWorkspace() {
     items.forEach((item) => URL.revokeObjectURL(item.imageUrl));
     setItems([]);
     setSelectedId(null);
+    setReportName("");
     setAnalyzeError(null);
     setWeather(null);
     setWeatherSource("manual");
@@ -552,6 +554,7 @@ export default function AnalyzeWorkspace() {
     try {
       report = await createReport(
         {
+          reportName,
           collectedAt,
           location,
           researcher: researcher || researcherName,
@@ -564,7 +567,6 @@ export default function AnalyzeWorkspace() {
           })),
         },
         Object.fromEntries(analyzed.map(({ item }, index) => [String(index), item.file])),
-        "Pending",
         analyzed.some(({ analysis }) => analysis.sampleDetections),
       );
     } catch (error) {
@@ -598,7 +600,8 @@ export default function AnalyzeWorkspace() {
             {pendingReports.map((report) => (
               <li key={report.sampleId} className="flex flex-wrap items-center justify-between gap-2 py-2">
                 <span className="min-w-0 text-[13px] text-text">
-                  <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{report.sampleId}</span>
+                  <span className="font-medium">{report.reportName || report.sampleId}</span>
+                  {report.reportName && <span className="text-text-muted">{" "}· {report.sampleId}</span>}
                   <span className="text-text-muted">
                     {" "}· {report.slides.length} {report.slides.length === 1 ? "slide" : "slides"} ·{" "}
                     {report.location || "No location recorded"} · Collected {formatCollectedAt(report.collectedAt)}
@@ -654,6 +657,20 @@ export default function AnalyzeWorkspace() {
         <div className="card-panel p-4 sm:p-5 xl:col-span-3">
           {/* Frozen while a batch is analyzed: what's sent must be what's on screen. */}
           <fieldset disabled={isAnalyzing} className="m-0 min-w-0 border-0 p-0">
+          <label className="mb-4 block">
+            <span className="mb-1 block text-[12.5px] text-text-muted">
+              Report Name <span className="text-text-faint">(required)</span>
+            </span>
+            <input
+              type="text"
+              value={reportName}
+              onChange={(e) => setReportName(e.target.value)}
+              placeholder="e.g. Lucban roadside collection"
+              maxLength={255}
+              required
+              className={fieldClass}
+            />
+          </label>
           <div className="mb-4 flex items-baseline justify-between gap-3">
             <h2 className="text-lg font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
               Slides
@@ -795,6 +812,11 @@ export default function AnalyzeWorkspace() {
               </label>
             </div>
 
+            {items.length > 0 && !reportName.trim() && (
+              <p className="mt-2 text-[12.5px] text-danger">
+                Add a report name before running the analysis.
+              </p>
+            )}
             {items.length > 0 && !collectedDate && (
               <p className="mt-2 text-[12.5px] text-danger">
                 Set the collection date before running the analysis.

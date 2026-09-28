@@ -46,7 +46,7 @@ function stamp(): string {
 export function exportReportsJson(reports: Specimen[]): void {
   const payload = {
     exportedAt: new Date().toISOString(),
-    formatVersion: 2,
+    formatVersion: 3,
     note: "Slide images are not included; download a report's PDF for those.",
     reportCount: reports.length,
     // Image links are presigned and expire, and canEdit is about the exporter.
@@ -73,6 +73,7 @@ type Value = string | number | null;
 
 const DETECTION_COLUMNS = [
   "sample_id",
+  "report_name",
   "status",
   "sample_detections",
   "collection_date",
@@ -107,6 +108,7 @@ function detectionRows(reports: Specimen[]): Value[][] {
     report.slides.forEach((slide, index) => {
       const shared: Value[] = [
         report.sampleId,
+        report.reportName ?? "",
         report.status,
         report.sampleDetections ? "true" : "false",
         getCollectionDate(report.collectedAt),
@@ -170,6 +172,7 @@ export function exportReportsCsv(reports: Specimen[]): void {
 
 const REPORT_COLUMNS = [
   "Sample ID",
+  "Report Name",
   "Status",
   "Sample Detections",
   "Collection Date",
@@ -193,6 +196,7 @@ function reportRows(reports: Specimen[]): Value[][] {
     const top = getTopDetection(detections);
     return [
       report.sampleId,
+      report.reportName ?? "",
       report.status === "Needs review" ? "Needs Review" : report.status,
       report.sampleDetections ? "Yes" : "No",
       getCollectionDate(report.collectedAt),

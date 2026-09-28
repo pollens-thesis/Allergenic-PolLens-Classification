@@ -11,7 +11,7 @@ a real service, it says so and points at the seam where the real one plugs in.
 > **Update 2026-09-24 — the backend exists; parts of this document are
 > historical.** Reports, images, sign-in and detection now go through the
 > Django API (`../../api`): reports are server-side and shared, with a
-> Pending → Completed → Needs Review lifecycle; sign-in is Google or Microsoft,
+> Pending → Needs Review → Completed lifecycle; sign-in is Google or Microsoft,
 > allowlisted; detection is the API's Roboflow proxy (sample readings until the
 > model is deployed); the built-in sample reports and IndexedDB storage are
 > gone. Sections below that describe IndexedDB, the in-browser mock, the
@@ -135,11 +135,9 @@ the image, or a box itself) isolates it and fades the rest, so "where is the
 ragweed on this slide" is one click. Export is per-report PDF, or bulk JSON/CSV
 from Settings.
 
-**Status is not wired up yet.** `saveReport` stamps every saved report
-`Completed`; `Processing` and `Needs review` only appear on seed records, so the
-filter chips for them will find nothing a researcher has produced. The three
-values are a workflow the app does not yet run — see
-[What is not built yet](#what-is-not-built-yet).
+**Report status follows a three-step workflow.** Analysis is saved as `Pending`;
+*Generate Report* moves it to `Needs Review`, and the creator marks it
+`Completed` after sign-off. A completed report can be flagged for review again.
 
 ### The report PDF
 
@@ -430,15 +428,9 @@ written in [`allergen-reference-plan.md`](./allergen-reference-plan.md) and is
 unbuilt. Phase 1 needs no model and no dataset — it only needs the botanical
 fields authored.
 
-**Report status is decorative.** `ReportStatus` has three values and the table
-filters on all three, but nothing in the app ever sets one: `saveReport`
-hardcodes `Completed`, and the `Processing` and `Needs review` records are seed
-data. The intended meanings are that `Processing` covers a reading still being
-computed — which will only exist once inference is a server round-trip rather
-than a function call — and `Needs review` flags one a researcher has marked for
-a second look, which needs a control to mark it with. Until then the value is
-constant for anything a researcher saves, and the two other chips are filters
-over seed records alone.
+**Report status follows Pending → Needs Review → Completed.** New analyses are
+saved as `Pending`, and the creator reviews the generated report before marking
+it `Completed`. Completed reports can later be flagged for review again.
 
 **Sign-in is mock.** No provider, no session, no server-side authorisation.
 Anyone who can reach the URL can reach every screen.

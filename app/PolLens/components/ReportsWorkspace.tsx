@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CloudOff, Loader2 } from "lucide-react";
-import { REPORT_STATUSES, type ReportStatus, type Specimen } from "@/lib/data";
+import { getSpecies, REPORT_STATUSES, type ReportStatus, type SpeciesId, type Specimen } from "@/lib/data";
 import { listReports } from "@/lib/store";
 import { SessionExpiredError } from "@/lib/api";
 import ReportsTable from "@/components/ReportsTable";
@@ -25,9 +25,11 @@ export default function ReportsWorkspace() {
   const [attempt, setAttempt] = useState(0);
   const searchParams = useSearchParams();
   const savedId = searchParams.get("saved");
-  const initialQuery = searchParams.get("q") ?? "";
+  const legacySpecies = searchParams.get("species");
+  const initialQuery = searchParams.get("q") ?? (legacySpecies ? getSpecies(legacySpecies as SpeciesId).scientificName : "");
+  const initialLocationScope = searchParams.get("locationScope") ?? "all";
   const statusParam = searchParams.get("status");
-  const initialStatus: ReportStatus | "All" = REPORT_STATUSES.find((status) => status === statusParam) ?? "All";
+  const initialStatus: ReportStatus | "All" | "Finalized" = statusParam === "Finalized" ? "Finalized" : REPORT_STATUSES.find((status) => status === statusParam) ?? "All";
   const initialFrom = dateFilter(searchParams.get("from"));
   const initialTo = dateFilter(searchParams.get("to"));
 
@@ -78,13 +80,14 @@ export default function ReportsWorkspace() {
   return (
     // Re-seed filters when a dashboard or map link changes the URL.
     <ReportsTable
-      key={JSON.stringify([initialQuery, initialStatus, initialFrom, initialTo])}
+      key={JSON.stringify([initialQuery, initialStatus, initialFrom, initialTo, initialLocationScope])}
       reports={reports}
       highlightId={savedId}
       initialQuery={initialQuery}
       initialStatus={initialStatus}
       initialFrom={initialFrom}
       initialTo={initialTo}
+      initialLocationScope={initialLocationScope}
     />
   );
 }

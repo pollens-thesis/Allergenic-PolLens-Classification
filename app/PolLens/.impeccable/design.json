@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-27T12:28:56.186238+00:00",
+  "generatedAt": "2026-09-27T15:36:29.295968+00:00",
   "title": "Design System: PolLens Laboratory Console",
   "extensions": {
     "colorMeta": {
@@ -146,12 +146,12 @@
       },
       "mapIntensity": {
         "source": "lib/geo.ts INTENSITY_RAMP",
-        "purpose": "Quantile classes, light to dark; zero and unsampled fills are distinct answers.",
+        "purpose": "Warm sand-to-earth quantile classes; zero and unsampled fills are distinct answers.",
         "values": [
-          "#cdeeee",
-          "#8fd4d4",
-          "#45abab",
-          "#0e6f6f"
+          "#f1d7ad",
+          "#d8ad75",
+          "#b8754d",
+          "#71432f"
         ],
         "zeroFill": "#e4e4e7",
         "unsampledFill": "#f4f4f5"
@@ -168,7 +168,7 @@
       },
       "figure": {
         "displayName": "Figure",
-        "purpose": "Headline numbers in dashboard stat cards."
+        "purpose": "Dashboard summary and species grain totals use compact mono readouts."
       },
       "title": {
         "displayName": "Plate Title",
@@ -293,7 +293,7 @@
       {
         "name": "xl",
         "value": "1280px",
-        "purpose": "Plate + key split (3fr/2fr); stat plate goes to four columns."
+        "purpose": "Plate + key split (3fr/2fr); dashboard Recent Collections and Top Pollen Counts sit side by side, with Collection Conditions full width below."
       }
     ]
   },
@@ -377,11 +377,11 @@
       "css": ".ds-key { display: flex; align-items: flex-start; gap: 10px; width: 100%; max-width: 420px; margin-bottom: 6px; padding: 10px 12px; text-align: left; background: var(--surface, #fafaf7); border: 1px solid var(--border, #d9d8d2); border-radius: 2px; cursor: pointer; transition: border-color 120ms, background-color 120ms; } .ds-key:hover { border-color: var(--border-strong, #b3b1a8); } .ds-key[aria-pressed=true] { border-color: var(--accent, #8c2f1b); background: var(--accent-muted, #8c2f1b17); } .ds-key:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; } .ds-key-swatch { width: 12px; height: 12px; margin-top: 5px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,0.2); flex-shrink: 0; } .ds-key-name i { font-family: var(--font-taxonomy, 'Source Serif 4', Georgia, serif); } .ds-key-name { flex: 1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; font-family: var(--font-display, 'IBM Plex Sans', system-ui, sans-serif); font-size: 15.5px; font-weight: 600; color: var(--text, #171717); } .ds-key-code { font-family: var(--font-mono, 'IBM Plex Mono', ui-monospace, monospace); font-size: 11.5px; font-weight: 500; letter-spacing: 0.05em; color: var(--text-muted, #4d4c47); } .ds-key-count { text-align: right; font-family: var(--font-mono, 'IBM Plex Mono', ui-monospace, monospace); font-size: 14px; font-weight: 500; color: var(--text, #171717); } .ds-key-count small { display: block; font-family: var(--font-body, 'IBM Plex Sans', system-ui, sans-serif); font-size: 12px; font-weight: 400; color: var(--text-muted, #4d4c47); }"
     },
     {
-      "name": "Dashboard Metric Cards",
+      "name": "Dashboard Collection Context",
       "kind": "card",
-      "description": "Four responsive cards for finalized collections, slides, pollen grains and the Needs Review/Pending queue. Collection site count is a compact context beside the period control.",
-      "html": "<div class=\"ds-metric-grid\"><article class=\"ds-metric\"><span>Finalized Collections</span><strong>—</strong><small>Completed + Needs Review</small></article><article class=\"ds-metric\"><span>Slides</span><strong>—</strong><small>From finalized collections</small></article><article class=\"ds-metric\"><span>Pollen Grains</span><strong>—</strong><small>Pollen types · average confidence</small></article><article class=\"ds-metric\"><span>Needs Attention</span><strong>—</strong><small>Needs Review · Pending</small></article></div>",
-      "css": ".ds-metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.ds-metric{display:flex;min-height:220px;flex-direction:column;padding:20px;border:1px solid var(--border,#d9d8d2);border-radius:20px;background:var(--surface,#fafaf7);box-shadow:0 1px 2px rgb(23 23 23 / 3%),0 9px 24px rgb(23 23 23 / 4%)}.ds-metric>span{font-size:14px;font-weight:500;color:var(--text,#171717)}.ds-metric>strong{margin-top:auto;padding-top:20px;font-family:var(--font-mono,'IBM Plex Mono',ui-monospace,monospace);font-size:48px;font-weight:500;line-height:1;color:var(--text,#171717)}.ds-metric>small{margin-top:14px;padding-top:12px;border-top:1px solid var(--border,#d9d8d2);font-size:12px;color:var(--text-muted,#4d4c47)}@media(max-width:1023px){.ds-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:639px){.ds-metric-grid{grid-template-columns:1fr}}"
+      "description": "Shared exact-location and 6/12-month controls appear first, defaulting to 6 Months, followed by grains counted, pollen types and average model confidence. The summary spans the available width; analysis status controls remain on Reports. Recent Collections shows up to five finalized records beside Top Pollen Counts; saved Collection Conditions spans the width below. Top counts sum grains across all matching finalized slides and link to supporting reports. Sample contributions remain stamped.",
+      "html": "<div class=\"ds-dashboard\"><div class=\"ds-dashboard-controls\"><label>Location<select><option>All Locations</option></select></label><div><span>Period</span><div class=\"ds-dashboard-period\"><button type=\"button\" aria-pressed=\"true\">6 Months</button><button type=\"button\" aria-pressed=\"false\">12 Months</button></div></div></div><div class=\"ds-dashboard-summary\"><dl class=\"ds-dashboard-panel ds-dashboard-metrics\" aria-label=\"Pollen summary\"><div><dt>Grains Counted</dt><dd>—</dd></div><div><dt>Pollen Types</dt><dd>—</dd></div><div><dt>Average Model Confidence</dt><dd>—</dd></div></dl></div><div class=\"ds-dashboard-columns\"><section class=\"ds-dashboard-panel\"><strong>Recent Collections</strong></section><section class=\"ds-dashboard-panel\"><strong>Top Pollen Counts</strong></section></div><section class=\"ds-dashboard-panel\"><strong>Collection Conditions</strong><p class=\"ds-dashboard-note\">Temperature · Humidity · Wind Speed</p><details><summary>Weather Condition Breakdown</summary><p>Saved weather-condition counts</p></details></section></div>",
+      "css": ".ds-dashboard{display:flex;min-width:0;flex-direction:column;gap:16px;font-family:var(--font-body,'IBM Plex Sans',system-ui,sans-serif);font-size:13px;color:var(--text,#171717)}.ds-dashboard p{margin:4px 0 0;color:var(--text-muted,#4d4c47)}.ds-dashboard-note{font-size:12px}.ds-dashboard-controls{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}.ds-dashboard-controls label,.ds-dashboard-controls>div{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text-muted,#4d4c47)}.ds-dashboard select,.ds-dashboard-period button{min-height:44px;border:1px solid var(--border,#d9d8d2);border-radius:2px;background:var(--surface,#fafaf7);padding:8px 12px;font:inherit;font-size:13px;color:var(--text,#171717)}.ds-dashboard-period{display:flex;gap:4px}.ds-dashboard-period button{cursor:pointer}.ds-dashboard-period button[aria-pressed=true]{background:var(--text,#171717);color:var(--bg,#ecebe6)}.ds-dashboard-panel{min-width:0;padding:16px;border:1px solid var(--border,#d9d8d2);border-radius:20px;background:var(--surface,#fafaf7);box-shadow:0 1px 2px rgb(23 23 23 / 3%),0 9px 24px rgb(23 23 23 / 4%)}.ds-dashboard-panel strong{font-size:16px;font-weight:600}.ds-dashboard-summary{display:grid;min-width:0;gap:12px}.ds-dashboard-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:0;padding:12px}.ds-dashboard-metrics>div{display:flex;min-width:0;flex-direction:column;padding:0 12px;border-left:1px solid var(--border,#d9d8d2)}.ds-dashboard-metrics>div:first-child{padding-left:0;border-left:0}.ds-dashboard-metrics>div:last-child{padding-right:0}.ds-dashboard-metrics dt{flex:1;min-height:32px;font-size:12px;line-height:16px;color:var(--text-muted,#4d4c47)}.ds-dashboard-metrics dd{margin:8px 0 0;font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:20px;line-height:24px;color:var(--text,#171717)}.ds-dashboard-columns{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}.ds-dashboard summary{min-height:44px;display:flex;align-items:center;cursor:pointer}.ds-dashboard a:hover,.ds-dashboard-period button[aria-pressed=false]:hover{background:var(--surface-sunken,#f1f0eb)}.ds-dashboard a:focus-visible,.ds-dashboard button:focus-visible,.ds-dashboard select:focus-visible,.ds-dashboard summary:focus-visible{outline:2px solid var(--accent,#8c2f1b);outline-offset:3px}.ds-dashboard-period button:active{transform:scale(0.98)}@media(min-width:640px){.ds-dashboard-panel{padding:20px}.ds-dashboard-metrics{padding:12px 20px}.ds-dashboard-metrics dt{min-height:0}}@media(min-width:1280px){.ds-dashboard-columns{grid-template-columns:minmax(0,1.65fr) minmax(18rem,1fr)}}"
     },
     {
       "name": "Species Card",

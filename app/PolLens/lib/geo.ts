@@ -463,13 +463,13 @@ export function fitView(
 // --- Colour ----------------------------------------------------------------
 
 /**
- * Sand to ember, four steps of sampled intensity.
+ * Warm sand to dark earth, four steps of sampled intensity.
  *
- * The ramp climbs in lightness *and* saturation, so the classes stay apart in
- * greyscale and for a red-green colour-blind reader — a hue-only ramp would put
- * the top two classes within a few percent of each other once printed.
+ * Its steady drop in lightness separates classes in greyscale and for a
+ * red-green colour-blind reader; hue reinforces the count rather than carrying
+ * it alone.
  */
-export const INTENSITY_RAMP = ["#cdeeee", "#8fd4d4", "#45abab", "#0e6f6f"];
+export const INTENSITY_RAMP = ["#f1d7ad", "#d8ad75", "#b8754d", "#71432f"];
 
 /** Sampled, but none of the selected taxon found here. Distinct from both the
  *  ramp and the unsampled fill: "we looked and found nothing" is its own answer. */
@@ -492,7 +492,7 @@ export type IntensityScale = {
  * Taking the first `count` colours would shade a two-class map in the two
  * palest sands and leave its hot end unused. A single class is the hot end:
  * when one place is all the data there is, the map's job is to say "here",
- * and the coldest colour on the ramp says the opposite.
+ * and the lightest colour on the ramp says the opposite.
  */
 function rampColors(count: number): string[] {
   if (count <= 0) return [];

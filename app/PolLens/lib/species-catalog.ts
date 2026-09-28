@@ -3,9 +3,8 @@
 //
 // The bundled `speciesCatalog` in lib/data.ts is the build-time fallback —
 // this module prefers the real catalog from the backend
-// (GET /api/v1/reports/species/) once signed in, mirroring how
-// PollenCountChart swaps `historicalPollenCounts` for
-// fetchMonthlyPollenCounts: fetch once, silently swap in the result, and
+// (GET /api/v1/reports/species/) once signed in:
+// fetch once, silently swap in the result, and
 // silently keep the fallback on failure or while signed out.
 //
 // Kept in-memory only (not localStorage, unlike lib/settings.ts) — 23 rows

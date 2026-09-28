@@ -46,6 +46,8 @@ export type NewSlideInput = {
 };
 
 export type NewReportInput = {
+  /** Researcher-provided name to distinguish this collection in Reports. */
+  reportName: string;
   /** When the specimen was collected in the field, not when it was analyzed. */
   collectedAt: CollectedAt;
   location: string;

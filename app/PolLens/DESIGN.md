@@ -219,7 +219,7 @@ A near-achromatic warm paper palette with one oxide accent. Status colours are m
 ### Data palettes (not UI colours)
 - **Slide overlay palette** (Okabe–Ito without black): #E69F00, #56B4E9, #009E73, #F0E442, #0072B2, #D55E00, #CC79A7. Colours are assigned per report in order of abundance, so every type on a slide gets a distinct colour and keeps it across slides. Every box also carries its species code.
 - **Catalog series colours** (charts): #2a78d6, #eb6834, #1baf7a, #eda100, #e87ba4, #008300, #4a3aa7, #e34948, #0891b2. These are nine hues cycled across the 23 taxa. Chart legends always name the taxon.
-- **Map intensity ramp** (quantile classes, light to dark): #cdeeee, #8fd4d4, #45abab, #0e6f6f. Sampled-but-zero areas use #e4e4e7 and unsampled areas use #f4f4f5, so "we looked and found nothing" differs from "no data".
+- **Map intensity ramp** (quantile classes, warm sand to dark earth): #f1d7ad, #d8ad75, #b8754d, #71432f. Sampled-but-zero areas use #e4e4e7 and unsampled areas use #f4f4f5, so "we looked and found nothing" differs from "no data".
 
 ### Named Rules
 **The One Oxide Rule.** Oxide marks a plate or figure number, the page's primary action, an inline text action, a selection, or focus. It does nothing else. It never tints a heading word, an icon or a background for mood.
@@ -283,10 +283,10 @@ Quiet and exact, with no gradient and no shadow.
 - **Shadow Strategy:** subtle two-layer shadow on standalone cards, slightly deeper on interactive hover (see Elevation & Depth).
 - **Border:** a 1px hairline.
 - **Internal Padding:** 16–20px by default. The plate title uses IBM Plex Sans and sits on a baseline row with its mono slide label at the right.
-- **Dashboard metrics:** four equal cards at wide desktop sizes, two columns on tablet and a single column on narrow screens. Each card uses a large figure, one clear label and concise factual context.
+- **Dashboard:** shared Location and Period controls come first. A full-width compact summary shows grains counted, pollen types and average model confidence. Analysis status controls remain on Reports. Recent Collections sits in the wider left column beside Top Pollen Counts; the paired cards stretch to the same height and align their headers. Collection Conditions follows across the full width. Phones stack these sections in the same reading order.
 
 ### Inputs / Fields
-- **Style:** full-width plate paper, a 1px hairline frame, 2px corners, 8px × 12px padding, 13px ink text and placeholder-grey hints. The label sits above in 12.5px caption grey or as a caption label.
+- **Style:** full-width plate paper, a 1px hairline frame, 2px corners, 8px × 12px padding, medium-weight ink for entered/selected values, and regular-weight placeholder-grey hints. The label sits above in 12.5px caption grey or as a caption label.
 - **Focus:** the shared 2px oxide outline at a 3px offset.
 - **Native controls:** checkboxes and radios take `accent-color` oxide.
 
@@ -312,7 +312,13 @@ One detection per row, sitting beside the plate as its key. Each row has a speci
 The Allergen Reference is an atlas of plates: a searchable grid, 6 across from `xl` (6 × 4 for the 23 species), 4 at `lg`, 3 at `sm`, 2 on phones. Each card is a hairline plate: a 4:3 photo over the **binomial** (serif italic 600, 16px, the primary) and the **plant names** below it (English · Filipino, 13px caption grey, the secondary), the risk stamp, and a footer rule with the species swatch and mono code on the left and the grain count on the right. The whole card is the button; it opens the full record in a dialog (photo with its credit line, plate-label code, binomial title, names, family, description, a ruled grid of readings, where it grows in the Philippines, and the source line). Search matches scientific name, English and Filipino names and code, accent- and case-insensitively. Photos are freely licensed (Wikimedia Commons) and always credited; a missing photo shows a "No photo yet" plate, never a stand-in.
 
 ### Dashboard Metrics
-The dashboard leads with four concise cards: finalized collections, slides, pollen grains, and the review queue split into Needs Review and Pending. Collection-site count sits with the selected collection-date period; location detail lives on the map. The 6/12-month switch belongs beside the “Collection Overview” heading, immediately above the data it filters. Follow with monthly grain counts, top pollen types and recent collections. Labels use sentence case, figures use IBM Plex Mono, and sample detections keep a visible warning.
+The dashboard leads with an exact-location select and a 6/12-month switch, defaulting to 6 Months. The selected scope's grains counted, pollen types and average model confidence appear immediately below in a compact three-column summary. Confidence shows a dash when there are no counted grains. The summary spans the available width; Needs Review and Pending controls remain on Reports. Collection/slide/location totals, the visible date window, Count Details and the Needs Attention heading are removed. Card headings lead directly into their data without descriptive subtitles. From wide desktop sizes, Recent Collections occupies the wider left column beside Top Pollen Counts; Collection Conditions spans the full width below. Phones stack these sections in that order.
+
+Recent Collections shows up to five finalized records directly. Sample ID, location, collection date/time, top species, slide and grain counts, status and sample stamps stay readable on phones. Each row opens its report; All Reports retains the selected location, inclusive dates and finalized status.
+
+Top Pollen Counts ranks up to five species by summed positive grain counts across every slide in every matching finalized collection, including older records outside the recent five. Scientific names wrap in serif italic; mono species codes and exact counts accompany species-colour comparison bars scaled to the largest displayed count. Each row opens supporting reports with species, exact location, finalized status and inclusive dates preserved. The dashboard no longer renders the location or monthly occurrence views.
+
+Collection Conditions shows ranges of saved temperature, humidity and wind measurements, each with its recorded-collection count; weather-condition counts remain in a named disclosure. Missing measurements are excluded and labelled “Not recorded”; recorded zero remains a valid reading. Finalized means Completed + Needs Review, while Pending is excluded from dashboard figures. All controls have at least 44px touch targets and mobile pages never depend on horizontal tables. Sample readings keep the overall warning, recent-record stamps, and ranking/row stamps wherever sample grain counts contribute. Counts and saved conditions do not claim seasonality, airborne concentration, risk or weather causation.
 
 ## Do's and Don'ts
 

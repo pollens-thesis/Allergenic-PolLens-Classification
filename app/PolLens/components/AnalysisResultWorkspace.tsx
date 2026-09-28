@@ -213,9 +213,9 @@ function mergePatch(older: ReportPatch, newer: ReportPatch): ReportPatch {
  * A Pending report — what the model found, straight after Analyze stored it on
  * the server. The researcher reviews the reading beside each slide, writes
  * notes and corrects the collection details (every edit saves automatically),
- * then generates the report, which marks it Completed. Because it lives on the
- * server, it can be resumed later from any device (Analyze lists your pending
- * analyses).
+ * then generates the report into Needs Review; the creator marks it Completed
+ * after sign-off. Because it lives on the server, it can be resumed later from
+ * any device (Analyze lists your pending analyses).
  */
 export default function AnalysisResultWorkspace({
   sampleId,
@@ -233,6 +233,7 @@ export default function AnalysisResultWorkspace({
   const [highlighted, setHighlighted] = useState<SpeciesId | null>(null);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [reportName, setReportName] = useState("");
   const [location, setLocation] = useState("");
   const [researcher, setResearcher] = useState("");
   const [collectedDate, setCollectedDate] = useState("");
@@ -278,6 +279,7 @@ export default function AnalysisResultWorkspace({
         setSelectedId(found.slides[0]?.id ?? null);
         setNotes(Object.fromEntries(found.slides.map((slide) => [slide.id, slide.notes])));
         const [date, time = ""] = found.collectedAt.split("T");
+        setReportName(found.reportName ?? "");
         setLocation(found.location);
         setResearcher(found.researcher);
         setCollectedDate(date);
@@ -422,11 +424,11 @@ export default function AnalysisResultWorkspace({
     const ok = await enqueue(async () => {
       dirty.current = {};
       try {
-        await updateReport(report.sampleId, { ...fields, status: "Completed" });
+        await updateReport(report.sampleId, { ...fields, status: "Needs review" });
         return true;
       } catch (error) {
-        // Keep the edits, but never the status: a later autosave must not
-        // quietly finish the report the researcher saw fail.
+        // Keep the edits, but not the status: a later autosave must not
+        // quietly move the report into review after this action failed.
         dirty.current = mergePatch(fields, dirty.current);
         if (!(error instanceof SessionExpiredError)) {
           toast.error(error instanceof Error ? error.message : "Couldn't generate the report.");
@@ -439,8 +441,8 @@ export default function AnalysisResultWorkspace({
       return;
     }
     finished.current = true;
-    toast.success(`Report ${report.sampleId} generated`);
-    router.push(`/reports?saved=${report.sampleId}`);
+    toast.success(`Report ${report.sampleId} generated and marked Needs Review`);
+    router.push(`/reports/${report.sampleId}`);
   }
 
   async function handleDiscard() {
@@ -563,8 +565,13 @@ export default function AnalysisResultWorkspace({
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0 flex-1">
             <h2 className="text-2xl font-semibold tracking-tight text-text lining-nums">
-              {report.slides.length === 1 ? "1 Slide Analyzed" : `${report.slides.length} Slides Analyzed`}
+              {reportName || (report.slides.length === 1 ? "1 Slide Analyzed" : `${report.slides.length} Slides Analyzed`)}
             </h2>
+            {reportName && (
+              <p className="mt-1 text-[13px] text-text-muted">
+                {report.slides.length} {report.slides.length === 1 ? "slide" : "slides"} analyzed
+              </p>
+            )}
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
               <StatusBadge status="Pending" />
               <span className="text-[13px] text-text-muted" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
@@ -782,6 +789,19 @@ export default function AnalysisResultWorkspace({
         </p>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="block">
+            <span className="mb-1 block text-[12.5px] text-text-muted">Report Name</span>
+            <input
+              type="text"
+              value={reportName}
+              onChange={(e) => {
+                setReportName(e.target.value);
+                edit({ reportName: e.target.value });
+              }}
+              maxLength={255}
+              className={fieldClass}
+            />
+          </label>
           <label className="block">
             <span className="mb-1 block text-[12.5px] text-text-muted">Location</span>
             <LocationSearch
