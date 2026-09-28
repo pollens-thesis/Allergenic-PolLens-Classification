@@ -1,8 +1,7 @@
 # Dashboard increment — local implementation
 
-Status: Implemented and verified locally, 2026-09-28. The user authorized the
-accumulated work to be pushed on 2026-09-28. The feature branch is being
-prepared for review; it is not merged or deployed.
+Status: Implemented and verified locally, 2026-09-28. Pushed in PR #17 on
+2026-09-28; the PR is open and awaiting review. It is not merged or deployed.
 
 ## Purpose
 
@@ -154,8 +153,8 @@ across the available width.
 
 ## Tracking
 
-The local checkout is on `feat/16-dashboard-location-coverage`. At planning
-time, GitHub CLI (`gh`) was unavailable and there was no GitHub connector, so
-issue and board updates were not performed. The user later authorized pushing
-the accumulated changes. Repository review and release follow the workflow in
-`CONTRIBUTING.md`; a branch push does not mean the feature is deployed.
+The branch is `feat/16-dashboard-location-coverage`; PR #17 links issue #16,
+requests review from the API owner, and has both its PR and issue board status
+set to Review. GitHub shows the preview deployment as Ready and 2/2 checks
+passing. No merge or production deployment has taken place; release follows
+the workflow in `CONTRIBUTING.md`.
