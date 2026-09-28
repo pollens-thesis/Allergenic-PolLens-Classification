@@ -82,6 +82,7 @@ class ReportListCreateViewTests(APITestCase):
     def test_create_persists_report_with_slide_and_image(self):
         self.client.force_authenticate(user=self.user)
         payload = make_report_payload()
+        payload['reportName'] = 'Morning Lucban collection'
         payload['0'] = make_test_image()
 
         response = self.client.post(self.url, payload, format='multipart')
@@ -89,11 +90,12 @@ class ReportListCreateViewTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         sample_id = response.data['sampleId']
         self.assertRegex(sample_id, r'^PLN-\d{4}-0001$')
+        self.assertEqual(response.data['reportName'], 'Morning Lucban collection')
         self.assertEqual(response.data['slides'][0]['id'], f'{sample_id}-S1')
         self.assertTrue(response.data['slides'][0]['image_url'].startswith('http'))
         self.assertEqual(response.data['slides'][0]['grains'][0]['id'], 'G1')
         self.assertEqual(response.data['weather']['condition'], 'Sunny')
-        self.assertEqual(response.data['status'], 'Completed')
+        self.assertEqual(response.data['status'], 'Pending')
 
         self.assertEqual(Report.objects.count(), 1)
         self.assertEqual(Slide.objects.count(), 1)
@@ -110,6 +112,7 @@ class ReportListCreateViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         self.assertIsNone(response.data['weather'])
+        self.assertEqual(response.data['reportName'], '')
         self.assertIsNone(Report.objects.get().weather_condition)
 
     def test_create_missing_slide_image_returns_400(self):
@@ -283,6 +286,15 @@ class ReportListFilterTests(APITestCase):
 
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['location'], 'Lucena City, Quezon')
+
+    def test_search_matches_report_name(self):
+        report = make_report()
+        report.report_name = 'Lucban morning survey'
+        report.save(update_fields=['report_name'])
+
+        response = self.client.get(self.url, {'q': 'morning survey'})
+
+        self.assertEqual([item['sampleId'] for item in response.data], [report.sample_id])
 
     def test_search_matches_species(self):
         make_report(species_id='amaranthus_spinosus')
@@ -774,10 +786,10 @@ class ReportCreateValidationTests(APITestCase):
         self.assertIs(response.data['canEdit'], True)
         self.assertIn('createdAt', response.data)
 
-    def test_completed_report_requires_a_location(self):
-        response = self.post(location='  ')
+    def test_report_must_be_created_as_pending(self):
+        response = self.post(status='Completed')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('location', response.data['errors'])
+        self.assertIn('status', response.data['errors'])
 
     def test_owner_me_lists_only_the_callers_reports(self):
         mine = make_report()
@@ -806,6 +818,7 @@ class ReportUpdateDeleteTests(APITestCase):
 
     def test_owner_edits_details_and_slide_notes(self):
         response = self.patch({
+            'reportName': '  Lucban morning  ',
             'location': ' Candelaria, Quezon ',
             'weather': {'condition': 'Rainy', 'temperatureC': 27, 'humidityPct': 90, 'windKph': 12},
             'slides': [{'id': f'{self.report.sample_id}-S1', 'notes': 'clumped grains'}],
@@ -813,6 +826,7 @@ class ReportUpdateDeleteTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(response.data['location'], 'Candelaria, Quezon')
+        self.assertEqual(response.data['reportName'], 'Lucban morning')
         self.assertEqual(response.data['weather']['condition'], 'Rainy')
         self.assertEqual(response.data['slides'][0]['notes'], 'clumped grains')
 
@@ -822,17 +836,20 @@ class ReportUpdateDeleteTests(APITestCase):
         self.assertIsNone(response.data['weather'])
 
     def test_generate_report_needs_a_location(self):
-        response = self.patch({'status': 'Completed'})
+        response = self.patch({'status': 'Needs review'})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('location', response.data['errors'])
 
-    def test_lifecycle_pending_completed_needs_review_completed(self):
-        self.assertEqual(self.patch({'status': 'Completed', 'location': 'Lucban, Quezon'}).status_code, 200)
+    def test_lifecycle_pending_needs_review_completed_and_later_review(self):
+        response = self.patch({'status': 'Needs review', 'location': 'Lucban, Quezon'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['status'], 'Needs review')
+        self.assertEqual(self.patch({'status': 'Completed'}).data['status'], 'Completed')
         self.assertEqual(self.patch({'status': 'Needs review'}).data['status'], 'Needs review')
         self.assertEqual(self.patch({'status': 'Completed'}).data['status'], 'Completed')
 
     def test_disallowed_transition_is_400(self):
-        response = self.patch({'status': 'Needs review'})  # Pending can only be completed
+        response = self.patch({'status': 'Completed'})  # Pending must pass through Needs review
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('status', response.data['errors'])
 

@@ -105,18 +105,20 @@ def check_collected_at(value):
 def require_location(status, location):
     if status in ('Completed', 'Needs review') and not (location or '').strip():
         raise serializers.ValidationError(
-            {'location': ['Location is required to complete a report.']}
+            {'location': ['Location is required before generating or completing a report.']}
         )
 
 
 class ReportCreateSerializer(serializers.Serializer):
     """
     Validates and persists a POST /api/v1/reports/ body. Pure storage: does
-    not recompute detections from grains. `status` is 'Pending' when the
-    Analyze screen stores a fresh batch (finalised later via PATCH), or
-    'Completed' to store an already-finalised report in one step (default).
+    not recompute detections from grains. New reports start as 'Pending'; the
+    researcher generates them into 'Needs review', then marks them 'Completed'.
     """
 
+    reportName = serializers.CharField(
+        source='report_name', max_length=255, allow_blank=True, required=False, default='',
+    )
     collectedAt = serializers.RegexField(
         r'^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$', source='collected_at',
     )
@@ -124,7 +126,7 @@ class ReportCreateSerializer(serializers.Serializer):
     researcher = serializers.CharField(allow_blank=True, max_length=255)
     weather = WeatherInputSerializer(allow_null=True, required=False, default=None)
     slides = SlideInputSerializer(many=True, min_length=1)
-    status = serializers.ChoiceField(choices=['Pending', 'Completed'], default='Completed')
+    status = serializers.ChoiceField(choices=['Pending'], default='Pending')
     sampleDetections = serializers.BooleanField(default=False, source='sample_detections')
 
     def validate_collectedAt(self, value):
@@ -151,6 +153,7 @@ class ReportCreateSerializer(serializers.Serializer):
             weather = validated_data.get('weather')
             report = Report.objects.create(
                 sample_id=next_sample_id(),
+                report_name=validated_data.get('report_name', '').strip(),
                 owner=owner,
                 collected_at=validated_data['collected_at'],
                 location=validated_data['location'].strip(),
@@ -199,10 +202,14 @@ class ReportUpdateSerializer(serializers.Serializer):
     """
     PATCH /api/v1/reports/<id>/ — edit a report's collection details and slide
     notes, and move it through its lifecycle (models.STATUS_TRANSITIONS):
-    Pending → Completed ("Generate Report"), Completed ⇄ Needs review.
+    Pending → Needs review ("Generate Report") → Completed; a completed report
+    can later be flagged Needs review again.
     Every field is optional; only the ones sent change.
     """
 
+    reportName = serializers.CharField(
+        source='report_name', max_length=255, allow_blank=True, required=False,
+    )
     collectedAt = serializers.RegexField(
         r'^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$', source='collected_at', required=False,
     )
@@ -250,7 +257,7 @@ class ReportUpdateSerializer(serializers.Serializer):
 
     def update(self, report, data):
         fields = []
-        for field in ('collected_at', 'status'):
+        for field in ('report_name', 'collected_at', 'status'):
             if field in data:
                 setattr(report, field, data[field])
                 fields.append(field)
@@ -346,6 +353,7 @@ class SlideSerializer(serializers.Serializer):
 
 class ReportSerializer(serializers.Serializer):
     sampleId = serializers.CharField(source='sample_id')
+    reportName = serializers.CharField(source='report_name')
     collectedAt = serializers.CharField(source='collected_at')
     location = serializers.CharField()
     slides = SlideSerializer(many=True)

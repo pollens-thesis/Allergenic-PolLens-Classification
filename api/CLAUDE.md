@@ -105,12 +105,13 @@ between the thesis proposal paper and the frontend.
     re-deriving it from scratch.
 - **Reports:** server-side storage for analysis batches. **No server-side
   ML** (detection is the `/detect/` proxy) and no async pipeline.
-  - **Lifecycle (added 2026-09-24, paper §5.1.7):** `Pending` → `Completed`
-    ("Generate Report") → `Needs review` ⇄ `Completed`
+  - **Lifecycle (updated 2026-09-28, paper §5.1.7):** `Pending` → `Needs review`
+    ("Generate Report") → `Completed`; a completed report can be flagged
+    `Needs review` again.
     (`models.STATUS_TRANSITIONS`). The Analyze screen POSTs a fresh batch
-    with `status: "Pending"` (location may be blank while Pending);
-    `POST` without `status` still stores a Completed report in one step.
-    Completing requires a non-blank location. `Processing` was dropped
+    with `status: "Pending"` (location may be blank while Pending); new reports
+    must start Pending. Generating and completing both require a non-blank
+    location. `Processing` was dropped
     (never written; migration 0007 maps it to Pending). "Finalised" =
     `Completed` + `Needs review` everywhere (monthly counts, the frontend's
     stats/map/exports) — Pending is never counted.
@@ -118,7 +119,7 @@ between the thesis proposal paper and the frontend.
     set on create when the batch's detections came from `ROBOFLOW_MOCK`;
     returned on every report so the UI keeps warning about it.
   - **`PATCH /api/v1/reports/<id>/`** (JSON, `ReportUpdateSerializer`):
-    optional `collectedAt`, `location`, `researcher`, `weather` (null
+    optional `reportName`, `collectedAt`, `location`, `researcher`, `weather` (null
     clears), `slides: [{id, notes}]`, `status` (validated transition).
     **`DELETE`** removes the report and, after commit, its image files.
     Both: owner or staff only (403 otherwise); every response carries
@@ -144,7 +145,7 @@ between the thesis proposal paper and the frontend.
     filter set `app/PolLens/components/ReportsTable.tsx` already
     implements client-side (added 2026-08-31, not yet wired to the
     frontend): `q` (case-insensitive substring match, ORed across
-    `sample_id`, `location`, the raw `collected_at` string, and any slide
+    `sample_id`, `report_name`, `location`, the raw `collected_at` string, and any slide
     detection's `species_id`), `status` (exact match against
     `STATUS_CHOICES`; missing/empty/`"All"` = no filter), `location`
     (exact match; missing/empty/`"all"` = no filter, mirroring the
@@ -154,7 +155,8 @@ between the thesis proposal paper and the frontend.
     `collectedAt.split("T")[0]` comparison). Invalid `status` or malformed
     `from`/`to` → `400 {"detail": "..."}`. All params AND together.
   - **`POST /api/v1/reports/`** (same view): multipart body —
-    `collectedAt`/`location`/`researcher` as plain form fields, `weather`
+    `reportName`/`collectedAt`/`location`/`researcher` as plain form fields
+    (`reportName` is optional for existing clients and capped at 255 characters), `weather`
     and `slides` as JSON-encoded strings in form fields (mirroring
     `NewReportInput`/`WeatherConditions` shapes, camelCase keys), and one
     file part per slide keyed by its index as a string (`"0"`, `"1"`, ...)
@@ -282,7 +284,8 @@ between the thesis proposal paper and the frontend.
     hours not yet in the archive → 404; upstream failure → 502. The Analyze
     screen pre-fills its editable weather fields from it whenever the place or
     collection date/time changes, unless the researcher edited them.
-  - **Models** (`reports/models.py`): `Report` (weather flattened onto the
+  - **Models** (`reports/models.py`): `Report` (researcher-provided `report_name`
+    is stored as optional text, blank for older/unnamed reports; weather flattened onto the
     model as nullable fields, not a separate table; `collected_at` stored
     as a validated `CharField`, not `DateTimeField`, to preserve the
     frontend's opaque ISO-date-or-datetime string exactly), `Slide` (one
