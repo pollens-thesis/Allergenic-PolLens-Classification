@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   LayoutGrid,
@@ -13,9 +13,11 @@ import {
   Menu,
   Settings,
   X,
+  CircleHelp,
 } from "lucide-react";
 import { displayName, getInitials } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
+import HelpAboutDialog, { SECTION_SHORTCUTS } from "@/components/HelpAboutDialog";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
@@ -57,9 +59,13 @@ function Wordmark() {
  */
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const settings = useSettings();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const prefersReducedMotion = useReducedMotion();
+  const sequencePending = useRef(false);
+  const sequenceTimer = useRef<number | null>(null);
 
   // The person's name from their account; the second line says where the card goes.
   const name = displayName(settings);
@@ -78,6 +84,73 @@ export default function Sidebar() {
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [menuOpen]);
+
+  // A short G → section sequence keeps navigation quick without stealing
+  // ordinary letters from pages or from fields where the researcher is typing.
+  useEffect(() => {
+    const clearSequence = () => {
+      sequencePending.current = false;
+      if (sequenceTimer.current !== null) {
+        window.clearTimeout(sequenceTimer.current);
+        sequenceTimer.current = null;
+      }
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      const element = target instanceof HTMLElement ? target : null;
+      const isTyping =
+        element?.isContentEditable ||
+        Boolean(element?.closest("input, textarea, select, [role='textbox'], [contenteditable='true']"));
+
+      if (
+        isTyping ||
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        helpOpen ||
+        element?.closest("[role='dialog'], [role='alertdialog']")
+      ) {
+        return;
+      }
+
+      if (event.key === "Escape") {
+        clearSequence();
+        return;
+      }
+
+      if (event.key === "?") {
+        clearSequence();
+        event.preventDefault();
+        setHelpOpen(true);
+        return;
+      }
+
+      if (sequencePending.current) {
+        clearSequence();
+        const destination = SECTION_SHORTCUTS.find((shortcut) => shortcut.key === event.key.toLowerCase());
+        if (destination) {
+          event.preventDefault();
+          setMenuOpen(false);
+          router.push(destination.href);
+        }
+        return;
+      }
+
+      if (event.key.toLowerCase() === "g" && !event.repeat) {
+        sequencePending.current = true;
+        sequenceTimer.current = window.setTimeout(clearSequence, 1000);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      clearSequence();
+    };
+  }, [helpOpen, router]);
 
   const navLinks = (
     <nav className="flex flex-col gap-1">
@@ -136,6 +209,24 @@ export default function Sidebar() {
         }`}
       />
     </Link>
+  );
+
+  const helpLink = (
+    <button
+      type="button"
+      aria-keyshortcuts="?"
+      onClick={() => {
+        setMenuOpen(false);
+        setHelpOpen(true);
+      }}
+      className="focus-ring flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-[13.5px] font-medium text-text-muted transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-surface-sunken hover:text-text"
+    >
+      <CircleHelp size={16} strokeWidth={1.75} />
+      <span className="flex-1">Help &amp; About</span>
+      <kbd className="rounded-sm border border-border bg-surface-sunken px-1.5 py-0.5 text-[12px] leading-4 text-text-faint">
+        ?
+      </kbd>
+    </button>
   );
 
   return (
@@ -211,7 +302,10 @@ export default function Sidebar() {
                 </div>
                 {navLinks}
               </div>
-              <div className="shrink-0 border-t border-border pt-4">{accountCard}</div>
+              <div className="shrink-0 border-t border-border pt-3">
+                {helpLink}
+                <div className="mt-2 border-t border-border pt-2">{accountCard}</div>
+              </div>
             </motion.div>
           </div>
         )}
@@ -231,9 +325,13 @@ export default function Sidebar() {
             </Link>
             {navLinks}
           </div>
-          <div className="shrink-0 border-t border-border pt-4">{accountCard}</div>
+          <div className="shrink-0 border-t border-border pt-3">
+            {helpLink}
+            <div className="mt-2 border-t border-border pt-2">{accountCard}</div>
+          </div>
         </div>
       </aside>
+      <HelpAboutDialog open={helpOpen} onOpenChange={setHelpOpen} />
     </>
   );
 }
