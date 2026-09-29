@@ -39,6 +39,7 @@ import {
   intensityFill,
   matchesQuery,
   municipalitiesUrl,
+  parseLocation,
   PROVINCE_WIDE_KEY,
   reportsForPlace,
   toPath,
@@ -224,12 +225,19 @@ export default function PollenMap() {
     [places],
   );
 
+  /** Finalized reports with no matching country boundary, independent of pollen filter. */
+  const unmappedReportCount = useMemo(() => {
+    if (scope.level !== "country" || !reports || !provinces) return 0;
+    const drawable = new Set(provinces.features.map(featureKey));
+    return reports.filter((report) => !drawable.has(parseLocation(report.location).provinceKey)).length;
+  }, [reports, provinces, scope]);
+
   /** Sampled places we cannot draw, so the map never silently lies. */
   const unmapped = useMemo(() => {
-    if (!projection) return [];
+    if (!projection || scope.level === "country") return [];
     const drawable = new Set(features.map(featureKey));
     return ranked.filter((p) => !drawable.has(p.key) && p.key !== PROVINCE_WIDE_KEY);
-  }, [ranked, features, projection]);
+  }, [ranked, features, projection, scope]);
   const provinceWide = places.get(PROVINCE_WIDE_KEY) ?? null;
 
   // Path strings, label anchors and bounds are all derived from the geometry
@@ -774,7 +782,14 @@ export default function PollenMap() {
           </p>
         )}
 
-        {unmapped.length > 0 && (
+        {countryScope && unmappedReportCount > 0 && (
+          <p className="mt-2 text-[13px] text-text-muted" role="note">
+            {unmappedReportCount} finalized {unmappedReportCount === 1 ? "report isn't" : "reports aren't"} on the map because{" "}
+            {unmappedReportCount === 1 ? "its province isn't" : "their provinces aren't"} recognized.
+          </p>
+        )}
+
+        {!countryScope && unmapped.length > 0 && (
           <p className="mt-2 text-[13px] text-text-muted">
             Not shown on this map: {unmapped.map((p) => p.label).join(", ")} — no boundary matched
             that name.
