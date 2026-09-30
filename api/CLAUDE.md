@@ -227,9 +227,8 @@ between the thesis proposal paper and the frontend.
     at Analyze-time, before a report/sample id exists, so nothing here is
     persisted (see `POST /api/v1/reports/` above for where an
     already-analyzed batch is later saved). Accepts one `image` file part
-    (multipart); forwards it to the Roboflow-hosted model (config-driven
-    via `ROBOFLOW_API_KEY`/`ROBOFLOW_MODEL_ID`/`ROBOFLOW_MODEL_VERSION`,
-    same `os.environ.get` pattern as `GOOGLE_OAUTH_CLIENT_ID`) and passes
+    (multipart); forwards it to Roboflow (config-driven, same
+    `os.environ.get` pattern as `GOOGLE_OAUTH_CLIENT_ID`) and passes
     through Roboflow's native shape trimmed to `{"image": {"width",
     "height"}, "predictions": [{"class", "confidence", "x", "y", "width",
     "height"}]}` (pixel coordinates, box centre-based; `image` is kept so
@@ -254,10 +253,25 @@ between the thesis proposal paper and the frontend.
       path as live, so the frontend is already running the real mapping.
       (`reports/fixtures/` is not a `loaddata` fixture dir despite the
       name.)
-    - **Going live:** set `ROBOFLOW_API_KEY`/`ROBOFLOW_MODEL_ID`/
-      `ROBOFLOW_MODEL_VERSION` and `ROBOFLOW_MOCK=false` — no code
+    - **Workflow mode (added 2026-09-30, issue #10):** the two-stage
+      pipeline — YOLOv11 detects one `pollen` class, Dynamic Crop, ResNet-34
+      names the species, Detections Classes Replacement puts species +
+      classifier confidence on each box — is a Roboflow Workflow. When
+      `ROBOFLOW_WORKFLOW_ID` is set (with `ROBOFLOW_WORKSPACE` and
+      `ROBOFLOW_API_KEY`) `_roboflow_workflow` POSTs the image (base64,
+      `Authorization: Bearer`) to
+      `serverless.roboflow.com/infer/workflows/{workspace}/{workflow_id}` and
+      unwraps `outputs[0].predictions` (same `{image, predictions}` shape), so
+      everything after it is unchanged; it wins over the single-model vars,
+      mock still wins over both. A missing/odd `outputs` → 502. The Workflow
+      must expose only that `predictions` output (6 MB response cap). Runbook
+      and Workflow JSON: `../docs/roboflow-pipeline.md`.
+    - **Going live:** set `ROBOFLOW_API_KEY` plus either
+      `ROBOFLOW_WORKSPACE`/`ROBOFLOW_WORKFLOW_ID` (two-stage) or
+      `ROBOFLOW_MODEL_ID`/`ROBOFLOW_MODEL_VERSION` (single model), and
+      `ROBOFLOW_MOCK=false` — no code
       changes. **Class-name convention:** the Roboflow dataset's class
-      names must be the `Species` slugs (e.g. `amaranthus_spinosus`);
+      names (the classification project's, in Workflow mode) must be the `Species` slugs (e.g. `amaranthus_spinosus`);
       the frontend forgives case and space/hyphen separators but drops
       any class outside the catalog (with a console warning). If the
       trained model uses other labels, add an alias map in
