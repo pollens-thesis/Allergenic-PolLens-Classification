@@ -24,7 +24,7 @@ export default function HelpAboutDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-40 bg-black/40 transition-opacity duration-[var(--duration-base)] ease-[var(--ease-out)] data-[starting-style]:opacity-0 data-[ending-style]:opacity-0" />
-        <Dialog.Popup className="fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[min(34rem,calc(100vw_-_2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-surface p-5 shadow-lg outline-none transition-all duration-[var(--duration-base)] ease-[var(--ease-out)] data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 sm:p-6">
+        <Dialog.Popup className="card-panel fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[min(34rem,calc(100vw_-_2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto p-4 outline-none transition-all duration-[var(--duration-base)] ease-[var(--ease-out)] data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 sm:p-5">
           <Dialog.Close
             aria-label="Close Help & About"
             className="focus-ring absolute top-3 right-3 flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-text-muted transition-colors hover:bg-surface-sunken hover:text-text"
@@ -32,16 +32,15 @@ export default function HelpAboutDialog({
             <X size={17} strokeWidth={1.75} />
           </Dialog.Close>
 
-          <Dialog.Title className="pr-12 text-[1.65rem] leading-tight font-semibold tracking-tight text-text">
+          <Dialog.Title className="t-plate-title pr-12 text-text">
             Help &amp; About
           </Dialog.Title>
-          <Dialog.Description className="mt-2 max-w-[58ch] text-[14px] leading-relaxed text-text-muted">
-            PolLens helps researchers analyze microscope slide images, review pollen readings, and maintain collection
-            reports.
+          <Dialog.Description className="mt-2 max-w-[58ch] text-[13px] leading-relaxed text-text-muted">
+            Analyze microscope slides, review pollen readings, and manage collection reports.
           </Dialog.Description>
 
-          <section className="mt-5 border-t border-border pt-4" aria-labelledby="help-shortcuts-title">
-            <h3 id="help-shortcuts-title" className="text-[15px] font-semibold text-text">
+          <section className="mt-4 border-t border-border pt-3" aria-labelledby="help-shortcuts-title">
+            <h3 id="help-shortcuts-title" className="t-plate-title text-text">
               Keyboard Shortcuts
             </h3>
             <p className="mt-1 text-[13px] leading-relaxed text-text-muted">
@@ -65,22 +64,18 @@ export default function HelpAboutDialog({
             </dl>
           </section>
 
-          <section className="mt-5 border-t border-border pt-4" aria-labelledby="help-detection-title">
-            <h3 id="help-detection-title" className="text-[15px] font-semibold text-text">
+          <section className="mt-4 border-t border-border pt-3" aria-labelledby="help-detection-title">
+            <h3 id="help-detection-title" className="t-plate-title text-text">
               Detection Status
             </h3>
             <p className="mt-1 text-[13px] leading-relaxed text-text-muted">
-              The trained detection model is not deployed yet. Analyses use built-in sample readings, which are labeled
-              <span className="mx-1 inline-flex items-center border border-dashed border-processing/50 px-1.5 py-0.5 align-middle text-[12px] font-medium text-processing">
+              The detection model is not deployed. Analyses use built-in
+              <span className="ml-1 inline-flex items-center border border-dashed border-processing/50 px-1.5 py-0.5 align-middle text-[12px] font-medium text-processing">
                 Sample
               </span>
-              throughout the app.
+              {" "}readings.
             </p>
           </section>
-
-          <p className="mt-5 border-t border-border pt-3 text-[12px] text-text-faint">
-            PolLens · Research Console
-          </p>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

@@ -3,52 +3,19 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
-  Database,
-  Download,
   FileJson,
   FileSpreadsheet,
   Loader2,
   LogOut,
-  Mail,
   Sheet,
-  UserRound,
 } from "lucide-react";
 import { type Specimen } from "@/lib/data";
-import { displayName, getInitials, institutionFromEmail } from "@/lib/account";
+import { displayName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import { signOut } from "@/lib/session";
 import { listReports } from "@/lib/store";
 import { exportReportsCsv, exportReportsJson, exportReportsXlsx } from "@/lib/export";
 import { buttonVariants } from "@/components/Button";
-
-function Section({
-  icon: Icon,
-  title,
-  description,
-  children,
-}: {
-  icon: typeof UserRound;
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="card-panel p-4 sm:p-5">
-      <div className="mb-3 flex items-start gap-3">
-        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-sunken">
-          <Icon size={16} strokeWidth={1.75} className="text-text-muted" />
-        </span>
-        <div>
-          <h2 className="t-plate-title text-text">
-            {title}
-          </h2>
-          <p className="mt-0.5 text-[13px] text-text-muted">{description}</p>
-        </div>
-      </div>
-      {children}
-    </section>
-  );
-}
 
 export default function SettingsWorkspace() {
   const settings = useSettings();
@@ -75,68 +42,37 @@ export default function SettingsWorkspace() {
   const completedReports = reports?.filter((report) => report.status === "Completed") ?? [];
   const nonCompletedCount = reports ? reports.length - completedReports.length : 0;
   const name = displayName(settings);
-  const institution = institutionFromEmail(settings.email);
+  const reportCount = reports ? completedReports.length : loadFailed ? "—" : "…";
+  const excludedCount = reports ? nonCompletedCount : loadFailed ? "—" : "…";
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Profile */}
-      <Section
-        icon={UserRound}
-        title="Profile"
-        description="Signed-in research account."
-      >
-        <div className="flex items-center gap-3.5 rounded-md border border-border bg-surface px-3.5 py-3">
-          <span
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-muted text-[15px] text-accent"
-            style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-          >
-            {getInitials(name)}
-          </span>
-          <div className="min-w-0 leading-tight">
-            <div className="truncate text-[15px] font-medium text-text">{name}</div>
-            <div className="mt-0.5 flex items-center gap-1.5 text-[13px] text-text-muted">
-              <Mail size={13} strokeWidth={1.75} className="shrink-0 text-text-faint" />
-              <span className="truncate">{settings.email || "Not signed in"}</span>
-            </div>
-          </div>
+    <div className="card-panel divide-y divide-border overflow-hidden">
+      <section className="p-4 sm:p-5">
+        <h2 className="t-plate-title text-text">Data Export</h2>
+
+        <div
+          className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-text-muted"
+          aria-live="polite"
+          aria-busy={!reports && !loadFailed}
+        >
+          <p>
+            <span className="text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+              {reportCount}
+            </span>{" "}
+            Completed
+          </p>
+          <p>
+            <span className="text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+              {excludedCount}
+            </span>{" "}
+            Pending or Needs Review
+          </p>
         </div>
 
-        <p className="t-prose mt-3 text-text-muted">
-          Default researcher for new reports. Change it on a report when needed.{" "}
-          {institution ? (
-            <>
-              Institution: <span className="font-medium text-text">{institution}</span>.
-            </>
-          ) : (
-            <>No institution domain detected.</>
-          )}
-        </p>
-      </Section>
-
-      {/* Data export */}
-      <Section
-        icon={Database}
-        title="Data Export"
-        description="Download completed shared reports."
-      >
-        <div className="card-well mb-4 grid grid-cols-2 gap-3 px-3 py-3 text-center">
-          <div>
-            <div className="text-lg text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-              {reports ? completedReports.length : loadFailed ? "—" : "…"}
-            </div>
-            <div className="text-[12px] text-text-muted">Completed Reports</div>
-          </div>
-          <div>
-            <div className="text-lg text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-              {reports ? nonCompletedCount : loadFailed ? "—" : "…"}
-            </div>
-            <div className="text-[12px] text-text-muted">Pending or Needs Review</div>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="mt-4 grid grid-cols-3 gap-2">
           <button
             type="button"
+            aria-label="Export completed reports as Excel"
             disabled={!reports || completedReports.length === 0 || exporting}
             onClick={async () => {
               setExporting(true);
@@ -149,78 +85,83 @@ export default function SettingsWorkspace() {
                 setExporting(false);
               }
             }}
-            className={`${buttonVariants({ intent: "secondary", size: "md" })} focus-ring flex-1`}
+            className={`${buttonVariants({ intent: "secondary", size: "sm" })} focus-ring min-h-11 w-full`}
           >
-            {exporting ? <Loader2 size={14} strokeWidth={1.75} className="animate-spin" /> : <Sheet size={14} strokeWidth={1.75} />}
-            Export Excel
+            {exporting ? (
+              <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
+            ) : (
+              <Sheet size={14} strokeWidth={1.75} />
+            )}
+            <span>Excel</span>
           </button>
           <button
             type="button"
+            aria-label="Export completed reports as CSV"
             disabled={!reports || completedReports.length === 0}
             onClick={() => {
               exportReportsCsv(completedReports);
               toast.success("Exported as CSV");
             }}
-            className={`${buttonVariants({ intent: "secondary", size: "md" })} focus-ring flex-1`}
+            className={`${buttonVariants({ intent: "secondary", size: "sm" })} focus-ring min-h-11 w-full`}
           >
             <FileSpreadsheet size={14} strokeWidth={1.75} />
-            Export CSV
+            <span>CSV</span>
           </button>
           <button
             type="button"
+            aria-label="Export completed reports as JSON"
             disabled={!reports || completedReports.length === 0}
             onClick={() => {
               exportReportsJson(completedReports);
               toast.success("Exported as JSON");
             }}
-            className={`${buttonVariants({ intent: "secondary", size: "md" })} focus-ring flex-1`}
+            className={`${buttonVariants({ intent: "secondary", size: "sm" })} focus-ring min-h-11 w-full`}
           >
             <FileJson size={14} strokeWidth={1.75} />
-            Export JSON
+            <span>JSON</span>
           </button>
         </div>
-        <p className="mt-2 flex max-w-[68ch] items-start gap-1.5 text-[13px] text-text-muted">
-          <Download size={12} strokeWidth={1.75} className="mt-0.5 shrink-0" />
-          <span>
-            {loadFailed
-              ? "Couldn't reach the server to load reports. Reload the page to try again."
-              : "Only Completed reports are exported. Pending and Needs Review reports are excluded until marked Completed. Includes all researchers."}
-          </span>
-        </p>
-      </Section>
 
-      {/* Account */}
-      <Section
-        icon={LogOut}
-        title="Account"
-        description="Your reports stay on the server when you sign out."
-      >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-[13px] text-text-muted">
-            Signed in as <span className="text-text">{name}</span>
-            {settings.email && <span className="text-text-muted"> · {settings.email}</span>}
+        {loadFailed && (
+          <p role="alert" className="mt-2 text-[13px] text-text-muted">
+            Reports couldn&apos;t load. Reload to try again.
+          </p>
+        )}
+      </section>
+
+      <section className="p-4 sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+          <div className="min-w-0">
+            <h2 className="t-plate-title mb-3 text-text">Profile</h2>
+            <p className="truncate text-[15px] font-medium text-text">{name}</p>
+            <p className="mt-0.5 break-all text-[13px] text-text-muted">
+              {settings.email || "Not signed in"}
+            </p>
           </div>
-          <button
-            type="button"
-            disabled={signingOut}
-            onClick={async () => {
-              setSigningOut(true);
-              await signOut();
-              // A full load, not a client push: drops in-memory data from this
-              // account (e.g. the live species catalog) along with the session.
-              window.location.replace("/");
-            }}
-            className={`${buttonVariants({ intent: "caution", size: "md" })} focus-ring`}
-          >
-            {signingOut ? (
-              <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
-            ) : (
-              <LogOut size={14} strokeWidth={1.75} />
-            )}
-            {signingOut ? "Signing Out…" : "Sign Out"}
-          </button>
+
+          <div className="flex shrink-0 items-center gap-3 sm:flex-col sm:items-end sm:gap-1.5">
+            <button
+              type="button"
+              disabled={signingOut}
+              onClick={async () => {
+                setSigningOut(true);
+                await signOut();
+                // A full load, not a client push: drops in-memory data from this
+                // account (e.g. the live species catalog) along with the session.
+                window.location.replace("/");
+              }}
+              className={`${buttonVariants({ intent: "caution", size: "md" })} focus-ring`}
+            >
+              {signingOut ? (
+                <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
+              ) : (
+                <LogOut size={14} strokeWidth={1.75} />
+              )}
+              {signingOut ? "Signing Out…" : "Sign Out"}
+            </button>
+          </div>
         </div>
-      </Section>
+      </section>
     </div>
   );
 }
