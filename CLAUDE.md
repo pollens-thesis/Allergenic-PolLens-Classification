@@ -45,7 +45,7 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   builds the frontend from `app/PolLens/` (Root Directory `app/PolLens`). A
   push to `master` redeploys both. See `docs/deployment.md`.
 
-## Current state (2026-09-26)
+## Current state (2026-09-30)
 
 - **Live and verified:** frontend https://pollens-theta.vercel.app, API
   https://pollens-api.onrender.com (`/healthz/` ok). Render and Vercel were
@@ -65,12 +65,22 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   PR #2, the accented-name fix `5c23fd9`). The GitHub Projects board **"PolLens"
   exists** (org `pollens-thesis`, project number **1**, columns Backlog → Ready →
   In Progress (limit 2) → Review → Blocked → Done) with the labels `frontend`,
-  `backend`, `devops`, `chore`, `blocked`, `adviser`. The backlog is issues
-  #3–#13; agents move cards with `gh project item-edit` (needs the `project`
+  `backend`, `devops`, `chore`, `blocked`, `adviser`. The open backlog is issues
+  #6–#13 (most are `blocked` on the adviser); #4, #5 and #16 were finished
+  by PRs #19, #18 and #17 (merged 2026-09-30). Those merges did **not**
+  auto-close their issues, so after a merge check the issue closed and run
+  `gh issue close N --reason completed` if not (the board then moves it to
+  Done). Agents move cards with `gh project item-edit` (needs the `project`
   scope — the owner's `gh` login has it; Niño's machine needs
   `gh auth refresh -h github.com -s project` once). Auto-add, item-closed and
   PR-merged rules are on. Past-work task list: the owner's local
   `PolLens-board` folder (not in the repo).
+- **Next: the detection model** (issue #10, blocked). The backend still runs
+  `ROBOFLOW_MOCK=true`, serving a sample reading. Going live is an `.env` change
+  (`ROBOFLOW_API_KEY`, `ROBOFLOW_MODEL_ID`, `ROBOFLOW_MODEL_VERSION`,
+  `ROBOFLOW_MOCK=false`), provided the dataset's class names are the species
+  slugs. See the detect proxy in `api/CLAUDE.md` and the Single Image Upload
+  row in `docs/system-spec.md`.
 - **Teammate:** Niño runs the project locally and signs in. If sign-in fails
   for someone new, see the Troubleshooting table in `docs/deployment.md`
   (Google "Access blocked" = add them as a test user).

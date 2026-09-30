@@ -146,7 +146,9 @@ Then on GitHub → **Compare & pull request** into `master`:
 - **Squash and merge** (one clean commit on `master`), then delete the branch.
 - A merge to `master` **deploys the live site** (Vercel frontend, Render API).
   Backend changes the frontend depends on go in first.
-- The issue closes and the card moves to **Done** automatically.
+- The issue closes and the card moves to **Done** automatically. Check that it
+  did: if the issue is still open after the merge, close it with
+  `gh issue close N --reason completed` and the card follows.
 
 Pushing straight to `master` is fine for tiny fixes — put `Fixes #12` in the
 commit message and the issue still closes.
