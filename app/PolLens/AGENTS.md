@@ -139,6 +139,12 @@ the backend change first.
   sign in, and the "not authorised" message, may need updating. Don't change
   them before the backend does.
 
+## Delivered Sept 30
+
+| Requirement | Status | Frontend change |
+|---|---|---|
+| Pollen Map heatmap uses the ColorBrewer YlOrBr palette (greyscale-legible, colour-blind safe); ranking badge numbers turn white on dark fills | Done | PR #22 (#21) |
+
 ## Delivered Sept 29
 
 | Requirement | Status | Frontend change |
