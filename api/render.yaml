@@ -43,7 +43,8 @@ services:
       - key: AWS_SECRET_ACCESS_KEY
         sync: false
       # Canned Roboflow-shaped responses until the model is deployed; then set
-      # the three ROBOFLOW_* values and flip this to "false".
+      # ROBOFLOW_WORKSPACE + ROBOFLOW_WORKFLOW_ID (the two-stage pipeline; or
+      # the single-model MODEL_ID/VERSION pair) and flip this to "false".
       - key: ROBOFLOW_MOCK
         value: "true"
       - key: ROBOFLOW_API_KEY
@@ -51,4 +52,8 @@ services:
       - key: ROBOFLOW_MODEL_ID
         sync: false
       - key: ROBOFLOW_MODEL_VERSION
+        sync: false
+      - key: ROBOFLOW_WORKSPACE
+        sync: false
+      - key: ROBOFLOW_WORKFLOW_ID
         sync: false
