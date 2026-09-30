@@ -126,21 +126,24 @@ the backend change first.
 
 ## Open tasks (frontend)
 
-1. **Unplaced reports on the map** — at country scope, reports whose location
-   isn't a recognized town/province are skipped silently; add a note
-   ("N reports aren't on the map…").
-2. **Power-user and help affordances** (from the Sept 18 critique): keyboard
+1. **Power-user and help affordances** (from the Sept 18 critique): keyboard
    shortcuts, a small help/about entry. Low priority.
-3. **Adviser/UPLB data** — species season and allergenic risk; UPLB to verify
-   the species reference text (editable in Django admin → Species, not in code).
-4. **Adviser decisions** still open are listed in `PRODUCT.md` and
-   `docs/system-spec.md` (architecture sign-off, map pins vs. choropleth,
-   theme, archive, system-info display, evaluation targets).
-5. **Open sign-in (planned, not built)** — the owner plans to let any Google
-   account sign in. It's a backend switch first (adviser item 12 in
-   `docs/system-spec.md`); when it lands, sign-in page copy that says who may
-   sign in, and the "not authorised" message, may need updating. Don't change
-   them before the backend does.
+2. **Adviser/UPLB data** — species season and allergenic risk; UPLB to verify
+  the species reference text (editable in Django admin → Species, not in code).
+3. **Adviser decisions** still open are listed in `PRODUCT.md` and
+  `docs/system-spec.md` (architecture sign-off, map pins vs. choropleth,
+  theme, archive, system-info display, evaluation targets).
+4. **Open sign-in (planned, not built)** — the owner plans to let any Google
+  account sign in. It's a backend switch first (adviser item 12 in
+  `docs/system-spec.md`); when it lands, sign-in page copy that says who may
+  sign in, and the "not authorised" message, may need updating. Don't change
+  them before the backend does.
+
+## Delivered Sept 29
+
+| Requirement | Status | Frontend change |
+|---|---|---|
+| Country map counts finalized reports with unrecognized province locations; BARMM SGA towns and current PSA region/name updates are mapped | Done | working branch |
 
 ## Delivered in the Sept 25–26 session (verified)
 

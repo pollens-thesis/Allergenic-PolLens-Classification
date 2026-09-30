@@ -4,7 +4,7 @@
 // No geo API is called at runtime. Boundaries ship with the app:
 //
 //   public/geo/provinces.json                 88 provinces/districts, ~260 KB
-//   public/geo/municipalities/<psgc>.json     1,633 towns across 88 files
+//   public/geo/municipalities/<psgc>.json     1,641 town boundaries across 88 files
 //
 // The country view always loads the provinces file; a province's towns are
 // fetched only when you drill into it, so no page load ever pulls more than
@@ -13,8 +13,8 @@
 // third-party endpoint staying up.
 //
 // Source: faeldon/philippines-json-maps (2023, lowres) — MIT, built from PSA
-// PSGC shapefiles. See docs/pollen-map.md for how the files were produced and
-// what is missing from them.
+// PSGC shapefiles. The eight BARMM SGA municipality shapes are reconstructed
+// from NAMRIA 2023 barangay polygons. See docs/pollen-map.md for details.
 // ---------------------------------------------------------------------------
 
 import {
@@ -74,16 +74,48 @@ const NCR_TOWN_DISTRICT: Record<string, string> = Object.fromEntries(
   ).flatMap(([district, towns]) => towns.map((town) => [normalize(town), NCR_DISTRICTS[district]])),
 );
 const ISABELA_CITY = normalize("City of Isabela (Not a Province)");
+const BARMM_SGA = normalize("BARMM Special Geographic Area");
 
 /** Province names a researcher is likely to type that aren't the PSGC name. */
 const PROVINCE_ALIASES: Record<string, string> = {
   "metro manila": "ncr",
   "national capital region": "ncr",
+  "north cotabato": "cotabato",
+  "special geographic area": BARMM_SGA,
+  "barmm sga": BARMM_SGA,
+  "sga": BARMM_SGA,
   // The place search's labels for the four NCR districts.
   "metro manila manila": NCR_DISTRICTS.first,
   "metro manila second district": NCR_DISTRICTS.second,
   "metro manila third district": NCR_DISTRICTS.third,
   "metro manila fourth district": NCR_DISTRICTS.fourth,
+};
+
+const SGA_TOWN_ALIASES: Record<string, string> = {
+  [normalize("Kapalawan")]: "Kapalawan",
+  [normalize("Carmen Cluster")]: "Pahamuddin",
+  [normalize("Special Geographic Area - Carmen")]: "Pahamuddin",
+  [normalize("Pahamuddin")]: "Pahamuddin",
+  [normalize("Kabacan Cluster")]: "Old Kaabakan",
+  [normalize("Special Geographic Area - Kabacan")]: "Old Kaabakan",
+  [normalize("Old Kaabakan")]: "Old Kaabakan",
+  [normalize("Midsayap Cluster I")]: "Kadayangan",
+  [normalize("Special Geographic Area - Midsayap I")]: "Kadayangan",
+  [normalize("Kadayangan")]: "Kadayangan",
+  [normalize("Midsayap Cluster II")]: "Nabalawag",
+  [normalize("Special Geographic Area - Midsayap II")]: "Nabalawag",
+  [normalize("Nabalawag")]: "Nabalawag",
+  [normalize("Pigcawayan Cluster")]: "Kapalawan",
+  [normalize("Special Geographic Area - Pigcawayan")]: "Kapalawan",
+  [normalize("Pikit Cluster I")]: "Malidegao",
+  [normalize("Special Geographic Area - Pikit I")]: "Malidegao",
+  [normalize("Malidegao")]: "Malidegao",
+  [normalize("Pikit Cluster II")]: "Ligawasan",
+  [normalize("Special Geographic Area - Pikit II")]: "Ligawasan",
+  [normalize("Ligawasan")]: "Ligawasan",
+  [normalize("Pikit Cluster III")]: "Tugunan",
+  [normalize("Special Geographic Area - Pikit III")]: "Tugunan",
+  [normalize("Tugunan")]: "Tugunan",
 };
 
 /** A province written by a researcher → the key of the boundary it names. */
@@ -103,12 +135,36 @@ export type ParsedLocation = { town: string; townKey: string; province: string; 
  */
 export function parseLocation(location: string): ParsedLocation {
   const parts = location.split(",").map((s) => s.trim()).filter(Boolean);
-  const town = parts.length > 1 ? parts[0] : "";
+  let town = parts.length > 1 ? parts[0] : "";
   const province = parts.length > 1 ? parts[parts.length - 1] : (parts[0] ?? "");
-  const townKey = normalize(town);
   let provinceKey = provinceKeyOf(province);
+  let townKey = normalize(town);
+
+  const sgaTown = SGA_TOWN_ALIASES[townKey];
+  if (sgaTown && (provinceKey === BARMM_SGA || provinceKey === "cotabato")) {
+    // The 2024 SGA municipalities replaced interim cluster names. Older
+    // reports may still say Cotabato; route these named places to their current
+    // map unit so they remain visible at both country and town scope.
+    town = sgaTown;
+    townKey = normalize(sgaTown);
+    provinceKey = BARMM_SGA;
+  } else if (provinceKey === "davao del norte" && townKey === "san isidro") {
+    // PSA renamed this municipality to Sawata in Q2 2026. Keep saved reports
+    // under its current boundary.
+    town = "Sawata";
+    townKey = normalize(town);
+  } else if (provinceKey === "misamis occidental" && townKey === "don victoriano chiongbian") {
+    town = "Don Victoriano";
+    townKey = normalize(town);
+  }
+
   if (provinceKey === "ncr" && NCR_TOWN_DISTRICT[townKey]) provinceKey = NCR_TOWN_DISTRICT[townKey];
-  return { town, townKey, province, provinceKey };
+  return {
+    town,
+    townKey,
+    province: provinceKey === BARMM_SGA ? "BARMM Special Geographic Area" : province,
+    provinceKey,
+  };
 }
 
 export function featureKey(feature: GeoFeature): string {
@@ -240,7 +296,7 @@ export function matchesQuery(name: string, query: string): boolean {
 }
 
 /**
- * The 17 regions, in PSA order, keyed by the region PSGC carried on every
+ * The 18 regions, in PSA order, keyed by the region PSGC carried on every
  * province feature. Towns do not carry one — municipality files were trimmed to
  * name and psgc — so this filter is offered on the country view only.
  */
@@ -255,6 +311,7 @@ export const REGIONS: { code: number; label: string }[] = [
   { code: 500000000, label: "Region V (Bicol)" },
   { code: 600000000, label: "Region VI (Western Visayas)" },
   { code: 700000000, label: "Region VII (Central Visayas)" },
+  { code: 1800000000, label: "Negros Island Region" },
   { code: 800000000, label: "Region VIII (Eastern Visayas)" },
   { code: 900000000, label: "Region IX (Zamboanga Peninsula)" },
   { code: 1000000000, label: "Region X (Northern Mindanao)" },
