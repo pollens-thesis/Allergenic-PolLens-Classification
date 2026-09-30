@@ -237,9 +237,19 @@ into a province or switch taxon — a town's 9 grains is a hot zone among towns.
 
 Fewer classes than ramp steps take colours spread across the whole ramp rather
 than the first *n*, and a lone class takes the hot end: when one place is all the
-data there is, the map's job is to say *here*, and the palest sand says the
+data there is, the map's job is to say *here*, and the palest yellow says the
 opposite. The legend states its own numeric breaks, since a quantile scale's
 classes are not guessable from "fewer" and "more".
+
+**The ramp is ColorBrewer YlOrBr, four classes** (`#ffffd4`, `#fed98e`,
+`#fe9929`, `#cc4c02`), set in `INTENSITY_RAMP` in `lib/geo.ts`. It was chosen on
+2026-09-30 from published scientific palettes (Viridis, Cividis, Magma, Inferno,
+YlOrBr, Oranges) because IEEE figure practice asks for figures that read in
+greyscale print and do not rely on red against green. IEEE publishes no heatmap
+palette of its own; ColorBrewer rates YlOrBr colour-blind safe and print
+friendly, and its lightness falls steadily from class to class. Ranking badges in
+the side list switch to white text on dark fills (`readableOn` in
+`PollenMap.tsx`) so the numbers stay legible on the darkest class.
 
 Fill is the only encoding. Graduated circles over each centroid were tried —
 they state magnitude independently of how large a polygon happens to be — but

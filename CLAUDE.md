@@ -66,8 +66,9 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   exists** (org `pollens-thesis`, project number **1**, columns Backlog → Ready →
   In Progress (limit 2) → Review → Blocked → Done) with the labels `frontend`,
   `backend`, `devops`, `chore`, `blocked`, `adviser`. The open backlog is issues
-  #6–#13 (most are `blocked` on the adviser); #4, #5 and #16 were finished
-  by PRs #19, #18 and #17 (merged 2026-09-30). Those merges did **not**
+  #6–#13 (most are `blocked` on the adviser); #4, #5, #16 and #21 (the
+  ColorBrewer YlOrBr heatmap palette) were finished by PRs #19, #18, #17 and
+  #22 (merged 2026-09-30). Those merges did **not**
   auto-close their issues, so after a merge check the issue closed and run
   `gh issue close N --reason completed` if not (the board then moves it to
   Done). Agents move cards with `gh project item-edit` (needs the `project`
