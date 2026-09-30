@@ -219,7 +219,7 @@ A near-achromatic warm paper palette with one oxide accent. Status colours are m
 ### Data palettes (not UI colours)
 - **Slide overlay palette** (Okabe–Ito without black): #E69F00, #56B4E9, #009E73, #F0E442, #0072B2, #D55E00, #CC79A7. Colours are assigned per report in order of abundance, so every type on a slide gets a distinct colour and keeps it across slides. Every box also carries its species code.
 - **Catalog series colours** (charts): #2a78d6, #eb6834, #1baf7a, #eda100, #e87ba4, #008300, #4a3aa7, #e34948, #0891b2. These are nine hues cycled across the 23 taxa. Chart legends always name the taxon.
-- **Map intensity ramp** (quantile classes, warm sand to dark earth): #f1d7ad, #d8ad75, #b8754d, #71432f. Sampled-but-zero areas use #e4e4e7 and unsampled areas use #f4f4f5, so "we looked and found nothing" differs from "no data".
+- **Map intensity ramp** (quantile classes, ColorBrewer YlOrBr, pale yellow to burnt orange): #ffffd4, #fed98e, #fe9929, #cc4c02. Sampled-but-zero areas use #e4e4e7 and unsampled areas use #f4f4f5, so "we looked and found nothing" differs from "no data".
 
 ### Named Rules
 **The One Oxide Rule.** Oxide marks a plate or figure number, the page's primary action, an inline text action, a selection, or focus. It does nothing else. It never tints a heading word, an icon or a background for mood.

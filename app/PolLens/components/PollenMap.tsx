@@ -69,6 +69,14 @@ function slugify(name: string): string {
   );
 }
 
+/** Text colour that stays readable on a hex fill: white on dark, ink on light. */
+function readableOn(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const lin = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const luminance = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  return luminance < 0.25 ? "#ffffff" : "var(--text)";
+}
+
 /** Zoom past which unsampled places are labelled too — by then there is room. */
 const LABEL_EVERYTHING_ZOOM = 2.5;
 
@@ -473,6 +481,9 @@ export default function PollenMap() {
   const filteredPlaces = matches
     .map((row) => row.stats)
     .filter((stats): stats is PlaceStats => stats !== null);
+
+  const badgeFill = (row: PlaceRow) =>
+    row.stats ? intensityFill(scale, row.stats.totalGrains) : UNSAMPLED_FILL;
 
   /** Clicking a result: drill into a province, or frame and select a town. */
   function focusRow(row: PlaceRow) {
@@ -1044,11 +1055,10 @@ export default function PollenMap() {
                       className="focus-ring flex w-full items-center gap-3 rounded-md border border-border bg-surface px-3 py-2.5 text-left transition hover:border-border-strong"
                     >
                       <span
-                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-medium text-text"
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-medium"
                         style={{
-                          background: row.stats
-                            ? intensityFill(scale, row.stats.totalGrains)
-                            : UNSAMPLED_FILL,
+                          background: badgeFill(row),
+                          color: readableOn(badgeFill(row)),
                           fontFamily: "var(--font-mono)",
                         }}
                       >
