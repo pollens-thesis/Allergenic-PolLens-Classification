@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   LayoutGrid,
@@ -34,17 +35,13 @@ const SETTINGS_HREF = "/settings";
 /** The PolLens mark, shown in the rail and in the mobile bar. */
 function Wordmark() {
   return (
-    <>
-      <span className="flex h-8 w-8 items-center justify-center rounded-full border border-accent/30">
-        <span className="h-2 w-2 rounded-full bg-accent" />
-      </span>
-      <span
-        className="text-sm tracking-[0.18em] text-text uppercase"
-        style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-      >
-        PolLens
-      </span>
-    </>
+    <Image
+      src="/brand/pollens-logo.png"
+      alt="PolLens"
+      width={2172}
+      height={724}
+      className="block h-auto w-[165px] shrink-0 lg:w-[192px]"
+    />
   );
 }
 
