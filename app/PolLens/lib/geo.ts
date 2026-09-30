@@ -520,13 +520,15 @@ export function fitView(
 // --- Colour ----------------------------------------------------------------
 
 /**
- * Warm sand to dark earth, four steps of sampled intensity.
+ * ColorBrewer YlOrBr, four classes: pale yellow to burnt orange.
  *
- * Its steady drop in lightness separates classes in greyscale and for a
- * red-green colour-blind reader; hue reinforces the count rather than carrying
- * it alone.
+ * A published sequential palette that ColorBrewer rates colour-blind safe and
+ * print friendly. Its lightness falls steadily from class to class, so the
+ * classes stay apart in greyscale print (the usual IEEE figure requirement) and
+ * for red-green colour-blind readers; hue reinforces the count rather than
+ * carrying it alone.
  */
-export const INTENSITY_RAMP = ["#f1d7ad", "#d8ad75", "#b8754d", "#71432f"];
+export const INTENSITY_RAMP = ["#ffffd4", "#fed98e", "#fe9929", "#cc4c02"];
 
 /** Sampled, but none of the selected taxon found here. Distinct from both the
  *  ramp and the unsampled fill: "we looked and found nothing" is its own answer. */

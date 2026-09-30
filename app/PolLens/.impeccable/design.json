@@ -146,12 +146,12 @@
       },
       "mapIntensity": {
         "source": "lib/geo.ts INTENSITY_RAMP",
-        "purpose": "Warm sand-to-earth quantile classes; zero and unsampled fills are distinct answers.",
+        "purpose": "ColorBrewer YlOrBr quantile classes (colour-blind safe, print friendly); zero and unsampled fills are distinct answers.",
         "values": [
-          "#f1d7ad",
-          "#d8ad75",
-          "#b8754d",
-          "#71432f"
+          "#ffffd4",
+          "#fed98e",
+          "#fe9929",
+          "#cc4c02"
         ],
         "zeroFill": "#e4e4e7",
         "unsampledFill": "#f4f4f5"
