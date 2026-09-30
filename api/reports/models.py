@@ -14,16 +14,17 @@ RISK_LEVEL_CHOICES = [
 ]  # matches Species['riskLevel'] in app/PolLens/lib/data.ts
 
 # The report lifecycle (matches ReportStatus in app/PolLens/lib/data.ts):
-#   Pending      — analysed and stored, not yet finalised ("Generate Report")
-#   Completed    — finalised; the only status counted in charts and the map
-#   Needs review — a completed report flagged for another look
+#   Pending      — analysed and stored, not yet generated
+#   Needs review — generated and awaiting researcher sign-off, or flagged again
+#   Completed    — reviewed and signed off
+# Completed and Needs review both count in charts and the map.
 STATUS_CHOICES = [
     ('Pending', 'Pending'), ('Completed', 'Completed'), ('Needs review', 'Needs review'),
 ]
 
 # Allowed status changes via PATCH /api/v1/reports/<id>/.
 STATUS_TRANSITIONS = {
-    'Pending': {'Completed'},
+    'Pending': {'Needs review'},
     'Completed': {'Needs review'},
     'Needs review': {'Completed'},
 }
@@ -79,6 +80,7 @@ class Report(models.Model):
     """
 
     sample_id = models.CharField(max_length=20, unique=True, editable=False)
+    report_name = models.CharField(max_length=255, blank=True, default='')
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='reports',

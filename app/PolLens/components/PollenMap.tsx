@@ -133,6 +133,7 @@ export default function PollenMap() {
 
   const [species, setSpecies] = useState<SpeciesId | "all">("all");
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
+  const [searchInput, setSearchInput] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   /** A one-line answer to a search pick that found nothing to select. */
@@ -313,24 +314,25 @@ export default function PollenMap() {
 
   const selectedPlace = selected ? (places.get(selected) ?? null) : null;
 
-  function leaveScope() {
+  function leaveScope(preserveSearchInput = false) {
     setSelected(null);
     setNotice(null);
     setPendingTown(null);
-    // The search box belongs to the view you typed it in: a province name is
-    // not a town name, so carrying it inside would show an empty province.
+    // Keep a place the researcher chose visible in the control, but clear its
+    // old-scope filter so it doesn't hide every result in the newly opened view.
+    if (!preserveSearchInput) setSearchInput("");
     setFilters((f) => ({ ...f, query: "" }));
     resetZoom();
   }
 
-  function openProvince(feature: GeoFeature) {
+  function openProvince(feature: GeoFeature, preserveSearchInput = false) {
     setScope({
       level: "province",
       key: featureKey(feature),
       psgc: feature.properties.psgc,
       name: displayName(feature.properties.name),
     });
-    leaveScope();
+    leaveScope(preserveSearchInput);
   }
 
   // A town picked in the search, waiting for its province's boundaries to load.
@@ -358,7 +360,7 @@ export default function PollenMap() {
     const province = provinces?.features.find((f) => f.properties.psgc === place.provincePsgc);
     if (!province) return;
     const alreadyOpen = scope.level === "province" && scope.psgc === place.provincePsgc;
-    if (!alreadyOpen) openProvince(province);
+    if (!alreadyOpen) openProvince(province, true);
     else {
       setFilters((f) => ({ ...f, query: "" }));
       setNotice(null);
@@ -527,17 +529,23 @@ export default function PollenMap() {
               className="pointer-events-none absolute top-1/2 left-2.5 z-10 -translate-y-1/2 text-text-faint"
             />
             <LocationSearch
-              value={filters.query}
-              onChange={(text) => applyFilters({ query: text })}
+              value={searchInput}
+              onChange={(text) => {
+                setSearchInput(text);
+                applyFilters({ query: text });
+              }}
               onSelectPlace={goToPlace}
               warnUnrecognised={false}
               placeholder={`Search ${unitPlural}, or any town or province`}
               className="focus-ring w-full rounded-md border border-border bg-surface py-1.5 pr-8 pl-8 text-[13px] text-text placeholder:text-text-muted"
             />
-            {filters.query && (
+            {searchInput && (
               <button
                 type="button"
-                onClick={() => applyFilters({ query: "" })}
+                onClick={() => {
+                  setSearchInput("");
+                  if (filters.query) applyFilters({ query: "" });
+                }}
                 aria-label="Clear Search"
                 className="focus-ring absolute top-1/2 right-1.5 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-text-muted transition-[background-color,color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-surface-sunken hover:text-text active:scale-[0.9]"
               >

@@ -70,8 +70,7 @@ class ReportListCreateView(APIView):
     """
     GET  /api/v1/reports/   — list every report (shared corpus). `owner=me`
                               narrows to the caller's own (e.g. their Pending).
-    POST /api/v1/reports/   — persist an analyzed batch as one report, as
-                              Pending (to finalise later) or Completed.
+    POST /api/v1/reports/   — persist an analyzed batch as one Pending report.
     """
 
     permission_classes = [IsAuthenticated]
@@ -115,6 +114,7 @@ class ReportListCreateView(APIView):
         if query:
             reports = reports.filter(
                 Q(sample_id__icontains=query)
+                | Q(report_name__icontains=query)
                 | Q(location__icontains=query)
                 | Q(collected_at__icontains=query)
                 | Q(slides__detections__species__id__icontains=query)

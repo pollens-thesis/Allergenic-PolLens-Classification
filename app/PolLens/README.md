@@ -26,9 +26,9 @@ npx tsc --noEmit  # typecheck
 | Route | What it is |
 |---|---|
 | `/` | Sign-in — Google or Microsoft (work/school); only allowlisted accounts get in. |
-| `/dashboard` | Stat tiles, a 12-month grain-count chart, and recent reports. |
+| `/dashboard` | Location and Period filters first (6 Months by default), then a full-width summary of grains counted, pollen types and average model confidence. Analysis status controls remain on Reports. Up to five recent finalized collections, Top Pollen Counts ranked by grains across all matching finalized slides, and saved Collection Conditions. Counts link to supporting reports. Mobile stacks the panels with record metadata intact. |
 | `/upload` | **Analyze Specimen** — assemble a batch of slides, describe the collection, run the analysis; lists your pending analyses to resume. |
-| `/upload/result?report=…` | A **Pending** report: the reading beside each slide, notes, collection details (autosaved) — and **Generate Report**, which completes it. |
+| `/upload/result?report=…` | A **Pending** report: the reading beside each slide, notes, collection details (autosaved) — and **Generate Report**, which moves it to **Needs Review**. |
 | `/reports` | **Reports** — every report (shared across researchers), filterable by status/location/date, PDF and Excel export. |
 | `/reports/[sampleId]` | One report in full; its creator can flag it for review, mark it completed, or delete it. |
 | `/map` | **Pollen Map** — the Philippines shaded by grains counted in completed reports, drilling into a province's towns. |
@@ -46,8 +46,9 @@ one report with five slides.
 between.** `/upload` assembles and describes the batch; *Analyze Specimen* runs
 each slide through the detection proxy and stores the batch as a **Pending**
 report. `/upload/result` reviews it — notes and corrections autosave — and
-*Generate Report* marks it **Completed**. A pending analysis can be resumed from
-any device; a completed one can be flagged **Needs Review** by its creator.
+*Generate Report* moves it to **Needs Review**. Its creator can then mark it
+**Completed** after sign-off; a completed report can later be flagged for review
+again. A pending analysis can be resumed from any device.
 
 **Every grain is boxed.** Detections keep each grain's position, so selecting a
 pollen type draws that type's grains on the slide in its own colour and fades

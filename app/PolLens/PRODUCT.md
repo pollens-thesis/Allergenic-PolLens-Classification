@@ -41,9 +41,10 @@ general-purpose botanical classifier.
 - A **report is one collection session**. It holds several slides, each with its own image,
   detections and note. Location, date/time, researcher and weather belong to the session.
 - Lifecycle: analyze on `/upload` → stored as **Pending** → reviewed on `/upload/result`
-  (notes and corrections autosave) → **Generate Report** → **Completed**. The creator can flag
-  a completed report as **Needs Review**. "Finalised" means Completed + Needs Review; Pending
-  reports are excluded from the dashboard, chart, map and exports.
+  (notes and corrections autosave) → **Generate Report** → **Needs Review** → **Completed**
+  after sign-off. A completed report can be flagged **Needs Review** again. "Finalised" means
+  Completed + Needs Review for dashboard, chart and map counts; only Completed reports are
+  exportable.
 - Reports are a shared corpus: every signed-in researcher reads every report, and only the
   creator (or staff) edits, reviews or deletes it.
 - Outputs researchers take away: a per-report PDF (with the boxed slide images), summary PDFs

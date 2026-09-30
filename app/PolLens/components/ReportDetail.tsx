@@ -258,7 +258,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
   const imageUrls = useMemo(() => (report ? getReportImageUrls(report) : {}), [report]);
 
   async function handleDownloadPdf() {
-    if (!report) return;
+    if (!report || report.status !== "Completed") return;
     setDownloading("pdf");
     try {
       const blobs = await getReportImageBlobs(report);
@@ -279,7 +279,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
   }
 
   async function handleDownloadXlsx() {
-    if (!report) return;
+    if (!report || report.status !== "Completed") return;
     setDownloading("xlsx");
     try {
       await exportReportsXlsx([report], `${report.sampleId}.xlsx`);
@@ -351,11 +351,13 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0 flex-1">
             <h2 className="text-2xl font-semibold tracking-tight text-text">
-              {report.location || "No location recorded"}
+              {report.reportName || report.location || "No location recorded"}
             </h2>
+            {report.reportName && <p className="mt-1 text-[13px] text-text-muted">{report.location || "No location recorded"}</p>}
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <StatusBadge status={report.status} />
               {report.sampleDetections && <SampleBadge />}
+              <span className="text-[12.5px] text-text-muted" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{report.sampleId}</span>
               <span className="text-[12.5px] text-text-muted">
                 Analyzed {new Date(report.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </span>
@@ -416,7 +418,14 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                 </AlertDialog.Portal>
               </AlertDialog.Root>
             )}
-            <Button type="button" intent="secondary" size="sm" onClick={handleDownloadXlsx} disabled={downloading !== null}>
+            <Button
+              type="button"
+              intent="secondary"
+              size="sm"
+              onClick={handleDownloadXlsx}
+              disabled={downloading !== null || report.status !== "Completed"}
+              aria-describedby={report.status !== "Completed" ? "report-export-note" : undefined}
+            >
               {downloading === "xlsx" ? (
                 <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
               ) : (
@@ -424,7 +433,14 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
               )}
               Export Excel
             </Button>
-            <Button type="button" size="sm" intent="accent" onClick={handleDownloadPdf} disabled={downloading !== null}>
+            <Button
+              type="button"
+              size="sm"
+              intent="accent"
+              onClick={handleDownloadPdf}
+              disabled={downloading !== null || report.status !== "Completed"}
+              aria-describedby={report.status !== "Completed" ? "report-export-note" : undefined}
+            >
               {downloading === "pdf" ? (
                 <>
                   <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
@@ -437,6 +453,11 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                 </>
               )}
             </Button>
+            {report.status !== "Completed" && (
+              <p id="report-export-note" className="basis-full text-right text-[12px] text-text-muted">
+                Only Completed reports can be exported. Mark this report Completed first.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -480,6 +501,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
         </p>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetaItem icon={FileText} label="Report Name" value={report.reportName || report.sampleId} />
           <MetaItem
             icon={CalendarDays}
             label="Date Collected"

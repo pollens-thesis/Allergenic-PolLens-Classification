@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:dashboard": "node scripts/test-dashboard.mjs"
   },
   "engines": {
     "node": ">=20.9"

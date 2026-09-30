@@ -6,8 +6,9 @@
 // (`canEdit` on each report says which). A report's lifecycle is
 //
 //   Pending      — stored straight after analysis (Analyze → createReport)
-//   Completed    — the researcher generated the report (updateReport status)
-//   Needs review ⇄ Completed — flagged for another look
+//   Needs review — the researcher generated the report; awaiting sign-off
+//   Completed    — the researcher approved the generated report
+//   Completed ⇄ Needs review — a completed report can be flagged again
 //
 // Failures throw `ReportStoreError` with a message written for the
 // researcher; nothing here falls back to made-up data.
@@ -58,6 +59,7 @@ async function errorMessage(res: Response, fallback: string): Promise<string> {
 
 /** Field names in the report API, as the researcher sees them on screen. */
 const FIELD_LABELS: Record<string, string> = {
+  reportName: "Report name",
   location: "Location",
   collectedAt: "Collection date",
   researcher: "Researcher",
@@ -154,21 +156,21 @@ export async function getReportImageBlobs(report: Specimen): Promise<Record<stri
 }
 
 /**
- * Store a freshly analyzed batch as one report — Pending by default, so the
- * researcher can review it, add notes and generate it later from any device.
+ * Store a freshly analyzed batch as one Pending report, so the researcher can
+ * review it, add notes and generate it later from any device.
  * `images` is keyed by the slide's index in `input.slides`.
  */
 export async function createReport(
   input: NewReportInput,
   images: Record<string, Blob>,
-  status: "Pending" | "Completed" = "Pending",
   sampleDetections = false,
 ): Promise<Specimen> {
   const formData = new FormData();
+  formData.append("reportName", input.reportName.trim());
   formData.append("collectedAt", input.collectedAt);
   formData.append("location", input.location.trim());
   formData.append("researcher", input.researcher.trim());
-  formData.append("status", status);
+  formData.append("status", "Pending");
   formData.append("sampleDetections", String(sampleDetections));
   if (input.weather) formData.append("weather", JSON.stringify(input.weather));
   formData.append("slides", JSON.stringify(input.slides));
@@ -184,6 +186,7 @@ export async function createReport(
 }
 
 export type ReportPatch = {
+  reportName?: string;
   collectedAt?: CollectedAt;
   location?: string;
   researcher?: string;

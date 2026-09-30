@@ -19,7 +19,7 @@ const badgeVariants = cva(
   },
 );
 
-/** A report's lifecycle status (Pending → Completed ⇄ Needs Review). */
+/** A report's lifecycle status (Pending → Needs Review → Completed). */
 export default function StatusBadge({ status }: { status: ReportStatus }) {
   return (
     <span className={badgeVariants({ status })}>

@@ -10,7 +10,6 @@ import { toast } from "sonner";
 import {
   aggregateSlideDetections,
   formatCollectedAt,
-  getSpecies,
   formatTime,
   getCollectionDate,
   getCollectionTime,
@@ -21,17 +20,21 @@ import {
 } from "@/lib/data";
 import { downloadSelectionReportPdf } from "@/lib/pdf";
 import { exportReportsXlsx } from "@/lib/export";
+import { getDashboardLocationOptions, matchesDashboardLocation } from "@/lib/dashboard-locations";
+import { findSpecies, useSpeciesCatalog } from "@/lib/species-catalog";
 import StatusBadge, { SampleBadge } from "@/components/StatusBadge";
 import SpeciesName from "@/components/SpeciesName";
 import { Button, buttonVariants } from "@/components/Button";
 
-const STATUS_FILTERS: (ReportStatus | "All")[] = ["All", "Pending", "Completed", "Needs review"];
+// Keep Finalized for dashboard deep links; it is not offered as a Reports filter.
+type StatusFilter = ReportStatus | "All" | "Finalized";
+const STATUS_FILTERS: StatusFilter[] = ["All", "Pending", "Needs review", "Completed"];
 
 const ALL_LOCATIONS = "all";
 
 type Filters = {
   query: string;
-  status: ReportStatus | "All";
+  status: StatusFilter;
   location: string;
   /** Inclusive collection-date bounds, "YYYY-MM-DD" or "" for open-ended. */
   from: string;
@@ -47,7 +50,7 @@ const NO_FILTERS: Filters = {
 };
 
 const controlClass =
-  "focus-ring h-9 min-w-0 rounded-md border border-border bg-surface px-2 text-[13px] text-text";
+  "focus-ring min-h-11 min-w-0 rounded-md border border-border bg-surface px-2 text-[13px] text-text";
 
 /** Case- and accent-insensitive form for search: "Baños" matches "banos". */
 function fold(text: string): string {
@@ -55,18 +58,25 @@ function fold(text: string): string {
 }
 
 /**
- * Everything a search can match for one report, pre-folded: sample id,
- * location, the collection date both as shown and as stored (so "Jul 29" and
- * "2026-07-29" both work), and every pollen type detected on any slide by
- * code, scientific and common name — not just the most abundant one.
+ * Every Reports field is searchable: report/sample name, location, collection
+ * date, lifecycle status and all pollen detections, not just the most abundant.
  */
-function searchText(report: Specimen): string {
+function searchText(report: Specimen, catalog: ReturnType<typeof useSpeciesCatalog>): string {
   const species = aggregateSlideDetections(report.slides).map((d) => {
-    const sp = getSpecies(d.speciesId);
-    return `${sp.code} ${sp.scientificName} ${sp.commonName}`;
+    const sp = findSpecies(catalog, d.speciesId);
+    return `${d.speciesId} ${sp.code} ${sp.scientificName} ${sp.commonName}`;
   });
   return fold(
-    [report.sampleId, report.location, report.collectedAt, formatCollectedAt(report.collectedAt), ...species].join(
+    [
+      report.sampleId,
+      report.reportName ?? "",
+      report.location,
+      report.collectedAt,
+      formatDate(report.collectedAt),
+      formatCollectedAt(report.collectedAt),
+      report.status,
+      ...species,
+    ].join(
       " | ",
     ),
   );
@@ -102,6 +112,7 @@ export default function ReportsTable({
   initialStatus = "All",
   initialFrom = "",
   initialTo = "",
+  initialLocationScope = "all",
 }: {
   reports: Specimen[];
   /** Sample id to flag as just generated, e.g. after redirecting from the result page. */
@@ -109,12 +120,19 @@ export default function ReportsTable({
   /** Prefills the search box — the Pollen map links here filtered by town. */
   initialQuery?: string;
   /** Dashboard links prefill the review status and inclusive collection dates. */
-  initialStatus?: ReportStatus | "All";
+  initialStatus?: StatusFilter;
   initialFrom?: string;
   initialTo?: string;
+  /** Exact dashboard area/location scope, kept visible in the location control. */
+  initialLocationScope?: string;
 }) {
+  const catalog = useSpeciesCatalog();
+  const scopedLocation = useMemo(() => {
+    const options = getDashboardLocationOptions(reports);
+    return [...options.provinces, ...options.locations].find((option) => option.value === initialLocationScope);
+  }, [reports, initialLocationScope]);
   const [filters, setFilters] = useState<Filters>({
-    ...NO_FILTERS, query: initialQuery, status: initialStatus, from: initialFrom, to: initialTo,
+    ...NO_FILTERS, query: initialQuery, status: initialStatus, from: initialFrom, to: initialTo, location: scopedLocation?.value ?? ALL_LOCATIONS,
   });
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [building, setBuilding] = useState<"pdf" | "xlsx" | null>(null);
@@ -137,26 +155,26 @@ export default function ReportsTable({
   );
 
   const haystacks = useMemo(
-    () => new Map(reports.map((report) => [report.sampleId, searchText(report)])),
-    [reports],
+    () => new Map(reports.map((report) => [report.sampleId, searchText(report, catalog)])),
+    [reports, catalog],
   );
 
   // Filters on every keystroke — a partial word ("cand") is enough.
   const filtered = useMemo(() => {
-    const q = fold(filters.query.trim());
+    const queryTerms = fold(filters.query.trim()).split(/\s+/).filter(Boolean);
     return rows.filter((r) => {
       // ISO dates compare correctly as plain strings, so the range needs no
       // parsing and cannot be shifted by a timezone.
       const date = getCollectionDate(r.collectedAt);
       return (
-        (filters.status === "All" || r.status === filters.status) &&
-        (filters.location === ALL_LOCATIONS || r.location === filters.location) &&
+        (filters.status === "All" || (filters.status === "Finalized" ? isFinalised(bySampleId.get(r.sampleId)!) : r.status === filters.status)) &&
+        (filters.location === ALL_LOCATIONS || (scopedLocation && filters.location === scopedLocation.value ? matchesDashboardLocation(r.location, scopedLocation.value) : r.location === filters.location)) &&
         (filters.from === "" || date >= filters.from) &&
         (filters.to === "" || date <= filters.to) &&
-        (q.length === 0 || (haystacks.get(r.sampleId) ?? "").includes(q))
+        (queryTerms.length === 0 || queryTerms.every((term) => (haystacks.get(r.sampleId) ?? "").includes(term)))
       );
     });
-  }, [rows, filters, haystacks]);
+  }, [rows, filters, haystacks, scopedLocation, bySampleId]);
 
   const hasActiveFilters =
     filters.query.trim() !== "" ||
@@ -186,6 +204,11 @@ export default function ReportsTable({
 
   const visibleIds = filtered.map((r) => r.sampleId);
   const pickedVisible = visibleIds.filter((id) => picked.has(id));
+  const hasCompletedSelection = [...picked].some((id) => bySampleId.get(id)?.status === "Completed");
+  const nonCompletedSelectedCount = [...picked].filter((id) => {
+    const status = bySampleId.get(id)?.status;
+    return status !== undefined && status !== "Completed";
+  }).length;
   const allVisiblePicked = visibleIds.length > 0 && pickedVisible.length === visibleIds.length;
 
   function togglePicked(sampleId: string) {
@@ -212,13 +235,13 @@ export default function ReportsTable({
    * pick more — so the export works from the picked set rather than the rows
    * on screen.
    */
-  /** The ticked reports that are results — Pending analyses aren't exported. */
+  /** Only Completed reports are exportable; Pending and Needs Review are held back. */
   function chosenReports(): { reports: Specimen[]; skipped: number } {
     const all = [...picked]
       .map((id) => bySampleId.get(id))
       .filter((report): report is Specimen => report !== undefined);
     const reports = all
-      .filter(isFinalised)
+      .filter((report) => report.status === "Completed")
       .sort((a, b) => b.collectedAt.localeCompare(a.collectedAt));
     return { reports, skipped: all.length - reports.length };
   }
@@ -226,11 +249,13 @@ export default function ReportsTable({
   async function handleGenerate(format: "pdf" | "xlsx") {
     const { reports: chosen, skipped } = chosenReports();
     if (chosen.length === 0) {
-      toast.error("Only pending analyses are selected — generate their reports first to export them.");
+      toast.error("Exports are locked until reports are Completed. Mark the selected reports Completed first.");
       return;
     }
     if (skipped > 0) {
-      toast.info(`${skipped} pending ${skipped === 1 ? "analysis was" : "analyses were"} left out.`);
+      toast.info(
+        `${skipped} Pending or Needs Review ${skipped === 1 ? "report was" : "reports were"} left out; mark them Completed to export them.`,
+      );
     }
 
     setBuilding(format);
@@ -246,7 +271,7 @@ export default function ReportsTable({
 
   return (
     <div className="card-panel p-4 sm:p-5">
-      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           {/* The page title already says "Reports"; this card's heading is its count. */}
           <h2 className="sr-only">Reports</h2>
@@ -256,8 +281,8 @@ export default function ReportsTable({
           </p>
         </div>
 
-        <label className="relative sm:w-64">
-          <span className="sr-only">Search reports</span>
+        <label className="relative w-full sm:w-80">
+          <span className="sr-only">Search all report fields</span>
           <Search
             size={14}
             strokeWidth={1.75}
@@ -267,19 +292,18 @@ export default function ReportsTable({
             type="text"
             value={filters.query}
             onChange={(e) => patch({ query: e.target.value })}
-            placeholder="Search sample, location, pollen, date"
-            className="focus-ring w-full rounded-md border border-border bg-surface py-1.5 pr-3 pl-8 text-[13px] text-text placeholder:text-text-faint"
+            placeholder="Search reports, places, dates, pollen, status"
+            className="focus-ring min-h-11 w-full rounded-md border border-border bg-surface py-2 pr-3 pl-8 text-[13px] text-text placeholder:text-text-faint"
           />
         </label>
       </div>
 
-      {/* Keep each filter's label above a same-height control. On medium screens
-          status and dates get a full row; wide screens bring the filters together. */}
-      <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(18rem,1.2fr)_minmax(10rem,0.75fr)_minmax(19rem,1.4fr)_auto] xl:items-end">
-        <fieldset className="min-w-0 md:col-span-2 xl:col-span-1">
-          <legend className="mb-1 text-[12.5px] text-text-muted">Status</legend>
-          <div className="-mx-1 overflow-x-auto px-1 pb-0.5 xl:mx-0 xl:overflow-visible xl:px-0 xl:pb-0">
-            <div className="flex h-9 w-max gap-0.5 rounded-md border border-border bg-surface p-0.5">
+      <div className="mb-4 grid min-w-0 grid-cols-1 items-end gap-x-3 gap-y-3 sm:grid-cols-2 2xl:grid-cols-[minmax(21rem,1.15fr)_minmax(12rem,0.75fr)_minmax(19rem,1.3fr)_auto]">
+        <fieldset className="flex min-w-0 flex-col gap-1">
+          <legend className="text-[12.5px] text-text-muted">
+            {filters.status === "Finalized" ? "Status · Completed + Needs Review" : "Status"}
+          </legend>
+          <div className="flex h-12 max-w-full flex-wrap gap-0.5 rounded-md border border-border bg-surface p-px">
               {STATUS_FILTERS.map((option) => {
                 const active = filters.status === option;
                 return (
@@ -288,8 +312,9 @@ export default function ReportsTable({
                     type="button"
                     onClick={() => patch({ status: option })}
                     aria-pressed={active}
+                    aria-label={option === "Needs review" ? "Needs Review" : option}
                     className={clsx(
-                      "focus-ring relative h-full rounded px-2 text-[12.5px] whitespace-nowrap sm:px-2.5 sm:text-[13px]",
+                      "focus-ring relative h-full min-h-11 rounded px-2 text-[12px] whitespace-nowrap sm:px-2.5 sm:text-[13px]",
                       active ? "text-bg" : "text-text-muted transition-colors hover:text-text",
                     )}
                   >
@@ -304,7 +329,6 @@ export default function ReportsTable({
                   </button>
                 );
               })}
-            </div>
           </div>
         </fieldset>
 
@@ -313,9 +337,10 @@ export default function ReportsTable({
           <select
             value={filters.location}
             onChange={(e) => patch({ location: e.target.value })}
-            className={`${controlClass} w-full bg-surface`}
+            className={`${controlClass} h-12 w-full bg-surface`}
           >
             <option value={ALL_LOCATIONS}>All Locations</option>
+            {scopedLocation && <option value={scopedLocation.value}>{scopedLocation.label} (Dashboard)</option>}
             {locations.map((location) => (
               <option key={location} value={location}>
                 {location}
@@ -356,7 +381,7 @@ export default function ReportsTable({
           <button
             type="button"
             onClick={clearFilters}
-            className="focus-ring flex h-9 items-center justify-center gap-1 rounded-md px-2 text-[13px] text-text-muted transition-colors hover:text-text md:col-span-2 xl:col-span-1 xl:justify-self-end"
+            className="focus-ring flex min-h-11 items-center justify-center gap-1 rounded-md px-2 text-[13px] text-text-muted transition-colors hover:text-text 2xl:justify-self-end"
           >
             <X size={13} strokeWidth={1.75} />
             Clear Filters
@@ -372,6 +397,14 @@ export default function ReportsTable({
             {picked.size} {picked.size === 1 ? "report" : "reports"} selected
             {pickedVisible.length !== picked.size &&
               ` · ${picked.size - pickedVisible.length} outside the current filters`}
+            {!hasCompletedSelection ? (
+              <span className="mt-1 block text-[12px]">Exports unlock when selected reports are Completed.</span>
+            ) : nonCompletedSelectedCount > 0 ? (
+              <span className="mt-1 block text-[12px]">
+                {nonCompletedSelectedCount} Pending or Needs Review{" "}
+                {nonCompletedSelectedCount === 1 ? "report is" : "reports are"} excluded until Completed.
+              </span>
+            ) : null}
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -385,7 +418,7 @@ export default function ReportsTable({
               type="button"
               intent="secondary"
               onClick={() => handleGenerate("xlsx")}
-              disabled={building !== null}
+              disabled={building !== null || !hasCompletedSelection}
               size="sm"
             >
               {building === "xlsx" ? (
@@ -395,7 +428,12 @@ export default function ReportsTable({
               )}
               Export Excel
             </Button>
-            <Button type="button" onClick={() => handleGenerate("pdf")} disabled={building !== null} size="sm">
+            <Button
+              type="button"
+              onClick={() => handleGenerate("pdf")}
+              disabled={building !== null || !hasCompletedSelection}
+              size="sm"
+            >
               {building === "pdf" ? (
                 <>
                   <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
@@ -450,16 +488,20 @@ export default function ReportsTable({
                   <Link href={`/reports/${r.sampleId}`} className="focus-ring min-w-0 flex-1 rounded">
                     <div className="flex items-start justify-between gap-2">
                       <span
-                        className="text-[13px] text-text"
-                        style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
+                        className="min-w-0 break-words text-[13px] font-medium text-text"
                       >
-                        {r.sampleId}
+                        {r.reportName || r.sampleId}
                       </span>
                       <span className="flex items-center gap-1.5">
                         {r.sampleDetections && <SampleBadge />}
                         <StatusBadge status={r.status} />
                       </span>
                     </div>
+                    {r.reportName && (
+                      <div className="mt-0.5 text-[11.5px] text-text-faint" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                        {r.sampleId}
+                      </div>
+                    )}
                     <div className="mt-1 text-[13px] text-text">
                       {r.topSpecies ? <SpeciesName species={r.topSpecies} /> : r.topPollen}
                     </div>
@@ -517,7 +559,7 @@ export default function ReportsTable({
                   className="focus-ring h-3.5 w-3.5 accent-[var(--accent)]"
                 />
               </th>
-              <th className="py-2 pr-3 font-medium">Sample ID</th>
+              <th className="py-2 pr-3 font-medium">Report / Sample ID</th>
               <th className="py-2 pr-3 font-medium">Collected</th>
               <th className="py-2 pr-3 font-medium">Location</th>
               <th className="py-2 pr-3 font-medium">Top Pollen Detected</th>
@@ -550,9 +592,14 @@ export default function ReportsTable({
                       className="focus-ring h-3.5 w-3.5 accent-[var(--accent)]"
                     />
                   </td>
-                  <td className="py-2.5 pr-3 whitespace-nowrap text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                  <td className="py-2.5 pr-3 text-text">
                     <Link href={`/reports/${r.sampleId}`} className="focus-ring rounded">
-                      {r.sampleId}
+                      <span className="block font-medium">{r.reportName || r.sampleId}</span>
+                      {r.reportName && (
+                        <span className="mt-0.5 block text-[11.5px] text-text-faint" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                          {r.sampleId}
+                        </span>
+                      )}
                     </Link>
                     {r.sampleId === highlightId && (
                       <span className="ml-2 rounded-full bg-accent-muted px-2 py-0.5 text-[12px] text-[var(--accent-hover)]">
@@ -617,7 +664,7 @@ export default function ReportsTable({
 
       {rows.length > 0 && picked.size === 0 && (
         <p className="mt-3 text-[12px] text-text-muted">
-          Select reports for a PDF or Excel summary. Pending analyses aren&apos;t exported.
+          Only Completed reports can be included in PDF and Excel exports. Pending and Needs Review reports must be completed first.
         </p>
       )}
     </div>

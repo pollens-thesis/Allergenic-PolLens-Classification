@@ -128,12 +128,12 @@ export function speciesLabel(sp: Species): string {
 
 /**
  * A report's lifecycle (api/reports/models.py): Pending until the researcher
- * generates the report, then Completed; a completed report can be flagged
- * Needs review. Completed and Needs review reports ("finalised") count in
- * charts, stats and the map; Pending ones don't.
+ * generates it, then Needs review until they mark it Completed. Completed
+ * reports can be flagged Needs review again. Completed and Needs review
+ * reports ("finalised") count in charts, stats and the map; Pending ones don't.
  */
-export type ReportStatus = "Pending" | "Completed" | "Needs review";
-export const REPORT_STATUSES: ReportStatus[] = ["Pending", "Completed", "Needs review"];
+export type ReportStatus = "Pending" | "Needs review" | "Completed";
+export const REPORT_STATUSES: ReportStatus[] = ["Pending", "Needs review", "Completed"];
 
 /** Reports that describe finished work — what charts, stats and the map count. */
 export function isFinalised(report: { status: ReportStatus }): boolean {
@@ -345,6 +345,8 @@ export type SpecimenSlide = {
  */
 export type Specimen = {
   sampleId: string;
+  /** Researcher-provided label for the collection; older records may be unnamed. */
+  reportName?: string;
   collectedAt: CollectedAt;
   location: string; // "" only while Pending
   slides: SpecimenSlide[];
@@ -394,6 +396,7 @@ export function getReportGrains(specimen: Specimen): number {
 
 export type ReportRow = {
   sampleId: string;
+  reportName: string;
   collectedAt: CollectedAt;
   location: string;
   topPollen: string;
@@ -412,6 +415,7 @@ export function toReportRow(specimen: Specimen): ReportRow {
   const sp = top ? getSpecies(top.speciesId) : null;
   return {
     sampleId: specimen.sampleId,
+    reportName: specimen.reportName?.trim() ?? "",
     collectedAt: specimen.collectedAt,
     location: specimen.location,
     topPollen: sp ? speciesLabel(sp) : "No pollen grains detected",
@@ -475,4 +479,3 @@ export type MonthlyPollenCount = {
   /** Dynamic, keyed by SpeciesId — not a fixed struct, so it scales as the catalog changes. */
   series: Record<SpeciesId, number>;
 };
-

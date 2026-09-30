@@ -13,7 +13,7 @@ import {
   Sheet,
   UserRound,
 } from "lucide-react";
-import { isFinalised, type Specimen } from "@/lib/data";
+import { type Specimen } from "@/lib/data";
 import { displayName, getInitials, institutionFromEmail } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import { signOut } from "@/lib/session";
@@ -72,7 +72,8 @@ export default function SettingsWorkspace() {
     };
   }, []);
 
-  const finalised = reports?.filter(isFinalised) ?? [];
+  const completedReports = reports?.filter((report) => report.status === "Completed") ?? [];
+  const nonCompletedCount = reports ? reports.length - completedReports.length : 0;
   const name = displayName(settings);
   const institution = institutionFromEmail(settings.email);
 
@@ -116,31 +117,31 @@ export default function SettingsWorkspace() {
       <Section
         icon={Database}
         title="Data Export"
-        description="Download finalized shared reports."
+        description="Download completed shared reports."
       >
         <div className="card-well mb-4 grid grid-cols-2 gap-3 px-3 py-3 text-center">
           <div>
             <div className="text-lg text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-              {reports ? finalised.length : loadFailed ? "—" : "…"}
+              {reports ? completedReports.length : loadFailed ? "—" : "…"}
             </div>
-            <div className="text-[12px] text-text-muted">Finalized Reports</div>
+            <div className="text-[12px] text-text-muted">Completed Reports</div>
           </div>
           <div>
             <div className="text-lg text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-              {reports ? reports.length - finalised.length : loadFailed ? "—" : "…"}
+              {reports ? nonCompletedCount : loadFailed ? "—" : "…"}
             </div>
-            <div className="text-[12px] text-text-muted">Pending (Not Exported)</div>
+            <div className="text-[12px] text-text-muted">Pending or Needs Review</div>
           </div>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
-            disabled={!reports || finalised.length === 0 || exporting}
+            disabled={!reports || completedReports.length === 0 || exporting}
             onClick={async () => {
               setExporting(true);
               try {
-                await exportReportsXlsx(finalised);
+                await exportReportsXlsx(completedReports);
                 toast.success("Exported as Excel");
               } catch {
                 toast.error("Couldn't build the Excel file. Try again.");
@@ -155,9 +156,9 @@ export default function SettingsWorkspace() {
           </button>
           <button
             type="button"
-            disabled={!reports || finalised.length === 0}
+            disabled={!reports || completedReports.length === 0}
             onClick={() => {
-              exportReportsCsv(finalised);
+              exportReportsCsv(completedReports);
               toast.success("Exported as CSV");
             }}
             className={`${buttonVariants({ intent: "secondary", size: "md" })} focus-ring flex-1`}
@@ -167,9 +168,9 @@ export default function SettingsWorkspace() {
           </button>
           <button
             type="button"
-            disabled={!reports || finalised.length === 0}
+            disabled={!reports || completedReports.length === 0}
             onClick={() => {
-              exportReportsJson(finalised);
+              exportReportsJson(completedReports);
               toast.success("Exported as JSON");
             }}
             className={`${buttonVariants({ intent: "secondary", size: "md" })} focus-ring flex-1`}
@@ -183,7 +184,7 @@ export default function SettingsWorkspace() {
           <span>
             {loadFailed
               ? "Couldn't reach the server to load reports. Reload the page to try again."
-              : "Includes all researchers. Slide images are in report PDFs."}
+              : "Only Completed reports are exported. Pending and Needs Review reports are excluded until marked Completed. Includes all researchers."}
           </span>
         </p>
       </Section>

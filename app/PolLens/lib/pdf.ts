@@ -497,7 +497,7 @@ export async function downloadReportPdf(
   });
 
   doc.setProperties({
-    title: `PolLens ${report.sampleId} — specimen report`,
+    title: `PolLens ${report.reportName || report.sampleId} — specimen report`,
     subject: `Pollen analysis for ${report.location || "an unspecified location"}`,
     author: report.researcher,
     creator: "PolLens Research Console",
@@ -528,6 +528,7 @@ export async function downloadReportPdf(
   // --- What the researcher recorded ---------------------------------------
   heading(cursor, "Collection Details");
   metaGrid(cursor, [
+    ["Report Name", report.reportName || report.sampleId],
     ["Date Collected", shortDate(report.collectedAt)],
     ["Time Collected", collectionTime ? formatTime(collectionTime) : "Not recorded"],
     ["Location", report.location || "No location recorded"],
