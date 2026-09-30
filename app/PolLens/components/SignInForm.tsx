@@ -164,7 +164,7 @@ export default function SignInForm() {
           {error && <p className="text-[13.5px] text-danger">{error}</p>}
         </div>
       ) : (
-        <div className="card-panel p-4 sm:p-5">
+        <div className="border-t border-border pt-4">
           <div className="mb-3 flex items-center gap-2.5">
             <GoogleIcon />
             <span className="text-[13px] font-medium text-text">Choose an Account</span>

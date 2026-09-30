@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import PollenField from "@/components/PollenField";
 import SignInForm from "@/components/SignInForm";
 
@@ -9,20 +10,18 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen w-full flex-col lg:flex-row">
-      <section className="relative flex w-full flex-col justify-between gap-10 overflow-hidden bg-hero-bg px-6 py-8 sm:px-10 lg:min-h-screen lg:w-[58%] lg:gap-0 lg:px-16 lg:py-10">
+    <main className="flex min-h-dvh w-full flex-col lg:flex-row">
+      <section className="relative flex min-h-[22rem] w-full flex-col justify-between gap-10 overflow-hidden bg-hero-bg px-6 py-7 sm:min-h-[24rem] sm:px-10 sm:py-9 lg:min-h-dvh lg:w-[58%] lg:gap-0 lg:px-16 lg:py-10">
         <PollenField />
 
-        <div className="relative z-10 flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-accent/40">
-            <span className="h-2 w-2 rounded-full bg-accent" />
-          </span>
-          <span
-            className="text-sm tracking-[0.2em] text-hero-fg/90 uppercase"
-            style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
-          >
-            PolLens
-          </span>
+        <div className="relative z-10">
+          <Image
+            src="/brand/pollens-logo.png"
+            alt="PolLens"
+            width={2172}
+            height={724}
+            className="block h-auto w-[185px]"
+          />
         </div>
 
         <div className="relative z-10 max-w-xl">
@@ -37,26 +36,25 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="relative z-10 hidden border-t border-hero-fg/10 pt-4 text-[13px] text-hero-fg-muted sm:block">
-          Research workspace · PolLens
+        <div className="relative z-10 border-t border-hero-fg/10 pt-4 text-[13px] text-hero-fg-muted">
+          Research workspace
         </div>
       </section>
 
-      {/* Right: sign-in card */}
-      <section className="flex w-full flex-1 items-center justify-center bg-bg px-6 py-14 lg:w-[42%] lg:px-12">
-        <div className="w-full max-w-sm">
+      <section className="flex w-full flex-1 items-center justify-center border-t border-border bg-bg px-5 py-10 sm:px-10 lg:min-h-dvh lg:w-[42%] lg:border-l lg:border-t-0 lg:px-12 lg:py-12">
+        <div className="w-full max-w-[440px] border border-border bg-surface px-6 py-7 sm:px-8 sm:py-8">
           <div className="mb-6">
             <h2 className="text-[1.65rem] font-semibold tracking-tight text-text" style={{ fontFamily: "var(--font-display)" }}>
               Sign In
             </h2>
-            <p className="mt-1 text-[13px] leading-relaxed text-text-muted">
+            <p className="mt-2 text-[13px] leading-relaxed text-text-muted">
               Use your Google or Microsoft research account.
             </p>
           </div>
 
           <SignInForm />
 
-          <p className="mt-4 text-center text-[12px] text-text-muted">
+          <p className="mt-6 border-t border-border pt-4 text-[12px] leading-relaxed text-text-muted">
             Access for UP, MSEUF, and approved research accounts.
           </p>
         </div>

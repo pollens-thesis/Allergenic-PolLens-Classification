@@ -75,7 +75,7 @@ function GrainShape({ kind }: { kind: Grain["kind"] }) {
 
 export default function PollenField() {
   return (
-    <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
+    <div aria-hidden="true" className="absolute inset-0 overflow-hidden max-sm:hidden">
       {/* darkfield vignette, in the frontispiece's oxide */}
       <div
         className="absolute inset-0"
