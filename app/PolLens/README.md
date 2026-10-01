@@ -94,9 +94,10 @@ Everything runs against the Django API in `../../api` (see the root repo's
 
 - **Reports** live on the server and are shared by every signed-in researcher;
   only a report's creator (or staff) can edit, re-status or delete it.
-- **Detection** goes through the API's Roboflow proxy. Until the trained model
-  is deployed the API answers with a built-in sample reading, and the UI says
-  so on every analysis that used it.
+- **Detection** goes through the API's Roboflow proxy. The model is live (a
+  two-stage Roboflow Workflow). If the API's mock switch is ever on it answers
+  with a built-in sample reading, and the UI says so on every analysis that
+  used it.
 - **Sign-in** is real (Google, and Microsoft work/school accounts) and limited
   by a server-side allowlist; sessions renew automatically.
 - **Species metadata** (common name, season, allergenic risk) is still being

@@ -54,14 +54,15 @@ general-purpose botanical classifier.
 
 ## Capabilities and Constraints
 
-- Detection runs through the backend's Roboflow proxy. **The trained model is not deployed
-  yet**: the server returns a built-in sample reading, and the UI must label it as sample
-  detections, never as results.
+- Detection runs through the backend's Roboflow proxy. **The model is live** (a two-stage
+  Roboflow Workflow since 2026-10-01; the classifier still needs retraining, issue #31).
+  If the server's mock switch is on it returns a built-in sample reading, and the UI must
+  label that as sample detections, never as results; reports saved that way keep the label.
 - Weather for the collection date and time comes from Open-Meteo, pre-filled and always
   editable by the researcher.
 - The map is a choropleth over static PSGC boundaries, not tile maps with pins. Location
   entry is a search over the same place list, so saved locations always land on the map.
-- Uploads are JPEG/PNG up to 25 MB per slide.
+- Uploads are JPEG/PNG up to 25 MB per slide (iPhone "JPEG"s, which are MPO files, are accepted).
 - Stack: Next.js 16 frontend on Vercel, and a Django REST API on Render (free tier; it sleeps
   when idle). Data is in Neon Postgres and slide images in private Cloudflare R2.
 - The thesis paper is authoritative for scope, objectives and terminology. The frontend code
