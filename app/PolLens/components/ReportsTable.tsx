@@ -5,7 +5,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import clsx from "clsx";
-import { FileDown, FileSpreadsheet, Loader2, Search, X } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  FileDown,
+  FileSpreadsheet,
+  Loader2,
+  Search,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   aggregateSlideDetections,
@@ -31,6 +39,7 @@ type StatusFilter = ReportStatus | "All" | "Finalized";
 const STATUS_FILTERS: StatusFilter[] = ["All", "Pending", "Needs review", "Completed"];
 
 const ALL_LOCATIONS = "all";
+const REPORTS_PAGE_SIZE = 10;
 
 type Filters = {
   query: string;
@@ -135,6 +144,7 @@ export default function ReportsTable({
     ...NO_FILTERS, query: initialQuery, status: initialStatus, from: initialFrom, to: initialTo, location: scopedLocation?.value ?? ALL_LOCATIONS,
   });
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
   const [building, setBuilding] = useState<"pdf" | "xlsx" | null>(null);
   const router = useRouter();
 
@@ -176,6 +186,15 @@ export default function ReportsTable({
     });
   }, [rows, filters, haystacks, scopedLocation, bySampleId]);
 
+  const pageCount = Math.max(1, Math.ceil(filtered.length / REPORTS_PAGE_SIZE));
+  const page = Math.min(currentPage, pageCount);
+  const pageStart = (page - 1) * REPORTS_PAGE_SIZE;
+  const pageReports = filtered.slice(pageStart, pageStart + REPORTS_PAGE_SIZE);
+  const filteredIds = useMemo(
+    () => new Set(filtered.map((report) => report.sampleId)),
+    [filtered],
+  );
+
   const hasActiveFilters =
     filters.query.trim() !== "" ||
     filters.status !== "All" ||
@@ -184,10 +203,12 @@ export default function ReportsTable({
     filters.to !== "";
 
   function patch(next: Partial<Filters>) {
+    setCurrentPage(1);
     setFilters((current) => ({ ...current, ...next }));
   }
 
   function clearFilters() {
+    setCurrentPage(1);
     setFilters({ ...NO_FILTERS });
   }
 
@@ -202,8 +223,9 @@ export default function ReportsTable({
     router.push(`/reports/${sampleId}`);
   }
 
-  const visibleIds = filtered.map((r) => r.sampleId);
+  const visibleIds = pageReports.map((r) => r.sampleId);
   const pickedVisible = visibleIds.filter((id) => picked.has(id));
+  const pickedInFilters = [...picked].filter((id) => filteredIds.has(id)).length;
   const hasCompletedSelection = [...picked].some((id) => bySampleId.get(id)?.status === "Completed");
   const nonCompletedSelectedCount = [...picked].filter((id) => {
     const status = bySampleId.get(id)?.status;
@@ -219,7 +241,7 @@ export default function ReportsTable({
     });
   }
 
-  /** Select-all applies to what the filters are showing, not the whole table. */
+  /** Select-all applies to the current page; earlier pages stay selected. */
   function toggleAllVisible() {
     setPicked((current) => {
       const next = new Set(current);
@@ -395,8 +417,10 @@ export default function ReportsTable({
         <div className="mb-3 flex flex-col gap-2 rounded-md border border-border bg-surface-sunken px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[13px] text-text-muted">
             {picked.size} {picked.size === 1 ? "report" : "reports"} selected
-            {pickedVisible.length !== picked.size &&
-              ` · ${picked.size - pickedVisible.length} outside the current filters`}
+            {pickedInFilters > pickedVisible.length &&
+              ` · ${pickedInFilters - pickedVisible.length} on other pages`}
+            {picked.size > pickedInFilters &&
+              ` · ${picked.size - pickedInFilters} outside current filters`}
             {!hasCompletedSelection ? (
               <span className="mt-1 block text-[12px]">Exports unlock when selected reports are Completed.</span>
             ) : nonCompletedSelectedCount > 0 ? (
@@ -455,7 +479,7 @@ export default function ReportsTable({
           card is the tap target the row is on a desktop. */}
       <ul className="flex flex-col gap-2 xl:hidden">
         <AnimatePresence initial={false}>
-          {filtered.map((r) => {
+          {pageReports.map((r) => {
             const time = getCollectionTime(r.collectedAt);
             return (
               <motion.li
@@ -569,7 +593,7 @@ export default function ReportsTable({
           </thead>
           <tbody>
             <AnimatePresence initial={false}>
-              {filtered.map((r) => (
+              {pageReports.map((r) => (
                 <motion.tr
                   key={r.sampleId}
                   layout
@@ -662,11 +686,39 @@ export default function ReportsTable({
         </div>
       )}
 
-      {rows.length > 0 && picked.size === 0 && (
-        <p className="mt-3 text-[12px] text-text-muted">
-          Only Completed reports can be included in PDF and Excel exports. Pending and Needs Review reports must be completed first.
-        </p>
+      {filtered.length > 0 && (
+        <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[12.5px] text-text-muted lining-nums" aria-live="polite">
+            Showing {pageStart + 1}–{pageStart + pageReports.length} of {filtered.length} reports
+          </p>
+          {pageCount > 1 && (
+            <nav className="flex items-center gap-1 self-start sm:self-auto" aria-label="Reports pages">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(Math.max(1, page - 1))}
+                disabled={page === 1}
+                className="focus-ring inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-[13px] text-text-muted transition-colors hover:text-text disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronLeft size={15} strokeWidth={1.75} />
+                Previous
+              </button>
+              <span className="px-2 text-[12.5px] text-text-muted lining-nums">
+                {page} of {pageCount}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage(Math.min(pageCount, page + 1))}
+                disabled={page === pageCount}
+                className="focus-ring inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-[13px] text-text-muted transition-colors hover:text-text disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next
+                <ChevronRight size={15} strokeWidth={1.75} />
+              </button>
+            </nav>
+          )}
+        </div>
       )}
+
     </div>
   );
 }

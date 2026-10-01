@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
-import { ChevronLeft } from "lucide-react";
+import { ArrowRight, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import GoogleIcon from "@/components/GoogleIcon";
 import { exchangeGoogleCredential, exchangeMicrosoftIdToken, GoogleSignInError } from "@/lib/auth";
@@ -145,26 +145,32 @@ export default function SignInForm() {
             type="button"
             onClick={() => setChoosing(true)}
             disabled={pending}
-            className="focus-ring flex w-full items-center justify-center gap-3 rounded-md border border-border bg-surface px-5 py-3 text-sm font-medium text-text transition-transform duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:border-border-strong active:scale-[0.98] disabled:opacity-50"
+            className="focus-ring group flex min-h-14 w-full items-center justify-between rounded-sm border border-border bg-surface px-4 text-sm font-medium text-text transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:border-border-strong hover:bg-surface-sunken active:scale-[0.99] disabled:opacity-50"
           >
-            <GoogleIcon />
-            Continue with Google
+            <span className="flex items-center gap-3">
+              <GoogleIcon />
+              Continue with Google
+            </span>
+            <ArrowRight aria-hidden="true" size={16} className="text-text-faint transition-transform duration-[var(--duration-fast)] group-hover:translate-x-0.5" />
           </button>
           {microsoftConfigured && (
             <button
               type="button"
               onClick={() => void handleMicrosoft()}
               disabled={pending}
-              className="focus-ring flex w-full items-center justify-center gap-3 rounded-md border border-border bg-surface px-5 py-3 text-sm font-medium text-text transition-transform duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:border-border-strong active:scale-[0.98] disabled:opacity-50"
+              className="focus-ring group flex min-h-14 w-full items-center justify-between rounded-sm border border-border bg-surface px-4 text-sm font-medium text-text transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:border-border-strong hover:bg-surface-sunken active:scale-[0.99] disabled:opacity-50"
             >
-              <MicrosoftIcon />
-              {pending ? "Signing in…" : "Continue with Microsoft"}
+              <span className="flex items-center gap-3">
+                <MicrosoftIcon />
+                {pending ? "Signing in…" : "Continue with Microsoft"}
+              </span>
+              <ArrowRight aria-hidden="true" size={16} className="text-text-faint transition-transform duration-[var(--duration-fast)] group-hover:translate-x-0.5" />
             </button>
           )}
           {error && <p className="text-[13.5px] text-danger">{error}</p>}
         </div>
       ) : (
-        <div className="card-panel p-4 sm:p-5">
+        <div className="border-t border-border pt-4">
           <div className="mb-3 flex items-center gap-2.5">
             <GoogleIcon />
             <span className="text-[13px] font-medium text-text">Choose an Account</span>
