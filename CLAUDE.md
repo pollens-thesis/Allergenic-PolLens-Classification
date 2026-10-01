@@ -45,7 +45,7 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   builds the frontend from `app/PolLens/` (Root Directory `app/PolLens`). A
   push to `master` redeploys both. See `docs/deployment.md`.
 
-## Current state (2026-09-30)
+## Current state (2026-10-01)
 
 - **Live and verified:** frontend https://pollens-theta.vercel.app, API
   https://pollens-api.onrender.com (`/healthz/` ok). Render and Vercel were
@@ -76,15 +76,18 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   `gh auth refresh -h github.com -s project` once). Auto-add, item-closed and
   PR-merged rules are on. Past-work task list: the owner's local
   `PolLens-board` folder (not in the repo).
-- **Next: the detection model** (issue #10, blocked). The backend still runs
-  `ROBOFLOW_MOCK=true`, serving a sample reading. The proxy can now call a
-  two-stage Roboflow Workflow (YOLOv11 detects `pollen`, ResNet-34 names the
-  species); the runbook is `docs/roboflow-pipeline.md`. Going live is an `.env`
-  change (`ROBOFLOW_API_KEY`, `ROBOFLOW_WORKSPACE`, `ROBOFLOW_WORKFLOW_ID`,
-  `ROBOFLOW_MOCK=false`) once both models are trained, provided the
-  classification dataset's class names are the species slugs. See the detect
-  proxy in `api/CLAUDE.md` and the Single Image Upload row in
-  `docs/system-spec.md`.
+- **Detection model: live (2026-10-01, issue #10, PRs #29/#30).** Production runs
+  a two-stage Roboflow Workflow, not mock: YOLOv11 (nano) finds grains as one
+  `pollen` class, Dynamic Crop, ResNet-34 names the species (Roboflow workspace
+  `nino-elma`, workflow `detect-classify-v1`). `/detect/` calls it when
+  `ROBOFLOW_WORKFLOW_ID` is set; runbook and Workflow JSON are in
+  `docs/roboflow-pipeline.md`. iPhone MPO photos are accepted as JPEG. Reports
+  saved while mock was on keep a permanent Sample badge (delete and re-analyze
+  them). **Known problem — next focus (issue #31):** the classifier returns the
+  same species (`Sorghum halepense`) for every grain, most likely because it was
+  trained on whole-slide photos rather than grain crops; rebuild the
+  classification set from crops and retrain, then record metrics for the paper
+  (adviser item 7 in `docs/system-spec.md`).
 - **Teammate:** Niño runs the project locally and signs in. If sign-in fails
   for someone new, see the Troubleshooting table in `docs/deployment.md`
   (Google "Access blocked" = add them as a test user).

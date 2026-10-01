@@ -129,7 +129,9 @@ between the thesis proposal paper and the frontend.
   - **Validation:** every uploaded image (create and detect) is opened with
     Pillow and must be JPEG/PNG and ≤ `MAX_SLIDE_IMAGE_BYTES` (25 MB,
     paper TC-US-01) → 400/413 with a readable `detail`; the stored extension
-    comes from the detected format. Boxes slightly outside the frame are
+    comes from the detected format. Phone photos that Pillow reports as `MPO`
+    (iPhone "JPEG"s: a JPEG container with extra frames) count as JPEG and are
+    stored as `.jpg` (`ALLOWED_FORMATS` in `reports/images.py`, 2026-10-01). Boxes slightly outside the frame are
     clipped to [0,1] (a box entirely outside is 400); duplicate species in
     one slide's `detections` → 400; text fields capped at 255.
   - **Detect** responses include `"mock": true|false`.
