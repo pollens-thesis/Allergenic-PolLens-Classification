@@ -893,6 +893,20 @@ class ReportCreateValidationTests(APITestCase):
         slide = Report.objects.get(sample_id=response.data['sampleId']).slides.get()
         self.assertTrue(slide.image.name.endswith('.png'), slide.image.name)
 
+    def test_phone_mpo_photo_is_accepted_and_stored_as_jpg(self):
+        buffer = io.BytesIO()
+        frames = [Image.new('RGB', (4, 4), color=c) for c in ('white', 'black')]
+        frames[0].save(buffer, format='MPO', save_all=True, append_images=frames[1:])
+        buffer.seek(0)
+        self.assertEqual(Image.open(buffer).format, 'MPO')
+        upload = SimpleUploadedFile('IMG_2156.jpeg', buffer.getvalue(), content_type='image/jpeg')
+
+        response = self.post(image=upload)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        slide = Report.objects.get(sample_id=response.data['sampleId']).slides.get()
+        self.assertTrue(slide.image.name.endswith('.jpg'), slide.image.name)
+
     def test_pending_report_may_have_no_location_yet(self):
         response = self.post(status='Pending', location='')
 
