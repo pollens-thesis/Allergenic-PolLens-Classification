@@ -190,8 +190,9 @@ Open `VERCEL_URL` and check each step:
 - [ ] **Continue with Google** signs you in and lands on the Dashboard.
 - [ ] **Analyze Specimen**: type "cand" and pick Candelaria, Quezon. The
   weather fills in for the collection date and time (Open-Meteo, no key needed).
-- [ ] Upload a slide image and run **Analyze Specimen**. Boxes appear (sample
-  detections from mock mode).
+- [ ] Upload a slide image and run **Analyze Specimen**. Boxes appear from the
+  live Roboflow Workflow, with no "sample detections" banner (species may be wrong
+  until issue #31 is fixed). A banner means `ROBOFLOW_MOCK` is `true` on Render.
 - [ ] **Open Inspector**: zoom, select a type and a grain.
 - [ ] **Save Report** → it appears in **Reports** → open it. The slide image
   loads from R2.
@@ -218,6 +219,11 @@ Open `VERCEL_URL` and check each step:
 | Render log: `./build.sh: No such file or directory` (and Python 3.14 "default", Node being installed) | Render is building the repo root. Settings → Build & Deploy → **Root Directory `api`**, then deploy again. |
 | Vercel build can't find Next.js / builds the wrong folder | Settings → Build and Deployment → **Root Directory `app/PolLens`**. |
 | Session keeps expiring | Renewal needs the API reachable. Check Render's logs. |
+| Analyze: *detection service isn't configured* (503) | `ROBOFLOW_API_KEY` plus `ROBOFLOW_WORKSPACE` + `ROBOFLOW_WORKFLOW_ID` (or `ROBOFLOW_MODEL_ID` + `ROBOFLOW_MODEL_VERSION`) is missing on Render. |
+| Analyze: *detection service is unavailable* (502) | The Workflow isn't **published** in Roboflow, `ROBOFLOW_WORKFLOW_ID` is wrong, the **public** API key was used instead of the private one, or the Workflow's only output isn't named `predictions`. A 12 MP phone photo that takes over 30 s also ends here; read Render's log. |
+| Analyze: *"X" is MPO; use JPEG or PNG* | Fixed 2026-10-01 (phone MPO photos are accepted); redeploy the API if you still see it. |
+| Reports show a **Sample** badge | They were saved while `ROBOFLOW_MOCK` was `true`. The flag is permanent by design (their counts are the built-in example reading): delete them and re-analyze. |
+| Every grain gets the same species | Known problem (issue #31): the classifier needs retraining on grain crops. See `docs/roboflow-pipeline.md`. |
 
 ## Notes
 
