@@ -481,7 +481,7 @@ class SpeciesListViewTests(APITestCase):
 
 @override_settings(
     ROBOFLOW_API_KEY='test-key', ROBOFLOW_MODEL_ID='workspace/model', ROBOFLOW_MODEL_VERSION='1',
-    ROBOFLOW_MOCK=False,
+    ROBOFLOW_WORKSPACE='', ROBOFLOW_WORKFLOW_ID='', ROBOFLOW_MOCK=False,
 )
 class DetectViewTests(APITestCase):
     url = '/api/v1/reports/detect/'
@@ -1131,7 +1131,10 @@ class QARegressionTests(APITestCase):
         self.assertFalse(Report.objects.filter(pk=self.report.pk).exists())
 
     # --- detect --------------------------------------------------------------------
-    @override_settings(ROBOFLOW_MOCK=False, ROBOFLOW_API_KEY='k', ROBOFLOW_MODEL_ID='w/m', ROBOFLOW_MODEL_VERSION='1')
+    @override_settings(
+        ROBOFLOW_MOCK=False, ROBOFLOW_API_KEY='k', ROBOFLOW_MODEL_ID='w/m', ROBOFLOW_MODEL_VERSION='1',
+        ROBOFLOW_WORKSPACE='', ROBOFLOW_WORKFLOW_ID='',
+    )
     @patch('reports.views.requests.post')
     def test_non_object_roboflow_payload_is_502(self, mock_post):
         mock_post.return_value = Mock(status_code=200, json=lambda: ['nope'])
