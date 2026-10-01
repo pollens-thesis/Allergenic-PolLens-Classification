@@ -172,6 +172,32 @@ Republishing the Workflow is enough; no backend or frontend change is needed.
 Watch item: full 12 MP phone photos run close to the proxy's 30 s upstream
 timeout.
 
+## Capture setup and training data (issue #31, #34)
+
+**One supported setup:** 10x eyepiece, 40x objective, phone camera at **1x**
+(about 400x; a grain is ~260 px wide, ~8-9% of the photo width). The first
+classification set was shot at 20x eyepiece + 40x objective + phone 2x (about
+1600x; grains ~900 px, ~30%). Both use the same 40x objective, so the extra
+magnification adds size and blur, not detail, and the classifier never saw
+production-scale grains.
+
+Rebuild the classification set for the 400x scale:
+
+1. Box the grains in the 1600x photos (Roboflow Smart Polygon / Auto Label, then
+   check every box by hand; the detector was trained at 400x and may miss them).
+   Each slide is one species, so each crop takes the slide's label.
+2. Crop with ~10% padding and **shrink to ~1/4** so a grain is ~260 px, then
+   224x224. Augment like a 400x phone shot: slight blur, JPEG quality 70-90,
+   brightness/contrast/hue, flips and 90 degree turns, scale jitter +/-25%.
+3. Also photograph the same reference slides at the supported setup (20-50
+   photos per species), run the detector, crop, and label by slide. These are
+   in-domain data and the honest test set for the paper.
+4. Split train/valid/test **by photo, not by crop**; balance the classes.
+
+The proxy warns when a photo looks zoomed (`warnings: ["zoomed_in"]`, see
+`api/CLAUDE.md`); the Analyze screen should show a capture guide and a
+"Retake at 1x zoom" notice (frontend task).
+
 ## Cost and limits
 
 Each model step in a Workflow bills at that model's rate (YOLO11 about 0.19–0.25
