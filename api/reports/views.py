@@ -23,7 +23,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .images import SlideImageError, check_slide_image
+from .images import SlideImageError, check_slide_image, exif_zoomed_in
 
 logger = logging.getLogger(__name__)
 MANILA = zoneinfo.ZoneInfo('Asia/Manila')
@@ -184,6 +184,23 @@ class ReportListCreateView(APIView):
 ROBOFLOW_DETECT_URL = 'https://detect.roboflow.com/{model_id}/{version}'
 ROBOFLOW_WORKFLOW_URL = 'https://serverless.roboflow.com/infer/workflows/{workspace}/{workflow_id}'
 ROBOFLOW_PREDICTION_FIELDS = ('class', 'confidence', 'x', 'y', 'width', 'height')
+# Grains photographed at the supported 10x eyepiece / 40x objective / phone 1x
+# setup are ~8-9% of the image width; at the 1600x setup the classifier was
+# first trained on they are ~30%. A median past this means the photo is zoomed.
+MAX_MEDIAN_GRAIN_WIDTH_FRACTION = 0.15
+
+
+def _grains_too_large(predictions, image_width):
+    """True when the median detected box is wider than the supported scale allows."""
+    try:
+        widths = sorted(float(p['width']) for p in predictions if 'width' in p)
+        if not widths or not image_width or float(image_width) <= 0:
+            return False
+        mid = len(widths) // 2
+        median = widths[mid] if len(widths) % 2 else (widths[mid - 1] + widths[mid]) / 2
+        return median / float(image_width) > MAX_MEDIAN_GRAIN_WIDTH_FRACTION
+    except (TypeError, ValueError):
+        return False
 # A captured-shape Roboflow response (inference_id/time/image/predictions,
 # class names = Species slugs) served while ROBOFLOW_MOCK is on. Not a
 # Django loaddata fixture despite the directory name.
@@ -347,9 +364,14 @@ class DetectView(APIView):
             for p in payload.get('predictions', [])
             if isinstance(p, dict)
         ]
+        warnings = []
+        if exif_zoomed_in(image) or _grains_too_large(predictions, image_size.get('width')):
+            warnings.append('zoomed_in')
         return Response({
             'image': {'width': image_size.get('width'), 'height': image_size.get('height')},
             'predictions': predictions,
+            # Additive: e.g. "zoomed_in" = retake at 10x/40x with the phone at 1x.
+            'warnings': warnings,
             # Lets the UI say plainly that these are sample detections.
             'mock': bool(settings.ROBOFLOW_MOCK),
         })

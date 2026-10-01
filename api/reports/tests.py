@@ -529,6 +529,7 @@ class DetectViewTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(response.data, {
             'mock': False,
+            'warnings': [],
             'image': {'width': 640, 'height': 480},
             'predictions': [
                 {
@@ -558,6 +559,69 @@ class DetectViewTests(APITestCase):
         response = self.client.post(self.url, {'image': make_test_image()}, format='multipart')
 
         self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
+
+
+def make_exif_image(name='phone.jpg', digital_zoom=None, focal_35mm=None):
+    """A tiny JPEG carrying the EXIF zoom tags a phone writes."""
+    exif = Image.Exif()
+    ifd = exif.get_ifd(0x8769)
+    if digital_zoom is not None:
+        ifd[0xA404] = digital_zoom
+    if focal_35mm is not None:
+        ifd[0xA405] = focal_35mm
+    buffer = io.BytesIO()
+    Image.new('RGB', (8, 8), color='white').save(buffer, format='JPEG', exif=exif)
+    return SimpleUploadedFile(name, buffer.getvalue(), content_type='image/jpeg')
+
+
+@override_settings(
+    ROBOFLOW_API_KEY='test-key', ROBOFLOW_MODEL_ID='model', ROBOFLOW_MODEL_VERSION='1',
+    ROBOFLOW_WORKFLOW_ID='', ROBOFLOW_MOCK=False,
+)
+class DetectZoomWarningTests(APITestCase):
+    """`warnings: ["zoomed_in"]` when the photo isn't at the supported 10x/40x, phone 1x setup."""
+    url = '/api/v1/reports/detect/'
+
+    def setUp(self):
+        self.client.force_authenticate(user=User.objects.create(email='r@up.edu.ph'))
+
+    def detect(self, image, box_widths=(260.0,), image_width=3024):
+        payload = {
+            'image': {'width': image_width, 'height': 4032},
+            'predictions': [
+                {'class': 'pollen', 'confidence': 0.9, 'x': 100.0, 'y': 100.0, 'width': w, 'height': w}
+                for w in box_widths
+            ],
+        }
+        with patch('reports.views.requests.post', return_value=Mock(status_code=200, json=lambda: payload)):
+            response = self.client.post(self.url, {'image': image}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        return response.data['warnings']
+
+    def test_supported_scale_has_no_warning(self):
+        # ~8.6% of the image width, the detection.jpeg scale; no EXIF at all.
+        self.assertEqual(self.detect(make_test_image(), (250.0, 262.0, 270.0)), [])
+
+    def test_oversized_grains_warn(self):
+        # ~30% of the image width, the classification.jpeg scale.
+        self.assertEqual(self.detect(make_test_image(), (850.0, 900.0, 950.0)), ['zoomed_in'])
+
+    def test_median_not_a_single_large_box_decides(self):
+        # One big clump among normal grains must not trigger the warning.
+        self.assertEqual(self.detect(make_test_image(), (250.0, 260.0, 270.0, 900.0)), [])
+
+    def test_no_detections_has_no_warning(self):
+        self.assertEqual(self.detect(make_test_image(), ()), [])
+
+    def test_digital_zoom_exif_warns(self):
+        self.assertEqual(self.detect(make_exif_image(digital_zoom=2.0)), ['zoomed_in'])
+
+    def test_focal_length_alone_does_not_warn(self):
+        # The 400x reference photo reports 52 mm (the phone's 2x lens).
+        self.assertEqual(self.detect(make_exif_image(focal_35mm=52)), [])
+
+    def test_digital_zoom_of_1_has_no_warning(self):
+        self.assertEqual(self.detect(make_exif_image(digital_zoom=1.0, focal_35mm=26)), [])
 
 
 @override_settings(
@@ -598,6 +662,7 @@ class DetectViewWorkflowTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(response.data, {
             'mock': False,
+            'warnings': [],
             'image': {'width': 640, 'height': 480},
             'predictions': [{
                 'class': 'imperata_cylindrica', 'confidence': 0.87,
@@ -697,7 +762,7 @@ class DetectViewMockModeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         mock_post.assert_not_called()
-        self.assertEqual(set(response.data), {'image', 'predictions', 'mock'})
+        self.assertEqual(set(response.data), {'image', 'predictions', 'mock', 'warnings'})
         self.assertIs(response.data['mock'], True)
         self.assertTrue(response.data['predictions'])
         for p in response.data['predictions']:

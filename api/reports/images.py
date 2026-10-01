@@ -17,6 +17,15 @@ from PIL import Image, UnidentifiedImageError
 ALLOWED_FORMATS = {'JPEG': '.jpg', 'MPO': '.jpg', 'PNG': '.png'}
 
 
+# The classifier is trained for the 10x eyepiece / 40x objective setup. A
+# digital-zoom ratio above 1 in EXIF means the phone was zoomed. The 35 mm
+# focal length is deliberately not used: the project's own 400x reference photo
+# reports 52 mm (the phone's 2x lens), so it can't tell supported from zoomed.
+MAX_DIGITAL_ZOOM = 1.05
+EXIF_IFD = 0x8769
+EXIF_DIGITAL_ZOOM_RATIO = 0xA404
+
+
 class SlideImageError(ValueError):
     def __init__(self, message, too_large=False):
         super().__init__(message)
@@ -56,3 +65,20 @@ def check_slide_image(upload):
     if fmt not in ALLOWED_FORMATS:
         raise SlideImageError(f'"{upload.name}" is {fmt or "an unsupported format"}; use JPEG or PNG.')
     return ALLOWED_FORMATS[fmt]
+
+
+def exif_zoomed_in(upload):
+    """
+    True when the photo's EXIF digital-zoom ratio says the phone was zoomed. False when there is no EXIF or it can't be read: absence of
+    evidence is not a warning. Leaves the file positioned at the start.
+    """
+    try:
+        upload.seek(0)
+        with Image.open(upload) as img:
+            exif = img.getexif().get_ifd(EXIF_IFD)
+        zoom = float(exif.get(EXIF_DIGITAL_ZOOM_RATIO) or 0)
+    except (UnidentifiedImageError, OSError, SyntaxError, ValueError, TypeError, ZeroDivisionError):
+        return False
+    finally:
+        upload.seek(0)
+    return zoom > MAX_DIGITAL_ZOOM

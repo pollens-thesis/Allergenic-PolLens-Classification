@@ -238,6 +238,14 @@ between the thesis proposal paper and the frontend.
     pixel→normalized `BoundingBox` mapping is client-side in
     `app/PolLens/lib/analysis.ts` (`fromRoboflow`); this view exists only
     to hold the Roboflow API key server-side, not to reshape the response.
+    **`warnings` (added 2026-10-01, issue #34):** the response also carries an
+    additive list, `["zoomed_in"]` when the photo isn't at the supported 10x
+    eyepiece / 40x objective / phone 1x setup: EXIF `DigitalZoomRatio` > 1.05
+    (`images.exif_zoomed_in`) or the median detected box wider than 15% of
+    the image (`views._grains_too_large`; ~8-9% at 400x, ~30% at 1600x). The
+    EXIF 35 mm focal length is deliberately ignored (the 400x reference photo
+    reports 52 mm). `[]` otherwise, also in mock mode. The frontend ignores
+    unknown fields, so nothing breaks until it shows the notice.
     Missing image → `400`. Unconfigured (the API key, or the workspace + workflow ID / model ID + version pair in use, is blank)
     → `503 {"detail": "Detection service is not configured."}`. Any
     upstream failure (non-200, timeout, connection error) → `502
