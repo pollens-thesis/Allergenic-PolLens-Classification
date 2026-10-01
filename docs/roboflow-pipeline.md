@@ -113,7 +113,8 @@ Notes:
 ## 5. Test and deploy
 
 1. In the Workflow editor run it on a real slide image; check that boxes land
-   on grains and classes are species slugs.
+   on grains and classes are species names (slugs, or scientific names the
+   frontend can normalize to slugs).
 2. **Deploy Workflow** → copy the **workspace name** and **workflow ID**.
 3. Set the backend environment (local `api/.env` and Render → Environment):
 
@@ -128,6 +129,48 @@ Notes:
    `ROBOFLOW_MODEL_VERSION` (the single-model path, still supported).
 4. Smoke test: sign in, upload a slide on Analyze; the "sample detections"
    warning disappears (`mock: false`).
+
+## As deployed (2026-10-01)
+
+- Roboflow workspace `nino-elma`, Workflow `detect-classify-v1`, published.
+  Roboflow's editor shows it as `https://serverless.roboflow.com/nino-elma/workflows/detect-classify-v1`;
+  the backend calls the documented endpoint form
+  `https://serverless.roboflow.com/infer/workflows/nino-elma/detect-classify-v1`
+  (worked on the first live run).
+- Models (from the exported Workflow JSON): detector
+  `nino-elma/detection-m47dc-1-yolo11n-t1` (YOLOv11 **nano**, confidence 0.4),
+  classifier `nino-elma/classification-q4ggy-2-resnet34-t1`. Steps are named
+  `grain_detector`, `grain_crops`, `species_classifier`, `species_boxes`; the
+  JSON in section 4 is exactly this wiring, with those two model IDs.
+- The classifier returns scientific names such as `Sorghum halepense`; the
+  frontend lowercases and turns spaces/hyphens into underscores, which gives
+  the catalog slug (`sorghum_halepense`). Check the other 22 classes follow the
+  same rule (`toSpeciesId()` in `app/PolLens/lib/analysis.ts`).
+- iPhone photos are MPO files; the backend accepts them as JPEG
+  (`ALLOWED_FORMATS` in `api/reports/images.py`).
+- The API key lives only in Render's environment and the developer's
+  gitignored `api/.env`; never commit it.
+
+## Known problem: the classifier answers one species for every grain (issue #31)
+
+The pipeline is wired correctly (every connection was checked against the
+exported JSON), but every grain on slides of different species comes back as
+`Sorghum halepense`. Likely cause: the classification project holds
+whole-slide photos with one species label each, so the model never saw a single
+~180 px grain crop. Check, in order:
+
+1. Look at the classification dataset. If the images are whole slides, rebuild
+   it from grain crops (run the detector over them, crop each box, label each
+   crop with its slide's species) and retrain ResNet-34.
+2. Test the classifier alone on single-grain crops; if still constant, read
+   the confusion matrix and class counts, balance classes, check the
+   validation split for leakage, train longer.
+3. Add a temporary `classifier_raw` output (`species_classifier.predictions`)
+   to see each crop's top class and confidence; remove it before publishing.
+
+Republishing the Workflow is enough; no backend or frontend change is needed.
+Watch item: full 12 MP phone photos run close to the proxy's 30 s upstream
+timeout.
 
 ## Cost and limits
 

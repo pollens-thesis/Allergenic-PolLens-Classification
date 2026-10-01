@@ -238,13 +238,16 @@ between the thesis proposal paper and the frontend.
     pixel→normalized `BoundingBox` mapping is client-side in
     `app/PolLens/lib/analysis.ts` (`fromRoboflow`); this view exists only
     to hold the Roboflow API key server-side, not to reshape the response.
-    Missing image → `400`. Unconfigured (any of the three env vars blank)
+    Missing image → `400`. Unconfigured (the API key, or the workspace + workflow ID / model ID + version pair in use, is blank)
     → `503 {"detail": "Detection service is not configured."}`. Any
     upstream failure (non-200, timeout, connection error) → `502
     {"detail": "Detection service is unavailable."}`.
-    - **Mock mode (`ROBOFLOW_MOCK=true`, added 2026-09-23).** The model
-      itself isn't deployed yet (the ML/dataset side is still pending), so
-      with this flag on the upstream call is replaced by
+    - **Mock mode (`ROBOFLOW_MOCK=true`, added 2026-09-23).** Now only a
+      demo/offline switch: production runs the live Workflow and
+      `render.yaml` defaults the flag to `false` (changed 2026-10-01). A
+      report saved while it was on keeps `sampleDetections=true` permanently
+      (its counts are the built-in example reading). With the flag on the
+      upstream call is replaced by
       `_mock_roboflow_detect`, which serves
       `reports/fixtures/roboflow_detect_response.json` — a full raw
       Roboflow hosted-detect response (`inference_id`, `time`, `image`,
@@ -268,7 +271,14 @@ between the thesis proposal paper and the frontend.
       mock still wins over both. A missing/odd `outputs` → 502. The Workflow
       must expose only that `predictions` output (6 MB response cap). Runbook
       and Workflow JSON: `../docs/roboflow-pipeline.md`.
-    - **Going live:** set `ROBOFLOW_API_KEY` plus either
+    - **Live since 2026-10-01** on Render with workspace `nino-elma` and
+      workflow `detect-classify-v1` (YOLOv11 nano `…-yolo11n-t1` →
+      ResNet-34 `…-resnet34-t1`; the key is a Render secret, never in the
+      repo). **Known problem (issue #31):** the classifier returns the same
+      species for every grain, so the class and `confidence` the app shows are
+      not yet trustworthy; the fix is in the Roboflow classification data, not
+      this proxy. Watch item: full 12 MP phone photos run close to the 30 s
+      upstream timeout. **To set it up elsewhere:** set `ROBOFLOW_API_KEY` plus either
       `ROBOFLOW_WORKSPACE`/`ROBOFLOW_WORKFLOW_ID` (two-stage) or
       `ROBOFLOW_MODEL_ID`/`ROBOFLOW_MODEL_VERSION` (single model), and
       `ROBOFLOW_MOCK=false` — no code

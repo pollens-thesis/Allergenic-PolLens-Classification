@@ -35,10 +35,11 @@ paper — flag conflicts in `docs/system-spec.md` instead.
 - **Nothing invented.** No made-up data, counts, claims or placeholder results.
   Risk levels stay "Not assessed" until UPLB supplies them; species text is
   botanical only and marked for UPLB verification.
-- **Sample detections are labelled everywhere.** Until the trained model is
-  deployed, the server returns a built-in sample reading. Reports with
-  `sampleDetections` show a "Sample" stamp and notes on dashboard/map/PDF/CSV.
-  Never drop these labels.
+- **Sample detections are labelled everywhere.** The model is live (a Roboflow
+  Workflow, since 2026-10-01), but the server can still return a built-in
+  sample reading when its mock switch is on, and reports saved that way keep
+  `sampleDetections` permanently. Those reports show a "Sample" stamp and notes
+  on dashboard/map/PDF/CSV. Never drop these labels.
 - **Finalized = Completed + Needs Review.** Pending analyses are excluded from
   dashboard figures, the chart, the map and exports (with a note saying so).
 - **One oxide accent** (`--accent`) for the page's primary action, plate/figure

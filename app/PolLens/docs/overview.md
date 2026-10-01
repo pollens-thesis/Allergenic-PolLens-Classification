@@ -12,8 +12,8 @@ a real service, it says so and points at the seam where the real one plugs in.
 > historical.** Reports, images, sign-in and detection now go through the
 > Django API (`../../api`): reports are server-side and shared, with a
 > Pending → Needs Review → Completed lifecycle; sign-in is Google or Microsoft,
-> allowlisted; detection is the API's Roboflow proxy (sample readings until the
-> model is deployed); the built-in sample reports and IndexedDB storage are
+> allowlisted; detection is the API's Roboflow proxy (live since 2026-10-01: a YOLOv11 →
+> ResNet-34 Workflow; sample readings only if the server's mock switch is on); the built-in sample reports and IndexedDB storage are
 > gone. Sections below that describe IndexedDB, the in-browser mock, the
 > stand-in sign-in or seed records describe the earlier front-end-only build.
 > Current contracts: `../../api/CLAUDE.md`; decisions: the root repo's
@@ -419,9 +419,10 @@ either derived from `lib/data.ts` or read through `useSettings()`.
 
 ## What is not built yet
 
-**No trained model.** `lib/analysis.ts` returns deterministic mock detections.
-The Roboflow dataset and model are the missing piece; the seam is ready for
-them.
+**No trained model.** *(Historical: since 2026-10-01 `lib/analysis.ts` calls the
+backend's `/detect/`, which runs a live Roboflow Workflow; the classifier still
+needs retraining, issue #31.)* In the original front-end-only build,
+`lib/analysis.ts` returned deterministic mock detections.
 
 **`/dataset` — Allergen reference.** A dead link in the sidebar. The plan is
 written in [`allergen-reference-plan.md`](./allergen-reference-plan.md) and is
