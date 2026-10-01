@@ -238,7 +238,7 @@ between the thesis proposal paper and the frontend.
     pixel→normalized `BoundingBox` mapping is client-side in
     `app/PolLens/lib/analysis.ts` (`fromRoboflow`); this view exists only
     to hold the Roboflow API key server-side, not to reshape the response.
-    Missing image → `400`. Unconfigured (any of the three env vars blank)
+    Missing image → `400`. Unconfigured (the API key, or the workspace + workflow ID / model ID + version pair in use, is blank)
     → `503 {"detail": "Detection service is not configured."}`. Any
     upstream failure (non-200, timeout, connection error) → `502
     {"detail": "Detection service is unavailable."}`.
