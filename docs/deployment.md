@@ -131,7 +131,7 @@ MSEUF IT blocks it, Google sign-in still works.
    | `AWS_STORAGE_BUCKET_NAME` | `pollens-media` |
    | `AWS_S3_ENDPOINT_URL` | `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com` |
    | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | From step 1.4 |
-   | `ROBOFLOW_API_KEY` / `ROBOFLOW_MODEL_ID` / `ROBOFLOW_MODEL_VERSION` | Leave empty. `ROBOFLOW_MOCK=true` serves sample detections until the model exists. |
+   | `ROBOFLOW_API_KEY` / `ROBOFLOW_WORKSPACE` / `ROBOFLOW_WORKFLOW_ID` | The private API key and the published two-stage Workflow (`docs/roboflow-pipeline.md`). `ROBOFLOW_MOCK` is `false` in the Blueprint; with it `true` the API serves sample detections instead and reports are saved flagged as samples (the flag is permanent). |
 
    `DJANGO_SECRET_KEY` is generated for you, and `DJANGO_DEBUG` is already
    `false`.
