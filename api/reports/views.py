@@ -1,3 +1,4 @@
+import base64
 import calendar
 import logging
 from collections.abc import Mapping
@@ -181,6 +182,7 @@ class ReportListCreateView(APIView):
 
 
 ROBOFLOW_DETECT_URL = 'https://detect.roboflow.com/{model_id}/{version}'
+ROBOFLOW_WORKFLOW_URL = 'https://serverless.roboflow.com/infer/workflows/{workspace}/{workflow_id}'
 ROBOFLOW_PREDICTION_FIELDS = ('class', 'confidence', 'x', 'y', 'width', 'height')
 # A captured-shape Roboflow response (inference_id/time/image/predictions,
 # class names = Species slugs) served while ROBOFLOW_MOCK is on. Not a
@@ -210,6 +212,38 @@ def _roboflow_detect(image):
     if upstream.status_code != 200:
         raise DetectionUnavailable
     return payload
+
+
+def _roboflow_workflow(image):
+    """
+    Run the two-stage Workflow (YOLOv11 grain detector -> ResNet-34 species
+    classifier -> Detections Classes Replacement) and return its `predictions`
+    output, which has the same `{image, predictions}` shape as the hosted
+    detect API, with each box's class/confidence taken from the classifier.
+    """
+    url = ROBOFLOW_WORKFLOW_URL.format(
+        workspace=settings.ROBOFLOW_WORKSPACE, workflow_id=settings.ROBOFLOW_WORKFLOW_ID,
+    )
+    encoded = base64.b64encode(image.read()).decode('ascii')
+    try:
+        upstream = requests.post(
+            url,
+            headers={'Authorization': f'Bearer {settings.ROBOFLOW_API_KEY}'},
+            json={'inputs': {'image': {'type': 'base64', 'value': encoded}}},
+            timeout=30,
+        )
+        payload = upstream.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise DetectionUnavailable from exc
+    if upstream.status_code != 200:
+        raise DetectionUnavailable
+    try:
+        predictions = payload['outputs'][0]['predictions']
+    except (KeyError, IndexError, TypeError) as exc:
+        raise DetectionUnavailable from exc
+    if not isinstance(predictions, dict):
+        raise DetectionUnavailable
+    return predictions
 
 
 def _mock_roboflow_detect(image):
@@ -253,6 +287,10 @@ class DetectView(APIView):
     normalized top-left BoundingBox client-side, so this view exists only
     to hold the Roboflow API key server-side, not to reshape the response.
 
+    Upstream is either a single Roboflow model (ROBOFLOW_MODEL_ID/VERSION) or,
+    when ROBOFLOW_WORKFLOW_ID is set, the two-stage detect-then-classify
+    Workflow (`_roboflow_workflow`); the response shape is the same.
+
     With ROBOFLOW_MOCK on, the upstream call is swapped for
     `_mock_roboflow_detect`; everything after it is the same code path.
     """
@@ -276,17 +314,22 @@ class DetectView(APIView):
         if settings.ROBOFLOW_MOCK:
             payload = _mock_roboflow_detect(image)
         else:
-            if not (
-                settings.ROBOFLOW_API_KEY
-                and settings.ROBOFLOW_MODEL_ID
-                and settings.ROBOFLOW_MODEL_VERSION
-            ):
+            use_workflow = bool(settings.ROBOFLOW_WORKFLOW_ID)
+            if use_workflow:
+                configured = bool(settings.ROBOFLOW_API_KEY and settings.ROBOFLOW_WORKSPACE)
+            else:
+                configured = bool(
+                    settings.ROBOFLOW_API_KEY
+                    and settings.ROBOFLOW_MODEL_ID
+                    and settings.ROBOFLOW_MODEL_VERSION
+                )
+            if not configured:
                 return Response(
                     {'detail': 'Detection service is not configured.'},
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
             try:
-                payload = _roboflow_detect(image)
+                payload = _roboflow_workflow(image) if use_workflow else _roboflow_detect(image)
             except DetectionUnavailable:
                 return Response(
                     {'detail': 'Detection service is unavailable.'},

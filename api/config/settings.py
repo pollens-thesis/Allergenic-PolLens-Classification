@@ -262,6 +262,11 @@ SIGNIN_ALLOWED_EMAILS = [e.lower() for e in env_list('SIGNIN_ALLOWED_EMAILS')]
 ROBOFLOW_API_KEY = os.environ.get('ROBOFLOW_API_KEY', '')
 ROBOFLOW_MODEL_ID = os.environ.get('ROBOFLOW_MODEL_ID', '')  # e.g. "workspace-slug/model-slug"
 ROBOFLOW_MODEL_VERSION = os.environ.get('ROBOFLOW_MODEL_VERSION', '')
+# Two-stage pipeline (YOLOv11 detect -> ResNet-34 classify) is a Roboflow
+# Workflow. When ROBOFLOW_WORKFLOW_ID is set it wins over the single-model
+# ROBOFLOW_MODEL_ID/VERSION path above.
+ROBOFLOW_WORKSPACE = os.environ.get('ROBOFLOW_WORKSPACE', '')
+ROBOFLOW_WORKFLOW_ID = os.environ.get('ROBOFLOW_WORKFLOW_ID', '')
 # Serve reports/fixtures/roboflow_detect_response.json (Roboflow's real
 # response shape) instead of calling Roboflow, so the Analyze flow works
 # end-to-end before the model exists. Going live: fill the three vars

@@ -2,7 +2,7 @@
 Slide image checks shared by POST /api/v1/reports/ and POST .../detect/.
 
 Only JPEG and PNG are accepted (what microscope cameras produce and every
-browser can display), up to MAX_SLIDE_IMAGE_BYTES each — the paper's upload
+browser can display; phone "JPEG"s that Pillow reports as MPO count as JPEG), up to MAX_SLIDE_IMAGE_BYTES each — the paper's upload
 limit (test cases TC-US-01 / TC-BB-01). The format is read from the file's
 contents with Pillow, never trusted from the client's filename or MIME type,
 and the stored extension is derived from it.
@@ -11,7 +11,10 @@ and the stored extension is derived from it.
 from django.conf import settings
 from PIL import Image, UnidentifiedImageError
 
-ALLOWED_FORMATS = {'JPEG': '.jpg', 'PNG': '.png'}
+# MPO is the multi-picture container phones (iPhones especially) write for
+# ".jpeg" photos: its first frame is a plain JPEG that browsers and Roboflow
+# read as one, so it is accepted and stored as .jpg.
+ALLOWED_FORMATS = {'JPEG': '.jpg', 'MPO': '.jpg', 'PNG': '.png'}
 
 
 class SlideImageError(ValueError):

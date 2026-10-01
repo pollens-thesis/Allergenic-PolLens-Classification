@@ -77,11 +77,14 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   PR-merged rules are on. Past-work task list: the owner's local
   `PolLens-board` folder (not in the repo).
 - **Next: the detection model** (issue #10, blocked). The backend still runs
-  `ROBOFLOW_MOCK=true`, serving a sample reading. Going live is an `.env` change
-  (`ROBOFLOW_API_KEY`, `ROBOFLOW_MODEL_ID`, `ROBOFLOW_MODEL_VERSION`,
-  `ROBOFLOW_MOCK=false`), provided the dataset's class names are the species
-  slugs. See the detect proxy in `api/CLAUDE.md` and the Single Image Upload
-  row in `docs/system-spec.md`.
+  `ROBOFLOW_MOCK=true`, serving a sample reading. The proxy can now call a
+  two-stage Roboflow Workflow (YOLOv11 detects `pollen`, ResNet-34 names the
+  species); the runbook is `docs/roboflow-pipeline.md`. Going live is an `.env`
+  change (`ROBOFLOW_API_KEY`, `ROBOFLOW_WORKSPACE`, `ROBOFLOW_WORKFLOW_ID`,
+  `ROBOFLOW_MOCK=false`) once both models are trained, provided the
+  classification dataset's class names are the species slugs. See the detect
+  proxy in `api/CLAUDE.md` and the Single Image Upload row in
+  `docs/system-spec.md`.
 - **Teammate:** Niño runs the project locally and signs in. If sign-in fails
   for someone new, see the Troubleshooting table in `docs/deployment.md`
   (Google "Access blocked" = add them as a test user).

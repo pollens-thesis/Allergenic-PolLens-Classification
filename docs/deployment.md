@@ -226,10 +226,13 @@ Open `VERCEL_URL` and check each step:
   **not** copied over. The deployed app starts with the sample history plus
   whatever is already in Neon. The first build's `migrate` brings Neon's
   schema up to date, including the species catalog.
-- **Going live with the real model:** on Render, set `ROBOFLOW_API_KEY`,
-  `ROBOFLOW_MODEL_ID` and `ROBOFLOW_MODEL_VERSION`, and set
-  `ROBOFLOW_MOCK=false`. No code changes, provided the model's class names are
-  the species IDs; see `api/CLAUDE.md` → DetectView.
+- **Going live with the real model:** build the YOLOv11 → ResNet-34 Workflow
+  (`docs/roboflow-pipeline.md`), then on Render set `ROBOFLOW_API_KEY`,
+  `ROBOFLOW_WORKSPACE` and `ROBOFLOW_WORKFLOW_ID`, and set
+  `ROBOFLOW_MOCK=false`. (A single model still works via `ROBOFLOW_MODEL_ID` +
+  `ROBOFLOW_MODEL_VERSION`; the Workflow ID wins if both are set.) No code
+  changes, provided the classifier's class names are the species IDs; see
+  `api/CLAUDE.md` → DetectView.
 - **Vercel preview deployments** get per-branch URLs. To let them call the
   API, set `CORS_ALLOWED_ORIGIN_REGEXES` on Render, e.g.
   `^https://pollens-[a-z0-9-]+\.vercel\.app$`, and add those origins in

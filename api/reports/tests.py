@@ -1,3 +1,4 @@
+import base64
 import calendar
 import datetime
 import io
@@ -480,7 +481,7 @@ class SpeciesListViewTests(APITestCase):
 
 @override_settings(
     ROBOFLOW_API_KEY='test-key', ROBOFLOW_MODEL_ID='workspace/model', ROBOFLOW_MODEL_VERSION='1',
-    ROBOFLOW_MOCK=False,
+    ROBOFLOW_WORKSPACE='', ROBOFLOW_WORKFLOW_ID='', ROBOFLOW_MOCK=False,
 )
 class DetectViewTests(APITestCase):
     url = '/api/v1/reports/detect/'
@@ -558,6 +559,120 @@ class DetectViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
 
+
+@override_settings(
+    ROBOFLOW_API_KEY='test-key', ROBOFLOW_WORKSPACE='my-workspace',
+    ROBOFLOW_WORKFLOW_ID='pollen-detect-classify', ROBOFLOW_MODEL_ID='', ROBOFLOW_MODEL_VERSION='',
+    ROBOFLOW_MOCK=False,
+)
+class DetectViewWorkflowTests(APITestCase):
+    """Two-stage YOLOv11 -> ResNet-34 Roboflow Workflow mode."""
+    url = '/api/v1/reports/detect/'
+
+    def setUp(self):
+        self.user = User.objects.create(email='researcher@up.edu.ph', institution='up.edu.ph')
+        self.client.force_authenticate(user=self.user)
+
+    def post_image(self):
+        return self.client.post(self.url, {'image': make_test_image()}, format='multipart')
+
+    @staticmethod
+    def workflow_response(outputs):
+        return Mock(status_code=200, json=lambda: {'outputs': outputs, 'profiler_trace': []})
+
+    @patch('reports.views.requests.post')
+    def test_unwraps_workflow_output_and_strips_extra_fields(self, mock_post):
+        mock_post.return_value = self.workflow_response([{
+            'predictions': {
+                'image': {'width': 640, 'height': 480},
+                'predictions': [{
+                    'class': 'imperata_cylindrica', 'confidence': 0.87,
+                    'x': 50.0, 'y': 60.0, 'width': 20.0, 'height': 20.0,
+                    'class_id': 11, 'detection_id': 'abc', 'parent_id': 'image',
+                }],
+            },
+        }])
+
+        response = self.post_image()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data, {
+            'mock': False,
+            'image': {'width': 640, 'height': 480},
+            'predictions': [{
+                'class': 'imperata_cylindrica', 'confidence': 0.87,
+                'x': 50.0, 'y': 60.0, 'width': 20.0, 'height': 20.0,
+            }],
+        })
+
+    @patch('reports.views.requests.post')
+    def test_calls_the_workflow_endpoint_with_bearer_key_and_base64_image(self, mock_post):
+        mock_post.return_value = self.workflow_response(
+            [{'predictions': {'image': {'width': 1, 'height': 1}, 'predictions': []}}],
+        )
+
+        self.post_image()
+
+        self.assertEqual(
+            mock_post.call_args.args[0],
+            'https://serverless.roboflow.com/infer/workflows/my-workspace/pollen-detect-classify',
+        )
+        self.assertEqual(
+            mock_post.call_args.kwargs['headers'], {'Authorization': 'Bearer test-key'},
+        )
+        sent = mock_post.call_args.kwargs['json']['inputs']['image']
+        self.assertEqual(sent['type'], 'base64')
+        self.assertTrue(base64.b64decode(sent['value']).startswith(b'\x89PNG'))
+
+    @patch('reports.views.requests.post')
+    def test_workflow_takes_precedence_over_single_model(self, mock_post):
+        mock_post.return_value = self.workflow_response(
+            [{'predictions': {'image': {'width': 1, 'height': 1}, 'predictions': []}}],
+        )
+
+        with self.settings(ROBOFLOW_MODEL_ID='workspace/model', ROBOFLOW_MODEL_VERSION='1'):
+            self.post_image()
+
+        self.assertIn('serverless.roboflow.com/infer/workflows', mock_post.call_args.args[0])
+
+    @patch('reports.views.requests.post')
+    def test_malformed_workflow_output_returns_502(self, mock_post):
+        for outputs in ([], [{}], [{'predictions': 'nope'}], None):
+            with self.subTest(outputs=outputs):
+                mock_post.return_value = self.workflow_response(outputs)
+
+                response = self.post_image()
+
+                self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
+
+    @patch('reports.views.requests.post')
+    def test_upstream_error_status_returns_502(self, mock_post):
+        mock_post.return_value = Mock(status_code=500, json=lambda: {})
+
+        self.assertEqual(self.post_image().status_code, status.HTTP_502_BAD_GATEWAY)
+
+    @patch('reports.views.requests.post')
+    def test_upstream_connection_error_returns_502(self, mock_post):
+        mock_post.side_effect = requests.ConnectionError('boom')
+
+        self.assertEqual(self.post_image().status_code, status.HTTP_502_BAD_GATEWAY)
+
+    @override_settings(ROBOFLOW_WORKSPACE='')
+    def test_workflow_without_workspace_returns_503(self):
+        self.assertEqual(self.post_image().status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    @override_settings(ROBOFLOW_API_KEY='')
+    def test_workflow_without_api_key_returns_503(self):
+        self.assertEqual(self.post_image().status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    @override_settings(ROBOFLOW_MOCK=True)
+    @patch('reports.views.requests.post')
+    def test_mock_mode_wins_over_the_workflow(self, mock_post):
+        response = self.post_image()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertIs(response.data['mock'], True)
+        mock_post.assert_not_called()
 
 
 @override_settings(
@@ -777,6 +892,20 @@ class ReportCreateValidationTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         slide = Report.objects.get(sample_id=response.data['sampleId']).slides.get()
         self.assertTrue(slide.image.name.endswith('.png'), slide.image.name)
+
+    def test_phone_mpo_photo_is_accepted_and_stored_as_jpg(self):
+        buffer = io.BytesIO()
+        frames = [Image.new('RGB', (4, 4), color=c) for c in ('white', 'black')]
+        frames[0].save(buffer, format='MPO', save_all=True, append_images=frames[1:])
+        buffer.seek(0)
+        self.assertEqual(Image.open(buffer).format, 'MPO')
+        upload = SimpleUploadedFile('IMG_2156.jpeg', buffer.getvalue(), content_type='image/jpeg')
+
+        response = self.post(image=upload)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        slide = Report.objects.get(sample_id=response.data['sampleId']).slides.get()
+        self.assertTrue(slide.image.name.endswith('.jpg'), slide.image.name)
 
     def test_pending_report_may_have_no_location_yet(self):
         response = self.post(status='Pending', location='')
@@ -1016,7 +1145,10 @@ class QARegressionTests(APITestCase):
         self.assertFalse(Report.objects.filter(pk=self.report.pk).exists())
 
     # --- detect --------------------------------------------------------------------
-    @override_settings(ROBOFLOW_MOCK=False, ROBOFLOW_API_KEY='k', ROBOFLOW_MODEL_ID='w/m', ROBOFLOW_MODEL_VERSION='1')
+    @override_settings(
+        ROBOFLOW_MOCK=False, ROBOFLOW_API_KEY='k', ROBOFLOW_MODEL_ID='w/m', ROBOFLOW_MODEL_VERSION='1',
+        ROBOFLOW_WORKSPACE='', ROBOFLOW_WORKFLOW_ID='',
+    )
     @patch('reports.views.requests.post')
     def test_non_object_roboflow_payload_is_502(self, mock_post):
         mock_post.return_value = Mock(status_code=200, json=lambda: ['nope'])
