@@ -1,4 +1,4 @@
-"""Reproducible local YOLO11n/YOLO11s experiment on PolLens Detection v3."""
+"""Reproducible local YOLO11n/YOLO11s experiment on PolLens Detection v4."""
 
 from __future__ import annotations
 
@@ -53,8 +53,8 @@ def audit_dataset(root: Path) -> dict:
     version = re.search(r"(?m)^\s+version:\s*(\d+)\s*$", raw)
     nc = re.search(r"(?m)^nc:\s*(\d+)\s*$", raw)
     names = re.search(r"(?m)^names:\s*(\[[^\n]+\])\s*$", raw)
-    if not version or int(version.group(1)) != 3:
-        raise ValueError("Expected Roboflow Detection v3")
+    if not version or int(version.group(1)) != 4:
+        raise ValueError("Expected unaugmented Roboflow Detection v4")
     if not nc or int(nc.group(1)) != 1 or not names or ast.literal_eval(names.group(1)) != ["Pollen"]:
         raise ValueError("Expected one detection class: Pollen")
 
@@ -88,15 +88,15 @@ def audit_dataset(root: Path) -> dict:
                 boxes += 1
         summary[split] = {"images": len(images), "boxes": boxes}
 
-    expected = {"train": 876, "valid": 77, "test": 45}
+    expected = {"train": 292, "valid": 77, "test": 45}
     if {s: summary[s]["images"] for s in SPLITS} != expected:
-        raise ValueError(f"Unexpected Detection v3 split counts: {summary}")
+        raise ValueError(f"Unexpected Detection v4 split counts: {summary}")
     if any(len(v) > 1 for v in source_splits.values()):
         raise ValueError("Apparent source filename occurs across exported splits")
     if any(len(v) > 1 for v in image_hash_splits.values()):
         raise ValueError("Exact duplicate image occurs across exported splits")
     return {
-        "roboflow_version": 3,
+        "roboflow_version": 4,
         "classes": ["Pollen"],
         "splits": summary,
         "apparent_source_photos": len(source_splits),
@@ -117,9 +117,12 @@ def preserve_or_write(path: Path, value: dict, keys: tuple[str, ...]) -> None:
         write_json(path, value)
 
 
-def stage_dataset(source: Path, output: Path, fingerprint: str) -> Path:
-    """Keep Ultralytics label caches in the ignored output, away from the source."""
-    staged = output / "dataset"
+def stage_dataset(source: Path, staged: Path, fingerprint: str) -> Path:
+    """Keep Ultralytics label caches in a writable stage, away from the source."""
+    if source == staged:
+        if dataset_fingerprint(staged) != fingerprint:
+            raise ValueError(f"Dataset changed while staging: {staged}")
+        return staged
     if not staged.exists():
         shutil.copytree(source, staged, ignore=shutil.ignore_patterns("*.cache", ".DS_Store"))
     if dataset_fingerprint(staged) != fingerprint:
@@ -245,20 +248,29 @@ def make_summary(output: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dataset", type=Path, required=True, help="Unmodified Roboflow Detection v3 folder")
-    parser.add_argument("--output", type=Path, required=True, help="Local experiment output folder")
+    parser.add_argument("--dataset", type=Path, required=True, help="Unmodified Roboflow Detection v4 folder")
+    parser.add_argument("--output", type=Path, required=True, help="Experiment output folder")
+    parser.add_argument("--stage-dir", type=Path, help="Fast local dataset copy (defaults to OUTPUT/dataset)")
     parser.add_argument("--audit-only", action="store_true")
-    parser.add_argument("--smoke", action="store_true", help="One-epoch 10%%-data MPS check; no test evaluation")
+    parser.add_argument("--smoke", action="store_true", help="One-epoch 10%%-data check; no test evaluation")
     parser.add_argument("--resume", action="store_true", help="Resume an interrupted training run")
-    parser.add_argument("--batch", type=int, default=8)
-    parser.add_argument("--device", choices=("mps", "cpu"), default="mps")
+    parser.add_argument("--batch", type=int, help="Defaults to 8 on CPU or auto sizing on CUDA")
+    parser.add_argument("--workers", type=int, default=2)
+    parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
     args = parser.parse_args()
-    if args.batch < 1:
-        parser.error("--batch must be positive")
+    batch = args.batch if args.batch is not None else (-1 if args.device == "cuda" else 8)
+    if batch < 1 and not (batch == -1 and args.device == "cuda"):
+        parser.error("--batch must be positive, or -1 for CUDA automatic sizing")
+    if args.workers < 0:
+        parser.error("--workers cannot be negative")
     if args.audit_only and args.smoke:
         parser.error("--audit-only and --smoke cannot be combined")
     dataset = args.dataset.expanduser().resolve()
     output = args.output.expanduser().resolve()
+    staged_path = (args.stage_dir.expanduser().resolve() if args.stage_dir
+                   else output / "dataset")
+    if staged_path == output or output.is_relative_to(staged_path):
+        parser.error("--stage-dir must be outside --output or a subdirectory of it")
     audit = audit_dataset(dataset)
     output.mkdir(parents=True, exist_ok=True)
     preserve_or_write(output / "dataset_audit.json", audit, ("dataset_sha256",))
@@ -270,26 +282,28 @@ def main() -> None:
     import ultralytics
     from ultralytics import YOLO
 
-    if args.device == "mps" and not torch.backends.mps.is_available():
-        raise RuntimeError("PyTorch MPS is unavailable. Check the Apple Silicon PyTorch installation.")
+    if args.device == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("CUDA is unavailable. Select a GPU runtime in Colab.")
+    train_device = 0 if args.device == "cuda" else "cpu"
     data_yaml = output / "data_local.yaml"
     train_kwargs = {
         "imgsz": 640, "epochs": 1 if args.smoke else 80,
-        "patience": 15, "batch": args.batch, "workers": 2,
-        "amp": False, "seed": 42, "deterministic": True,
-        "pretrained": True, "device": args.device, "save": True,
+        "patience": 15, "batch": batch, "workers": args.workers,
+        "amp": args.device == "cuda", "seed": 42, "deterministic": True,
+        "pretrained": True, "device": train_device, "save": True,
         "save_period": -1, "plots": True, "optimizer": "AdamW",
         "lr0": 0.002, "momentum": 0.9, "cache": False,
-        "hsv_h": 0.0, "hsv_s": 0.0, "hsv_v": 0.0,
-        "degrees": 0.0, "translate": 0.0, "scale": 0.0,
-        "shear": 0.0, "perspective": 0.0, "flipud": 0.0,
-        "fliplr": 0.0, "mosaic": 0.0, "mixup": 0.0, "copy_paste": 0.0,
+        # V4 has original images. Augmentation is applied only to the train loader.
+        "hsv_h": 0.0, "hsv_s": 0.10, "hsv_v": 0.15,
+        "degrees": 15.0, "translate": 0.05, "scale": 0.25,
+        "shear": 0.0, "perspective": 0.0, "flipud": 0.5,
+        "fliplr": 0.5, "mosaic": 0.0, "mixup": 0.0, "copy_paste": 0.0,
     }
     if args.smoke:
         train_kwargs["fraction"] = 0.1
     metadata = {
         "created_utc": datetime.now(timezone.utc).isoformat(),
-        "dataset_sha256": audit["dataset_sha256"], "dataset_version": 3,
+        "dataset_sha256": audit["dataset_sha256"], "dataset_version": 4,
         "evaluation_scope": SCOPE,
         "models": [MODELS[0]] if args.smoke else list(MODELS),
         "smoke": args.smoke, "train_kwargs": train_kwargs,
@@ -304,7 +318,7 @@ def main() -> None:
         frozen = subprocess.run([sys.executable, "-m", "pip", "freeze"],
                                 capture_output=True, text=True, check=True)
         freeze_path.write_text(frozen.stdout)
-    staged = stage_dataset(dataset, output, audit["dataset_sha256"])
+    staged = stage_dataset(dataset, staged_path, audit["dataset_sha256"])
     data_yaml.write_text(json.dumps({"path": str(staged), "train": "train/images",
                                      "val": "valid/images", "test": "test/images",
                                      "nc": 1, "names": {0: "Pollen"}}, indent=2) + "\n")
@@ -345,12 +359,12 @@ def main() -> None:
             if path.exists():
                 continue
             metrics = model.val(data=str(data_yaml), split=split, imgsz=640,
-                                batch=args.batch, conf=0.001, iou=0.7,
-                                augment=False, device=args.device, workers=2,
+                                batch=8, conf=0.001, iou=0.7,
+                                augment=False, device=train_device, workers=args.workers,
                                 plots=True, project=str(model_dir),
                                 name=f"{split}_evaluation", exist_ok=True)
             write_json(path, metric_summary(metrics, name, split))
-        fixed_threshold_errors(model, model_dir, staged, args.device)
+        fixed_threshold_errors(model, model_dir, staged, train_device)
     make_summary(output)
     print(f"Finished. Comparison: {output / 'summary.csv'}")
 

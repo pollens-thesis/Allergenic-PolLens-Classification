@@ -1,71 +1,86 @@
 # Local YOLO11 pollen detection experiment
 
-This experiment trains COCO-pretrained YOLO11n and YOLO11s on the corrected
-Roboflow Detection v3 export. It runs on an Apple Silicon Mac with PyTorch MPS
-and saves every checkpoint and metric locally. The dataset and outputs are
-private and excluded from this public repository.
+This experiment trains COCO-pretrained **YOLO11n** and **YOLO11s** on the
+unaugmented Roboflow **Detection v4** export. It uses the same train, validation,
+and test images for both models. The dataset, checkpoints, and results stay on
+private storage and are excluded from the public repository.
 
-## Setup
+## Google Colab + Drive
 
-From the repository root:
+Open [colab_detection_v4.ipynb](colab_detection_v4.ipynb) in Google Colab from
+the GitHub branch. Upload the private `Detection-2.zip` archive to
+`MyDrive/PolLens/datasets/` (or change `DATASET_SOURCE` in the notebook to your
+Drive folder or ZIP). Select a GPU runtime and run the notebook cells in order.
+It clones this repository, records the exact Git commit, checks the export,
+stages the full-resolution images on Colab's local disk for training speed,
+then saves checkpoints and results to `MyDrive/PolLens/experiments/`.
+
+After a Colab interruption, rerun with the same `OUTPUT_ROOT` and
+`STAGE_DIR`, and set `RESUME = True`. The notebook checks that the code and
+dataset match the original run. Colab uses its CUDA-enabled PyTorch build,
+automatic GPU batch sizing, and mixed precision. The installed versions and
+resolved training settings are saved with the results.
+
+The notebook's default `REPO_REF` is the experiment branch; update it to the
+merged commit or branch when the work is merged into `master`.
+
+## Mac CPU alternative
+
+From the repository root, using Python 3.12:
 
 ```bash
 /opt/homebrew/bin/python3.12 -m venv .venv-ml
 .venv-ml/bin/python -m pip install -r experiments/detection/requirements.txt
 .venv-ml/bin/python experiments/detection/train_local.py \
-  --dataset /Users/nino/Downloads/Detection \
-  --output ml-runs/detection-v3 --audit-only
+  --dataset /Users/nino/Downloads/Detection-2 \
+  --output ml-runs/detection-v4 --audit-only
 ```
 
-Run a one-epoch hardware check before the thesis runs:
+Run a short CPU hardware check, then the full two-model experiment in a **new**
+output directory:
 
 ```bash
 .venv-ml/bin/python experiments/detection/train_local.py \
-  --dataset /Users/nino/Downloads/Detection \
-  --output ml-runs/detection-v3-smoke --smoke
-```
-
-Then run the two full experiments. Keep this command running while training;
-the Mac must stay awake and connected when pretrained weights first download.
-
-```bash
+  --dataset /Users/nino/Downloads/Detection-2 \
+  --output ml-runs/detection-v4-smoke --smoke
 .venv-ml/bin/python experiments/detection/train_local.py \
-  --dataset /Users/nino/Downloads/Detection \
-  --output ml-runs/detection-v3
+  --dataset /Users/nino/Downloads/Detection-2 \
+  --output ml-runs/detection-v4
 ```
 
-Training uses 640-pixel input, up to 80 epochs, patience 15, batch 8, two
-workers, seed 42, saved checkpoints, and no additional image augmentation.
-Both models use AdamW with a 0.002 initial learning rate and 0.9 momentum.
-The Roboflow export already contains three augmented train images per apparent
-source photo. On MPS, Ultralytics automatic batch sizing is unavailable and
-mixed precision is skipped. Ultralytics may reduce the effective worker count
-on MPS; inspect each run's `args.yaml`. PyTorch warns that some MPS operations
-do not have deterministic implementations, so the seed supports repeatability
-but does not guarantee identical reruns. If memory is insufficient, start **both** full
-runs in a new output directory with `--batch 4`; don't compare runs made with
-different settings as a controlled model-size experiment.
+The default is **CPU**. The earlier v3 run crashed at epoch 7 inside
+PyTorch's MPS `unique` operation, so this pinned setup does not use MPS for
+thesis training or evaluation. Keep the Mac awake while a full run is active.
 
-If training is interrupted, rerun the same command with `--resume`. Existing
-completed training and evaluation files are reused. A changed dataset,
-software version, or experiment setting requires a new output directory.
+Both models use 640-pixel input, batch 8, AdamW (initial learning rate 0.002,
+momentum 0.9), seed 42, up to 80 epochs, and early stopping patience 15.
+Only the training loader applies mild brightness/saturation, rotation,
+translation, scale, and flip augmentation. Validation and test images remain
+untouched. The exact requested and effective settings are saved in
+`run_metadata.json` and each model's `args.yaml`.
 
-## Results and limits
+If training stops, rerun the same full command with `--resume`. A changed
+dataset, software version, batch size, or other setting requires a new output
+directory. Do not use the test split to tune the models.
 
-`dataset_audit.json` records counts, annotation checks, and a SHA-256 dataset
-fingerprint. `run_metadata.json` records the installed software and settings.
-`requirements-freeze.txt` captures the full installed Python environment.
-The runner makes a private copy at `OUTPUT/dataset` so Ultralytics cache files
-do not change the source export. Each model folder has
-`weights/best.pt`, `weights/last.pt`, training logs,
-validation and test metrics and plots, a fixed-confidence error count, and up
-to five marked missed-grain examples. `summary.csv` compares models. The
-operating point uses confidence 0.40 and an IoU 0.50 match, matching the
-deployed detector confidence; it is separate from the standard mAP analysis.
+## Outputs
 
-Detection v3 contains 876 train, 77 validation, and 45 test images, with only
-one physical microscope slide per species. The exported split can test held-out
-**images from those slides**, but cannot measure generalization to unseen
-physical slides. Detection v3 also differs from Detection v1 used for the
-previously reported Roboflow YOLO11n result, so this is a new baseline. Do not
-tune on test results or describe them as independent-slide performance.
+The runner audits labels and split membership, computes a SHA-256 dataset
+fingerprint, and copies the dataset into `OUTPUT/dataset` so Ultralytics cache
+files do not alter the source export. It records the installed Python packages
+in `requirements-freeze.txt`. Each model folder saves `best.pt`, `last.pt`,
+training logs, validation and test plots and metrics, per-image errors at
+confidence 0.40, and five marked error examples. `summary.csv` compares the
+models on the same exported splits. The fixed-confidence error counts use IoU
+0.50 to match predictions to labels and are separate from mAP.
+
+## Interpretation
+
+Detection v4 has **292 train**, **77 validation**, and **45 test** images, with
+737, 208, and 135 labeled pollen boxes respectively. Most photos are
+4032×3024 pixels. The apparent source filenames and exact image bytes do not
+cross exported splits. However, the team has **one physical microscope slide
+per species**, so these metrics measure held-out photos from known slides, not
+generalization to unseen physical slides. Detection v4 also differs from the
+September 17 Detection v1 behind the reported Roboflow YOLO11n result; it is
+a new baseline rather than an exact reproduction.
