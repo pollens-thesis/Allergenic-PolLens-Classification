@@ -5,3 +5,10 @@
 # privately, never published
 docs/private/
 /Pics/
+
+# Local ML environment, datasets, checkpoints, and experiment output
+/.venv-ml/
+/ml-runs/
+__pycache__/
+*.pyc
+*.pt

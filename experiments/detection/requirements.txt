@@ -1,0 +1,3 @@
+ultralytics==8.4.171
+torch==2.14.1
+torchvision==0.29.1
