@@ -255,9 +255,15 @@ SIGNIN_ALLOWED_DOMAINS = [
 SIGNIN_ALLOWED_EMAILS = [e.lower() for e in env_list('SIGNIN_ALLOWED_EMAILS')]
 
 
-# Roboflow
-# Grain detection proxy — see reports.views.DetectView. The model isn't
-# deployed yet as of this writing; these are left blank until it is.
+# Inference providers — see reports.views.DetectView. Production continues
+# to use the Roboflow Workflow unless the local YOLO26 transition is selected.
+
+DETECTION_BACKEND = os.environ.get('DETECTION_BACKEND', 'roboflow').strip().lower()
+YOLO26_WEIGHTS_PATH = os.environ.get('YOLO26_WEIGHTS_PATH', '').strip()
+YOLO26_CLASSIFIER_WEIGHTS_PATH = os.environ.get('YOLO26_CLASSIFIER_WEIGHTS_PATH', '').strip()
+YOLO26_CONFIDENCE = float(os.environ.get('YOLO26_CONFIDENCE', '0.25'))
+YOLO26_IMAGE_SIZE = int(os.environ.get('YOLO26_IMAGE_SIZE', '640'))
+YOLO26_DEVICE = os.environ.get('YOLO26_DEVICE', 'cpu').strip() or 'cpu'
 
 ROBOFLOW_API_KEY = os.environ.get('ROBOFLOW_API_KEY', '')
 ROBOFLOW_MODEL_ID = os.environ.get('ROBOFLOW_MODEL_ID', '')  # e.g. "workspace-slug/model-slug"
@@ -267,10 +273,9 @@ ROBOFLOW_MODEL_VERSION = os.environ.get('ROBOFLOW_MODEL_VERSION', '')
 # ROBOFLOW_MODEL_ID/VERSION path above.
 ROBOFLOW_WORKSPACE = os.environ.get('ROBOFLOW_WORKSPACE', '')
 ROBOFLOW_WORKFLOW_ID = os.environ.get('ROBOFLOW_WORKFLOW_ID', '')
-# Serve reports/fixtures/roboflow_detect_response.json (Roboflow's real
-# response shape) instead of calling Roboflow, so the Analyze flow works
-# end-to-end before the model exists. Going live: fill the three vars
-# above and set this to false — no code changes.
+# Serve reports/fixtures/roboflow_detect_response.json (Roboflow-compatible
+# shape) instead of calling a model. This demo/offline switch takes precedence
+# over DETECTION_BACKEND; set it to false to exercise a configured provider.
 ROBOFLOW_MOCK = env_bool('ROBOFLOW_MOCK', False)
 
 

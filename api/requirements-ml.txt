@@ -1,0 +1,5 @@
+# Optional local and model-staging inference dependencies. The default
+# production build stays on requirements.txt unless INSTALL_ML_DEPENDENCIES=true.
+ultralytics==8.4.174
+numpy==2.5.3
+onnxruntime==1.31.0

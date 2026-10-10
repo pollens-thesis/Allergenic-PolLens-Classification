@@ -1,0 +1,75 @@
+# Separate model staging service. Do not use this Blueprint for pollens-api.
+# Supply a staging Neon database, staging media bucket, and read-only model
+# artifact credentials in the Render Dashboard before the first deploy.
+services:
+  - type: web
+    name: pollens-api-yolo26-staging
+    runtime: python
+    # Start at 2 GB based on the local one-worker peak; increase if staging
+    # measurements show the required memory or latency headroom is missing.
+    plan: 1c-2g
+    region: singapore
+    autoDeploy: false
+    buildCommand: ./build.sh
+    startCommand: ./start_yolo26.sh
+    healthCheckPath: /healthz/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.14
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: MICROSOFT_CLIENT_ID
+        sync: false
+      - key: SIGNIN_ALLOWED_DOMAINS
+        value: up.edu.ph,mseuf.edu.ph
+      - key: SIGNIN_ALLOWED_EMAILS
+        sync: false
+      # Separate R2 bucket and credentials for test slide uploads.
+      - key: AWS_STORAGE_BUCKET_NAME
+        sync: false
+      - key: AWS_S3_ENDPOINT_URL
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      # Install optional CPU inference runtimes only on this model service.
+      - key: INSTALL_ML_DEPENDENCIES
+        value: "true"
+      - key: DETECTION_BACKEND
+        value: yolo26
+      - key: ROBOFLOW_MOCK
+        value: "false"
+      - key: YOLO26_WEIGHTS_PATH
+        value: /tmp/pollens-models/yolo26l_v12_best.pt
+      - key: YOLO26_CLASSIFIER_WEIGHTS_PATH
+        value: /tmp/pollens-models/efficientnet_b0_pollen15.onnx
+      - key: YOLO26_CONFIDENCE
+        value: "0.25"
+      - key: YOLO26_IMAGE_SIZE
+        value: "640"
+      - key: YOLO26_DEVICE
+        value: cpu
+      - key: GUNICORN_TIMEOUT
+        value: "120"
+      # Use a dedicated read-only token and a private model-artifacts bucket.
+      - key: YOLO26_ARTIFACTS_ENDPOINT_URL
+        sync: false
+      - key: YOLO26_ARTIFACTS_BUCKET
+        sync: false
+      - key: YOLO26_ARTIFACTS_OBJECT_KEY
+        value: pollens/models/pollens-yolo26l-v12-efficientnet-b0-pollen15-v1.zip
+      - key: YOLO26_ARTIFACTS_BUNDLE_SHA256
+        sync: false
+      - key: YOLO26_ARTIFACTS_ACCESS_KEY_ID
+        sync: false
+      - key: YOLO26_ARTIFACTS_SECRET_ACCESS_KEY
+        sync: false
