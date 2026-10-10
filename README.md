@@ -38,6 +38,13 @@ production cutover, and rollback. The previous Roboflow credentials remain
 available during the rollback window. To return new requests to the previous
 provider, set `DETECTION_BACKEND=roboflow` and deploy that environment change.
 
+## Researcher review
+
+Reports in Needs Review include tools for correcting labels and boxes, removing
+non-pollen detections, and adding missed pollen. See
+[docs/researcher-review.md](docs/researcher-review.md) for the workflow,
+annotation behavior, and local validation steps.
+
 ## Local development
 
 Configure `api/.env` from [api/.env.example](api/.env.example) and

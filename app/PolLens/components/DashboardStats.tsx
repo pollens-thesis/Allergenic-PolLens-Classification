@@ -1,7 +1,9 @@
 import type { DashboardSummary } from "@/lib/dashboard";
 
 export default function DashboardStats({ summary, failed }: { summary: DashboardSummary | null; failed: boolean }) {
-  const confidence = summary && summary.grainCount > 0 ? `${Math.round(summary.avgConfidence * 100)}%` : "—";
+  const confidence = summary?.avgConfidence !== null && summary?.avgConfidence !== undefined
+    ? `${Math.round(summary.avgConfidence * 100)}%`
+    : "—";
   const metrics = [
     { label: "Grains Counted", value: summary?.grainCount.toLocaleString() },
     { label: "Pollen Types", value: summary?.pollenTypeCount.toLocaleString() },

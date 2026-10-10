@@ -19,6 +19,7 @@ import {
   formatTime,
   getCollectionDate,
   getCollectionTime,
+  getConfidenceGrainCount,
   getSpecies,
   getTopDetection,
   getTotalGrains,
@@ -313,16 +314,21 @@ function detectionTable(cursor: Cursor, detections: SpecimenDetection[]) {
     doc.setTextColor(INK);
     doc.text(String(detection.grainCount), col.grains, cursor.y, { align: "right" });
 
-    // Confidence bar, with the figure right-aligned after it.
-    const pct = Math.round(detection.avgConfidence * 100);
-    const barWidth = 26;
-    const barX = col.confidence - barWidth - 12;
-    doc.setFillColor(RULE);
-    doc.roundedRect(barX, cursor.y - 2.4, barWidth, 1.8, 0.9, 0.9, "F");
-    doc.setFillColor(ACCENT);
-    doc.roundedRect(barX, cursor.y - 2.4, (barWidth * pct) / 100, 1.8, 0.9, 0.9, "F");
-    doc.setFontSize(9);
-    doc.text(`${pct}%`, col.confidence, cursor.y, { align: "right" });
+    // Manual additions have no model score; show that instead of 0%.
+    if (getConfidenceGrainCount(detection) > 0) {
+      const pct = Math.round(detection.avgConfidence * 100);
+      const barWidth = 26;
+      const barX = col.confidence - barWidth - 12;
+      doc.setFillColor(RULE);
+      doc.roundedRect(barX, cursor.y - 2.4, barWidth, 1.8, 0.9, 0.9, "F");
+      doc.setFillColor(ACCENT);
+      doc.roundedRect(barX, cursor.y - 2.4, (barWidth * pct) / 100, 1.8, 0.9, 0.9, "F");
+      doc.setFontSize(9);
+      doc.text(`${pct}%`, col.confidence, cursor.y, { align: "right" });
+    } else {
+      doc.setFontSize(9);
+      doc.text("—", col.confidence, cursor.y, { align: "right" });
+    }
 
     cursor.y += rowHeight;
   });
@@ -508,6 +514,7 @@ export async function downloadReportPdf(
   const top = getTopDetection(aggregated);
   const collectionTime = getCollectionTime(report.collectedAt);
   const weather = report.weather;
+  const overallConfidence = getWeightedAvgConfidence(aggregated);
 
   masthead(cursor, {
     title: "Pollen Count Report",
@@ -520,7 +527,7 @@ export async function downloadReportPdf(
   summaryTiles(cursor, [
     { value: String(totalGrains), label: "Total Grains" },
     { value: String(aggregated.length), label: "Pollen Types" },
-    { value: `${Math.round(getWeightedAvgConfidence(aggregated) * 100)}%`, label: "Avg. Confidence" },
+    { value: overallConfidence === null ? "—" : `${Math.round(overallConfidence * 100)}%`, label: "Avg. Model Confidence" },
     { value: String(report.slides.length), label: report.slides.length === 1 ? "Slide" : "Slides" },
   ]);
   compositionBar(cursor, aggregated);
@@ -648,10 +655,14 @@ function placesFromReports(reports: Specimen[]): PlaceStats[] {
       const existing = place.detections.find((d) => d.speciesId === detection.speciesId);
       if (existing) {
         const grains = existing.grainCount + detection.grainCount;
-        existing.avgConfidence =
-          (existing.avgConfidence * existing.grainCount +
-            detection.avgConfidence * detection.grainCount) /
-          grains;
+        const oldConfidenceGrains = getConfidenceGrainCount(existing);
+        const newConfidenceGrains = getConfidenceGrainCount(detection);
+        const confidenceGrainCount = oldConfidenceGrains + newConfidenceGrains;
+        existing.avgConfidence = confidenceGrainCount
+          ? (existing.avgConfidence * oldConfidenceGrains + detection.avgConfidence * newConfidenceGrains) /
+            confidenceGrainCount
+          : 0;
+        existing.confidenceGrainCount = confidenceGrainCount;
         existing.grainCount = grains;
       } else {
         place.detections.push({ ...detection });
@@ -826,10 +837,14 @@ function combinePlaces(places: PlaceStats[]): SpecimenDetection[] {
         continue;
       }
       const grains = existing.grainCount + detection.grainCount;
-      existing.avgConfidence =
-        (existing.avgConfidence * existing.grainCount +
-          detection.avgConfidence * detection.grainCount) /
-        grains;
+      const oldConfidenceGrains = getConfidenceGrainCount(existing);
+      const newConfidenceGrains = getConfidenceGrainCount(detection);
+      const confidenceGrainCount = oldConfidenceGrains + newConfidenceGrains;
+      existing.avgConfidence = confidenceGrainCount
+        ? (existing.avgConfidence * oldConfidenceGrains + detection.avgConfidence * newConfidenceGrains) /
+          confidenceGrainCount
+        : 0;
+      existing.confidenceGrainCount = confidenceGrainCount;
       existing.grainCount = grains;
     }
   }

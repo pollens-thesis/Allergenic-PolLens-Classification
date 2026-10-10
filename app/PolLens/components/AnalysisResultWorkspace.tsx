@@ -732,7 +732,7 @@ export default function AnalysisResultWorkspace({
               <div className="mb-3 grid grid-cols-3 gap-2 border-y border-border py-2.5 text-center">
                 <SummaryTile value={totalGrains} label="Grains" />
                 <SummaryTile value={detections.length} label={detections.length === 1 ? "Pollen Type" : "Pollen Types"} />
-                <SummaryTile value={`${Math.round(confidence * 100)}%`} label="Avg. Confidence" />
+                <SummaryTile value={confidence === null ? "—" : `${Math.round(confidence * 100)}%`} label="Avg. Model Confidence" />
               </div>
 
               {detections.length === 0 ? (

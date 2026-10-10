@@ -16,6 +16,10 @@
 
 import {
   type CollectedAt,
+  type GrainAnnotation,
+  type GrainAnnotationKind,
+  type BoundingBox,
+  type SpeciesId,
   type ReportStatus,
   type Specimen,
   type SpecimenSlide,
@@ -195,6 +199,45 @@ export type ReportPatch = {
   notes?: Record<string, string>;
   status?: ReportStatus;
 };
+
+export type GrainAnnotationInput = {
+  slideId: string;
+  grainId: string | null;
+  kind: GrainAnnotationKind;
+  speciesId: SpeciesId | null;
+  box: BoundingBox;
+};
+
+/** Save one reviewer annotation; repeated saves for the same grain update it. */
+export async function saveGrainAnnotation(
+  sampleId: string,
+  id: string,
+  annotation: GrainAnnotationInput,
+): Promise<GrainAnnotation> {
+  const res = await request(
+    `/api/v1/reports/${encodeURIComponent(sampleId)}/annotations/${encodeURIComponent(id)}/`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(annotation),
+    },
+  );
+  if (!res.ok) {
+    throw new ReportStoreError(await errorMessage(res, "Couldn't save the annotation."));
+  }
+  return (await res.json()) as GrainAnnotation;
+}
+
+/** Remove a reviewer annotation and restore the model's unreviewed state. */
+export async function deleteGrainAnnotation(sampleId: string, id: string): Promise<void> {
+  const res = await request(
+    `/api/v1/reports/${encodeURIComponent(sampleId)}/annotations/${encodeURIComponent(id)}/`,
+    { method: "DELETE" },
+  );
+  if (!res.ok && res.status !== 404) {
+    throw new ReportStoreError(await errorMessage(res, "Couldn't remove the annotation."));
+  }
+}
 
 /** Edit a report you created (details, notes) and/or move it along its lifecycle. */
 export async function updateReport(

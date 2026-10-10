@@ -220,7 +220,7 @@ function InspectorBody({
           <dl className="grid grid-cols-3 divide-x divide-border rounded-md border border-border bg-surface-sunken text-center">
             <Stat label="Grains" value={slideGrains} />
             <Stat label="Types" value={slide.detections.length} />
-            <Stat label="Avg. Confidence" value={`${Math.round(slideConfidence * 100)}%`} />
+            <Stat label="Avg. Model Confidence" value={slideConfidence === null ? "—" : `${Math.round(slideConfidence * 100)}%`} />
           </dl>
 
           {grain && focusSpecies && (
@@ -295,7 +295,9 @@ function InspectorBody({
                           {detection.grainCount}
                         </span>
                         <span className="w-10 shrink-0 text-right text-[12px] text-text-muted tabular-nums" style={mono}>
-                          {Math.round(detection.avgConfidence * 100)}%
+                          {(detection.confidenceGrainCount ?? detection.grainCount) > 0
+                            ? `${Math.round(detection.avgConfidence * 100)}%`
+                            : "—"}
                         </span>
                       </button>
                       {active && typeGrains.length > 0 && (

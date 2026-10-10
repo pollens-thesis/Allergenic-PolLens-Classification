@@ -179,6 +179,26 @@ export type DetectedGrain = {
   speciesId: SpeciesId;
   confidence: number;
   box: BoundingBox;
+  /** Added during researcher review; it has no model confidence score. */
+  source?: "model" | "manual";
+};
+
+/** A researcher's label and box review, stored separately from model output. */
+export type GrainAnnotationKind =
+  | "confirmed"
+  | "corrected"
+  | "false_positive"
+  | "missed"
+  | "uncertain";
+
+export type GrainAnnotation = {
+  id: string;
+  /** Model grain id (G1, G2, …), or null for a manually added missed grain. */
+  grainId: string | null;
+  kind: GrainAnnotationKind;
+  speciesId: SpeciesId | null;
+  box: BoundingBox;
+  reviewedAt: string;
 };
 
 /** Grain records for one slide, numbered in the order the model reported them. */
@@ -194,8 +214,15 @@ export function toDetectedGrains(predictions: GrainPrediction[]): DetectedGrain[
 export type SpecimenDetection = {
   speciesId: SpeciesId;
   grainCount: number;
-  avgConfidence: number; // 0-1, mean confidence across that species' grains
+  /** Mean model confidence; manually added missed grains do not contribute. */
+  avgConfidence: number; // 0-1, or 0 when confidenceGrainCount is zero
+  /** Number of counted grains with a model confidence score; absent on older API data. */
+  confidenceGrainCount?: number;
 };
+
+export function getConfidenceGrainCount(detection: SpecimenDetection): number {
+  return detection.confidenceGrainCount ?? detection.grainCount;
+}
 
 /** Collapse per-grain predictions into one row per species, richest first. */
 export function aggregateGrainPredictions(predictions: GrainPrediction[]): SpecimenDetection[] {
@@ -213,13 +240,73 @@ export function aggregateGrainPredictions(predictions: GrainPrediction[]): Speci
       speciesId,
       grainCount,
       avgConfidence: confidenceSum / grainCount,
+      confidenceGrainCount: grainCount,
     }))
     .sort(sortByAbundance);
 }
 
+/** Apply reviewer removals and manually added missed grains to the result summary. */
+export function getReviewedDetections(
+  modelDetections: SpecimenDetection[],
+  grains: DetectedGrain[] = [],
+  annotations: GrainAnnotation[] = [],
+): SpecimenDetection[] {
+  const grainsById = new Map(grains.map((grain) => [grain.id, grain]));
+  const removedBySpecies = new Map<SpeciesId, { grainCount: number; confidenceSum: number }>();
+  const missedBySpecies = new Map<SpeciesId, number>();
+
+  for (const annotation of annotations) {
+    if (annotation.kind === "missed" && annotation.speciesId) {
+      missedBySpecies.set(annotation.speciesId, (missedBySpecies.get(annotation.speciesId) ?? 0) + 1);
+      continue;
+    }
+    if (annotation.kind !== "false_positive" || !annotation.grainId) continue;
+    const grain = grainsById.get(annotation.grainId);
+    if (!grain) continue;
+    const removed = removedBySpecies.get(grain.speciesId) ?? { grainCount: 0, confidenceSum: 0 };
+    removed.grainCount += 1;
+    removed.confidenceSum += grain.confidence;
+    removedBySpecies.set(grain.speciesId, removed);
+  }
+
+  const reviewed = new Map<SpeciesId, SpecimenDetection>();
+  for (const detection of modelDetections) {
+    const modelCount = getConfidenceGrainCount(detection);
+    const removed = removedBySpecies.get(detection.speciesId);
+    const confidenceGrainCount = Math.max(0, modelCount - (removed?.grainCount ?? 0));
+    const confidenceSum = Math.max(
+      0,
+      detection.avgConfidence * modelCount - (removed?.confidenceSum ?? 0),
+    );
+    const missedCount = missedBySpecies.get(detection.speciesId) ?? 0;
+    const grainCount = confidenceGrainCount + missedCount;
+    if (grainCount === 0) continue;
+    reviewed.set(detection.speciesId, {
+      ...detection,
+      grainCount,
+      confidenceGrainCount,
+      avgConfidence: confidenceGrainCount ? confidenceSum / confidenceGrainCount : 0,
+    });
+  }
+
+  for (const [speciesId, missedCount] of missedBySpecies) {
+    if (reviewed.has(speciesId)) continue;
+    reviewed.set(speciesId, {
+      speciesId,
+      grainCount: missedCount,
+      confidenceGrainCount: 0,
+      avgConfidence: 0,
+    });
+  }
+
+  return [...reviewed.values()].sort(sortByAbundance);
+}
+
 /** Most abundant species first; ties broken by the more confident reading. */
 export function sortByAbundance(a: SpecimenDetection, b: SpecimenDetection): number {
-  return b.grainCount - a.grainCount || b.avgConfidence - a.avgConfidence;
+  return b.grainCount - a.grainCount ||
+    (getConfidenceGrainCount(b) ? b.avgConfidence : 0) -
+      (getConfidenceGrainCount(a) ? a.avgConfidence : 0);
 }
 
 export function getTopDetection(detections: SpecimenDetection[]): SpecimenDetection | null {
@@ -235,10 +322,13 @@ export function getTotalGrains(detections: SpecimenDetection[]): number {
  * Overall confidence for a reading, weighted by grain count so a 14-grain
  * species counts for more than a single stray grain.
  */
-export function getWeightedAvgConfidence(detections: SpecimenDetection[]): number {
-  const grains = getTotalGrains(detections);
-  if (grains === 0) return 0;
-  return detections.reduce((sum, d) => sum + d.avgConfidence * d.grainCount, 0) / grains;
+export function getWeightedAvgConfidence(detections: SpecimenDetection[]): number | null {
+  const confidenceGrains = detections.reduce((sum, detection) => sum + getConfidenceGrainCount(detection), 0);
+  if (confidenceGrains === 0) return null;
+  return detections.reduce(
+    (sum, detection) => sum + detection.avgConfidence * getConfidenceGrainCount(detection),
+    0,
+  ) / confidenceGrains;
 }
 
 // ---------------------------------------------------------------------------
@@ -327,13 +417,18 @@ export function formatCollectedAt(collectedAt: CollectedAt): string {
 export type SpecimenSlide = {
   id: string;
   fileName: string;
-  detections: SpecimenDetection[]; // one row per pollen type found, richest first
+  /** Reviewed counts, with verified false positives removed. */
+  detections: SpecimenDetection[];
+  /** Unmodified model summary, retained for audit and review controls. */
+  modelDetections?: SpecimenDetection[];
   /**
    * Every grain the model boxed, for drawing over the image. Optional: a report
    * saved before boxes were kept has none, and the viewer says so rather than
    * pretending the slide was empty.
    */
   grains?: DetectedGrain[];
+  /** Researcher labels are kept alongside the original model detections. */
+  annotations?: GrainAnnotation[];
   notes: string; // free-text note about this slide; "" when left blank
   /** The slide's server-hosted image (a presigned URL in production — it expires). */
   imageUrl?: string;
@@ -363,24 +458,25 @@ export type Specimen = {
 
 /** Every pollen type across a report's slides, combined and richest first. */
 export function aggregateSlideDetections(slides: SpecimenSlide[]): SpecimenDetection[] {
-  const bySpecies = new Map<SpeciesId, { grainCount: number; confidenceSum: number }>();
+  const bySpecies = new Map<SpeciesId, { grainCount: number; confidenceGrainCount: number; confidenceSum: number }>();
 
   for (const slide of slides) {
     for (const detection of slide.detections) {
-      const entry = bySpecies.get(detection.speciesId) ?? { grainCount: 0, confidenceSum: 0 };
+      const entry = bySpecies.get(detection.speciesId) ?? { grainCount: 0, confidenceGrainCount: 0, confidenceSum: 0 };
       entry.grainCount += detection.grainCount;
-      // Weight each slide's mean by its grain count so the combined average
-      // reflects grains, not slides.
-      entry.confidenceSum += detection.avgConfidence * detection.grainCount;
+      const confidenceGrainCount = getConfidenceGrainCount(detection);
+      entry.confidenceGrainCount += confidenceGrainCount;
+      entry.confidenceSum += detection.avgConfidence * confidenceGrainCount;
       bySpecies.set(detection.speciesId, entry);
     }
   }
 
   return [...bySpecies.entries()]
-    .map(([speciesId, { grainCount, confidenceSum }]) => ({
+    .map(([speciesId, { grainCount, confidenceGrainCount, confidenceSum }]) => ({
       speciesId,
       grainCount,
-      avgConfidence: confidenceSum / grainCount,
+      avgConfidence: confidenceGrainCount ? confidenceSum / confidenceGrainCount : 0,
+      confidenceGrainCount,
     }))
     .sort(sortByAbundance);
 }
@@ -441,7 +537,7 @@ export type DashboardStats = {
   totalSpecimens: number;
   classesTracked: number;
   detectionsThisWeek: number;
-  avgConfidence: number;
+  avgConfidence: number | null;
 };
 
 /**
