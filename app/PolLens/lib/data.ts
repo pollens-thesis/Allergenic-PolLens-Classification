@@ -245,7 +245,7 @@ export function aggregateGrainPredictions(predictions: GrainPrediction[]): Speci
     .sort(sortByAbundance);
 }
 
-/** Apply reviewer removals and manually added missed grains to the result summary. */
+/** Apply reviewer corrections, removals, and manually added missed grains to the result summary. */
 export function getReviewedDetections(
   modelDetections: SpecimenDetection[],
   grains: DetectedGrain[] = [],
@@ -253,6 +253,7 @@ export function getReviewedDetections(
 ): SpecimenDetection[] {
   const grainsById = new Map(grains.map((grain) => [grain.id, grain]));
   const removedBySpecies = new Map<SpeciesId, { grainCount: number; confidenceSum: number }>();
+  const correctedBySpecies = new Map<SpeciesId, { grainCount: number; confidenceSum: number }>();
   const missedBySpecies = new Map<SpeciesId, number>();
 
   for (const annotation of annotations) {
@@ -260,13 +261,20 @@ export function getReviewedDetections(
       missedBySpecies.set(annotation.speciesId, (missedBySpecies.get(annotation.speciesId) ?? 0) + 1);
       continue;
     }
-    if (annotation.kind !== "false_positive" || !annotation.grainId) continue;
+    if ((annotation.kind !== "false_positive" && annotation.kind !== "corrected") || !annotation.grainId) continue;
     const grain = grainsById.get(annotation.grainId);
     if (!grain) continue;
     const removed = removedBySpecies.get(grain.speciesId) ?? { grainCount: 0, confidenceSum: 0 };
     removed.grainCount += 1;
     removed.confidenceSum += grain.confidence;
     removedBySpecies.set(grain.speciesId, removed);
+
+    if (annotation.kind === "corrected" && annotation.speciesId) {
+      const corrected = correctedBySpecies.get(annotation.speciesId) ?? { grainCount: 0, confidenceSum: 0 };
+      corrected.grainCount += 1;
+      corrected.confidenceSum += grain.confidence;
+      correctedBySpecies.set(annotation.speciesId, corrected);
+    }
   }
 
   const reviewed = new Map<SpeciesId, SpecimenDetection>();
@@ -286,6 +294,21 @@ export function getReviewedDetections(
       grainCount,
       confidenceGrainCount,
       avgConfidence: confidenceGrainCount ? confidenceSum / confidenceGrainCount : 0,
+    });
+  }
+
+  for (const [speciesId, corrected] of correctedBySpecies) {
+    const existing = reviewed.get(speciesId);
+    const priorConfidenceCount = existing ? getConfidenceGrainCount(existing) : 0;
+    const priorConfidenceSum = existing ? existing.avgConfidence * priorConfidenceCount : 0;
+    const confidenceGrainCount = priorConfidenceCount + corrected.grainCount;
+    reviewed.set(speciesId, {
+      speciesId,
+      grainCount: (existing?.grainCount ?? 0) + corrected.grainCount,
+      confidenceGrainCount,
+      avgConfidence: confidenceGrainCount
+        ? (priorConfidenceSum + corrected.confidenceSum) / confidenceGrainCount
+        : 0,
     });
   }
 

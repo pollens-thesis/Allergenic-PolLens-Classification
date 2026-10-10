@@ -169,12 +169,27 @@ function DetectionRow({
 }
 
 function reviewedGrains(slide: SpecimenSlide) {
+  const annotationByGrainId = new Map(
+    (slide.annotations ?? [])
+      .filter((annotation) => annotation.grainId)
+      .map((annotation) => [annotation.grainId!, annotation]),
+  );
   const excludedIds = new Set(
     (slide.annotations ?? [])
       .filter((annotation) => annotation.kind === "false_positive" && annotation.grainId)
       .map((annotation) => annotation.grainId),
   );
-  const modelGrains = slide.grains?.filter((grain) => !excludedIds.has(grain.id)) ?? [];
+  const modelGrains = slide.grains?.filter((grain) => !excludedIds.has(grain.id)).map((grain) => {
+    const annotation = annotationByGrainId.get(grain.id);
+    if (!annotation) return grain;
+    return {
+      ...grain,
+      speciesId: annotation.kind === "corrected" && annotation.speciesId
+        ? annotation.speciesId
+        : grain.speciesId,
+      box: annotation.box,
+    };
+  }) ?? [];
   const missedGrains = (slide.annotations ?? [])
     .filter((annotation) => annotation.kind === "missed" && annotation.speciesId)
     .map((annotation, index) => ({
