@@ -10,6 +10,7 @@ from .models import (
     WEATHER_CONDITION_CHOICES,
     Detection,
     Grain,
+    GrainAnnotation,
     Report,
     Slide,
     Species,
@@ -198,6 +199,61 @@ class SlideNotesInputSerializer(serializers.Serializer):
     notes = serializers.CharField(allow_blank=True, max_length=10000)
 
 
+class GrainAnnotationInputSerializer(serializers.Serializer):
+    """One user-reviewed label, validated against its report and slide."""
+
+    slideId = serializers.CharField()
+    grainId = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    kind = serializers.ChoiceField(choices=GrainAnnotation.KIND_CHOICES)
+    speciesId = serializers.SlugRelatedField(
+        slug_field='id', queryset=Species.objects.all(), required=False, allow_null=True,
+    )
+    box = BoundingBoxInputSerializer(required=False)
+
+    def validate(self, attrs):
+        report = self.context['report']
+        match = re.fullmatch(re.escape(report.sample_id) + r'-S([0-9]+)', attrs['slideId'])
+        slide = report.slides.filter(number=int(match.group(1))).first() if match else None
+        if slide is None:
+            raise serializers.ValidationError({'slideId': ['Unknown slide for this report.']})
+
+        grain_id = attrs.get('grainId')
+        grain = None
+        if grain_id:
+            grain_match = re.fullmatch(r'G([0-9]+)', grain_id)
+            grain = slide.grains.filter(number=int(grain_match.group(1))).first() if grain_match else None
+            if grain is None:
+                raise serializers.ValidationError({'grainId': ['Unknown grain for this slide.']})
+
+        kind = attrs['kind']
+        species = attrs.get('speciesId')
+        box = attrs.get('box')
+        if kind == 'missed':
+            if grain is not None:
+                raise serializers.ValidationError({'grainId': ['A missed grain cannot refer to a model detection.']})
+            if species is None:
+                raise serializers.ValidationError({'speciesId': ['Choose a species for the missed grain.']})
+            if box is None:
+                raise serializers.ValidationError({'box': ['Draw a box around the missed grain.']})
+        else:
+            if grain is None:
+                raise serializers.ValidationError({'grainId': ['Choose a model detection to review.']})
+            if kind == 'confirmed':
+                species = grain.species
+            elif kind == 'corrected' and species is None:
+                raise serializers.ValidationError({'speciesId': ['Choose the corrected species.']})
+            elif kind in ('false_positive', 'uncertain'):
+                species = None
+            if box is None:
+                box = {
+                    'x': grain.box_x, 'y': grain.box_y,
+                    'width': grain.box_width, 'height': grain.box_height,
+                }
+
+        attrs.update({'slide': slide, 'grain': grain, 'species': species, 'box': box})
+        return attrs
+
+
 class ReportUpdateSerializer(serializers.Serializer):
     """
     PATCH /api/v1/reports/<id>/ — edit a report's collection details and slide
@@ -328,22 +384,47 @@ class GrainSerializer(serializers.Serializer):
         return f'G{obj.number}'
 
 
+class GrainAnnotationSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    grainId = serializers.SerializerMethodField()
+    kind = serializers.CharField()
+    speciesId = serializers.CharField(source='species_id', allow_null=True)
+    box = BoundingBoxSerializer(source='*')
+    reviewedAt = serializers.DateTimeField(source='updated_at')
+
+    def get_grainId(self, obj):
+        return f'G{obj.grain.number}' if obj.grain_id else None
+
+
 class DetectionSerializer(serializers.Serializer):
     speciesId = serializers.CharField(source='species_id')
     grainCount = serializers.IntegerField(source='grain_count')
     avgConfidence = serializers.FloatField(source='avg_confidence')
+    confidenceGrainCount = serializers.SerializerMethodField()
+
+    def get_confidenceGrainCount(self, obj):
+        if isinstance(obj, dict):
+            return obj.get('confidence_grain_count', obj.get('grain_count', 0))
+        return obj.grain_count
 
 
 class SlideSerializer(serializers.Serializer):
     id = serializers.SerializerMethodField()
     fileName = serializers.CharField(source='file_name')
-    detections = DetectionSerializer(many=True)
+    # `detections` is the reviewed result shown in reports and summaries.
+    # Keep the unmodified model output alongside it for evaluation/audit.
+    detections = serializers.SerializerMethodField()
+    modelDetections = DetectionSerializer(many=True, source='detections')
     grains = GrainSerializer(many=True)
+    annotations = GrainAnnotationSerializer(many=True)
     notes = serializers.CharField()
     image_url = serializers.SerializerMethodField()
 
     def get_id(self, obj):
         return f'{obj.report.sample_id}-S{obj.number}'
+
+    def get_detections(self, obj):
+        return DetectionSerializer(obj.reviewed_detection_summary(), many=True).data
 
     def get_image_url(self, obj):
         request = self.context.get('request')

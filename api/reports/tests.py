@@ -5,6 +5,7 @@ import io
 import json
 import tempfile
 import zoneinfo
+import uuid
 from unittest.mock import Mock, patch
 
 import requests
@@ -362,6 +363,91 @@ class ReportDetailViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(response.data, {'detail': 'Report not found.'})
+
+
+class ReportAnnotationDetailViewTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create(email='researcher@up.edu.ph', institution='up.edu.ph')
+        self.client.force_authenticate(user=self.user)
+        self.report = make_report(status='Needs review', collected_at=month_key(0))
+        self.report.owner = self.user
+        self.report.save(update_fields=['owner'])
+        self.slide = self.report.slides.get()
+        for number in (1, 2, 3):
+            Grain.objects.create(
+                slide=self.slide,
+                number=number,
+                species_id='amaranthus_spinosus',
+                confidence=0.9,
+                box_x=0.1 * number,
+                box_y=0.1,
+                box_width=0.1,
+                box_height=0.1,
+            )
+
+    def test_verified_false_positive_is_removed_from_reviewed_counts(self):
+        annotation_id = uuid.uuid4()
+        response = self.client.put(
+            f'/api/v1/reports/{self.report.sample_id}/annotations/{annotation_id}/',
+            {
+                'slideId': f'{self.report.sample_id}-S1',
+                'grainId': 'G1',
+                'kind': 'false_positive',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        detail = self.client.get(f'/api/v1/reports/{self.report.sample_id}/').data['slides'][0]
+        listed = self.client.get('/api/v1/reports/').data[0]['slides'][0]
+        self.assertEqual(detail['detections'][0]['grainCount'], 2)
+        self.assertEqual(detail['detections'][0]['confidenceGrainCount'], 2)
+        self.assertEqual(detail['modelDetections'][0]['grainCount'], 3)
+        self.assertEqual(detail['modelDetections'][0]['confidenceGrainCount'], 3)
+        self.assertEqual(listed['detections'][0]['grainCount'], 2)
+        self.assertEqual(self.slide.detections.get().grain_count, 3)
+
+        monthly = self.client.get('/api/v1/reports/monthly-counts/').data
+        current_month = timezone.localtime(timezone.now(), zoneinfo.ZoneInfo('Asia/Manila')).month
+        self.assertEqual(monthly[-1]['month'], calendar.month_abbr[current_month])
+        self.assertEqual(monthly[-1]['series']['amaranthus_spinosus'], 2)
+
+        missed_id = uuid.uuid4()
+        missed = self.client.put(
+            f'/api/v1/reports/{self.report.sample_id}/annotations/{missed_id}/',
+            {
+                'slideId': f'{self.report.sample_id}-S1',
+                'kind': 'missed',
+                'speciesId': 'brachiaria_mutica',
+                'box': {'x': 0.6, 'y': 0.2, 'width': 0.1, 'height': 0.12},
+            },
+            format='json',
+        )
+        self.assertEqual(missed.status_code, status.HTTP_200_OK, missed.data)
+        detail = self.client.get(f'/api/v1/reports/{self.report.sample_id}/').data['slides'][0]
+        reviewed_by_species = {row['speciesId']: row for row in detail['detections']}
+        self.assertEqual(reviewed_by_species['amaranthus_spinosus']['grainCount'], 2)
+        self.assertEqual(reviewed_by_species['brachiaria_mutica']['grainCount'], 1)
+        self.assertEqual(reviewed_by_species['brachiaria_mutica']['confidenceGrainCount'], 0)
+        self.assertEqual(reviewed_by_species['brachiaria_mutica']['avgConfidence'], 0)
+        monthly = self.client.get('/api/v1/reports/monthly-counts/').data
+        self.assertEqual(monthly[-1]['series']['brachiaria_mutica'], 1)
+
+        deleted = self.client.delete(
+            f'/api/v1/reports/{self.report.sample_id}/annotations/{annotation_id}/',
+        )
+        self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
+        restored = self.client.get(f'/api/v1/reports/{self.report.sample_id}/').data['slides'][0]
+        restored_by_species = {row['speciesId']: row for row in restored['detections']}
+        self.assertEqual(restored_by_species['amaranthus_spinosus']['grainCount'], 3)
+        self.assertEqual(restored_by_species['brachiaria_mutica']['grainCount'], 1)
+
+        deleted_missed = self.client.delete(
+            f'/api/v1/reports/{self.report.sample_id}/annotations/{missed_id}/',
+        )
+        self.assertEqual(deleted_missed.status_code, status.HTTP_204_NO_CONTENT)
+        reset = self.client.get(f'/api/v1/reports/{self.report.sample_id}/').data['slides'][0]
+        self.assertEqual(reset['detections'][0]['grainCount'], 3)
 
 
 def month_key(offset):

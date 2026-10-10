@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Detection, Grain, Report, Slide, Species
+from .models import Detection, Grain, GrainAnnotation, Report, Slide, Species
 from .views import delete_image_files
 
 
@@ -47,3 +47,4 @@ class SpeciesAdmin(admin.ModelAdmin):
 admin.site.register(Slide)
 admin.site.register(Detection)
 admin.site.register(Grain)
+admin.site.register(GrainAnnotation)
