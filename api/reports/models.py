@@ -143,14 +143,16 @@ class Slide(models.Model):
 
         The persisted Detection and Grain rows remain the model's original
         output. This summary is the result shown to researchers after review:
-        verified non-pollen boxes are removed, and manually boxed missed pollen
-        is added. Confidence is averaged over retained model grains only.
+        corrected boxes move to the researcher's species, verified non-pollen
+        boxes are removed, and manually boxed missed pollen is added. Confidence
+        is averaged over retained model grains only.
         Slides from older reports may have summary rows without saved grain
         boxes; those remain unchanged because individual false positives
         cannot be linked to them.
         """
         grains = {grain.pk: grain for grain in self.grains.all()}
         removed_by_species = {}
+        corrected_by_species = {}
         missed_by_species = {}
         for annotation in self.annotations.all():
             if annotation.kind == 'missed':
@@ -159,7 +161,7 @@ class Slide(models.Model):
                         missed_by_species.get(annotation.species_id, 0) + 1
                     )
                 continue
-            if annotation.kind != 'false_positive' or annotation.grain_id is None:
+            if annotation.kind not in ('corrected', 'false_positive') or annotation.grain_id is None:
                 continue
             grain = grains.get(annotation.grain_id)
             if grain is None:
@@ -169,6 +171,12 @@ class Slide(models.Model):
             )
             entry['count'] += 1
             entry['confidence_sum'] += grain.confidence
+            if annotation.kind == 'corrected' and annotation.species_id is not None:
+                corrected = corrected_by_species.setdefault(
+                    annotation.species_id, {'count': 0, 'confidence_sum': 0.0},
+                )
+                corrected['count'] += 1
+                corrected['confidence_sum'] += grain.confidence
 
         result_by_species = {}
         for detection in self.detections.all():
@@ -184,6 +192,17 @@ class Slide(models.Model):
                 'confidence_grain_count': model_grain_count,
                 'confidence_sum': confidence_sum if model_grain_count else 0.0,
             }
+
+        for species_id, corrected in corrected_by_species.items():
+            entry = result_by_species.setdefault(species_id, {
+                'species_id': species_id,
+                'grain_count': 0,
+                'confidence_grain_count': 0,
+                'confidence_sum': 0.0,
+            })
+            entry['grain_count'] += corrected['count']
+            entry['confidence_grain_count'] += corrected['count']
+            entry['confidence_sum'] += corrected['confidence_sum']
 
         for species_id, missed_count in missed_by_species.items():
             entry = result_by_species.setdefault(species_id, {

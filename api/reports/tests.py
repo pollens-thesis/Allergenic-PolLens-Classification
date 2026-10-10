@@ -449,6 +449,52 @@ class ReportAnnotationDetailViewTests(APITestCase):
         reset = self.client.get(f'/api/v1/reports/{self.report.sample_id}/').data['slides'][0]
         self.assertEqual(reset['detections'][0]['grainCount'], 3)
 
+    def test_corrected_grain_moves_from_model_species_to_researcher_species(self):
+        self.slide.detections.all().delete()
+        self.slide.grains.all().delete()
+        Detection.objects.create(
+            slide=self.slide,
+            species_id='pennisetum_polystachion',
+            grain_count=1,
+            avg_confidence=0.76,
+        )
+        Grain.objects.create(
+            slide=self.slide,
+            number=15,
+            species_id='pennisetum_polystachion',
+            confidence=0.76,
+            box_x=0.1,
+            box_y=0.1,
+            box_width=0.2,
+            box_height=0.2,
+        )
+        annotation_id = uuid.uuid4()
+
+        response = self.client.put(
+            f'/api/v1/reports/{self.report.sample_id}/annotations/{annotation_id}/',
+            {
+                'slideId': f'{self.report.sample_id}-S1',
+                'grainId': 'G15',
+                'kind': 'corrected',
+                'speciesId': 'leucaena_leucocephala',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        detail = self.client.get(f'/api/v1/reports/{self.report.sample_id}/').data['slides'][0]
+        reviewed_by_species = {row['speciesId']: row for row in detail['detections']}
+        model_by_species = {row['speciesId']: row for row in detail['modelDetections']}
+        self.assertEqual(set(reviewed_by_species), {'leucaena_leucocephala'})
+        self.assertEqual(reviewed_by_species['leucaena_leucocephala']['grainCount'], 1)
+        self.assertEqual(reviewed_by_species['leucaena_leucocephala']['confidenceGrainCount'], 1)
+        self.assertAlmostEqual(reviewed_by_species['leucaena_leucocephala']['avgConfidence'], 0.76)
+        self.assertEqual(model_by_species['pennisetum_polystachion']['grainCount'], 1)
+
+        monthly = self.client.get('/api/v1/reports/monthly-counts/').data
+        self.assertEqual(monthly[-1]['series']['pennisetum_polystachion'], 0)
+        self.assertEqual(monthly[-1]['series']['leucaena_leucocephala'], 1)
+
 
 def month_key(offset):
     """'YYYY-MM-DD' (day 15) for `offset` calendar months before the current one."""
