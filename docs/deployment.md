@@ -186,8 +186,8 @@ request.
 
 For the opt-in YOLO26 detector and EfficientNet classifier rollout, follow
 [the staging, cutover, and rollback runbook](yolo26-staging.md). The team will not
-pay for a larger Render plan, so the models are being hosted on a free Hugging Face
-Space instead: see [hf-inference.md](hf-inference.md) (issue #42). The steps below
+pay for a larger Render plan, so the models are being hosted on Modal's free plan
+instead: see [inference-modal.md](inference-modal.md) (issue #42). The steps below
 describe the current Roboflow production deployment.
 
 Open `VERCEL_URL` and check each step:

@@ -1,22 +1,24 @@
 """PolLens inference service: YOLO26 pollen detector + EfficientNet-B0 species classifier.
 
-Runs on a private Hugging Face Docker Space. The Django API's /detect/ proxy
+Runs on Modal (see modal_app.py). The Django API's /detect/ proxy
 calls POST /detect and passes the body straight through, so the response must
 match the app's provider-independent shape:
 {"image": {"width", "height"}, "predictions": [{"class", "confidence",
 "x", "y", "width", "height"}]} (pixel coordinates, box centre-based).
 
-The Space is private, so Hugging Face checks the bearer token before a request
-reaches this app; there is no separate auth here.
+POST /detect requires `Authorization: Bearer $INFERENCE_TOKEN`. The service
+fails closed: with no token configured it answers 503 rather than running open.
+GET /healthz is open (it only reports whether each model loaded).
 """
 
+import hmac
 import io
 import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, Request, UploadFile
 from fastapi.responses import JSONResponse
 from PIL import Image, ImageOps
 
@@ -45,18 +47,22 @@ def load_models():
     """Load each model on its own so a missing file degrades /detect to 503
     instead of crashing the container (the Space then still builds and
     /healthz can say which half is missing)."""
-    try:
-        from inference.efficientnet_classifier import EfficientNetB0Classifier
+    # Idempotent: on Modal this runs once before the memory snapshot and again
+    # from the FastAPI lifespan after a restore, where it must not reload.
+    if models['classifier'] is None:
+        try:
+            from inference.efficientnet_classifier import EfficientNetB0Classifier
 
-        models['classifier'] = EfficientNetB0Classifier(MODELS_DIR / CLASSIFIER_FILE)
-    except Exception:
-        logger.exception('Classifier failed to load')
-    try:
-        from inference.yolo26 import YOLO26PollenDetector
+            models['classifier'] = EfficientNetB0Classifier(MODELS_DIR / CLASSIFIER_FILE)
+        except Exception:
+            logger.exception('Classifier failed to load')
+    if models['detector'] is None:
+        try:
+            from inference.yolo26 import YOLO26PollenDetector
 
-        models['detector'] = YOLO26PollenDetector(MODELS_DIR / DETECTOR_FILE)
-    except Exception:
-        logger.exception('Detector failed to load')
+            models['detector'] = YOLO26PollenDetector(MODELS_DIR / DETECTOR_FILE)
+        except Exception:
+            logger.exception('Detector failed to load')
 
 
 @asynccontextmanager
@@ -77,8 +83,24 @@ def healthz():
     }
 
 
+def _authorized(request):
+    """None when the bearer token is right, else the error response."""
+    expected = os.environ.get('INFERENCE_TOKEN', '')
+    if not expected:
+        return _detail('Service token is not configured.', 503)
+    header = request.headers.get('authorization', '')
+    scheme, _, supplied = header.partition(' ')
+    if scheme.lower() != 'bearer' or not hmac.compare_digest(supplied.encode(), expected.encode()):
+        return _detail('Invalid or missing token.', 401)
+    return None
+
+
 @app.post('/detect')
-async def detect(image: UploadFile = File(...)):
+async def detect(request: Request, image: UploadFile = File(...)):
+    denied = _authorized(request)
+    if denied is not None:
+        return denied
+
     detector, classifier = models['detector'], models['classifier']
     if detector is None or classifier is None:
         return _detail('Models are not loaded.', 503)

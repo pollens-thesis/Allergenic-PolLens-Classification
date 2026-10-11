@@ -30,15 +30,41 @@ def jpeg_bytes(size=(120, 90)):
     return buffer.getvalue()
 
 
+TOKEN = 'test-token'
+AUTH = {'Authorization': f'Bearer {TOKEN}'}
+
+
 @pytest.fixture
 def client(monkeypatch):
+    monkeypatch.setenv('INFERENCE_TOKEN', TOKEN)
     monkeypatch.setitem(service.models, 'detector', StubDetector())
     monkeypatch.setitem(service.models, 'classifier', StubClassifier())
     return TestClient(service.app)
 
 
-def post(client, data, name='slide.jpg'):
-    return client.post('/detect', files={'image': (name, data, 'image/jpeg')})
+def post(client, data, name='slide.jpg', headers=AUTH):
+    return client.post('/detect', files={'image': (name, data, 'image/jpeg')}, headers=headers)
+
+
+def test_401_without_a_token(client):
+    response = post(client, jpeg_bytes(), headers={})
+    assert response.status_code == 401
+    assert response.json() == {'detail': 'Invalid or missing token.'}
+
+
+def test_401_with_a_wrong_token(client):
+    assert post(client, jpeg_bytes(), headers={'Authorization': 'Bearer nope'}).status_code == 401
+
+
+def test_401_with_a_non_bearer_scheme(client):
+    assert post(client, jpeg_bytes(), headers={'Authorization': f'Basic {TOKEN}'}).status_code == 401
+
+
+def test_503_when_the_server_has_no_token(client, monkeypatch):
+    monkeypatch.delenv('INFERENCE_TOKEN')
+    response = post(client, jpeg_bytes())
+    assert response.status_code == 503
+    assert response.json() == {'detail': 'Service token is not configured.'}
 
 
 def test_detect_returns_api_shape(client):
@@ -93,7 +119,7 @@ def test_502_when_label_count_differs(client, monkeypatch):
     assert post(client, jpeg_bytes()).status_code == 502
 
 
-def test_healthz_reports_model_state(client, monkeypatch):
+def test_healthz_is_open_and_reports_model_state(client, monkeypatch):
     assert client.get('/healthz').json() == {'status': 'ok', 'detector': True, 'classifier': True}
     monkeypatch.setitem(service.models, 'classifier', None)
     assert client.get('/healthz').json()['classifier'] is False
