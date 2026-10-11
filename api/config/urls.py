@@ -26,6 +26,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from accounts.views import GoogleLoginView, LogoutView, MeView, MicrosoftLoginView
 from reports.views import (
     DetectView,
+    ReportAnnotationDetailView,
     ReportDetailView,
     ReportListCreateView,
     ReportMonthlyCountsView,
@@ -53,6 +54,10 @@ urlpatterns = [
     path('api/v1/reports/species/', SpeciesListView.as_view(), name='species_list'),
     path('api/v1/reports/detect/', DetectView.as_view(), name='report_detect'),
     path('api/v1/reports/weather/', WeatherView.as_view(), name='report_weather'),
+    path(
+        'api/v1/reports/<str:sample_id>/annotations/<uuid:annotation_id>/',
+        ReportAnnotationDetailView.as_view(), name='report_annotation_detail',
+    ),
     path('api/v1/reports/<str:sample_id>/', ReportDetailView.as_view(), name='report_detail'),
 ]
 

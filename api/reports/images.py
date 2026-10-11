@@ -42,7 +42,9 @@ def check_slide_image(upload):
             img.verify()  # structural check without decoding every pixel
     except Image.DecompressionBombError:
         raise SlideImageError(f'"{upload.name}" has too many pixels to analyze.', too_large=True)
-    except (UnidentifiedImageError, OSError, SyntaxError, ValueError):
+    except (UnidentifiedImageError, OSError, SyntaxError, ValueError, ImportError):
+        # Ultralytics patches Pillow to probe an optional HEIF decoder when an
+        # image is unreadable. That decoder is not needed for JPEG/PNG uploads.
         raise SlideImageError(f'"{upload.name}" is not a readable image.')
     finally:
         upload.seek(0)

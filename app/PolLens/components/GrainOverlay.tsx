@@ -58,6 +58,7 @@ export default function GrainOverlay({
         const species = findSpecies(speciesCatalog, grain.speciesId);
         const color = overlayColor(colors, grain.speciesId);
         const confidencePct = Math.round(grain.confidence * 100);
+        const isManual = grain.source === "manual";
         const selected = grain.id === selectedGrainId;
         return (
           <motion.button
@@ -68,14 +69,16 @@ export default function GrainOverlay({
               onGrainClick(grain);
             }}
             aria-pressed={selected}
-            title={`${grain.id} · ${speciesLabel(species)} · ${confidencePct}% confidence`}
+            title={isManual
+              ? `${grain.id} · ${speciesLabel(species)} · manually added`
+              : `${grain.id} · ${speciesLabel(species)} · ${confidencePct}% model confidence`}
             className="focus-ring absolute rounded-[2px]"
             style={{
               left: `${grain.box.x * 100}%`,
               top: `${grain.box.y * 100}%`,
               width: `${grain.box.width * 100}%`,
               height: `${grain.box.height * 100}%`,
-              border: `2px solid ${color}`,
+              border: `2px ${isManual ? "dashed" : "solid"} ${color}`,
               // A thin dark halo keeps light colours (yellow, sky blue) visible on
               // bright, pale slides — border contrast carries the colour.
               boxShadow: selected
@@ -93,7 +96,7 @@ export default function GrainOverlay({
             {showLabels && (
               <span
                 aria-hidden
-                className="pointer-events-none absolute bottom-full left-[-2px] mb-px rounded-[2px] px-1 text-[10.5px] leading-[15px] whitespace-nowrap tabular-nums"
+                className="pointer-events-none absolute bottom-full left-[-2px] mb-px rounded-[2px] px-1 text-xs leading-[15px] whitespace-nowrap tabular-nums"
                 style={{
                   backgroundColor: color,
                   color: labelTextColor(color),
@@ -101,11 +104,13 @@ export default function GrainOverlay({
                   fontWeight: 600,
                 }}
               >
-                {species.code} {confidencePct}%
+                {isManual ? `${species.code} · manual` : `${species.code} ${confidencePct}%`}
               </span>
             )}
             <span className="sr-only">
-              {grain.id}: {species.scientificName} grain, {confidencePct}% confidence
+              {isManual
+                ? `${grain.id}: manually added ${species.scientificName} pollen grain`
+                : `${grain.id}: ${species.scientificName} grain, ${confidencePct}% model confidence`}
             </span>
           </motion.button>
         );

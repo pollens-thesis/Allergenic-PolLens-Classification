@@ -194,6 +194,7 @@ function reportRows(reports: Specimen[]): Value[][] {
   return reports.map((report) => {
     const detections = aggregateSlideDetections(report.slides);
     const top = getTopDetection(detections);
+    const averageConfidence = getWeightedAvgConfidence(detections);
     return [
       report.sampleId,
       report.reportName ?? "",
@@ -207,7 +208,7 @@ function reportRows(reports: Specimen[]): Value[][] {
       getReportGrains(report),
       detections.length,
       top ? speciesLabel(getSpecies(top.speciesId)) : null,
-      detections.length ? Number(getWeightedAvgConfidence(detections).toFixed(4)) : null,
+      averageConfidence === null ? null : Number(averageConfidence.toFixed(4)),
       report.weather?.condition ?? null,
       report.weather?.temperatureC ?? null,
       report.weather?.humidityPct ?? null,

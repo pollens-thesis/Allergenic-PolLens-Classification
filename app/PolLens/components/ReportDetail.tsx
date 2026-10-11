@@ -22,21 +22,28 @@ import {
   Loader2,
   MapPin,
   Microscope,
+  Pencil,
+  Save,
   Thermometer,
   User,
   Wind,
+  X,
 } from "lucide-react";
 import {
   aggregateSlideDetections,
   formatCollectedAt,
   formatTime,
   getCollectionDate,
+  getConfidenceGrainCount,
   getCollectionTime,
+  getReviewedDetections,
   getTotalGrains,
   getWeightedAvgConfidence,
+  type GrainAnnotation,
   type SpeciesId,
   type Specimen,
   type SpecimenDetection,
+  type SpecimenSlide,
 } from "@/lib/data";
 import { findSpecies, useSpeciesCatalog } from "@/lib/species-catalog";
 import {
@@ -53,6 +60,7 @@ import SummaryTile from "@/components/SummaryTile";
 import SpeciesName from "@/components/SpeciesName";
 import { downloadReportPdf } from "@/lib/pdf";
 import StatusBadge, { SampleBadge } from "@/components/StatusBadge";
+import GrainReviewEditor from "@/components/GrainReviewEditor";
 import SpecimenImageViewer from "@/components/SpecimenImageViewer";
 import SpecimenInspector from "@/components/SpecimenInspector";
 import { overlayColor, overlayColors, type OverlayColors } from "@/lib/slide-colors";
@@ -76,6 +84,7 @@ function DetectionRow({
 }) {
   const speciesCatalog = useSpeciesCatalog();
   const species = findSpecies(speciesCatalog, detection.speciesId);
+  const hasModelConfidence = getConfidenceGrainCount(detection) > 0;
   const confidencePct = Math.round(detection.avgConfidence * 100);
 
   /**
@@ -126,11 +135,11 @@ function DetectionRow({
         </div>
         <div className="w-24 flex-1 sm:flex-none">
           <div className="mb-1 flex items-center justify-between text-[12px] text-text-muted">
-            <span>Confidence</span>
-            <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{confidencePct}%</span>
+            <span>Model confidence</span>
+            <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{hasModelConfidence ? `${confidencePct}%` : "—"}</span>
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-sunken">
-            <div className="h-full rounded-full bg-text/75" style={{ width: `${confidencePct}%` }} />
+            {hasModelConfidence && <div className="h-full rounded-full bg-text/75" style={{ width: `${confidencePct}%` }} />}
           </div>
         </div>
       </div>
@@ -157,6 +166,40 @@ function DetectionRow({
       </button>
     </li>
   );
+}
+
+function reviewedGrains(slide: SpecimenSlide) {
+  const annotationByGrainId = new Map(
+    (slide.annotations ?? [])
+      .filter((annotation) => annotation.grainId)
+      .map((annotation) => [annotation.grainId!, annotation]),
+  );
+  const excludedIds = new Set(
+    (slide.annotations ?? [])
+      .filter((annotation) => annotation.kind === "false_positive" && annotation.grainId)
+      .map((annotation) => annotation.grainId),
+  );
+  const modelGrains = slide.grains?.filter((grain) => !excludedIds.has(grain.id)).map((grain) => {
+    const annotation = annotationByGrainId.get(grain.id);
+    if (!annotation) return grain;
+    return {
+      ...grain,
+      speciesId: annotation.kind === "corrected" && annotation.speciesId
+        ? annotation.speciesId
+        : grain.speciesId,
+      box: annotation.box,
+    };
+  }) ?? [];
+  const missedGrains = (slide.annotations ?? [])
+    .filter((annotation) => annotation.kind === "missed" && annotation.speciesId)
+    .map((annotation, index) => ({
+      id: `M${index + 1}`,
+      speciesId: annotation.speciesId!,
+      confidence: 0,
+      box: annotation.box,
+      source: "manual" as const,
+    }));
+  return [...modelGrains, ...missedGrains];
 }
 
 /** One recorded field: what it is, and what the researcher entered. */
@@ -190,7 +233,11 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
   const [downloading, setDownloading] = useState<"pdf" | "xlsx" | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [changing, setChanging] = useState(false);
+  const [editingNoteSlideId, setEditingNoteSlideId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [completeReviewOpen, setCompleteReviewOpen] = useState(false);
   // Presigned image links expire (1 h); one refetch per page view renews them.
   const refreshedImages = useRef(false);
   const router = useRouter();
@@ -226,6 +273,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
     setChanging(true);
     try {
       setReport(await updateReport(report.sampleId, { status }));
+      if (status === "Completed") setCompleteReviewOpen(false);
       toast.success(
         status === "Completed" ? `Report ${report.sampleId} marked Completed` : `Report ${report.sampleId} flagged Needs Review`,
       );
@@ -235,6 +283,80 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
       }
     } finally {
       setChanging(false);
+    }
+  }
+
+  function handleAnnotationSaved(slideId: string, annotation: GrainAnnotation) {
+    setReport((current) => current && ({
+      ...current,
+      slides: current.slides.map((slide) => {
+        if (slide.id !== slideId) return slide;
+        const annotations = slide.annotations ?? [];
+        const existing = annotations.findIndex((entry) =>
+          entry.id === annotation.id ||
+          (annotation.grainId !== null && entry.grainId === annotation.grainId),
+        );
+        const next = [...annotations];
+        if (existing >= 0) next[existing] = annotation;
+        else next.push(annotation);
+        return {
+          ...slide,
+          annotations: next,
+          detections: getReviewedDetections(
+            slide.modelDetections ?? slide.detections,
+            slide.grains,
+            next,
+          ),
+        };
+      }),
+    }));
+  }
+
+  function handleAnnotationRemoved(slideId: string, annotationId: string) {
+    setReport((current) => current && ({
+      ...current,
+      slides: current.slides.map((slide) => slide.id === slideId
+        ? (() => {
+            const annotations = (slide.annotations ?? []).filter((entry) => entry.id !== annotationId);
+            return {
+              ...slide,
+              annotations,
+              detections: getReviewedDetections(
+                slide.modelDetections ?? slide.detections,
+                slide.grains,
+                annotations,
+              ),
+            };
+          })()
+        : slide),
+    }));
+  }
+
+  function editSlideNote(slide: SpecimenSlide) {
+    if (savingNote || (editingNoteSlideId && editingNoteSlideId !== slide.id)) return;
+    setEditingNoteSlideId(slide.id);
+    setNoteDraft(slide.notes);
+  }
+
+  function cancelSlideNote() {
+    setEditingNoteSlideId(null);
+    setNoteDraft("");
+  }
+
+  async function saveSlideNote(slide: SpecimenSlide) {
+    if (!report || !report.canEdit || report.sampleDetections || savingNote) return;
+    const notes = noteDraft.trim();
+    setSavingNote(true);
+    try {
+      setReport(await updateReport(report.sampleId, { notes: { [slide.id]: notes } }));
+      cancelSlideNote();
+      toast.success(notes ? "Slide note saved" : "Slide note cleared");
+    } catch (error) {
+      if (!(error instanceof SessionExpiredError)) {
+        toast.error(error instanceof Error ? error.message : "Couldn't save the slide note.");
+      }
+    } finally {
+      setSavingNote(false);
     }
   }
 
@@ -337,6 +459,15 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
   const overallConfidence = getWeightedAvgConfidence(aggregated);
   const collectionTime = getCollectionTime(report.collectedAt);
   const weather = report.weather;
+  const reportAnnotations = report.slides.flatMap((slide) => slide.annotations ?? []);
+  const reviewedModelGrains = new Set(
+    reportAnnotations.flatMap((annotation) => annotation.grainId ? [annotation.grainId] : []),
+  ).size;
+  const modelGrainCount = report.slides.reduce(
+    (count, slide) => count + (slide.grains?.length ?? getTotalGrains(slide.detections)),
+    0,
+  );
+  const unreviewedModelGrains = Math.max(0, modelGrainCount - reviewedModelGrains);
 
   return (
     <div className="flex flex-col gap-4">
@@ -380,7 +511,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
               </Button>
             )}
             {report.canEdit && report.status === "Needs review" && (
-              <Button type="button" intent="confirm" size="sm" disabled={changing} onClick={() => changeStatus("Completed")}>
+              <Button type="button" intent="confirm" size="sm" disabled={changing} onClick={() => setCompleteReviewOpen(true)}>
                 <CircleCheck size={14} strokeWidth={1.75} />
                 Mark Completed
               </Button>
@@ -412,6 +543,55 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                       <Button type="button" intent="destructive" size="sm" disabled={changing} onClick={handleDelete}>
                         <Trash2 size={13} strokeWidth={1.75} />
                         Delete Report
+                      </Button>
+                    </div>
+                  </AlertDialog.Popup>
+                </AlertDialog.Portal>
+              </AlertDialog.Root>
+            )}
+            {report.canEdit && report.status === "Needs review" && (
+              <AlertDialog.Root open={completeReviewOpen} onOpenChange={setCompleteReviewOpen}>
+                <AlertDialog.Portal>
+                  <AlertDialog.Backdrop className="fixed inset-0 z-40 bg-black/40 transition-opacity duration-[var(--duration-base)] ease-[var(--ease-out)] data-[starting-style]:opacity-0 data-[ending-style]:opacity-0" />
+                  <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-50 w-[min(30rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-surface p-5 shadow-lg outline-none transition-all duration-[var(--duration-base)] ease-[var(--ease-out)] data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0">
+                    <AlertDialog.Title className="t-plate-title text-text">
+                      Complete review for {report.sampleId}?
+                    </AlertDialog.Title>
+                    <AlertDialog.Description className="t-prose mt-2 text-text-muted">
+                      Confirm the report status after checking its slides. Verified non-pollen detections are removed from report counts; original model predictions remain available for review records.
+                    </AlertDialog.Description>
+                    <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 border-y border-border py-3 text-[13px] sm:grid-cols-3">
+                      {([
+                        ["Confirmed", "confirmed"],
+                        ["Corrected", "corrected"],
+                        ["False detections", "false_positive"],
+                        ["Missed grains", "missed"],
+                        ["Uncertain", "uncertain"],
+                      ] as const).map(([label, kind]) => (
+                        <div key={kind} className="flex justify-between gap-2">
+                          <dt className="text-text-muted">{label}</dt>
+                          <dd className="tabular-nums text-text" style={{ fontFamily: "var(--font-mono)" }}>
+                            {reportAnnotations.filter((annotation) => annotation.kind === kind).length}
+                          </dd>
+                        </div>
+                      ))}
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-text-muted">Unannotated model grains</dt>
+                        <dd className="tabular-nums text-text" style={{ fontFamily: "var(--font-mono)" }}>
+                          {unreviewedModelGrains}
+                        </dd>
+                      </div>
+                    </dl>
+                    <p className="mt-3 text-[12.5px] text-text-muted">
+                      Unannotated grains keep their model labels. The saved researcher corrections are available for later dataset preparation and retraining.
+                    </p>
+                    <div className="mt-4 flex justify-end gap-2">
+                      <AlertDialog.Close className="focus-ring rounded-md border border-border bg-surface px-3 py-1.5 text-[13px] text-text-muted hover:text-text">
+                        Continue Review
+                      </AlertDialog.Close>
+                      <Button type="button" intent="confirm" size="sm" disabled={changing} onClick={() => changeStatus("Completed")}>
+                        <CircleCheck size={13} strokeWidth={1.75} />
+                        Confirm and Complete
                       </Button>
                     </div>
                   </AlertDialog.Popup>
@@ -471,7 +651,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
         <div className="mb-4 grid grid-cols-2 gap-3 rounded-md bg-surface-sunken px-3 py-3 text-center sm:grid-cols-4">
           <SummaryTile value={totalGrains} label="Total Grains" />
           <SummaryTile value={aggregated.length} label="Pollen Types" />
-          <SummaryTile value={`${Math.round(overallConfidence * 100)}%`} label="Avg. Confidence" />
+          <SummaryTile value={overallConfidence === null ? "—" : `${Math.round(overallConfidence * 100)}%`} label="Avg. Model Confidence" />
           <SummaryTile
             value={report.slides.length}
             label={report.slides.length === 1 ? "Slide" : "Slides"}
@@ -561,6 +741,111 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
             const selectedSpecies = highlighted[slide.id] ?? null;
             const select = (speciesId: SpeciesId | null) =>
               setHighlighted((current) => ({ ...current, [slide.id]: speciesId }));
+            const isEditableReview = report.status === "Needs review" && report.canEdit && !report.sampleDetections;
+            const slideDetails = (
+              <div className="min-w-0">
+                {slide.detections.length === 0 ? (
+                  <p className="text-[14px] text-text-muted">No pollen grains detected on this slide.</p>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {slide.detections.map((detection) => (
+                      <DetectionRow
+                        key={detection.speciesId}
+                        detection={detection}
+                        colors={colors}
+                        selected={selectedSpecies === detection.speciesId}
+                        onSelect={() =>
+                          select(selectedSpecies === detection.speciesId ? null : detection.speciesId)
+                        }
+                      />
+                    ))}
+                  </ul>
+                )}
+
+                <div className="mt-4 border-t border-border pt-3">
+                  <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                    <div className="caption-label text-[13px]">Slide Note</div>
+                    {report.canEdit && !report.sampleDetections && editingNoteSlideId !== slide.id && (
+                      <Button
+                        type="button"
+                        intent="ghost"
+                        size="sm"
+                        onClick={() => editSlideNote(slide)}
+                        disabled={savingNote || Boolean(editingNoteSlideId && editingNoteSlideId !== slide.id)}
+                      >
+                        <Pencil size={13} strokeWidth={1.75} />
+                        {slide.notes ? "Edit note" : "Add note"}
+                      </Button>
+                    )}
+                  </div>
+                  {editingNoteSlideId === slide.id ? (
+                    <div>
+                      <textarea
+                        autoFocus
+                        aria-label={`Slide note for ${slide.fileName}`}
+                        value={noteDraft}
+                        onChange={(event) => setNoteDraft(event.target.value)}
+                        placeholder="Add a note about this slide…"
+                        maxLength={10000}
+                        rows={3}
+                        disabled={savingNote}
+                        className="focus-ring w-full resize-y rounded-sm border border-border bg-surface px-3 py-2 text-[13px] leading-relaxed text-text placeholder:text-text-faint disabled:opacity-60"
+                      />
+                      <p className="mt-1 text-[11.5px] text-text-muted">
+                        This note is saved with this slide in the report.
+                      </p>
+                      <div className="mt-2 flex flex-wrap justify-end gap-2">
+                        <Button type="button" intent="secondary" size="sm" onClick={cancelSlideNote} disabled={savingNote}>
+                          <X size={13} strokeWidth={1.75} /> Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          intent="accent"
+                          size="sm"
+                          onClick={() => saveSlideNote(slide)}
+                          disabled={savingNote || noteDraft.trim() === slide.notes.trim()}
+                        >
+                          {savingNote ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} strokeWidth={1.75} />}
+                          Save note
+                        </Button>
+                      </div>
+                    </div>
+                  ) : slide.notes ? (
+                    <p className="t-prose whitespace-pre-wrap text-text">{slide.notes}</p>
+                  ) : (
+                    <p className="text-[14px] text-text-muted">No note recorded.</p>
+                  )}
+                </div>
+              </div>
+            );
+            const slideImage = (
+              <SpecimenImageViewer
+                imageUrl={imageUrls[slide.id]}
+                fileName={slide.fileName}
+                grains={reviewedGrains(slide)}
+                detections={slide.detections}
+                colors={colors}
+                selectedSpeciesId={selectedSpecies}
+                onSelectSpecies={select}
+                onExpand={() => setInspector({ slideId: slide.id, speciesId: selectedSpecies })}
+                onImageError={handleImageError}
+                caption={
+                  <>
+                    <span className="plate-label mr-1.5">Slide {index + 1}</span>
+                    {slide.fileName} · {slideGrains} {slideGrains === 1 ? "grain" : "grains"}
+                    {slide.detections[0] && (
+                      <>
+                        {" "}· mostly{" "}
+                        <SpeciesName
+                          species={findSpecies(speciesCatalog, slide.detections[0].speciesId)}
+                          commonName={false}
+                        />
+                      </>
+                    )}
+                  </>
+                }
+              />
+            );
 
             return (
               <div key={slide.id} className="border-t border-border pt-5 first:border-t-0 first:pt-0">
@@ -574,76 +859,43 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-                  <div className="min-w-0">
-                    {slide.detections.length === 0 ? (
-                      <p className="text-[14px] text-text-muted">No pollen grains detected on this slide.</p>
-                    ) : (
-                      <ul className="flex flex-col gap-2">
-                        {slide.detections.map((detection) => (
-                          <DetectionRow
-                            key={detection.speciesId}
-                            detection={detection}
-                            colors={colors}
-                            selected={selectedSpecies === detection.speciesId}
-                            onSelect={() =>
-                              select(
-                                selectedSpecies === detection.speciesId
-                                  ? null
-                                  : detection.speciesId,
-                              )
-                            }
-                          />
-                        ))}
-                      </ul>
-                    )}
-
-                    <div className="mt-4">
-                      <div
-                        className="caption-label text-[13px] mb-1"
-                        
-                      >
-                        Slide Note
-                      </div>
-                      {slide.notes ? (
-                        <p className="t-prose whitespace-pre-wrap text-text">{slide.notes}</p>
-                      ) : (
-                        <p className="text-[14px] text-text-muted">No note recorded.</p>
+                {isEditableReview ? (
+                  <GrainReviewEditor
+                    sampleId={report.sampleId}
+                    slideId={slide.id}
+                    imageUrl={imageUrls[slide.id]}
+                    fileName={slide.fileName}
+                    grains={slide.grains}
+                    detections={slide.modelDetections ?? slide.detections}
+                    reviewedDetections={slide.detections}
+                    selectedSpeciesId={selectedSpecies}
+                    annotations={slide.annotations}
+                    leadingContent={slideDetails}
+                    onSaved={(annotation) => handleAnnotationSaved(slide.id, annotation)}
+                    onRemoved={(annotationId) => handleAnnotationRemoved(slide.id, annotationId)}
+                  />
+                ) : (
+                  <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+                    {slideDetails}
+                    <div className="min-w-0">
+                      {slideImage}
+                      {report.status === "Needs review" && report.canEdit && report.sampleDetections && (
+                        <GrainReviewEditor
+                          sampleId={report.sampleId}
+                          slideId={slide.id}
+                          imageUrl={imageUrls[slide.id]}
+                          fileName={slide.fileName}
+                          grains={slide.grains}
+                          detections={slide.detections}
+                          annotations={slide.annotations}
+                          sampleDetections
+                          onSaved={(annotation) => handleAnnotationSaved(slide.id, annotation)}
+                          onRemoved={(annotationId) => handleAnnotationRemoved(slide.id, annotationId)}
+                        />
                       )}
                     </div>
                   </div>
-
-                  <div className="min-w-0">
-                    <SpecimenImageViewer
-                      imageUrl={imageUrls[slide.id]}
-                      fileName={slide.fileName}
-                      grains={slide.grains}
-                      detections={slide.detections}
-                      colors={colors}
-                      selectedSpeciesId={selectedSpecies}
-                      onSelectSpecies={select}
-                      onExpand={() =>
-                        setInspector({ slideId: slide.id, speciesId: selectedSpecies })
-                      }
-                      onImageError={handleImageError}
-                      caption={
-                        <>
-                          <span className="plate-label mr-1.5">Slide {index + 1}</span>
-                          {slide.fileName} · {slideGrains} {slideGrains === 1 ? "grain" : "grains"}
-                          {slide.detections[0] && (
-                            <>
-                              {" "}· mostly{" "}
-                              <SpeciesName
-                                species={findSpecies(speciesCatalog, slide.detections[0].speciesId)}
-                                commonName={false}
-                              />
-                            </>
-                          )}
-                        </>
-                      }
-                    />
-                  </div>
-                </div>
+                )}
               </div>
             );
           })}
@@ -663,7 +915,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
           label: `Slide ${index + 1}`,
           fileName: slide.fileName,
           imageUrl: imageUrls[slide.id],
-          grains: slide.grains,
+          grains: reviewedGrains(slide),
           detections: slide.detections,
         }))}
       />

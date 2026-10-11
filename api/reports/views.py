@@ -1,9 +1,11 @@
 import base64
 import calendar
+import io
 import logging
 from collections.abc import Mapping
 import datetime
 import json
+from functools import lru_cache
 import re
 import uuid
 import zoneinfo
@@ -13,7 +15,7 @@ import requests
 from PIL import Image as PILImage
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q, Sum
+from django.db.models import Q
 from django.db.models.functions import Substr
 from django.utils import timezone
 from rest_framework import status
@@ -29,8 +31,10 @@ logger = logging.getLogger(__name__)
 MANILA = zoneinfo.ZoneInfo('Asia/Manila')
 # Reports that describe finished work — what charts and maps count.
 FINALISED_STATUSES = ('Completed', 'Needs review')
-from .models import STATUS_CHOICES, Detection, Report, Species
+from .models import STATUS_CHOICES, GrainAnnotation, Report, Slide, Species
 from .serializers import (
+    GrainAnnotationInputSerializer,
+    GrainAnnotationSerializer,
     ReportCreateSerializer,
     ReportSerializer,
     ReportUpdateSerializer,
@@ -121,7 +125,9 @@ class ReportListCreateView(APIView):
                 | Q(slides__detections__species__id__icontains=query)
             ).distinct()
 
-        reports = reports.prefetch_related('slides__detections', 'slides__grains')
+        reports = reports.prefetch_related(
+            'slides__detections', 'slides__grains', 'slides__annotations',
+        )
         return Response(
             ReportSerializer(reports, many=True, context={'request': request}).data
         )
@@ -191,7 +197,108 @@ ROBOFLOW_MOCK_RESPONSE = Path(__file__).resolve().parent / 'fixtures' / 'roboflo
 
 
 class DetectionUnavailable(Exception):
-    """Roboflow couldn't be reached or answered with something unusable."""
+    """An inference provider couldn't be reached or answered usefully."""
+
+
+class DetectionNotConfigured(Exception):
+    """The selected local detector or its classification stage isn't configured."""
+
+
+@lru_cache(maxsize=2)
+def _yolo26_detector(weights_path):
+    """Load one detector per worker process and weights path."""
+    from .inference.yolo26 import YOLO26PollenDetector
+
+    return YOLO26PollenDetector(weights_path)
+
+
+@lru_cache(maxsize=2)
+def _yolo26_classifier(weights_path):
+    """Load one local classifier session per worker process and weights path."""
+    from .inference.efficientnet_classifier import EfficientNetB0Classifier
+
+    return EfficientNetB0Classifier(weights_path)
+
+
+def _yolo26_detect_and_classify(image_upload):
+    """Run local YOLO26, then classify its pollen crops with local EfficientNet."""
+    from PIL import ImageOps
+
+    from .inference.efficientnet_classifier import (
+        ClassifierConfigurationError,
+        ClassifierOutputError,
+    )
+    from .inference.yolo26 import DetectorConfigurationError, DetectorOutputError
+
+    if not settings.YOLO26_WEIGHTS_PATH or not settings.YOLO26_CLASSIFIER_WEIGHTS_PATH:
+        raise DetectionNotConfigured
+
+    try:
+        classifier = _yolo26_classifier(settings.YOLO26_CLASSIFIER_WEIGHTS_PATH)
+    except (ClassifierConfigurationError, ImportError, OSError, ValueError) as exc:
+        logger.exception('Local EfficientNet classifier is not ready')
+        raise DetectionNotConfigured from exc
+
+    try:
+        detector = _yolo26_detector(settings.YOLO26_WEIGHTS_PATH)
+    except (DetectorConfigurationError, ImportError, OSError, ValueError) as exc:
+        logger.exception('YOLO26 detector is not ready')
+        raise DetectionNotConfigured from exc
+    except RuntimeError as exc:
+        logger.exception('YOLO26 detector failed to initialize')
+        raise DetectionUnavailable from exc
+
+    try:
+        image_upload.seek(0)
+        image_bytes = image_upload.read()
+        image_upload.seek(0)
+        with PILImage.open(io.BytesIO(image_bytes)) as source:
+            image = ImageOps.exif_transpose(source).convert('RGB').copy()
+        result = detector.detect_image(
+            image,
+            confidence=settings.YOLO26_CONFIDENCE,
+            image_size=settings.YOLO26_IMAGE_SIZE,
+            device=settings.YOLO26_DEVICE,
+        )
+    except DetectorOutputError as exc:
+        logger.exception('YOLO26 detector returned unusable output')
+        raise DetectionUnavailable from exc
+    except (OSError, ValueError) as exc:
+        logger.exception('YOLO26 detector input could not be processed')
+        raise DetectionUnavailable from exc
+    except RuntimeError as exc:
+        logger.exception('YOLO26 detector failed')
+        raise DetectionUnavailable from exc
+
+    if not result.pollen_boxes:
+        return {'image': {'width': result.image_width, 'height': result.image_height}, 'predictions': []}
+
+    try:
+        labels = classifier.classify(image, result.pollen_boxes)
+    except ClassifierOutputError as exc:
+        logger.exception('Local EfficientNet classifier returned unusable output')
+        raise DetectionUnavailable from exc
+    except RuntimeError as exc:
+        logger.exception('Local EfficientNet classifier failed')
+        raise DetectionUnavailable from exc
+    if len(labels) != len(result.pollen_boxes):
+        logger.error('Local EfficientNet classifier returned a different number of labels than boxes')
+        raise DetectionUnavailable
+
+    return {
+        'image': {'width': result.image_width, 'height': result.image_height},
+        'predictions': [
+            {
+                'class': label,
+                'confidence': score,
+                'x': box.x,
+                'y': box.y,
+                'width': box.width,
+                'height': box.height,
+            }
+            for box, (label, score) in zip(result.pollen_boxes, labels)
+        ],
+    }
 
 
 def _roboflow_detect(image):
@@ -275,21 +382,20 @@ def _mock_roboflow_detect(image):
 class DetectView(APIView):
     """
     POST /api/v1/reports/detect/ — proxy a single specimen image to the
-    Roboflow-hosted grain detection model.
+    configured detection pipeline.
 
     Stateless: called once per uploaded image at Analyze-time, before a
     report/sample id exists, so nothing here is persisted — see
     ReportListCreateView.post for where an already-analyzed batch is later
-    saved. Response is Roboflow's native shape with only the fields the
-    client needs: `{"image": {"width", "height"}, "predictions": [{"class",
-    "confidence", "x", "y", "width", "height"}]}` (pixel coordinates, box
-    centre-based). app/PolLens/lib/analysis.ts maps that into the app's
-    normalized top-left BoundingBox client-side, so this view exists only
-    to hold the Roboflow API key server-side, not to reshape the response.
+    saved. It returns the provider-independent shape the client needs:
+    `{"image": {"width", "height"}, "predictions": [{"class",
+    "confidence", "x", "y", "width", "height"}]}` (pixel coordinates,
+    box centre-based). app/PolLens/lib/analysis.ts maps that into the app's
+    normalized top-left BoundingBox client-side.
 
-    Upstream is either a single Roboflow model (ROBOFLOW_MODEL_ID/VERSION) or,
-    when ROBOFLOW_WORKFLOW_ID is set, the two-stage detect-then-classify
-    Workflow (`_roboflow_workflow`); the response shape is the same.
+    `DETECTION_BACKEND=roboflow` uses the existing Roboflow Workflow or
+    single-model endpoint. `DETECTION_BACKEND=yolo26` uses the local YOLO26
+    detector and local EfficientNet-B0 classifier.
 
     With ROBOFLOW_MOCK on, the upstream call is swapped for
     `_mock_roboflow_detect`; everything after it is the same code path.
@@ -313,6 +419,24 @@ class DetectView(APIView):
 
         if settings.ROBOFLOW_MOCK:
             payload = _mock_roboflow_detect(image)
+        elif settings.DETECTION_BACKEND == 'yolo26':
+            try:
+                payload = _yolo26_detect_and_classify(image)
+            except DetectionNotConfigured:
+                return Response(
+                    {'detail': 'Detection service is not configured.'},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            except DetectionUnavailable:
+                return Response(
+                    {'detail': 'Detection service is unavailable.'},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+        elif settings.DETECTION_BACKEND != 'roboflow':
+            return Response(
+                {'detail': 'Detection service is not configured.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         else:
             use_workflow = bool(settings.ROBOFLOW_WORKFLOW_ID)
             if use_workflow:
@@ -543,15 +667,22 @@ class ReportMonthlyCountsView(APIView):
         months.reverse()
 
         target_year_months = [f'{year:04d}-{month:02d}' for year, month in months]
-        rows = (
-            Detection.objects
-            .filter(species_id__in=all_species, slide__report__status__in=FINALISED_STATUSES)
-            .annotate(year_month=Substr('slide__report__collected_at', 1, 7))
+        reports = (
+            Report.objects
+            .filter(status__in=FINALISED_STATUSES)
+            .annotate(year_month=Substr('collected_at', 1, 7))
             .filter(year_month__in=target_year_months)
-            .values('year_month', 'species_id')
-            .annotate(total=Sum('grain_count'))
+            .prefetch_related('slides__detections', 'slides__grains', 'slides__annotations')
         )
-        counts = {(row['year_month'], row['species_id']): row['total'] for row in rows}
+        counts = {}
+        for report in reports:
+            for slide in report.slides.all():
+                for detection in slide.reviewed_detection_summary():
+                    species_id = detection['species_id']
+                    if species_id not in all_species:
+                        continue
+                    key = (report.year_month, species_id)
+                    counts[key] = counts.get(key, 0) + detection['grain_count']
 
         result = []
         for year, month in months:
@@ -588,7 +719,7 @@ class ReportDetailView(APIView):
 
     def _get(self, sample_id):
         return Report.objects.prefetch_related(
-            'slides__detections', 'slides__grains',
+            'slides__detections', 'slides__grains', 'slides__annotations',
         ).filter(sample_id=sample_id).first()
 
     @staticmethod
@@ -638,4 +769,91 @@ class ReportDetailView(APIView):
             # Files go only once the rows are really gone; a storage error is
             # logged, never turned into a 500 for a delete that already happened.
             transaction.on_commit(lambda: delete_image_files(images), robust=True)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ReportAnnotationDetailView(APIView):
+    """PUT/DELETE one reviewer annotation on a report in Needs review."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser]
+
+    @staticmethod
+    def _editable_report(request, sample_id):
+        report = Report.objects.filter(sample_id=sample_id).first()
+        if report is None:
+            return None, Response({'detail': 'Report not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if not (request.user.is_staff or report.owner_id == request.user.id):
+            return None, Response(
+                {'detail': 'Only the researcher who created this report can change it.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if report.status != 'Needs review':
+            return None, Response(
+                {'detail': 'Annotations can only be changed while a report Needs review.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if report.sample_detections:
+            return None, Response(
+                {'detail': 'Sample detections cannot be used as model-training annotations.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return report, None
+
+    def put(self, request, sample_id, annotation_id):
+        report, error = self._editable_report(request, sample_id)
+        if error:
+            return error
+
+        serializer = GrainAnnotationInputSerializer(
+            data=request.data, context={'report': report},
+        )
+        if not serializer.is_valid():
+            return Response(
+                {'detail': 'The annotation is invalid.', 'errors': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        data = serializer.validated_data
+        box = data['box']
+        grain = data['grain']
+        with transaction.atomic():
+            slide = Slide.objects.select_for_update().get(pk=data['slide'].pk)
+            annotation = None
+            if grain is not None:
+                annotation = GrainAnnotation.objects.select_for_update().filter(grain=grain).first()
+            if annotation is None:
+                annotation = GrainAnnotation.objects.filter(
+                    pk=annotation_id, slide__report=report,
+                ).first()
+            if annotation is None:
+                if GrainAnnotation.objects.filter(pk=annotation_id).exists():
+                    return Response(
+                        {'detail': 'This annotation id is already in use.'},
+                        status=status.HTTP_409_CONFLICT,
+                    )
+                annotation = GrainAnnotation(id=annotation_id)
+
+            annotation.slide = slide
+            annotation.grain = grain
+            annotation.kind = data['kind']
+            annotation.species = data['species']
+            annotation.box_x = box['x']
+            annotation.box_y = box['y']
+            annotation.box_width = box['width']
+            annotation.box_height = box['height']
+            annotation.reviewer = request.user
+            annotation.save()
+
+        return Response(GrainAnnotationSerializer(annotation).data)
+
+    def delete(self, request, sample_id, annotation_id):
+        report, error = self._editable_report(request, sample_id)
+        if error:
+            return error
+        deleted, _ = GrainAnnotation.objects.filter(
+            pk=annotation_id, slide__report=report,
+        ).delete()
+        if not deleted:
+            return Response({'detail': 'Annotation not found.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(status=status.HTTP_204_NO_CONTENT)

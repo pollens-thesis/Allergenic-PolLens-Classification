@@ -1,9 +1,11 @@
 import pathlib
+import uuid
 import zoneinfo
 
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 RISK_LEVEL_CHOICES = [
@@ -136,6 +138,100 @@ class Slide(models.Model):
     def __str__(self):
         return f'{self.report.sample_id}-S{self.number}'
 
+    def reviewed_detection_summary(self):
+        """Return reviewed pollen counts with model confidence kept separate.
+
+        The persisted Detection and Grain rows remain the model's original
+        output. This summary is the result shown to researchers after review:
+        corrected boxes move to the researcher's species, verified non-pollen
+        boxes are removed, and manually boxed missed pollen is added. Confidence
+        is averaged over retained model grains only.
+        Slides from older reports may have summary rows without saved grain
+        boxes; those remain unchanged because individual false positives
+        cannot be linked to them.
+        """
+        grains = {grain.pk: grain for grain in self.grains.all()}
+        removed_by_species = {}
+        corrected_by_species = {}
+        missed_by_species = {}
+        for annotation in self.annotations.all():
+            if annotation.kind == 'missed':
+                if annotation.species_id is not None:
+                    missed_by_species[annotation.species_id] = (
+                        missed_by_species.get(annotation.species_id, 0) + 1
+                    )
+                continue
+            if annotation.kind not in ('corrected', 'false_positive') or annotation.grain_id is None:
+                continue
+            grain = grains.get(annotation.grain_id)
+            if grain is None:
+                continue
+            entry = removed_by_species.setdefault(
+                grain.species_id, {'count': 0, 'confidence_sum': 0.0},
+            )
+            entry['count'] += 1
+            entry['confidence_sum'] += grain.confidence
+            if annotation.kind == 'corrected' and annotation.species_id is not None:
+                corrected = corrected_by_species.setdefault(
+                    annotation.species_id, {'count': 0, 'confidence_sum': 0.0},
+                )
+                corrected['count'] += 1
+                corrected['confidence_sum'] += grain.confidence
+
+        result_by_species = {}
+        for detection in self.detections.all():
+            removed = removed_by_species.get(detection.species_id, {})
+            model_grain_count = max(0, detection.grain_count - removed.get('count', 0))
+            confidence_sum = max(
+                0.0,
+                detection.avg_confidence * detection.grain_count - removed.get('confidence_sum', 0.0),
+            )
+            result_by_species[detection.species_id] = {
+                'species_id': detection.species_id,
+                'grain_count': model_grain_count,
+                'confidence_grain_count': model_grain_count,
+                'confidence_sum': confidence_sum if model_grain_count else 0.0,
+            }
+
+        for species_id, corrected in corrected_by_species.items():
+            entry = result_by_species.setdefault(species_id, {
+                'species_id': species_id,
+                'grain_count': 0,
+                'confidence_grain_count': 0,
+                'confidence_sum': 0.0,
+            })
+            entry['grain_count'] += corrected['count']
+            entry['confidence_grain_count'] += corrected['count']
+            entry['confidence_sum'] += corrected['confidence_sum']
+
+        for species_id, missed_count in missed_by_species.items():
+            entry = result_by_species.setdefault(species_id, {
+                'species_id': species_id,
+                'grain_count': 0,
+                'confidence_grain_count': 0,
+                'confidence_sum': 0.0,
+            })
+            entry['grain_count'] += missed_count
+
+        result = []
+        for entry in result_by_species.values():
+            if entry['grain_count'] == 0:
+                continue
+            confidence_grain_count = entry['confidence_grain_count']
+            result.append({
+                'species_id': entry['species_id'],
+                'grain_count': entry['grain_count'],
+                'confidence_grain_count': confidence_grain_count,
+                # Keep the numeric API shape; clients use confidenceGrainCount
+                # to display an em dash when there are no model scores.
+                'avg_confidence': (
+                    entry['confidence_sum'] / confidence_grain_count
+                    if confidence_grain_count else 0.0
+                ),
+            })
+
+        return sorted(result, key=lambda row: (-row['grain_count'], -row['avg_confidence']))
+
 
 class Species(models.Model):
     """
@@ -216,3 +312,54 @@ class Grain(models.Model):
 
     def __str__(self):
         return f'{self.slide}:G{self.number}'
+
+
+class GrainAnnotation(models.Model):
+    """Researcher review of a model grain, or a manually added missed grain.
+
+    The model's Grain row is kept unchanged so its original class, confidence,
+    and box remain available for evaluation. False-positive annotations are
+    excluded from the reviewed result counts; other annotations remain review
+    labels alongside the model prediction.
+    """
+
+    KIND_CHOICES = [
+        ('confirmed', 'Confirmed'),
+        ('corrected', 'Corrected'),
+        ('false_positive', 'False positive'),
+        ('missed', 'Missed grain'),
+        ('uncertain', 'Uncertain'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    slide = models.ForeignKey(Slide, on_delete=models.CASCADE, related_name='annotations')
+    # Null for a manually drawn grain missed by the model.
+    grain = models.ForeignKey(
+        Grain, on_delete=models.CASCADE, null=True, blank=True,
+        related_name='review_annotations',
+    )
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES)
+    species = models.ForeignKey(Species, on_delete=models.PROTECT, null=True, blank=True)
+    box_x = models.FloatField(validators=[MinValueValidator(0), MaxValueValidator(1)])
+    box_y = models.FloatField(validators=[MinValueValidator(0), MaxValueValidator(1)])
+    box_width = models.FloatField(validators=[MinValueValidator(0), MaxValueValidator(1)])
+    box_height = models.FloatField(validators=[MinValueValidator(0), MaxValueValidator(1)])
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='grain_annotations',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['grain'], condition=Q(grain__isnull=False),
+                name='unique_review_annotation_per_grain',
+            ),
+        ]
+
+    def __str__(self):
+        target = f'{self.slide}:G{self.grain.number}' if self.grain_id else f'{self.slide}:missed'
+        return f'{target} ({self.kind})'

@@ -1,6 +1,9 @@
 # Local AI-tool state (Claude Code etc.), at any level — not project content
 .claude/
 
+# Finder metadata is not project content.
+.DS_Store
+
 # Private project documents (thesis proposal, letters, screenshots) — shared
 # privately, never published
 docs/private/

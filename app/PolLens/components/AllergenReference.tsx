@@ -6,31 +6,38 @@ import { ChevronLeft, ChevronRight, ImageOff, Search, X } from "lucide-react";
 import type { Species } from "@/lib/data";
 import { useSpeciesCatalog } from "@/lib/species-catalog";
 import { useReportGrainCounts } from "@/lib/report-grain-counts";
+import { additionalSpeciesNames, CLASSIFIER_SPECIES_IDS, DATASET_SPECIES_NAMES } from "@/lib/species-names";
 import RiskBadge from "@/components/RiskBadge";
 import { buttonVariants } from "@/components/Button";
 
 /**
- * The 23-species taxonomic scope as an atlas: a searchable grid of plates,
- * four across with 12 species per page, each opening the species' full record.
+ * The 15 species in the current EfficientNet classifier, shown as a searchable
+ * atlas. Keep the wider catalog available elsewhere for historical reports.
  *
  * Reference text and photos come from the API (Django admin → Species); the
  * text is botanical only — the risk stamp reads "Not Assessed" until UPLB
  * supplies allergenicity data. Photos are freely licensed and always credited.
  */
-const PAGE_SIZE = 12;
-
+const PAGE_SIZE = 9;
 /** Case- and accent-insensitive form, so "kulitis", "Kulitis" and "kulítis" match. */
 function fold(text: string): string {
   return text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 }
 
 function searchText(sp: Species): string {
-  return fold([sp.scientificName, sp.commonName, sp.filipinoName ?? "", sp.code].join(" "));
+  return fold([
+    sp.scientificName, sp.commonName, sp.filipinoName ?? "",
+    DATASET_SPECIES_NAMES[sp.id] ?? "", sp.code,
+  ].join(" "));
 }
 
-/** "Spiny amaranth · Kulitis" — the plant's everyday names under the binomial. */
+/** The dataset name under the binomial, with catalog names as fallback. */
 function plantNames(sp: Species): string {
-  return [sp.commonName, sp.filipinoName].filter(Boolean).join(" · ");
+  return DATASET_SPECIES_NAMES[sp.id] ?? [sp.commonName, sp.filipinoName].filter(Boolean).join(" · ");
+}
+
+function otherPlantNames(sp: Species): string {
+  return additionalSpeciesNames(sp);
 }
 
 function photoFor(sp: Species): string {
@@ -39,15 +46,19 @@ function photoFor(sp: Species): string {
 
 export default function AllergenReference() {
   const speciesCatalog = useSpeciesCatalog();
+  const referenceSpecies = useMemo(
+    () => speciesCatalog.filter((sp) => CLASSIFIER_SPECIES_IDS.has(sp.id)),
+    [speciesCatalog],
+  );
   const counts = useReportGrainCounts();
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
 
   const matches = useMemo(() => {
     const q = fold(query.trim());
-    if (!q) return speciesCatalog;
-    return speciesCatalog.filter((sp) => searchText(sp).includes(q));
-  }, [speciesCatalog, query]);
+    if (!q) return referenceSpecies;
+    return referenceSpecies.filter((sp) => searchText(sp).includes(q));
+  }, [referenceSpecies, query]);
 
   const pageCount = Math.ceil(matches.length / PAGE_SIZE);
   const [pagination, setPagination] = useState({ page: 1, matches, openId });
@@ -56,7 +67,7 @@ export default function AllergenReference() {
   // Adjust before rendering when filtering or a shared record changes pages.
   if (pagination.matches !== matches || pagination.openId !== openId) {
     const matchIndex = openId ? matches.findIndex((sp) => sp.id === openId) : -1;
-    const index = matchIndex >= 0 ? matchIndex : speciesCatalog.findIndex((sp) => sp.id === openId);
+    const index = matchIndex >= 0 ? matchIndex : referenceSpecies.findIndex((sp) => sp.id === openId);
     if (index >= 0) currentPage = Math.min(Math.floor(index / PAGE_SIZE) + 1, Math.max(pageCount, 1));
     setPagination({ page: currentPage, matches, openId });
   }
@@ -69,7 +80,7 @@ export default function AllergenReference() {
   const rangeStart = matches.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const rangeEnd = Math.min(currentPage * PAGE_SIZE, matches.length);
 
-  // Deep links: /dataset#cocos_nucifera opens that species' record, and the
+  // Deep links: /dataset#amaranthus_spinosus opens that species' record, and the
   // hash follows the dialog so a record can be shared or bookmarked.
   useEffect(() => {
     const fromHash = () => {
@@ -92,7 +103,7 @@ export default function AllergenReference() {
     window.history.replaceState(null, "", url);
   }
 
-  const openSpecies = openId ? (speciesCatalog.find((sp) => sp.id === openId) ?? null) : null;
+  const openSpecies = openId ? (referenceSpecies.find((sp) => sp.id === openId) ?? null) : null;
   const grainsOf = (sp: Species) => (counts ? (counts[sp.id] ?? 0) : null);
 
   return (
@@ -140,7 +151,7 @@ export default function AllergenReference() {
           </button>
         </div>
       ) : (
-        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {visibleMatches.map((sp) => (
             <li key={sp.id} id={sp.id} className="scroll-mt-24 lg:scroll-mt-48">
               <SpeciesCard species={sp} grains={grainsOf(sp)} onOpen={() => open(sp.id)} />
@@ -152,9 +163,9 @@ export default function AllergenReference() {
       <div className="mt-5 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-[13px] text-text-muted lining-nums" aria-live="polite">
           {matches.length === 0
-            ? `0 of ${speciesCatalog.length} species`
+            ? `0 of ${referenceSpecies.length} species`
             : query.trim()
-              ? `Showing ${rangeStart}–${rangeEnd} of ${matches.length} matches (${speciesCatalog.length} total)`
+              ? `Showing ${rangeStart}–${rangeEnd} of ${matches.length} matches (${referenceSpecies.length} total)`
               : `Showing ${rangeStart}–${rangeEnd} of ${matches.length} species`}
         </p>
         {pageCount > 1 && (
@@ -218,7 +229,7 @@ function SpeciesPhoto({ sp, className }: { sp: Species; className?: string }) {
     // eslint-disable-next-line @next/next/no-img-element -- a small, pre-sized static image
     <img
       src={photoFor(sp)}
-      alt={`${sp.scientificName}${sp.commonName ? ` (${sp.commonName})` : ""}`}
+      alt={`${sp.scientificName} (${plantNames(sp)})`}
       loading="lazy"
       decoding="async"
       onError={() => setFailed(true)}
@@ -330,6 +341,9 @@ function SpeciesRecord({
                   <i className="t-binomial">{sp.scientificName}</i>
                 </Dialog.Title>
                 {plantNames(sp) && <p className="mt-1 text-[15px] text-text-muted">{plantNames(sp)}</p>}
+                {otherPlantNames(sp) && (
+                  <p className="mt-1 text-[13px] text-text-muted">Also known as {otherPlantNames(sp)}</p>
+                )}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <RiskBadge level={sp.riskLevel} />
                   {sp.family && <span className="text-[13px] text-text-muted">{sp.family}</span>}
@@ -372,7 +386,6 @@ function SpeciesRecord({
                   </div>
                 )}
 
-                {sp.infoSource && <p className="mt-5 text-[12px] leading-relaxed text-text-muted">{sp.infoSource}</p>}
               </div>
             </div>
           )}

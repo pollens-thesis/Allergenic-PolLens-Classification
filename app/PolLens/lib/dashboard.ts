@@ -39,7 +39,7 @@ export type DashboardSummary = {
   pendingCount: number;
   siteCount: number;
   sampleCount: number;
-  avgConfidence: number;
+  avgConfidence: number | null;
   locationFilter: string;
   locations: DashboardLocationSummary[];
   monthly: DashboardMonth[];

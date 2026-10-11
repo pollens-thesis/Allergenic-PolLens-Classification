@@ -859,7 +859,10 @@ export default function PollenMap() {
               </div>
               <div>
                 <div className="text-lg text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-                  {Math.round(getWeightedAvgConfidence(selectedPlace.detections) * 100)}%
+                  {(() => {
+                    const confidence = getWeightedAvgConfidence(selectedPlace.detections);
+                    return confidence === null ? "—" : `${Math.round(confidence * 100)}%`;
+                  })()}
                 </div>
                 <div className="text-[12px] text-text-muted">Avg. Confidence</div>
               </div>

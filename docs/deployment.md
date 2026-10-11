@@ -184,6 +184,10 @@ request.
 
 ## 5. Smoke test
 
+For the opt-in YOLO26 detector and EfficientNet classifier rollout, follow
+[the staging, cutover, and rollback runbook](yolo26-staging.md). The steps below
+describe the current Roboflow production deployment.
+
 Open `VERCEL_URL` and check each step:
 
 - [ ] Opening `/reports` directly redirects to the sign-in page.

@@ -103,8 +103,9 @@ between the thesis proposal paper and the frontend.
     call `/logout/`) is frontend work outside this file's scope; see
     `../docs/login-frontend-handoff.md` for the full handoff instead of
     re-deriving it from scratch.
-- **Reports:** server-side storage for analysis batches. **No server-side
-  ML** (detection is the `/detect/` proxy) and no async pipeline.
+- **Reports:** server-side storage for analysis batches. Production detection
+  calls the Roboflow `/detect/` proxy; an opt-in local YOLO26 transition path
+  is documented below. There is no async pipeline.
   - **Lifecycle (updated 2026-09-28, paper §5.1.7):** `Pending` → `Needs review`
     ("Generate Report") → `Completed`; a completed report can be flagged
     `Needs review` again.
@@ -229,15 +230,12 @@ between the thesis proposal paper and the frontend.
     at Analyze-time, before a report/sample id exists, so nothing here is
     persisted (see `POST /api/v1/reports/` above for where an
     already-analyzed batch is later saved). Accepts one `image` file part
-    (multipart); forwards it to Roboflow (config-driven, same
-    `os.environ.get` pattern as `GOOGLE_OAUTH_CLIENT_ID`) and passes
-    through Roboflow's native shape trimmed to `{"image": {"width",
-    "height"}, "predictions": [{"class", "confidence", "x", "y", "width",
-    "height"}]}` (pixel coordinates, box centre-based; `image` is kept so
-    the client needs no image decode to normalize) — the
-    pixel→normalized `BoundingBox` mapping is client-side in
-    `app/PolLens/lib/analysis.ts` (`fromRoboflow`); this view exists only
-    to hold the Roboflow API key server-side, not to reshape the response.
+    (multipart) and returns the provider-independent shape
+    `{"image": {"width", "height"}, "predictions": [{"class",
+    "confidence", "x", "y", "width", "height"}]}` (pixel coordinates,
+    box centre-based; `image` is kept so the client needs no image decode to
+    normalize). `app/PolLens/lib/analysis.ts` does the pixel→normalized
+    `BoundingBox` mapping.
     Missing image → `400`. Unconfigured (the API key, or the workspace + workflow ID / model ID + version pair in use, is blank)
     → `503 {"detail": "Detection service is not configured."}`. Any
     upstream failure (non-200, timeout, connection error) → `502
@@ -288,6 +286,22 @@ between the thesis proposal paper and the frontend.
       any class outside the catalog (with a console warning). If the
       trained model uses other labels, add an alias map in
       `toSpeciesId()` in `app/PolLens/lib/analysis.ts`.
+    - **YOLO26 + EfficientNet transition (2026-10-10, not deployed):** setting
+      `DETECTION_BACKEND=yolo26` selects private YOLO26 Detection v12 weights
+      and classifies its pollen crops with the local EfficientNet-B0 ONNX
+      model. It requires `api/requirements-ml.txt`, `YOLO26_WEIGHTS_PATH`, and
+      `YOLO26_CLASSIFIER_WEIGHTS_PATH` with the classifier's adjacent
+      `class_names.json`; it does not use the Roboflow API key for inference.
+      The app response shape stays the same, and the default remains the
+      Roboflow Workflow (`ROBOFLOW_MOCK=true` still takes precedence). The
+      two models use the current 15-species dataset: YOLO26 emits `Pollen` or
+      `non-pollen`, and EfficientNet selects one of the 15 species. The app's
+      existing catalog has 23 species. The classifier has only within-slide
+      reported accuracy and has not been evaluated end-to-end on YOLO26 crops.
+      A separate Render staging Blueprint and private artifact bundle flow are
+      documented in `../docs/yolo26-staging.md`; they are not deployed. Keep
+      the production default on Roboflow until staging accuracy, latency, and
+      memory checks pass.
     - **Wired into the frontend as of 2026-09-23**: `analyzeSpecimen()`
       POSTs each image here. **As of 2026-09-24 there is no client-side
       fallback**: a failed detection (unreachable, 502/503, unreadable image)
