@@ -132,6 +132,7 @@ MSEUF IT blocks it, Google sign-in still works.
    | `AWS_S3_ENDPOINT_URL` | `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com` |
    | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | From step 1.4 |
    | `ROBOFLOW_API_KEY` / `ROBOFLOW_WORKSPACE` / `ROBOFLOW_WORKFLOW_ID` | The private API key and the published two-stage Workflow (`docs/roboflow-pipeline.md`). `ROBOFLOW_MOCK` is `false` in the Blueprint; with it `true` the API serves sample detections instead and reports are saved flagged as samples (the flag is permanent). |
+   | `DETECTION_BACKEND` / `INFERENCE_URL` / `INFERENCE_TOKEN` | Optional. `DETECTION_BACKEND=remote` sends images to the hosted YOLO26 + EfficientNet service (`services/inference` on Modal) instead of Roboflow. `INFERENCE_URL` is its base URL (no `/detect`); `INFERENCE_TOKEN` is the Modal secret `pollens-inference`. All three must be set or `/detect/` answers 503. Unset, the default stays `roboflow`. |
 
    `DJANGO_SECRET_KEY` is generated for you, and `DJANGO_DEBUG` is already
    `false`.
@@ -224,6 +225,7 @@ Open `VERCEL_URL` and check each step:
 | Vercel build can't find Next.js / builds the wrong folder | Settings → Build and Deployment → **Root Directory `app/PolLens`**. |
 | Session keeps expiring | Renewal needs the API reachable. Check Render's logs. |
 | Analyze: *detection service isn't configured* (503) | `ROBOFLOW_API_KEY` plus `ROBOFLOW_WORKSPACE` + `ROBOFLOW_WORKFLOW_ID` (or `ROBOFLOW_MODEL_ID` + `ROBOFLOW_MODEL_VERSION`) is missing on Render. |
+| Analyze: *detection service is unavailable* (502) with `DETECTION_BACKEND=remote` | The Modal service is down, `INFERENCE_TOKEN` doesn't match the Modal secret (the service answers 401), or a cold start outlasted `INFERENCE_TIMEOUT`. Open `<INFERENCE_URL>/healthz`: it should say `detector` and `classifier` are `true`. |
 | Analyze: *detection service is unavailable* (502) | The Workflow isn't **published** in Roboflow, `ROBOFLOW_WORKFLOW_ID` is wrong, the **public** API key was used instead of the private one, or the Workflow's only output isn't named `predictions`. A 12 MP phone photo that takes over 30 s also ends here; read Render's log. |
 | Analyze: *"X" is MPO; use JPEG or PNG* | Fixed 2026-10-01 (phone MPO photos are accepted); redeploy the API if you still see it. |
 | Reports show a **Sample** badge | They were saved while `ROBOFLOW_MOCK` was `true`. The flag is permanent by design (their counts are the built-in example reading): delete them and re-analyze. |
