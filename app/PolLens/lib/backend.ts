@@ -4,6 +4,7 @@
 
 import { apiFetch } from "@/lib/api";
 import type { MonthlyPollenCount, Species } from "@/lib/data";
+import { withReferenceName } from "@/lib/species-names";
 
 /**
  * Trailing-12-month grain counts per species (GET /api/v1/reports/monthly-counts/,
@@ -29,5 +30,5 @@ export async function fetchSpeciesCatalog(): Promise<Species[]> {
   if (!res.ok) {
     throw new Error("Failed to fetch species catalog.");
   }
-  return (await res.json()) as Species[];
+  return ((await res.json()) as Species[]).map(withReferenceName);
 }

@@ -6,6 +6,8 @@
 // There is no sample data here: every report comes from the server.
 // ---------------------------------------------------------------------------
 
+import { withReferenceName } from "./species-names";
+
 export type SpeciesId =
   | "amaranthus_spinosus"
   | "axonopus_compressus"
@@ -35,7 +37,14 @@ export type Species = {
   id: SpeciesId;
   /** Full binomial, e.g. "Amaranthus spinosus" — pollen here is classified to species, not just genus. */
   scientificName: string;
+  /**
+   * The name shown for the species everywhere: the Allergen Reference label
+   * (lib/species-names.ts `withReferenceName`), or the catalog's English name
+   * for the species the reference has no label for.
+   */
   commonName: string;
+  /** The catalog's English plant name before the reference label replaced `commonName`. */
+  catalogName?: string;
   code: string; // taxonomic-style short tag, e.g. AMAR
   season: string;
   /** "Not assessed" until real allergenicity data is entered (backend admin). */
@@ -76,7 +85,7 @@ export type Species = {
 // validated limit at 8 hues, not something this fix attempts to solve.
 // IMPORTANT: this color is duplicated in api/reports/migrations — keep both
 // in sync (see 0006_recolor_species.py).
-export const speciesCatalog: Species[] = [
+const bundledSpecies: Species[] = [
   { id: "amaranthus_spinosus", scientificName: "Amaranthus spinosus", commonName: "Spiny amaranth", code: "AMAR", season: "", riskLevel: "Not assessed", color: "#2a78d6" },
   { id: "axonopus_compressus", scientificName: "Axonopus compressus", commonName: "Broadleaf carpet grass", code: "AXON", season: "", riskLevel: "Not assessed", color: "#eb6834" },
   { id: "brachiaria_mutica", scientificName: "Brachiaria mutica", commonName: "Para grass", code: "BRAC", season: "", riskLevel: "Not assessed", color: "#1baf7a" },
@@ -101,6 +110,13 @@ export const speciesCatalog: Species[] = [
   { id: "mimosa_pudica", scientificName: "Mimosa pudica", commonName: "Sensitive plant", code: "MIMO", season: "", riskLevel: "Not assessed", color: "#008300" },
   { id: "mangifera_indica", scientificName: "Mangifera indica", commonName: "Mango", code: "MANG", season: "", riskLevel: "Not assessed", color: "#4a3aa7" },
 ];
+
+/**
+ * The bundled catalog, with the Allergen Reference labels applied as common
+ * names (see `withReferenceName`). The API catalog gets the same treatment in
+ * lib/backend.ts, so both sources agree.
+ */
+export const speciesCatalog: Species[] = bundledSpecies.map(withReferenceName);
 
 /**
  * The bundled entry for `id`. A species added on the server after this build

@@ -41,7 +41,23 @@ export const DATASET_SPECIES_NAMES: Partial<Record<SpeciesId, string>> = {
   tridax_procumbens: "Wild daisy",
 };
 
-type SpeciesNames = Pick<Species, "id" | "commonName" | "filipinoName">;
+/**
+ * Applies the Allergen Reference label as the species' common name, so every
+ * screen and export shows one name per species. The catalog's own English name
+ * is kept as `catalogName` (it still appears under "other names" on the
+ * reference page). Species outside the 15 classifier classes have no reference
+ * label and keep the catalog name. Idempotent. Call it where a catalog enters
+ * the app: the bundled `speciesCatalog` and the API response.
+ */
+export function withReferenceName(species: Species): Species {
+  return {
+    ...species,
+    catalogName: species.catalogName ?? species.commonName,
+    commonName: DATASET_SPECIES_NAMES[species.id] ?? species.commonName,
+  };
+}
+
+type SpeciesNames = Pick<Species, "id" | "commonName" | "catalogName" | "filipinoName">;
 
 /** The dataset's familiar label, falling back to the catalog's plant names. */
 export function researchSpeciesName(species: SpeciesNames): string {
@@ -52,7 +68,7 @@ export function researchSpeciesName(species: SpeciesNames): string {
 /** Catalog names not already represented by the dataset's primary label. */
 export function additionalSpeciesNames(species: SpeciesNames): string {
   const primary = researchSpeciesName(species).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
-  return [species.commonName, species.filipinoName]
+  return [species.catalogName ?? species.commonName, species.filipinoName]
     .filter((name): name is string => typeof name === "string" && name !== "")
     .filter((name) => name.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase() !== primary)
     .join(" · ");
