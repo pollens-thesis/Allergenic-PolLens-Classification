@@ -808,6 +808,104 @@ class DetectViewWorkflowTests(APITestCase):
 
 
 @override_settings(
+    DETECTION_BACKEND='remote', INFERENCE_URL='https://inference.example.test',
+    INFERENCE_TOKEN='secret-token', INFERENCE_TIMEOUT=120.0, ROBOFLOW_MOCK=False,
+)
+class DetectViewRemoteTests(APITestCase):
+    """DETECTION_BACKEND=remote: the hosted inference service (services/inference)."""
+    url = '/api/v1/reports/detect/'
+
+    def setUp(self):
+        self.user = User.objects.create(email='researcher@up.edu.ph', institution='up.edu.ph')
+        self.client.force_authenticate(user=self.user)
+
+    def post_image(self):
+        return self.client.post(self.url, {'image': make_test_image()}, format='multipart')
+
+    @patch('reports.views.requests.post')
+    def test_passes_predictions_through_and_strips_extra_fields(self, mock_post):
+        mock_post.return_value = Mock(status_code=200, json=lambda: {
+            'image': {'width': 640, 'height': 480},
+            'predictions': [{
+                'class': 'imperata_cylindrica', 'confidence': 0.87,
+                'x': 50.0, 'y': 60.0, 'width': 20.0, 'height': 20.0,
+                'detection_id': 'abc',
+            }],
+        })
+
+        response = self.post_image()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data, {
+            'mock': False,
+            'image': {'width': 640, 'height': 480},
+            'predictions': [{
+                'class': 'imperata_cylindrica', 'confidence': 0.87,
+                'x': 50.0, 'y': 60.0, 'width': 20.0, 'height': 20.0,
+            }],
+        })
+
+    @patch('reports.views.requests.post')
+    def test_sends_the_image_with_the_bearer_token_and_no_redirects(self, mock_post):
+        mock_post.return_value = Mock(
+            status_code=200, json=lambda: {'image': {'width': 1, 'height': 1}, 'predictions': []},
+        )
+
+        self.post_image()
+
+        self.assertEqual(mock_post.call_args.args[0], 'https://inference.example.test/detect')
+        kwargs = mock_post.call_args.kwargs
+        self.assertEqual(kwargs['headers'], {'Authorization': 'Bearer secret-token'})
+        self.assertEqual(kwargs['timeout'], 120.0)
+        self.assertIs(kwargs['allow_redirects'], False)
+        self.assertTrue(kwargs['files']['image'][1].startswith(b'\x89PNG'))
+
+    @patch('reports.views.requests.post')
+    def test_upstream_error_status_returns_502(self, mock_post):
+        for code in (401, 413, 502, 503):
+            with self.subTest(code=code):
+                mock_post.return_value = Mock(status_code=code, json=lambda: {'detail': 'x'})
+
+                self.assertEqual(self.post_image().status_code, status.HTTP_502_BAD_GATEWAY)
+
+    @patch('reports.views.requests.post')
+    def test_redirect_is_not_followed_and_returns_502(self, mock_post):
+        mock_post.return_value = Mock(status_code=303, json=lambda: {})
+
+        self.assertEqual(self.post_image().status_code, status.HTTP_502_BAD_GATEWAY)
+
+    @patch('reports.views.requests.post')
+    def test_connection_error_and_timeout_return_502(self, mock_post):
+        for error in (requests.ConnectionError('boom'), requests.Timeout('slow')):
+            with self.subTest(error=type(error).__name__):
+                mock_post.side_effect = error
+
+                self.assertEqual(self.post_image().status_code, status.HTTP_502_BAD_GATEWAY)
+
+    @patch('reports.views.requests.post')
+    def test_non_object_payload_returns_502(self, mock_post):
+        mock_post.return_value = Mock(status_code=200, json=lambda: ['nope'])
+
+        self.assertEqual(self.post_image().status_code, status.HTTP_502_BAD_GATEWAY)
+
+    @patch('reports.views.requests.post')
+    def test_unconfigured_returns_503_without_calling_out(self, mock_post):
+        for blank in ({'INFERENCE_URL': ''}, {'INFERENCE_TOKEN': ''}):
+            with self.subTest(blank=blank), self.settings(**blank):
+                self.assertEqual(self.post_image().status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        mock_post.assert_not_called()
+
+    @override_settings(ROBOFLOW_MOCK=True)
+    @patch('reports.views.requests.post')
+    def test_mock_mode_wins_over_remote(self, mock_post):
+        response = self.post_image()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertIs(response.data['mock'], True)
+        mock_post.assert_not_called()
+
+
+@override_settings(
     ROBOFLOW_MOCK=True, ROBOFLOW_API_KEY='', ROBOFLOW_MODEL_ID='', ROBOFLOW_MODEL_VERSION='',
 )
 class DetectViewMockModeTests(APITestCase):

@@ -301,6 +301,31 @@ def _yolo26_detect_and_classify(image_upload):
     }
 
 
+def _remote_detect(image):
+    """
+    `{image, predictions}` from the hosted inference service
+    (services/inference on Modal), which already returns the provider-independent
+    shape, so nothing is unwrapped. No redirects are followed: the bearer token
+    must only ever go to the configured host.
+    """
+    try:
+        image.seek(0)
+        upstream = requests.post(
+            f'{settings.INFERENCE_URL}/detect',
+            headers={'Authorization': f'Bearer {settings.INFERENCE_TOKEN}'},
+            files={'image': (image.name, image.read(), image.content_type)},
+            timeout=settings.INFERENCE_TIMEOUT,
+            allow_redirects=False,
+        )
+        payload = upstream.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise DetectionUnavailable from exc
+    if upstream.status_code != 200:
+        logger.error('Inference service answered %s', upstream.status_code)
+        raise DetectionUnavailable
+    return payload
+
+
 def _roboflow_detect(image):
     """Raw Roboflow response for `image`, exactly as the hosted API returns it."""
     url = ROBOFLOW_DETECT_URL.format(
@@ -395,7 +420,8 @@ class DetectView(APIView):
 
     `DETECTION_BACKEND=roboflow` uses the existing Roboflow Workflow or
     single-model endpoint. `DETECTION_BACKEND=yolo26` uses the local YOLO26
-    detector and local EfficientNet-B0 classifier.
+    detector and local EfficientNet-B0 classifier. `DETECTION_BACKEND=remote`
+    posts the image to the hosted inference service (`INFERENCE_URL`).
 
     With ROBOFLOW_MOCK on, the upstream call is swapped for
     `_mock_roboflow_detect`; everything after it is the same code path.
@@ -427,6 +453,19 @@ class DetectView(APIView):
                     {'detail': 'Detection service is not configured.'},
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
+            except DetectionUnavailable:
+                return Response(
+                    {'detail': 'Detection service is unavailable.'},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+        elif settings.DETECTION_BACKEND == 'remote':
+            if not (settings.INFERENCE_URL and settings.INFERENCE_TOKEN):
+                return Response(
+                    {'detail': 'Detection service is not configured.'},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            try:
+                payload = _remote_detect(image)
             except DetectionUnavailable:
                 return Response(
                     {'detail': 'Detection service is unavailable.'},

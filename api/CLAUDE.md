@@ -302,6 +302,19 @@ between the thesis proposal paper and the frontend.
       documented in `../docs/yolo26-staging.md`; they are not deployed. Keep
       the production default on Roboflow until staging accuracy, latency, and
       memory checks pass.
+    - **Remote mode (`DETECTION_BACKEND=remote`, added 2026-10-14, issue #46):**
+      the same YOLO26 + EfficientNet pipeline, but hosted by
+      `services/inference/` on Modal instead of loaded in this process (Render's
+      512 MB can't hold the models). `_remote_detect` POSTs the image as the
+      multipart `image` part to `{INFERENCE_URL}/detect` with `Authorization:
+      Bearer INFERENCE_TOKEN`, `timeout=INFERENCE_TIMEOUT` (default 120 s, to
+      cover a cold start) and `allow_redirects=False` (the token must only go to
+      the configured host). The service already returns `{image, predictions}`,
+      so nothing is unwrapped. URL or token blank → 503; any non-200, timeout
+      or connection error → 502; `ROBOFLOW_MOCK=true` still wins.
+      `start_yolo26.sh` gives this mode `GUNICORN_TIMEOUT` 130 s, which must stay
+      above `INFERENCE_TIMEOUT`. Roboflow stays the default; switching back is
+      setting `DETECTION_BACKEND=roboflow`.
     - **Wired into the frontend as of 2026-09-23**: `analyzeSpecimen()`
       POSTs each image here. **As of 2026-09-24 there is no client-side
       fallback**: a failed detection (unreachable, 502/503, unreadable image)

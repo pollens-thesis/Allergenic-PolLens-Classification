@@ -8,8 +8,9 @@ services:
     plan: free
     region: singapore
     buildCommand: ./build.sh
-    # Provider-aware launcher: Roboflow stays the default; YOLO26 can be
-    # enabled with DETECTION_BACKEND after its private bundle is configured.
+    # Provider-aware launcher: Roboflow stays the default; DETECTION_BACKEND=remote
+    # calls the hosted inference service (INFERENCE_URL below); yolo26 loads the
+    # models in-process after its private bundle is configured.
     startCommand: ./start_yolo26.sh
     healthCheckPath: /healthz/
     envVars:
@@ -42,6 +43,13 @@ services:
       - key: AWS_ACCESS_KEY_ID
         sync: false
       - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      # Hosted inference service (services/inference on Modal). To switch
+      # detection to it, set DETECTION_BACKEND to "remote" in the dashboard once
+      # INFERENCE_URL and INFERENCE_TOKEN are filled in; it defaults to roboflow.
+      - key: INFERENCE_URL
+        sync: false
+      - key: INFERENCE_TOKEN
         sync: false
       # The detection model is live (two-stage Workflow), so mock is off. Set
       # ROBOFLOW_API_KEY, ROBOFLOW_WORKSPACE and ROBOFLOW_WORKFLOW_ID below (or
