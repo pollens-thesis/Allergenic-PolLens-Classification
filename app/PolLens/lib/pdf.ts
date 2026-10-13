@@ -17,9 +17,9 @@ import {
   aggregateSlideDetections,
   formatCollectedAt,
   formatTime,
+  getConfidenceGrainCount,
   getCollectionDate,
   getCollectionTime,
-  getConfidenceGrainCount,
   getSpecies,
   getTopDetection,
   getTotalGrains,
@@ -28,6 +28,7 @@ import {
   type DetectedGrain,
   type Specimen,
   type SpecimenDetection,
+  type SpecimenSlide,
 } from "@/lib/data";
 import type { Species } from "@/lib/data";
 import type { PlaceStats } from "@/lib/geo";
@@ -273,7 +274,7 @@ function detectionTable(cursor: Cursor, detections: SpecimenDetection[]) {
   doc.text("POLLEN TYPE", MARGIN, cursor.y);
   doc.text("RISK", col.risk, cursor.y);
   doc.text("GRAINS", col.grains, cursor.y, { align: "right" });
-  doc.text("AVG. CONFIDENCE", col.confidence, cursor.y, { align: "right" });
+  doc.text("AVG. MODEL CONFIDENCE", col.confidence, cursor.y, { align: "right" });
   cursor.y += 2;
   rule(cursor);
 
@@ -314,19 +315,18 @@ function detectionTable(cursor: Cursor, detections: SpecimenDetection[]) {
     doc.setTextColor(INK);
     doc.text(String(detection.grainCount), col.grains, cursor.y, { align: "right" });
 
-    // Manual additions have no model score; show that instead of 0%.
+    // Confidence uses model-scored grains only; hand-added pollen has no score.
+    const pct = Math.round(detection.avgConfidence * 100);
+    const barWidth = 26;
+    const barX = col.confidence - barWidth - 12;
+    doc.setFontSize(9);
     if (getConfidenceGrainCount(detection) > 0) {
-      const pct = Math.round(detection.avgConfidence * 100);
-      const barWidth = 26;
-      const barX = col.confidence - barWidth - 12;
       doc.setFillColor(RULE);
       doc.roundedRect(barX, cursor.y - 2.4, barWidth, 1.8, 0.9, 0.9, "F");
       doc.setFillColor(ACCENT);
       doc.roundedRect(barX, cursor.y - 2.4, (barWidth * pct) / 100, 1.8, 0.9, 0.9, "F");
-      doc.setFontSize(9);
       doc.text(`${pct}%`, col.confidence, cursor.y, { align: "right" });
     } else {
-      doc.setFontSize(9);
       doc.text("—", col.confidence, cursor.y, { align: "right" });
     }
 
@@ -425,6 +425,37 @@ function fitImage(image: PdfImage): { width: number; height: number } {
   return { width, height };
 }
 
+function reviewedSlideGrains(slide: SpecimenSlide): DetectedGrain[] {
+  const excluded = new Set(
+    (slide.annotations ?? [])
+      .filter((annotation) => annotation.kind === "false_positive" && annotation.grainId)
+      .map((annotation) => annotation.grainId),
+  );
+  const annotationsByGrain = new Map(
+    (slide.annotations ?? []).filter((annotation) => annotation.grainId)
+      .map((annotation) => [annotation.grainId!, annotation]),
+  );
+  const modelGrains = (slide.grains ?? []).filter((grain) => !excluded.has(grain.id)).map((grain) => {
+    const annotation = annotationsByGrain.get(grain.id);
+    if (!annotation) return grain;
+    return {
+      ...grain,
+      speciesId: annotation.kind === "corrected" && annotation.speciesId ? annotation.speciesId : grain.speciesId,
+      box: annotation.box,
+    };
+  });
+  const missedGrains = (slide.annotations ?? [])
+    .filter((annotation) => annotation.kind === "missed" && annotation.speciesId)
+    .map((annotation, index) => ({
+      id: `M${index + 1}`,
+      speciesId: annotation.speciesId!,
+      confidence: 0,
+      box: annotation.box,
+      source: "manual" as const,
+    }));
+  return [...modelGrains, ...missedGrains];
+}
+
 function placeSlideImage(
   cursor: Cursor,
   image: PdfImage,
@@ -443,6 +474,7 @@ function placeSlideImage(
     doc.setLineWidth(0.35);
     for (const grain of grains) {
       doc.setDrawColor(speciesColor(grain.speciesId));
+      doc.setLineDashPattern(grain.source === "manual" ? [1, 0.7] : [], 0);
       doc.rect(
         x + grain.box.x * width,
         y + grain.box.y * height,
@@ -450,6 +482,7 @@ function placeSlideImage(
         grain.box.height * height,
       );
     }
+    doc.setLineDashPattern([], 0);
   }
 
   cursor.y += height + 4;
@@ -457,9 +490,11 @@ function placeSlideImage(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(MUTED);
+  const modelGrainCount = grains?.filter((grain) => grain.source !== "manual").length ?? 0;
+  const manualGrainCount = grains?.filter((grain) => grain.source === "manual").length ?? 0;
   doc.text(
-    grains && grains.length > 0
-      ? `${grains.length} ${grains.length === 1 ? "grain" : "grains"} boxed, colored by pollen type`
+    modelGrainCount + manualGrainCount > 0
+      ? `${modelGrainCount} model ${modelGrainCount === 1 ? "box" : "boxes"}${manualGrainCount ? ` · ${manualGrainCount} researcher-added pollen ${manualGrainCount === 1 ? "box" : "boxes"} shown dashed` : ""}`
       : "Grain positions were not recorded for this slide",
     x,
     cursor.y,
@@ -514,7 +549,6 @@ export async function downloadReportPdf(
   const top = getTopDetection(aggregated);
   const collectionTime = getCollectionTime(report.collectedAt);
   const weather = report.weather;
-  const overallConfidence = getWeightedAvgConfidence(aggregated);
 
   masthead(cursor, {
     title: "Pollen Count Report",
@@ -524,10 +558,11 @@ export async function downloadReportPdf(
   if (report.sampleDetections) paragraph(cursor, "Sample detections — analyzed before the trained model was deployed, so these counts are the server's built-in example reading, not results.", true);
 
   // --- At a glance --------------------------------------------------------
+  const avgConfidence = getWeightedAvgConfidence(aggregated);
   summaryTiles(cursor, [
     { value: String(totalGrains), label: "Total Grains" },
     { value: String(aggregated.length), label: "Pollen Types" },
-    { value: overallConfidence === null ? "—" : `${Math.round(overallConfidence * 100)}%`, label: "Avg. Model Confidence" },
+    { value: avgConfidence === null ? "—" : `${Math.round(avgConfidence * 100)}%`, label: "Avg. Model Confidence" },
     { value: String(report.slides.length), label: report.slides.length === 1 ? "Slide" : "Slides" },
   ]);
   compositionBar(cursor, aggregated);
@@ -576,7 +611,7 @@ export async function downloadReportPdf(
     heading(cursor, `Slide ${index + 1} — ${slide.fileName}`);
 
     if (image && layout) {
-      placeSlideImage(cursor, image, layout, slide.grains);
+      placeSlideImage(cursor, image, layout, reviewedSlideGrains(slide));
     } else if (blob) {
       // An unreadable image must not sink the export.
       paragraph(cursor, "(image could not be embedded)", true);
@@ -655,14 +690,14 @@ function placesFromReports(reports: Specimen[]): PlaceStats[] {
       const existing = place.detections.find((d) => d.speciesId === detection.speciesId);
       if (existing) {
         const grains = existing.grainCount + detection.grainCount;
-        const oldConfidenceGrains = getConfidenceGrainCount(existing);
-        const newConfidenceGrains = getConfidenceGrainCount(detection);
-        const confidenceGrainCount = oldConfidenceGrains + newConfidenceGrains;
-        existing.avgConfidence = confidenceGrainCount
-          ? (existing.avgConfidence * oldConfidenceGrains + detection.avgConfidence * newConfidenceGrains) /
-            confidenceGrainCount
+        const existingConfidenceGrains = getConfidenceGrainCount(existing);
+        const incomingConfidenceGrains = getConfidenceGrainCount(detection);
+        const confidenceGrains = existingConfidenceGrains + incomingConfidenceGrains;
+        existing.avgConfidence = confidenceGrains
+          ? (existing.avgConfidence * existingConfidenceGrains + detection.avgConfidence * incomingConfidenceGrains) /
+            confidenceGrains
           : 0;
-        existing.confidenceGrainCount = confidenceGrainCount;
+        existing.confidenceGrainCount = confidenceGrains;
         existing.grainCount = grains;
       } else {
         place.detections.push({ ...detection });
@@ -837,14 +872,14 @@ function combinePlaces(places: PlaceStats[]): SpecimenDetection[] {
         continue;
       }
       const grains = existing.grainCount + detection.grainCount;
-      const oldConfidenceGrains = getConfidenceGrainCount(existing);
-      const newConfidenceGrains = getConfidenceGrainCount(detection);
-      const confidenceGrainCount = oldConfidenceGrains + newConfidenceGrains;
-      existing.avgConfidence = confidenceGrainCount
-        ? (existing.avgConfidence * oldConfidenceGrains + detection.avgConfidence * newConfidenceGrains) /
-          confidenceGrainCount
+      const existingConfidenceGrains = getConfidenceGrainCount(existing);
+      const incomingConfidenceGrains = getConfidenceGrainCount(detection);
+      const confidenceGrains = existingConfidenceGrains + incomingConfidenceGrains;
+      existing.avgConfidence = confidenceGrains
+        ? (existing.avgConfidence * existingConfidenceGrains + detection.avgConfidence * incomingConfidenceGrains) /
+          confidenceGrains
         : 0;
-      existing.confidenceGrainCount = confidenceGrainCount;
+      existing.confidenceGrainCount = confidenceGrains;
       existing.grainCount = grains;
     }
   }

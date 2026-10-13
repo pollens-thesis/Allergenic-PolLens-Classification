@@ -65,7 +65,7 @@ export default function DashboardWorkspace() {
             <div className="flex rounded-sm border border-border bg-surface p-0.5" role="group" aria-label="Collection date range">
               {ranges.map((months) => (
                 <button key={months} type="button" aria-pressed={range === months} onClick={() => setRange(months)} aria-label={`Show ${months} months`}
-                  className={`focus-ring min-h-11 flex-1 whitespace-nowrap rounded-sm px-3 py-2 text-[13px] transition-colors active:scale-[0.98] ${range === months ? "bg-text text-bg" : "text-text-muted hover:bg-surface-sunken hover:text-text"}`}
+                  className={`focus-ring min-h-11 flex-1 whitespace-nowrap rounded-sm px-3 py-2 text-[13px] transition-colors active:scale-[0.98] ${range === months ? "control-selection bg-selected text-selected-fg" : "text-text-muted hover:bg-surface-sunken hover:text-text"}`}
                 >{months} Months</button>
               ))}
             </div>

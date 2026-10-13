@@ -74,7 +74,7 @@ function readableOn(hex: string): string {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
   const lin = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
   const luminance = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-  return luminance < 0.25 ? "#ffffff" : "var(--text)";
+  return luminance < 0.25 ? "#ffffff" : "#171717";
 }
 
 /** Zoom past which unsampled places are labelled too — by then there is room. */
@@ -329,6 +329,7 @@ export default function PollenMap() {
   }
 
   const selectedPlace = selected ? (places.get(selected) ?? null) : null;
+  const selectedPlaceConfidence = selectedPlace ? getWeightedAvgConfidence(selectedPlace.detections) : null;
 
   function leaveScope(preserveSearchInput = false) {
     setSelected(null);
@@ -605,7 +606,7 @@ export default function PollenMap() {
                 onClick={() => applyFilters({ show: option })}
                 aria-pressed={filters.show === option}
                 className={`focus-ring rounded px-2.5 py-1 text-[13px] transition active:scale-[0.97] ${
-                  filters.show === option ? "bg-text text-bg" : "text-text-muted hover:text-text"
+                  filters.show === option ? "control-selection bg-selected text-selected-fg" : "text-text-muted hover:text-text"
                 }`}
               >
                 {option === "sampled" ? "Sampled" : "All"}
@@ -859,12 +860,11 @@ export default function PollenMap() {
               </div>
               <div>
                 <div className="text-lg text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-                  {(() => {
-                    const confidence = getWeightedAvgConfidence(selectedPlace.detections);
-                    return confidence === null ? "—" : `${Math.round(confidence * 100)}%`;
-                  })()}
+                  {selectedPlaceConfidence === null
+                    ? "—"
+                    : `${Math.round(selectedPlaceConfidence * 100)}%`}
                 </div>
-                <div className="text-[12px] text-text-muted">Avg. Confidence</div>
+                <div className="text-[12px] text-text-muted">Avg. Model Confidence</div>
               </div>
             </div>
 

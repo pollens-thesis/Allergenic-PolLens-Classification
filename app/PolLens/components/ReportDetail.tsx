@@ -74,12 +74,14 @@ function DetectionRow({
   detection,
   colors,
   selected = false,
+  compact = false,
   onSelect,
 }: {
   detection: SpecimenDetection;
   /** Overlay colours, so the swatch matches this type's boxes on the images. */
   colors: OverlayColors;
   selected?: boolean;
+  compact?: boolean;
   onSelect?: () => void;
 }) {
   const speciesCatalog = useSpeciesCatalog();
@@ -94,7 +96,7 @@ function DetectionRow({
    * instead of being squeezed into the name.
    */
   const body = (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+    <div className={`flex flex-col gap-2 ${compact ? "" : "sm:flex-row sm:items-center sm:justify-between sm:gap-3"}`}>
       <div className="flex min-w-0 items-center gap-2.5">
         <span
           aria-hidden
@@ -105,7 +107,7 @@ function DetectionRow({
             half-width slide column never breaks a binomial or runs it into the badge. */}
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 text-left">
           <span
-            className="text-[15.5px] whitespace-nowrap text-text italic"
+            className={`text-[15.5px] text-text italic ${compact ? "whitespace-normal" : "whitespace-nowrap"}`}
             style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
           >
             {species.scientificName}
@@ -121,19 +123,19 @@ function DetectionRow({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-4 pl-5 sm:pl-0">
-        <div className="text-left sm:text-right">
+      <div className={`flex shrink-0 items-center gap-4 pl-5 ${compact ? "" : "sm:pl-0"}`}>
+        <div className={`text-left ${compact ? "" : "sm:text-right"}`}>
           <span
             className="text-[14px] text-text"
             style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}
           >
             {detection.grainCount.toLocaleString()}
           </span>
-          <span className="ml-1 text-[12px] text-text-muted sm:ml-0 sm:block">
+          <span className={`ml-1 text-[12px] text-text-muted ${compact ? "" : "sm:ml-0 sm:block"}`}>
             {detection.grainCount === 1 ? "grain" : "grains"}
           </span>
         </div>
-        <div className="w-24 flex-1 sm:flex-none">
+        <div className={`w-24 flex-1 ${compact ? "" : "sm:flex-none"}`}>
           <div className="mb-1 flex items-center justify-between text-[12px] text-text-muted">
             <span>Model confidence</span>
             <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{hasModelConfidence ? `${confidencePct}%` : "—"}</span>
@@ -742,7 +744,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
             const select = (speciesId: SpeciesId | null) =>
               setHighlighted((current) => ({ ...current, [slide.id]: speciesId }));
             const isEditableReview = report.status === "Needs review" && report.canEdit && !report.sampleDetections;
-            const slideDetails = (
+            const slideSummary = (
               <div className="min-w-0">
                 {slide.detections.length === 0 ? (
                   <p className="text-[14px] text-text-muted">No pollen grains detected on this slide.</p>
@@ -754,6 +756,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                         detection={detection}
                         colors={colors}
                         selected={selectedSpecies === detection.speciesId}
+                        compact={isEditableReview}
                         onSelect={() =>
                           select(selectedSpecies === detection.speciesId ? null : detection.speciesId)
                         }
@@ -761,61 +764,68 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                     ))}
                   </ul>
                 )}
-
-                <div className="mt-4 border-t border-border pt-3">
-                  <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                    <div className="caption-label text-[13px]">Slide Note</div>
-                    {report.canEdit && !report.sampleDetections && editingNoteSlideId !== slide.id && (
-                      <Button
-                        type="button"
-                        intent="ghost"
-                        size="sm"
-                        onClick={() => editSlideNote(slide)}
-                        disabled={savingNote || Boolean(editingNoteSlideId && editingNoteSlideId !== slide.id)}
-                      >
-                        <Pencil size={13} strokeWidth={1.75} />
-                        {slide.notes ? "Edit note" : "Add note"}
-                      </Button>
-                    )}
-                  </div>
-                  {editingNoteSlideId === slide.id ? (
-                    <div>
-                      <textarea
-                        autoFocus
-                        aria-label={`Slide note for ${slide.fileName}`}
-                        value={noteDraft}
-                        onChange={(event) => setNoteDraft(event.target.value)}
-                        placeholder="Add a note about this slide…"
-                        maxLength={10000}
-                        rows={3}
-                        disabled={savingNote}
-                        className="focus-ring w-full resize-y rounded-sm border border-border bg-surface px-3 py-2 text-[13px] leading-relaxed text-text placeholder:text-text-faint disabled:opacity-60"
-                      />
-                      <p className="mt-1 text-[11.5px] text-text-muted">
-                        This note is saved with this slide in the report.
-                      </p>
-                      <div className="mt-2 flex flex-wrap justify-end gap-2">
-                        <Button type="button" intent="secondary" size="sm" onClick={cancelSlideNote} disabled={savingNote}>
-                          <X size={13} strokeWidth={1.75} /> Cancel
-                        </Button>
-                        <Button
-                          type="button"
-                          intent="accent"
-                          size="sm"
-                          onClick={() => saveSlideNote(slide)}
-                          disabled={savingNote || noteDraft.trim() === slide.notes.trim()}
-                        >
-                          {savingNote ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} strokeWidth={1.75} />}
-                          Save note
-                        </Button>
-                      </div>
-                    </div>
-                  ) : slide.notes ? (
-                    <p className="t-prose whitespace-pre-wrap text-text">{slide.notes}</p>
-                  ) : (
-                    <p className="text-[14px] text-text-muted">No note recorded.</p>
+              </div>
+            );
+            const slideNote = (
+              <div className="mt-4 border-t border-border pt-3">
+                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                  <div className="caption-label text-[13px]">Slide Note</div>
+                  {report.canEdit && !report.sampleDetections && editingNoteSlideId !== slide.id && (
+                    <Button
+                      type="button"
+                      intent="ghost"
+                      size="sm"
+                      onClick={() => editSlideNote(slide)}
+                      disabled={savingNote || Boolean(editingNoteSlideId && editingNoteSlideId !== slide.id)}
+                    >
+                      <Pencil size={13} strokeWidth={1.75} />
+                      {slide.notes ? "Edit note" : "Add note"}
+                    </Button>
                   )}
                 </div>
+                {editingNoteSlideId === slide.id ? (
+                  <div>
+                    <textarea
+                      autoFocus
+                      aria-label={`Slide note for ${slide.fileName}`}
+                      value={noteDraft}
+                      onChange={(event) => setNoteDraft(event.target.value)}
+                      placeholder="Add a note about this slide…"
+                      maxLength={10000}
+                      rows={3}
+                      disabled={savingNote}
+                      className="focus-ring w-full resize-y rounded-sm border border-border bg-surface px-3 py-2 text-[13px] leading-relaxed text-text placeholder:text-text-faint disabled:opacity-60"
+                    />
+                    <p className="mt-1 text-[11.5px] text-text-muted">
+                      This note is saved with this slide in the report.
+                    </p>
+                    <div className="mt-2 flex flex-wrap justify-end gap-2">
+                      <Button type="button" intent="secondary" size="sm" onClick={cancelSlideNote} disabled={savingNote}>
+                        <X size={13} strokeWidth={1.75} /> Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        intent="accent"
+                        size="sm"
+                        onClick={() => saveSlideNote(slide)}
+                        disabled={savingNote || noteDraft.trim() === slide.notes.trim()}
+                      >
+                        {savingNote ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} strokeWidth={1.75} />}
+                        Save note
+                      </Button>
+                    </div>
+                  </div>
+                ) : slide.notes ? (
+                  <p className="t-prose whitespace-pre-wrap text-text">{slide.notes}</p>
+                ) : (
+                  <p className="text-[14px] text-text-muted">No note recorded.</p>
+                )}
+              </div>
+            );
+            const slideDetails = (
+              <div className="min-w-0">
+                {slideSummary}
+                {slideNote}
               </div>
             );
             const slideImage = (
@@ -870,7 +880,8 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                     reviewedDetections={slide.detections}
                     selectedSpeciesId={selectedSpecies}
                     annotations={slide.annotations}
-                    leadingContent={slideDetails}
+                    summaryContent={slideSummary}
+                    trailingContent={slideNote}
                     onSaved={(annotation) => handleAnnotationSaved(slide.id, annotation)}
                     onRemoved={(annotationId) => handleAnnotationRemoved(slide.id, annotationId)}
                   />

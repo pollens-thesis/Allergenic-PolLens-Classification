@@ -202,6 +202,7 @@ type SpecimenDetection = {
   speciesId: SpeciesId;
   grainCount: number;
   avgConfidence: number;
+  confidenceGrainCount?: number; // grains whose model scores contribute to avgConfidence
 };
 
 type DetectedGrain = {
@@ -209,6 +210,7 @@ type DetectedGrain = {
   speciesId: SpeciesId;
   confidence: number;
   box: BoundingBox;        // x/y/width/height as fractions of the image, 0-1
+  source?: "model" | "manual";
 };
 ```
 

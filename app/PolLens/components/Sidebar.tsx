@@ -19,6 +19,7 @@ import {
 import { displayName, getInitials } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import HelpAboutDialog, { SECTION_SHORTCUTS } from "@/components/HelpAboutDialog";
+import { SidebarToggle, ThemeToggle } from "@/components/AppearanceControls";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
@@ -40,7 +41,8 @@ function Wordmark() {
       alt="PolLens"
       width={2172}
       height={724}
-      className="block h-auto w-[165px] shrink-0 lg:w-[192px]"
+      className="pollens-wordmark block h-auto w-[145px] shrink-0 lg:w-[132px]"
+      loading="eager"
     />
   );
 }
@@ -150,7 +152,7 @@ export default function Sidebar() {
   }, [helpOpen, router]);
 
   const navLinks = (
-    <nav className="flex flex-col gap-1">
+    <nav className="app-navigation flex flex-col gap-1">
       {NAV_ITEMS.map((item) => {
         // A section's own pages count as that section, so the tab stays
         // lit on /reports/PLN-2026-0142 and on /upload/result.
@@ -161,17 +163,19 @@ export default function Sidebar() {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
+            aria-label={item.label}
+            title={item.label}
             // Choosing a destination is the end of navigating, so the drawer
             // goes with the click rather than waiting on the route to change.
             onClick={() => setMenuOpen(false)}
             className={`focus-ring flex items-center gap-3 rounded-md px-3 py-2.5 text-[13.5px] font-medium transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
               active
                 ? "bg-surface-sunken text-text"
-                : "text-text-muted hover:bg-surface-sunken hover:text-text"
+                : "text-text-muted hover:bg-surface-hover hover:text-text"
             }`}
           >
             <ItemIcon size={16} strokeWidth={1.75} className={active ? "text-text" : ""} />
-            {item.label}
+            <span className="sidebar-label">{item.label}</span>
           </Link>
         );
       })}
@@ -183,9 +187,11 @@ export default function Sidebar() {
     <Link
       href={SETTINGS_HREF}
       aria-current={pathname === SETTINGS_HREF ? "page" : undefined}
+      aria-label={`${name}, Account & Settings`}
+      title={`${name} · Account & Settings`}
       onClick={() => setMenuOpen(false)}
       className={`focus-ring group flex items-center gap-2.5 rounded-md px-2 py-2 transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
-        pathname === SETTINGS_HREF ? "bg-surface-sunken" : "hover:bg-surface-sunken"
+        pathname === SETTINGS_HREF ? "bg-surface-sunken" : "hover:bg-surface-hover"
       }`}
     >
       <span
@@ -194,14 +200,14 @@ export default function Sidebar() {
       >
         {getInitials(name)}
       </span>
-      <div className="min-w-0 flex-1 leading-tight">
+      <div className="sidebar-label min-w-0 flex-1 leading-tight">
         <div className="truncate text-[13px] text-text">{name}</div>
         <div className="truncate text-[12px] text-text-muted">Account &amp; Settings</div>
       </div>
       <Settings
         size={15}
         strokeWidth={1.75}
-        className={`shrink-0 transition-colors ${
+        className={`sidebar-label shrink-0 transition-colors ${
           pathname === SETTINGS_HREF ? "text-text" : "text-text-faint group-hover:text-text-muted"
         }`}
       />
@@ -212,15 +218,17 @@ export default function Sidebar() {
     <button
       type="button"
       aria-keyshortcuts="?"
+      aria-label="Help & About"
+      title="Help & About (?)"
       onClick={() => {
         setMenuOpen(false);
         setHelpOpen(true);
       }}
-      className="focus-ring flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-[13.5px] font-medium text-text-muted transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-surface-sunken hover:text-text"
+      className="focus-ring flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-[13.5px] font-medium text-text-muted transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-surface-hover hover:text-text"
     >
       <CircleHelp size={16} strokeWidth={1.75} />
-      <span className="flex-1">Help &amp; About</span>
-      <kbd className="rounded-sm border border-border bg-surface-sunken px-1.5 py-0.5 text-[12px] leading-4 text-text-faint">
+      <span className="sidebar-label flex-1">Help &amp; About</span>
+      <kbd className="sidebar-label rounded-sm border border-border bg-surface-sunken px-1.5 py-0.5 text-[12px] leading-4 text-text-faint">
         ?
       </kbd>
     </button>
@@ -234,19 +242,22 @@ export default function Sidebar() {
        * travel. The spacer underneath takes that row, so the page begins below
        * the bar instead of behind it.
        */}
-      <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between gap-3 border-b border-border bg-surface px-4 lg:hidden">
+      <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between gap-3 border-b border-border bg-surface-nav px-4 lg:hidden">
         <Link href="/dashboard" className="focus-ring flex items-center gap-2.5 rounded">
           <Wordmark />
         </Link>
+        <div className="flex items-center gap-1">
+        <ThemeToggle compact />
         <button
           type="button"
           onClick={() => setMenuOpen(true)}
           aria-label="Open Navigation"
           aria-expanded={menuOpen}
-          className="focus-ring flex h-10 w-10 items-center justify-center rounded-md text-text transition-colors duration-[var(--duration-fast)] hover:bg-surface-sunken active:scale-[0.97]"
+          className="focus-ring flex h-11 w-11 items-center justify-center rounded-md text-text transition-colors duration-[var(--duration-fast)] hover:bg-surface-hover active:scale-[0.97]"
         >
           <Menu size={20} strokeWidth={1.75} />
         </button>
+        </div>
       </header>
       <div className="h-14 lg:hidden" aria-hidden />
 
@@ -281,7 +292,7 @@ export default function Sidebar() {
                   ? { duration: 0 }
                   : { type: "spring", stiffness: 400, damping: 40 }
               }
-              className="absolute inset-y-0 right-0 flex w-[17rem] max-w-[85vw] flex-col justify-between border-l border-border bg-surface px-5 py-5"
+              className="absolute inset-y-0 right-0 flex w-[17rem] max-w-[85vw] flex-col justify-between border-l border-border bg-surface-nav px-5 py-5"
             >
               <div className="min-h-0 overflow-y-auto">
                 <div className="mb-6 flex items-center justify-between gap-3">
@@ -292,7 +303,7 @@ export default function Sidebar() {
                     type="button"
                     onClick={() => setMenuOpen(false)}
                     aria-label="Close Navigation"
-                    className="focus-ring flex h-10 w-10 items-center justify-center rounded-md text-text transition-colors duration-[var(--duration-fast)] hover:bg-surface-sunken active:scale-[0.97]"
+                    className="focus-ring flex h-10 w-10 items-center justify-center rounded-md text-text transition-colors duration-[var(--duration-fast)] hover:bg-surface-hover active:scale-[0.97]"
                   >
                     <X size={18} strokeWidth={1.75} />
                   </button>
@@ -314,15 +325,19 @@ export default function Sidebar() {
        * never scrolls, so nav and the account card stay reachable however long
        * a page gets.
        */}
-      <aside className="hidden border-r border-border bg-surface lg:block">
-        <div className="sticky top-0 flex h-screen flex-col justify-between overflow-hidden px-5 py-6">
-          <div className="min-h-0">
-            <Link href="/dashboard" className="mb-9 flex items-center gap-2.5 px-1">
-              <Wordmark />
-            </Link>
+      <aside id="desktop-sidebar" className="desktop-sidebar hidden border-r border-border bg-surface-nav lg:block">
+        <div className="sidebar-rail sticky top-0 flex h-dvh flex-col justify-between gap-4 px-5 py-4">
+          <div className="min-h-0 overflow-y-auto">
+            <div className="sidebar-top mb-6 flex items-center justify-between gap-2">
+              <Link href="/dashboard" aria-label="PolLens Dashboard" className="sidebar-wordmark focus-ring min-w-0 rounded">
+                <Wordmark />
+              </Link>
+              <SidebarToggle />
+            </div>
             {navLinks}
           </div>
           <div className="shrink-0 border-t border-border pt-3">
+            <ThemeToggle className="w-full" />
             {helpLink}
             <div className="mt-2 border-t border-border pt-2">{accountCard}</div>
           </div>

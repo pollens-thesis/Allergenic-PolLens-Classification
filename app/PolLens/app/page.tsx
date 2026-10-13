@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import PollenField from "@/components/PollenField";
 import SignInForm from "@/components/SignInForm";
+import { ThemeToggle } from "@/components/AppearanceControls";
 
 export const metadata: Metadata = {
   // The layout's "%s · PolLens" template only applies below the root segment.
@@ -14,14 +15,15 @@ export default function LoginPage() {
       <section className="relative isolate flex min-h-[20rem] w-full flex-col justify-between gap-8 overflow-hidden bg-hero-bg px-6 py-6 sm:min-h-[26rem] sm:px-10 sm:py-9 lg:min-h-dvh lg:px-14 lg:py-10 xl:px-[7vw]">
         <PollenField />
 
-        <div className="relative z-10">
+        <div className="relative z-10 flex items-center justify-between gap-3">
           <Image
             src="/brand/pollens-logo.png"
             alt="PolLens"
             width={2172}
             height={724}
-            className="block h-auto w-[150px] sm:w-[178px]"
+            className="pollens-wordmark block h-auto w-[150px] sm:w-[178px]"
           />
+          <ThemeToggle compact />
         </div>
 
         <div className="relative z-10 flex flex-1 items-center">

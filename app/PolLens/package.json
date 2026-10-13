@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:data": "node scripts/test-data.mjs",
-    "test:dashboard": "node scripts/test-dashboard.mjs"
+    "test:dashboard": "node scripts/test-dashboard.mjs",
+    "test:appearance": "node --test scripts/test-appearance.mjs"
   },
   "engines": {
     "node": ">=20.9"

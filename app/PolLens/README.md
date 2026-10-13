@@ -19,6 +19,7 @@ npm run build   # production build
 npm start       # serve it
 npm run lint    # eslint
 npx tsc --noEmit  # typecheck
+npm run test:appearance  # browser preferences, storage fallback and tab sync
 ```
 
 ## The screens
@@ -33,7 +34,7 @@ npx tsc --noEmit  # typecheck
 | `/reports/[sampleId]` | One report in full; its creator can flag it for review, mark it completed, or delete it. |
 | `/map` | **Pollen Map** — the Philippines shaded by grains counted in completed reports, drilling into a province's towns. |
 | `/dataset` | **Allergen Reference** — a searchable 6 × 4 atlas of the 23 species (photo, names, risk, code, grains in finalized reports); each card opens the full record. |
-| `/settings` | Profile, Excel/CSV/JSON export, sign out. |
+| `/settings` | Appearance, profile, Excel/CSV/JSON export, sign out. |
 
 ## What it does
 
@@ -70,6 +71,14 @@ ragweed".
 **It works on a phone.** Every screen is usable down to 360px: the pinned rail
 becomes a bar and a drawer, and the report table becomes cards rather than seven
 columns scrolled sideways.
+
+**Choose your appearance.** Use the desktop rail's sidebar button to switch between
+expanded navigation (240px) and an icon rail (80px). Dark Mode / Light Mode is in
+the rail, the mobile header, sign-in, and Account & Settings → Appearance. Light
+and expanded navigation are the defaults. Preferences save in this browser,
+survive sign-out and synchronize across tabs; if storage is blocked, controls
+still work for the current page session. Mobile keeps its labelled drawer.
+Specimen images and species/map data colours stay the same in either mode.
 
 ## Documentation
 

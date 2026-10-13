@@ -64,8 +64,18 @@ paper — flag conflicts in `docs/system-spec.md` instead.
   matching the paper), "save" = persist, "generate" = complete a report.
   Errors say what failed and how to recover; no HTTP codes or env-var names.
 - **Keep every piece of information** when restyling or re-laying out a page.
-- **Light theme** — chosen for bright bench light (adviser still to confirm vs.
-  the paper's dark theme).
+- **Appearance** — light is the default for bright bench light; user-approved dark
+  mode (2026-10-13) uses the semantic tokens in `DESIGN.md`. Desktop navigation at
+  `lg` is 240px expanded or an 80px icon rail, with an always-visible toggle and
+  accessible names/title hints. Mobile keeps its labelled drawer and header theme
+  control, regardless of saved desktop collapse. Account & Settings → Appearance
+  and sign-in also expose theme controls. `lib/appearance.ts` stores theme and
+  desktop collapse in `pollens.appearance.v1`, locally per browser and separately
+  from authentication, with cross-tab sync and memory fallback if storage is
+  blocked. The root script restores both before content paints. Native controls,
+  toasts and cards follow the theme; specimen pixels, catalog photos, species/map
+  data colours and the #2a2a28 viewer surround stay fixed. Adviser reconciliation
+  with the paper remains open; the user decision is not adviser sign-off.
 
 ## Run it
 
@@ -85,6 +95,8 @@ gitignored; only `.env.example` is tracked).
 
 - `app/(app)/layout.tsx` — the signed-in shell (rail/mobile bar + main);
   `components/PageFrame.tsx` — one `PageHeader`/`PageBody` for every page.
+- `lib/appearance.ts` + `components/AppearanceControls.tsx` — browser-local
+  theme and desktop rail preference; `app/layout.tsx` restores them before paint.
 - `lib/api.ts` (session-aware fetch), `lib/session.ts`, `lib/auth.ts`,
   `lib/microsoft.ts` — sign-in and JWT refresh.
 - `lib/store.ts` — every report call to the API (list/get/create/update/delete).
@@ -104,6 +116,7 @@ gitignored; only `.env.example` is tracked).
 ```bash
 npx tsc --noEmit
 npm run lint
+npm run test:appearance          # preference defaults, persistence, storage fallback, tab sync
 npm run build
 ```
 
@@ -133,7 +146,8 @@ the backend change first.
   the species reference text (editable in Django admin → Species, not in code).
 3. **Adviser decisions** still open are listed in `PRODUCT.md` and
   `docs/system-spec.md` (architecture sign-off, map pins vs. choropleth,
-  theme, archive, system-info display, evaluation targets).
+  theme reconciliation (light default + user-selectable dark mode are built),
+  archive, system-info display, evaluation targets).
 4. **Open sign-in (planned, not built)** — the owner plans to let any Google
   account sign in. It's a backend switch first (adviser item 12 in
   `docs/system-spec.md`); when it lands, sign-in page copy that says who may

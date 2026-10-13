@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans, Source_Serif_4 } from "next/font/google";
-import { Toaster } from "sonner";
+import { AppearanceToaster } from "@/components/AppearanceControls";
 import "./globals.css";
 
 // A technical sans carries controls and running text. Keep the serif for
@@ -45,11 +45,15 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${plexSans.variable} ${plexMono.variable} ${serif.variable} h-full`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var p=JSON.parse(localStorage.getItem('pollens.appearance.v1')||'null');document.documentElement.dataset.theme=p&&p.theme==='dark'?'dark':'light';document.documentElement.dataset.sidebar=p&&p.sidebarCollapsed===true?'collapsed':'expanded';}catch(e){}})();` }} />
+      </head>
       <body className="min-h-full flex flex-col">
         {children}
-        <Toaster position="bottom-right" theme="light" />
+        <AppearanceToaster />
       </body>
     </html>
   );
