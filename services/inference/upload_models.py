@@ -61,6 +61,13 @@ def main():
     args = parser.parse_args()
 
     files = collect(args.skip_detector)
+    if not args.dry_run:
+        # `volume put` fails on a missing volume. Creating one that exists just
+        # errors, which is fine, so the exit status is ignored.
+        subprocess.run(
+            [sys.executable, '-m', 'modal', 'volume', 'create', VOLUME],
+            check=False, capture_output=True,
+        )
     for source, name in files:
         size = source.stat().st_size / 1e6
         if args.dry_run:
