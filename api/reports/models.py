@@ -96,7 +96,7 @@ class Report(models.Model):
     researcher = models.CharField(max_length=255)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Completed')
     # The detections came from the detect endpoint's built-in sample
-    # (ROBOFLOW_MOCK), not a trained model — shown as a warning on the report.
+    # (DETECTION_MOCK), not a trained model — shown as a warning on the report.
     sample_detections = models.BooleanField(default=False)
 
     weather_condition = models.CharField(

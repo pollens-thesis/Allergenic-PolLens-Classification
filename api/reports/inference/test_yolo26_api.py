@@ -39,7 +39,7 @@ class FakeClassifier:
 
 @override_settings(
     DETECTION_BACKEND='yolo26',
-    ROBOFLOW_MOCK=False,
+    DETECTION_MOCK=False,
     YOLO26_WEIGHTS_PATH='/private/test/best.pt',
     YOLO26_CLASSIFIER_WEIGHTS_PATH='/private/test/efficientnet.onnx',
     YOLO26_CONFIDENCE=0.25,
@@ -132,7 +132,7 @@ class YOLO26DetectViewTests(APITestCase):
         classifier_factory.assert_not_called()
 
 
-@override_settings(DETECTION_BACKEND='unknown', ROBOFLOW_MOCK=False)
+@override_settings(DETECTION_BACKEND='unknown', DETECTION_MOCK=False)
 class UnknownDetectionBackendTests(APITestCase):
     url = '/api/v1/reports/detect/'
 
@@ -150,7 +150,7 @@ class UnknownDetectionBackendTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
-@override_settings(DETECTION_BACKEND='yolo26', ROBOFLOW_MOCK=True)
+@override_settings(DETECTION_BACKEND='yolo26', DETECTION_MOCK=True)
 class MockModePrecedenceTests(APITestCase):
     url = '/api/v1/reports/detect/'
 
