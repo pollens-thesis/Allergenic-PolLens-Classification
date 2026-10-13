@@ -43,11 +43,12 @@ refuses requests. A missing detector file does not crash the container;
    ```
    (PowerShell: generate any long random string and paste it.) Keep the same
    value for the API's `INFERENCE_TOKEN` setting later.
-5. Put the detector weights `yolo26l_v12_best.pt` (SHA-256
-   `3295126e47fc7c8b4814fd44f1882063a035b2ab746ab75f89cf48cb19bfbfad`) at
-   `docs/private/model-artifacts/yolo26l-detection-v12/weights/`. Ask the team;
-   the file is gitignored and shared privately. The classifier is read from
-   `docs/private/finalized model/classification/`.
+5. Put the detector weights `pollens_yolo26l_v12_2026-10-12_best.pt` (SHA-256
+   `91b6d3fe54500a102e025735055418117e811c0cbda14d3a2a5e087c1bcaf484`) in
+   `docs/private/finalized model/detection/`. Ask the team; the file is
+   gitignored and shared privately. It is uploaded to the volume under the name
+   `yolo26l_v12_best.pt`, which is what the service loads. The classifier is
+   read from `docs/private/finalized model/classification/`.
 
 ## Deploy / update
 

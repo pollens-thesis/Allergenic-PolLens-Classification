@@ -19,9 +19,9 @@ VOLUME = 'pollens-models'
 
 CLASSIFIER_DIR = PRIVATE / 'finalized model' / 'classification'
 DETECTOR_PATH = (
-    PRIVATE / 'model-artifacts' / 'yolo26l-detection-v12' / 'weights' / 'yolo26l_v12_best.pt'
+    PRIVATE / 'finalized model' / 'detection' / 'pollens_yolo26l_v12_2026-10-12_best.pt'
 )
-DETECTOR_SHA256 = '3295126e47fc7c8b4814fd44f1882063a035b2ab746ab75f89cf48cb19bfbfad'
+DETECTOR_SHA256 = '91b6d3fe54500a102e025735055418117e811c0cbda14d3a2a5e087c1bcaf484'
 
 
 def sha256(path):
