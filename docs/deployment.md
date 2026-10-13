@@ -131,9 +131,8 @@ MSEUF IT blocks it, Google sign-in still works.
    | `AWS_STORAGE_BUCKET_NAME` | `pollens-media` |
    | `AWS_S3_ENDPOINT_URL` | `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com` |
    | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | From step 1.4 |
-   | `DETECTION_BACKEND` / `INFERENCE_URL` / `INFERENCE_TOKEN` | `DETECTION_BACKEND=remote` sends images to the hosted YOLO26 + EfficientNet service (`services/inference` on Modal, `docs/inference-modal.md`). `INFERENCE_URL` is its base URL (no `/detect`); `INFERENCE_TOKEN` is the Modal secret `pollens-inference`. All three must be set or `/detect/` answers 503. Set `DETECTION_BACKEND` explicitly: the code default is still `roboflow` until issue #48 removes it. |
-   | `ROBOFLOW_MOCK` | `false` in the Blueprint. With it `true` the API serves sample detections instead of calling any model, and reports are saved flagged as samples (the flag is permanent). |
-   | `ROBOFLOW_API_KEY` / `ROBOFLOW_WORKSPACE` / `ROBOFLOW_WORKFLOW_ID` | **Retired** (2026-10-14): only the rollback to the old two-stage Workflow (`docs/roboflow-pipeline.md`) uses them; to be removed with issue #48. |
+   | `DETECTION_BACKEND` / `INFERENCE_URL` / `INFERENCE_TOKEN` | `DETECTION_BACKEND=remote` (the default) sends images to the hosted YOLO26 + EfficientNet service (`services/inference` on Modal, `docs/inference-modal.md`). `INFERENCE_URL` is its base URL (no `/detect`); `INFERENCE_TOKEN` is the Modal secret `pollens-inference`. Both must be set or `/detect/` answers 503. |
+   | `DETECTION_MOCK` | `false` in the Blueprint (it was `ROBOFLOW_MOCK` before 2026-10-14). With it `true` the API serves sample detections instead of calling any model, and reports are saved flagged as samples (the flag is permanent). |
 
    `DJANGO_SECRET_KEY` is generated for you, and `DJANGO_DEBUG` is already
    `false`.
@@ -202,7 +201,7 @@ Open `VERCEL_URL` and check each step:
 - [ ] Upload a slide image and run **Analyze Specimen**. Boxes appear from the
   Modal pipeline, with no "sample detections" banner. The first request after
   idle can take ~15 s (Modal cold start), later ones 2–5 s. A banner means
-  `ROBOFLOW_MOCK` is `true` on Render. To confirm the call reached Modal, run
+  `DETECTION_MOCK` is `true` on Render. To confirm the call reached Modal, run
   `modal app logs pollens-inference` and look for a `POST /detect -> 200`.
 - [ ] **Open Inspector**: zoom, select a type and a grain.
 - [ ] **Save Report** → it appears in **Reports** → open it. The slide image
@@ -233,7 +232,7 @@ Open `VERCEL_URL` and check each step:
 | Analyze: *detection service isn't configured* (503) | `INFERENCE_URL` or `INFERENCE_TOKEN` is blank on Render, or `DETECTION_BACKEND` isn't `remote`. |
 | Analyze: *detection service is unavailable* (502) | The Modal service is down, `INFERENCE_TOKEN` doesn't match the Modal secret `pollens-inference` (the service answers 401), `INFERENCE_URL` is wrong, or a cold start outlasted `INFERENCE_TIMEOUT` (default 120 s). Open `<INFERENCE_URL>/healthz`: it should say `detector` and `classifier` are `true`; the Render log shows the status Modal returned. |
 | Analyze: *"X" is MPO; use JPEG or PNG* | Fixed 2026-10-01 (phone MPO photos are accepted); redeploy the API if you still see it. |
-| Reports show a **Sample** badge | They were saved while `ROBOFLOW_MOCK` was `true`. The flag is permanent by design (their counts are the built-in example reading): delete them and re-analyze. |
+| Reports show a **Sample** badge | They were saved while `DETECTION_MOCK` (earlier `ROBOFLOW_MOCK`) was `true`. The flag is permanent by design (their counts are the built-in example reading): delete them and re-analyze. |
 | Every grain gets the same species | This was the retired Roboflow ResNet-34 (issue #31). The EfficientNet-B0 now in production was trained on grain crops; if it still happens, open `<INFERENCE_URL>/healthz` and check the Modal logs. |
 
 ## Notes
@@ -245,11 +244,11 @@ Open `VERCEL_URL` and check each step:
   schema up to date, including the species catalog.
 - **Going live with the real model:** deploy the inference service on Modal
   (`docs/inference-modal.md`), then on Render set `DETECTION_BACKEND=remote`,
-  `INFERENCE_URL` and `INFERENCE_TOKEN`, and keep `ROBOFLOW_MOCK=false`. No code
+  `INFERENCE_URL` and `INFERENCE_TOKEN`, and keep `DETECTION_MOCK=false`. No code
   changes, provided the classifier's class names are catalog species; see
   `api/CLAUDE.md` → DetectView. The old Roboflow Workflow
-  (`docs/roboflow-pipeline.md`) is retired; `DETECTION_BACKEND=roboflow` remains
-  only as a rollback until issue #48 removes it.
+  (`docs/roboflow-pipeline.md`) is retired and its code was removed (issue #48);
+  delete any leftover `ROBOFLOW_*` variables from Render.
 - **Vercel preview deployments** get per-branch URLs. To let them call the
   API, set `CORS_ALLOWED_ORIGIN_REGEXES` on Render, e.g.
   `^https://pollens-[a-z0-9-]+\.vercel\.app$`, and add those origins in

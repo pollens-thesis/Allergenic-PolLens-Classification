@@ -66,8 +66,7 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   exists** (org `pollens-thesis`, project number **1**, columns Backlog → Ready →
   In Progress (limit 2) → Review → Blocked → Done) with the labels `frontend`,
   `backend`, `devops`, `chore`, `blocked`, `adviser`. The open backlog is issues
-  #6–#9 (`blocked` on the adviser), #11–#13, **#31** (classifier evaluation)
-  and #48 (remove Roboflow); #4, #5, #16 and #21 (the
+  #6–#9 (`blocked` on the adviser), #11–#13, **#31** (classifier evaluation); #4, #5, #16 and #21 (the
   ColorBrewer YlOrBr heatmap palette) were finished by PRs #19, #18, #17 and
   #22 (merged 2026-09-30), and #10 (go live with the detection model) by PRs
   #29 (Workflow mode), #30 (Render mock default off) and #32 (docs), merged
@@ -88,9 +87,10 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   (the Modal secret `pollens-inference`); a cold start takes ~15 s, warm calls
   2–5 s. Verified 2026-10-14: Modal logged the site's `/detect` calls. The
   weights are private (Modal Volume `pollens-models`, local copies in
-  `docs/private/finalized model/`). **Roboflow is rollback only:** setting
-  `DETECTION_BACKEND=roboflow` on Render restores the old two-stage Workflow
-  (`docs/roboflow-pipeline.md`); its code and keys are to be removed (issue #48).
+  `docs/private/finalized model/`). **Roboflow is retired and its code removed** (issue #48; the
+  old Workflow is documented in `docs/roboflow-pipeline.md`, rollback means
+  reverting that commit). The demo switch is now `DETECTION_MOCK` (was
+  `ROBOFLOW_MOCK`).
   iPhone MPO photos are accepted as JPEG. Reports saved while mock was on keep a
   permanent Sample badge (delete and re-analyze them). **Still open (issue
   #31):** the constant-species problem was a Roboflow classifier trained on

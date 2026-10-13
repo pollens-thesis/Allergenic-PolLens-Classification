@@ -33,9 +33,9 @@ weights. See [docs/inference-modal.md](docs/inference-modal.md) for the
 deploy, token and region settings. Model files and secrets are never committed
 to this public repository.
 
-The earlier Roboflow Workflow is retired and kept only as a rollback
-(`DETECTION_BACKEND=roboflow`) until its code and credentials are removed
-(issue #48). The in-process alternative (`DETECTION_BACKEND=yolo26`,
+The earlier Roboflow Workflow is retired and its code was removed (issue #48);
+its runbook stays in [docs/roboflow-pipeline.md](docs/roboflow-pipeline.md) as
+history. The in-process alternative (`DETECTION_BACKEND=yolo26`,
 [docs/yolo26-staging.md](docs/yolo26-staging.md)) needs more memory than the free
 plan offers and is not used.
 
