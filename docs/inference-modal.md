@@ -91,8 +91,17 @@ Without the header `/detect` must return 401. Local tests (no models needed):
   through Modal's `us-east` entry point add about 1 s of overhead from the
   Philippines (not measured from Render).
 - **Rotate the token:** `modal secret create pollens-inference
-  INFERENCE_TOKEN=<new> --force`, then set the same value on Render. Anyone with
-  the old value can call `/detect` until then.
+  INFERENCE_TOKEN=<new> --force` is not enough. Warm containers, and ones
+  restored from a memory snapshot, keep the environment they started with, so the
+  old token keeps working (and the new one is refused) until they are replaced.
+  After changing the secret: run `modal deploy services/inference/modal_app.py`,
+  then `modal container list` and `modal container stop --yes <id>` for each
+  container left over, and check with `POST /detect`: the new token must give 200
+  and the old one 401. Then set the same value as `INFERENCE_TOKEN` on Render.
+  Generate the value in your own terminal and send it straight to the secret and
+  the clipboard (for example `python -c "import secrets; print(secrets.token_hex(32))"`
+  into a variable), never into a chat or a log. Detection fails with 502 between
+  the Modal change and the Render change, so do them back to back.
 - **Gotchas:** Modal re-imports `modal_app.py` inside the container, so path code
   there must not raise (an `HERE.parents[1]` did and crash-looped the first
   deploy); use `curl -L` when testing by hand (long requests redirect); on Windows
