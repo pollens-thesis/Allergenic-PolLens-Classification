@@ -14,9 +14,15 @@ from pathlib import Path
 import modal
 
 HERE = Path(__file__).resolve().parent
-INFERENCE_SRC = HERE.parents[1] / 'api' / 'reports' / 'inference'
+# Modal re-imports this file inside the container (as /root/modal_app.py), so
+# this must not raise there: .parent.parent is safe where .parents[1] is not.
+INFERENCE_SRC = HERE.parent.parent / 'api' / 'reports' / 'inference'
 
 MODELS_DIR = '/models'
+
+# Run next to the Render API (Singapore) to keep per-request latency low. Broad
+# 'ap' is cheaper (1.15x vs 1.75x of the compute price) if credit gets tight.
+REGION = 'ap-southeast'
 
 # Memory snapshots make a cold start restore already-loaded models instead of
 # re-importing ultralytics and re-reading the weights. If a deploy fails or the
@@ -43,6 +49,7 @@ with image.imports():
 
 
 @app.cls(
+    region=REGION,
     cpu=1.0,
     memory=2048,
     volumes={MODELS_DIR: models},
