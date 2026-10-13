@@ -9,6 +9,19 @@ data shapes, field names, user flows) the **frontend is authoritative**; for **s
 objectives, and terminology** the **paper is authoritative**. The "Backend Impact" column
 below follows that rule — it does not recommend changing the frontend to match the paper.
 
+## Final model decision (2026-10-13)
+
+The user selected the uploaded YOLO26-L Detection v12 checkpoint
+`pollens_yolo26l_v12_2026-10-12_best.pt` and EfficientNet-B0 pollen15 classifier
+as the final system models. The main local API now selects the two-stage
+pipeline with mock detection off, using exact private copies and pinned
+checksums. Only pollen boxes enter the 15-species classifier. The existing
+frontend detection contract is preserved. Eight of the 23 catalog species
+remain outside classifier coverage; unknown-species rejection is not built.
+See [final-models.md](final-models.md) for configuration and artifact identity.
+This supersedes earlier local-model notes; it does not establish a hosted
+production cutover or measured accuracy on new slides.
+
 ## Audit 2026-09-24 — decisions made, and what still needs the adviser
 
 A full audit (paper vs. code vs. API contract) was done on 2026-09-24. **Decided by
@@ -49,6 +62,17 @@ only in the gitignored `docs/private/`. Render (Root Directory `api`) and Vercel
    because the work happens under bright bench light, restyled as "Pollen Atlas
    Plates" (plate-paper panels, journal serif titles, oxide accent; all text AA).
    Still worth confirming with the adviser since it departs from the paper.
+   **Extended 2026-10-13 (user decision, built in the frontend):** retain light as
+   the default and add user-selectable dark mode plus a collapsible desktop sidebar
+   (240px expanded / 80px icon rail at `lg`). Appearance is available from the rail,
+   mobile header, sign-in and Settings; the sidebar toggle is desktop-only. Theme
+   and desktop collapse are saved locally per browser under `pollens.appearance.v1`,
+   separately from authentication, with cross-tab sync, current-page memory fallback
+   when storage is blocked, and early root restoration before content paints. Mobile
+   keeps its full drawer labels. Native controls, toasts and cards follow the theme;
+   microscope pixels, catalog photos, species/map data colours and the #2a2a28 viewer
+   surround remain fixed. This supersedes the old light-only implementation constraint;
+   it does not claim adviser sign-off or resolve the paper's internal theme inconsistency.
 4. Archive with year-over-year comparison (not built).
 5. ~~Weather for a past collection date~~ — **resolved 2026-09-25**: weather now comes from Open-Meteo (free, keyless) for the collection date and time at the picked place (forecast model for recent dates, ERA5 archive for older ones), still editable by the researcher; OpenWeather removed.
 6. System-information display in Settings.
@@ -58,7 +82,8 @@ only in the gitignored `docs/private/`. Render (Root Directory `api`) and Vercel
    nano detector `…-yolo11n-t1` + ResNet-34 classifier `…-resnet34-t1`; neither's metrics
    are recorded yet, and the classifier needs retraining first — issue #31.)
 8. The ISO/IEC 25010 questionnaire and test cases TC-US/BB/WB need revising to the
-   built system (e.g. no dark-theme or map-pin items; filtering is client-side).
+   built system (e.g. user-selectable dark mode is now built; map-pin items still do
+   not apply and filtering is client-side).
 9. Hosting uptime: Render's free tier sleeps when idle (paper asks for maximum uptime).
 10. Data handling under the MOA (slide images in a private Cloudflare R2 bucket,
     shared-corpus access) — confirm it satisfies the confidentiality terms.
@@ -98,7 +123,7 @@ only in the gitignored `docs/private/`. Render (Root Directory `api`) and Vercel
 | Archived Session History | Removed | No dedicated Archive feature exists — no separate searchable-by-sample-id/time/site archive UI, and no year-over-year comparison tooling. Seed/historical reports are merged into the regular Reports list (flagged internally via `isSeedReport`) but there's no distinct archive module. | Do not build a separate Archive API surface speculatively. If year-over-year comparison is still required scope (per the paper), it needs a frontend feature first — currently nothing calls out this need in code, so it should be flagged to the team rather than backend-built ahead of a UI. |
 | Profile Management | Revised | Paper: view/manage display name and organizational affiliation synced from Google. Frontend: everything is read-only and derived purely from the email string (`lib/account.ts` heuristics), with an "institution-detection explainer" rather than a real synced org field — there's no stored profile beyond the email. | Once real OAuth lands, the `hd` (hosted domain) claim should supply the institution directly, replacing the current email-domain heuristic — this is already anticipated in `lib/account.ts`'s `TODO(backend)`. No editable-profile endpoint is implied by the frontend as it stands; profile fields remain read-only/derived. **Update 2026-09-24:** sign-in is real (Google or Microsoft); institution is still derived from the email domain on screen — the server-side `institution` (from Google `hd` / Microsoft UPN domain) is available via `/api/v1/auth/me/` but not yet displayed. |
 | System Information & Logout | Revised | Logout ("Account: Sign out," clears local session, redirects to `/`) matches the paper. The "system version/last updated/license/environment info" display described in the paper is not present anywhere in the Settings page. Instead, the frontend adds a "Data & storage" section (export/clear local data) the paper doesn't mention. | No backend work implied for system-info display unless the team decides to keep it in scope — nothing in the frontend expects it. **As of 2026-08-30**, a server-side session invalidation endpoint now exists (`POST /api/v1/auth/logout/`, blacklists a refresh token — see the Google OAuth row above and `api/CLAUDE.md`), but the frontend's "Sign out" button doesn't call it yet — it still only does local session teardown (`resetSettings()` in `lib/settings.ts`). Wiring that call is frontend scope, not built in this pass. **Update 2026-09-24:** Sign Out calls `/api/v1/auth/logout/` (see the Google OAuth row). The system-info display is still not built — an open scope question for the adviser. |
-| Dataset Preparation & Annotation | Not Applicable | Backend/ML-team process (Roboflow dataset import, annotation, augmentation); no frontend surface expected or present. | Unaffected by frontend reconciliation — proceed per the paper's description as ML/backend-team scope. |
+| Dataset Preparation & Annotation | Revised | The model/data pipeline remains a backend and ML-team responsibility, with a researcher annotation surface during Needs Review. The report owner or staff can confirm/correct a model label, remove a selected non-pollen box, adjust its normalized box, mark uncertainty, or draw a box around missed pollen and identify its species. | Annotations are stored separately from original model predictions by `GrainAnnotation` and returned with each slide. Sample detections cannot be annotated. A verified false positive is removed from the active overlay and reviewed report/dashboard counts while the original prediction remains available for audit and can be restored. A manually boxed missed grain is added to its identified species count and report image; it contributes no model confidence score. Confirmed, corrected and missed labels can become training candidates; false positives and uncertain labels remain identifiable. Dataset export, retraining, held-out evaluation and model deployment are still offline follow-up work. |
 | Deep Learning Model Training (YOLOv11) | Not Applicable | No frontend UI surfaces model choice; this is purely a backend/ML concern. | Confirmed, not just unaffected: the frontend's mock inference (`lib/analysis.ts`) is already written to expect Roboflow's YOLO-style detection output shape (`{ class, confidence, x, y, width, height }`, pixel/center-based), so the paper's YOLOv11-via-Roboflow plan is directly load-bearing for the API contract the backend must produce. **Update 2026-09-24:** the in-browser mock is gone; detection goes through `POST /api/v1/reports/detect/`, which serves a sample reading (flagged `mock: true`, shown as a banner) until the model is deployed. **Update 2026-10-01:** deployed — YOLOv11 (nano, version `…-yolo11n-t1`) detects a single `pollen` class inside the Roboflow Workflow `detect-classify-v1`; mock is off in production. Evaluation metrics (mAP@50/50–95, precision, recall) are still to be recorded. |
 | Deep Learning Model Training (ResNet34) | Not Applicable | No frontend UI distinguishes a two-stage detect-then-classify pipeline; detections are just a flat list of `{ pollenType, count, confidence }` per image. | Whether the backend runs YOLOv11 alone or a YOLOv11+ResNet34 two-stage pipeline is an internal backend/ML decision invisible to the frontend contract — either way, the response the frontend needs is a flat per-grain class+confidence+bbox list. **Known problem 2026-10-01 (issue #31):** the deployed classifier (`…-resnet34-t1`) returns the same species for every grain, probably because it was trained on whole-slide photos instead of grain crops; per-class metrics are still to be recorded. **Decision 2026-09-30:** two-stage, as a Roboflow Workflow — YOLOv11 detects a single `pollen` class, ResNet-34 (trained on the per-species crops) names the species, and the returned `confidence` is the classifier's. The detect proxy calls it when `ROBOFLOW_WORKFLOW_ID` is set; no frontend change. Runbook: `docs/roboflow-pipeline.md`. |
 | Model Comparison & Validation | Not Applicable | Evaluation artifacts (confusion matrices, precision/recall/F1) are a thesis-writeup concern, not a runtime feature; no frontend surface expected. | Unaffected — proceed per the paper as an offline evaluation deliverable, not an API. |
