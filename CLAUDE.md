@@ -45,7 +45,7 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   builds the frontend from `app/PolLens/` (Root Directory `app/PolLens`). A
   push to `master` redeploys both. See `docs/deployment.md`.
 
-## Current state (2026-10-01)
+## Current state (2026-10-14)
 
 - **Live and verified:** frontend https://pollens-theta.vercel.app, API
   https://pollens-api.onrender.com (`/healthz/` ok). Render and Vercel were
@@ -66,7 +66,11 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   exists** (org `pollens-thesis`, project number **1**, columns Backlog → Ready →
   In Progress (limit 2) → Review → Blocked → Done) with the labels `frontend`,
   `backend`, `devops`, `chore`, `blocked`, `adviser`. The open backlog is issues
-  #6–#9 (`blocked` on the adviser), #11–#13, **#31** (classifier evaluation); #4, #5, #16 and #21 (the
+  #6–#9 (`blocked` on the adviser), #11–#13, **#31** (classifier evaluation)
+  and #44 (review workspace, PR #45); #42, #46 and #48 (Modal hosting, the
+  `remote` backend, Roboflow removal) were finished by PRs #43, #47 and #51 and
+  #53 (Allergen Reference names everywhere) is in PR #54 awaiting Niño's look;
+  #4, #5, #16 and #21 (the
   ColorBrewer YlOrBr heatmap palette) were finished by PRs #19, #18, #17 and
   #22 (merged 2026-09-30), and #10 (go live with the detection model) by PRs
   #29 (Workflow mode), #30 (Render mock default off) and #32 (docs), merged
@@ -98,6 +102,22 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   and is what runs now, but only within-slide accuracy exists, not an end-to-end
   evaluation on YOLO26 crops, and it covers 15 of the app's 23 species. Record
   metrics for the paper (adviser item 7 in `docs/system-spec.md`).
+- **Next steps (written 2026-10-14):**
+  1. Merge PR #52 (this file's update plus the Modal token-rotation procedure)
+     and PR #54 (frontend, needs Niño's 👍; check it visually first: a report,
+     the result workspace, the map popup, the inspector, a CSV export; confirm
+     the odd labels "Rice pollen" and "Koroskorosan" in `DATASET_SPECIES_NAMES`).
+  2. Evaluate the live classifier end to end on YOLO26 crops and record the
+     metrics for the paper, then close #31 (only within-slide accuracy exists;
+     15 of the 23 catalog species are covered).
+  3. Niño: rename the leftover Roboflow names in the frontend (`fromRoboflow`,
+     `RoboflowPrediction` in `lib/analysis.ts`, docs under `app/PolLens`).
+  4. Decide the in-process `DETECTION_BACKEND=yolo26` path (kept, not deployed;
+     `docs/yolo26-staging.md`) and the cold start (~15 s after 5 min idle;
+     `docs/inference-modal.md`). Modal runs on Niño's free workspace
+     (`ninoelma874`); the Modal secret was rotated 2026-10-14 and the procedure
+     is in `docs/inference-modal.md`.
+  5. Board hygiene: card #21 is still In Progress although its PR merged.
 - **Teammate:** Niño runs the project locally and signs in. If sign-in fails
   for someone new, see the Troubleshooting table in `docs/deployment.md`
   (Google "Access blocked" = add them as a test user).
