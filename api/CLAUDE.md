@@ -107,11 +107,11 @@ between the thesis proposal paper and the frontend.
   (`pollens_yolo26l_v12_2026-10-12_best.pt`) and EfficientNet-B0 pollen15.
   The main local `.env` selects `DETECTION_BACKEND=yolo26`, mock off, and
   exact private artifact paths with SHA-256 pins. Only pollen boxes enter
-  the ONNX classifier. See `../docs/final-models.md`; earlier Roboflow notes
-  describe that provider and the last documented hosted deployment.
-- **Reports:** server-side storage for analysis batches. Detection runs
-  synchronously via either the local two-stage model pipeline or Roboflow,
-  according to `DETECTION_BACKEND`; there is no async pipeline.
+  the ONNX classifier. See `../docs/final-models.md` for the local model selection and
+  `../docs/inference-modal.md` for the current hosted deployment.
+- **Reports:** server-side storage for analysis batches. Production detection
+  calls the hosted inference service from the `/detect/` proxy (Modal, see
+  below); the in-process YOLO26 path is not deployed. There is no async pipeline.
   - **Lifecycle (updated 2026-09-28, paper §5.1.7):** `Pending` → `Needs review`
     ("Generate Report") → `Completed`; a completed report can be flagged
     `Needs review` again.
@@ -123,7 +123,7 @@ between the thesis proposal paper and the frontend.
     `Completed` + `Needs review` everywhere (monthly counts, the frontend's
     stats/map/exports) — Pending is never counted.
   - **`sampleDetections`** (added 2026-09-25, `Report.sample_detections`):
-    set on create when the batch's detections came from `ROBOFLOW_MOCK`;
+    set on create when the batch's detections came from `DETECTION_MOCK`;
     returned on every report so the UI keeps warning about it.
   - **`PATCH /api/v1/reports/<id>/`** (JSON, `ReportUpdateSerializer`):
     optional `reportName`, `collectedAt`, `location`, `researcher`, `weather` (null
@@ -263,78 +263,61 @@ between the thesis proposal paper and the frontend.
     box centre-based; `image` is kept so the client needs no image decode to
     normalize). `app/PolLens/lib/analysis.ts` does the pixel→normalized
     `BoundingBox` mapping.
-    Missing image → `400`. Unconfigured (the API key, or the workspace + workflow ID / model ID + version pair in use, is blank)
-    → `503 {"detail": "Detection service is not configured."}`. Any
-    upstream failure (non-200, timeout, connection error) → `502
-    {"detail": "Detection service is unavailable."}`.
-    - **Mock mode (`ROBOFLOW_MOCK=true`, added 2026-09-23).** Now only a
-      demo/offline switch: production runs the live Workflow and
-      `render.yaml` defaults the flag to `false` (changed 2026-10-01). A
-      report saved while it was on keeps `sampleDetections=true` permanently
-      (its counts are the built-in example reading). With the flag on the
-      upstream call is replaced by
-      `_mock_roboflow_detect`, which serves
-      `reports/fixtures/roboflow_detect_response.json` — a full raw
-      Roboflow hosted-detect response (`inference_id`, `time`, `image`,
-      `predictions[]` with `class_id`/`detection_id`), 16 grains across 4
-      catalog species — rescaled onto the uploaded image's real pixel
-      size (Pillow) with fresh ids. Credentials aren't checked in mock
-      mode. Everything after the payload is obtained is the same code
-      path as live, so the frontend is already running the real mapping.
-      (`reports/fixtures/` is not a `loaddata` fixture dir despite the
-      name.)
-    - **Workflow mode (added 2026-09-30, issue #10):** the two-stage
-      pipeline — YOLOv11 detects one `pollen` class, Dynamic Crop, ResNet-34
-      names the species, Detections Classes Replacement puts species +
-      classifier confidence on each box — is a Roboflow Workflow. When
-      `ROBOFLOW_WORKFLOW_ID` is set (with `ROBOFLOW_WORKSPACE` and
-      `ROBOFLOW_API_KEY`) `_roboflow_workflow` POSTs the image (base64,
-      `Authorization: Bearer`) to
-      `serverless.roboflow.com/infer/workflows/{workspace}/{workflow_id}` and
-      unwraps `outputs[0].predictions` (same `{image, predictions}` shape), so
-      everything after it is unchanged; it wins over the single-model vars,
-      mock still wins over both. A missing/odd `outputs` → 502. The Workflow
-      must expose only that `predictions` output (6 MB response cap). Runbook
-      and Workflow JSON: `../docs/roboflow-pipeline.md`.
-    - **Live since 2026-10-01** on Render with workspace `nino-elma` and
-      workflow `detect-classify-v1` (YOLOv11 nano `…-yolo11n-t1` →
-      ResNet-34 `…-resnet34-t1`; the key is a Render secret, never in the
-      repo). **Known problem (issue #31):** the classifier returns the same
-      species for every grain, so the class and `confidence` the app shows are
-      not yet trustworthy; the fix is in the Roboflow classification data, not
-      this proxy. Watch item: full 12 MP phone photos run close to the 30 s
-      upstream timeout. **To set it up elsewhere:** set `ROBOFLOW_API_KEY` plus either
-      `ROBOFLOW_WORKSPACE`/`ROBOFLOW_WORKFLOW_ID` (two-stage) or
-      `ROBOFLOW_MODEL_ID`/`ROBOFLOW_MODEL_VERSION` (single model), and
-      `ROBOFLOW_MOCK=false` — no code
-      changes. **Class-name convention:** the Roboflow dataset's class
-      names (the classification project's, in Workflow mode) must be the `Species` slugs (e.g. `amaranthus_spinosus`);
-      the frontend forgives case and space/hyphen separators but drops
-      any class outside the catalog (with a console warning). If the
-      trained model uses other labels, add an alias map in
-      `toSpeciesId()` in `app/PolLens/lib/analysis.ts`.
-    - **YOLO26 + EfficientNet transition (2026-10-10, not deployed):** setting
-      `DETECTION_BACKEND=yolo26` selects private YOLO26 Detection v12 weights
-      and classifies its pollen crops with the local EfficientNet-B0 ONNX
-      model. It requires `api/requirements-ml.txt`, `YOLO26_WEIGHTS_PATH`, and
+    Missing image → `400`. Unconfigured (`INFERENCE_URL` or `INFERENCE_TOKEN`
+    blank, or an unsupported `DETECTION_BACKEND`) → `503 {"detail": "Detection
+    service is not configured."}`. Any upstream failure (non-200, timeout,
+    connection error, malformed payload) → `502 {"detail": "Detection service is
+    unavailable."}`.
+    - **Remote mode (`DETECTION_BACKEND=remote`, the default; live since
+      2026-10-14, issues #46/#48).** The YOLO26 Detection v12 + EfficientNet-B0
+      pipeline is hosted by `services/inference/` on Modal (workspace
+      `ninoelma874`, `../docs/inference-modal.md`), not loaded in this process
+      (Render's 512 MB can't hold the models). `_remote_detect` POSTs the image as
+      the multipart `image` part to `{INFERENCE_URL}/detect` with
+      `Authorization: Bearer INFERENCE_TOKEN`, `timeout=INFERENCE_TIMEOUT`
+      (default 120 s, to cover a ~15 s cold start) and `allow_redirects=False`
+      (the token must only go to the configured host). The service already
+      returns `{image, predictions}`, so nothing is unwrapped.
+      `start_yolo26.sh` gives this mode `GUNICORN_TIMEOUT` 130 s, which must stay
+      above `INFERENCE_TIMEOUT`. The class names are the 15 scientific names in
+      the classifier's `class_names.json` (e.g. `Imperata cylindrica`); the app's
+      catalog has 23 species, and the frontend normalizes case and
+      space/hyphen/underscore separators and drops any class outside the catalog
+      (with a console warning).
+    - **Mock mode (`DETECTION_MOCK=true`, added 2026-09-23 as `ROBOFLOW_MOCK`,
+      renamed 2026-10-14).** Only a demo/offline switch; `render.yaml` sets it to
+      `false`. A report saved while it was on keeps `sampleDetections=true`
+      permanently (its counts are the built-in example reading). With the flag
+      on, the model call is replaced by `_mock_detect`, which serves
+      `reports/fixtures/sample_detect_response.json` — a captured detection
+      response (`inference_id`, `time`, `image`, `predictions[]` with
+      `class_id`/`detection_id`), 16 grains across 4 catalog species — rescaled
+      onto the uploaded image's real pixel size (Pillow) with fresh ids.
+      Credentials aren't checked in mock mode. Everything after the payload is
+      obtained is the same code path as live. (`reports/fixtures/` is not a
+      `loaddata` fixture dir despite the name.)
+    - **In-process mode (`DETECTION_BACKEND=yolo26`, not deployed):** the same
+      models loaded in the API process (`YOLO26_WEIGHTS_PATH`,
       `YOLO26_CLASSIFIER_WEIGHTS_PATH` with the classifier's adjacent
-      `class_names.json`; it does not use the Roboflow API key for inference.
-      The app response shape stays the same, and the default remains the
-      Roboflow Workflow (`ROBOFLOW_MOCK=true` still takes precedence). The
-      two models use the current 15-species dataset: YOLO26 emits `Pollen` or
-      `non-pollen`, and EfficientNet selects one of the 15 species. The app's
-      existing catalog has 23 species. The classifier has only within-slide
-      reported accuracy and has not been evaluated end-to-end on YOLO26 crops.
-      A separate Render staging Blueprint and private artifact bundle flow are
-      documented in `../docs/yolo26-staging.md`; they are not deployed. Keep
-      the production default on Roboflow until staging accuracy, latency, and
-      memory checks pass.
+      `class_names.json`, `api/requirements-ml.txt`). It needs more memory than
+      the free plan has; the runbook is `../docs/yolo26-staging.md`. The two models
+      use the 15-species dataset: YOLO26 emits `Pollen` or `non-pollen`, and
+      EfficientNet selects one of the 15 species. The classifier has only
+      within-slide reported accuracy and has not been evaluated end-to-end on
+      YOLO26 crops (issue #31).
+    - **Roboflow was removed 2026-10-14 (issue #48).** From 2026-10-01 until the
+      Modal cutover the proxy called a two-stage Roboflow Workflow (YOLOv11 nano →
+      ResNet-34, workspace `nino-elma`); its classifier returned one species for
+      every grain (issue #31). The code and the five `ROBOFLOW_*` settings are
+      gone — `DETECTION_BACKEND=roboflow` now answers 503, and going back means
+      reverting the removal commit. The runbook is kept as history in
+      `../docs/roboflow-pipeline.md`.
     - **Wired into the frontend as of 2026-09-23**: `analyzeSpecimen()`
       POSTs each image here. **As of 2026-09-24 there is no client-side
       fallback**: a failed detection (unreachable, 502/503, unreadable image)
       is shown on the Analyze screen as a per-slide error with retry, and the
       batch can't proceed to the report page until every slide has a real
-      reading. `ROBOFLOW_MOCK` (server-side) is the only source of sample
+      reading. `DETECTION_MOCK` (server-side) is the only source of sample
       detections.
   - **`GET /api/v1/reports/weather/?lat=..&lon=..&date=YYYY-MM-DD&time=HH:MM`**
     (`reports.views.WeatherView`, `IsAuthenticated`). **Since 2026-09-25 the
@@ -395,8 +378,9 @@ between the thesis proposal paper and the frontend.
     increments), detail (found/404), monthly-counts, the species list
     endpoint (auth-required, curated order, camelCase shape), detect
     (auth required, missing image, unconfigured → 503, successful
-    passthrough with extraneous Roboflow fields stripped, upstream
-    failure → 502; mock mode: no credentials/network needed, boxes
+    passthrough with extraneous fields stripped, upstream
+    failure/timeout/redirect/malformed payload → 502, a retired or unknown
+    backend → 503; mock mode: no credentials/network needed, boxes
     rescaled to the uploaded image, every class a catalog species), and weather (auth required, missing location,
     unconfigured → 503, location not found → 404, upstream failure → 502,
     condition-mapping cases for clear/light-clouds/heavy-clouds/rain/

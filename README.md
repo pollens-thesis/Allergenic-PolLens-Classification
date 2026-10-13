@@ -26,17 +26,18 @@ two classes are `Pollen` and `non-pollen`; only `Pollen` boxes go to the
 classifier. The classifier names one of 15 trained species. The wider PolLens
 catalog still has 23 species, so results need researcher review.
 
-Merging the model code keeps production on its current Roboflow Workflow. The
-existing `api/render.yaml` stays on the free plan and uses Roboflow by default.
-The optional model dependencies, private weights, paid compute plan, and
-`DETECTION_BACKEND=yolo26` are enabled by the Render operator after staging
-checks. Model files and secrets are never committed to this public repository.
+Since 2026-10-14 production runs these models on **Modal's free plan**
+(`services/inference/`, `DETECTION_BACKEND=remote`): the Render API stays on its
+free plan and sends each slide to the Modal service, which holds the private
+weights. See [docs/inference-modal.md](docs/inference-modal.md) for the
+deploy, token and region settings. Model files and secrets are never committed
+to this public repository.
 
-The operator should follow [docs/yolo26-staging.md](docs/yolo26-staging.md) for
-the artifact checksum, separate staging service, Render settings, smoke tests,
-production cutover, and rollback. The previous Roboflow credentials remain
-available during the rollback window. To return new requests to the previous
-provider, set `DETECTION_BACKEND=roboflow` and deploy that environment change.
+The earlier Roboflow Workflow is retired and its code was removed (issue #48);
+its runbook stays in [docs/roboflow-pipeline.md](docs/roboflow-pipeline.md) as
+history. The in-process alternative (`DETECTION_BACKEND=yolo26`,
+[docs/yolo26-staging.md](docs/yolo26-staging.md)) needs more memory than the free
+plan offers and is not used.
 
 ## Researcher review
 

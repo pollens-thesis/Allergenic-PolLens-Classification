@@ -255,10 +255,17 @@ SIGNIN_ALLOWED_DOMAINS = [
 SIGNIN_ALLOWED_EMAILS = [e.lower() for e in env_list('SIGNIN_ALLOWED_EMAILS')]
 
 
-# Inference providers — see reports.views.DetectView. Production continues
-# to use the Roboflow Workflow unless the local YOLO26 transition is selected.
+# Inference providers — see reports.views.DetectView. Production uses 'remote':
+# the hosted YOLO26 + EfficientNet service (services/inference on Modal).
+# 'yolo26' loads the same models in this process (docs/yolo26-staging.md).
 
-DETECTION_BACKEND = os.environ.get('DETECTION_BACKEND', 'roboflow').strip().lower()
+DETECTION_BACKEND = os.environ.get('DETECTION_BACKEND', 'remote').strip().lower()
+# 'remote': POST {INFERENCE_URL}/detect with `Authorization: Bearer
+# INFERENCE_TOKEN`. The timeout must cover a cold start (container + models)
+# plus inference on a large photo; keep GUNICORN_TIMEOUT above it.
+INFERENCE_URL = os.environ.get('INFERENCE_URL', '').strip().rstrip('/')
+INFERENCE_TOKEN = os.environ.get('INFERENCE_TOKEN', '').strip()
+INFERENCE_TIMEOUT = float(os.environ.get('INFERENCE_TIMEOUT', '120'))
 YOLO26_WEIGHTS_PATH = os.environ.get('YOLO26_WEIGHTS_PATH', '').strip()
 YOLO26_CLASSIFIER_WEIGHTS_PATH = os.environ.get('YOLO26_CLASSIFIER_WEIGHTS_PATH', '').strip()
 YOLO26_WEIGHTS_SHA256 = os.environ.get('YOLO26_WEIGHTS_SHA256', '').strip()
@@ -268,18 +275,11 @@ YOLO26_CONFIDENCE = float(os.environ.get('YOLO26_CONFIDENCE', '0.25'))
 YOLO26_IMAGE_SIZE = int(os.environ.get('YOLO26_IMAGE_SIZE', '640'))
 YOLO26_DEVICE = os.environ.get('YOLO26_DEVICE', 'cpu').strip() or 'cpu'
 
-ROBOFLOW_API_KEY = os.environ.get('ROBOFLOW_API_KEY', '')
-ROBOFLOW_MODEL_ID = os.environ.get('ROBOFLOW_MODEL_ID', '')  # e.g. "workspace-slug/model-slug"
-ROBOFLOW_MODEL_VERSION = os.environ.get('ROBOFLOW_MODEL_VERSION', '')
-# Two-stage pipeline (YOLOv11 detect -> ResNet-34 classify) is a Roboflow
-# Workflow. When ROBOFLOW_WORKFLOW_ID is set it wins over the single-model
-# ROBOFLOW_MODEL_ID/VERSION path above.
-ROBOFLOW_WORKSPACE = os.environ.get('ROBOFLOW_WORKSPACE', '')
-ROBOFLOW_WORKFLOW_ID = os.environ.get('ROBOFLOW_WORKFLOW_ID', '')
-# Serve reports/fixtures/roboflow_detect_response.json (Roboflow-compatible
-# shape) instead of calling a model. This demo/offline switch takes precedence
-# over DETECTION_BACKEND; set it to false to exercise a configured provider.
-ROBOFLOW_MOCK = env_bool('ROBOFLOW_MOCK', False)
+# Serve reports/fixtures/sample_detect_response.json (the detection response
+# shape) instead of calling a model. A demo/offline switch that takes precedence
+# over DETECTION_BACKEND; reports saved while it is on keep a permanent Sample
+# flag. Was ROBOFLOW_MOCK before 2026-10-14.
+DETECTION_MOCK = env_bool('DETECTION_MOCK', False)
 
 
 # Weather comes from Open-Meteo (free, no key) — see reports.views.WeatherView.

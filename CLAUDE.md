@@ -66,8 +66,7 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   exists** (org `pollens-thesis`, project number **1**, columns Backlog → Ready →
   In Progress (limit 2) → Review → Blocked → Done) with the labels `frontend`,
   `backend`, `devops`, `chore`, `blocked`, `adviser`. The open backlog is issues
-  #6–#9 (`blocked` on the adviser), #11–#13 and **#31** (the classifier, the
-  next focus); #4, #5, #16 and #21 (the
+  #6–#9 (`blocked` on the adviser), #11–#13, **#31** (classifier evaluation); #4, #5, #16 and #21 (the
   ColorBrewer YlOrBr heatmap palette) were finished by PRs #19, #18, #17 and
   #22 (merged 2026-09-30), and #10 (go live with the detection model) by PRs
   #29 (Workflow mode), #30 (Render mock default off) and #32 (docs), merged
@@ -79,18 +78,26 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   `gh auth refresh -h github.com -s project` once). Auto-add, item-closed and
   PR-merged rules are on. Past-work task list: the owner's local
   `PolLens-board` folder (not in the repo).
-- **Detection model: live (2026-10-01, issue #10, PRs #29/#30).** Production runs
-  a two-stage Roboflow Workflow, not mock: YOLOv11 (nano) finds grains as one
-  `pollen` class, Dynamic Crop, ResNet-34 names the species (Roboflow workspace
-  `nino-elma`, workflow `detect-classify-v1`). `/detect/` calls it when
-  `ROBOFLOW_WORKFLOW_ID` is set; runbook and Workflow JSON are in
-  `docs/roboflow-pipeline.md`. iPhone MPO photos are accepted as JPEG. Reports
-  saved while mock was on keep a permanent Sample badge (delete and re-analyze
-  them). **Known problem — next focus (issue #31):** the classifier returns the
-  same species (`Sorghum halepense`) for every grain, most likely because it was
-  trained on whole-slide photos rather than grain crops; rebuild the
-  classification set from crops and retrain, then record metrics for the paper
-  (adviser item 7 in `docs/system-spec.md`).
+- **Detection model: live on Modal (2026-10-14, issues #42/#46, PRs #43/#47).**
+  Production `/detect/` runs `DETECTION_BACKEND=remote`: the API posts each slide
+  to `services/inference/` (FastAPI, hosted on Modal in workspace `ninoelma874`,
+  scale-to-zero, memory snapshots, `region=ap-southeast`), which runs the YOLO26
+  Detection v12 weights and the EfficientNet-B0 15-species classifier
+  (`docs/inference-modal.md`). Render holds `INFERENCE_URL` and `INFERENCE_TOKEN`
+  (the Modal secret `pollens-inference`); a cold start takes ~15 s, warm calls
+  2–5 s. Verified 2026-10-14: Modal logged the site's `/detect` calls. The
+  weights are private (Modal Volume `pollens-models`, local copies in
+  `docs/private/finalized model/`). **Roboflow is retired and its code removed** (issue #48; the
+  old Workflow is documented in `docs/roboflow-pipeline.md`, rollback means
+  reverting that commit). The demo switch is now `DETECTION_MOCK` (was
+  `ROBOFLOW_MOCK`).
+  iPhone MPO photos are accepted as JPEG. Reports saved while mock was on keep a
+  permanent Sample badge (delete and re-analyze them). **Still open (issue
+  #31):** the constant-species problem was a Roboflow classifier trained on
+  whole-slide photos; the replacement EfficientNet-B0 was trained on grain crops
+  and is what runs now, but only within-slide accuracy exists, not an end-to-end
+  evaluation on YOLO26 crops, and it covers 15 of the app's 23 species. Record
+  metrics for the paper (adviser item 7 in `docs/system-spec.md`).
 - **Teammate:** Niño runs the project locally and signs in. If sign-in fails
   for someone new, see the Troubleshooting table in `docs/deployment.md`
   (Google "Access blocked" = add them as a test user).

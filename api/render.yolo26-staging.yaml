@@ -46,7 +46,7 @@ services:
         value: "true"
       - key: DETECTION_BACKEND
         value: yolo26
-      - key: ROBOFLOW_MOCK
+      - key: DETECTION_MOCK
         value: "false"
       - key: YOLO26_WEIGHTS_PATH
         value: /tmp/pollens-models/yolo26l_v12_best.pt
