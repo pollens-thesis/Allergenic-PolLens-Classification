@@ -54,7 +54,7 @@ allow saving annotations.
 Run the API checks from `api/`:
 
 ```bash
-DETECTION_BACKEND=roboflow ROBOFLOW_MOCK=false python manage.py test
+DETECTION_MOCK=false python manage.py test
 python manage.py makemigrations --check --dry-run
 python manage.py check
 ```

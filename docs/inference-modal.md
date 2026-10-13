@@ -98,8 +98,10 @@ Without the header `/detect` must return 401. Local tests (no models needed):
   deploy); use `curl -L` when testing by hand (long requests redirect); on Windows
   set `PYTHONUTF8=1` for the Modal CLI; `modal volume put` needs the volume to
   exist (`upload_models.py` creates it).
-- **Rollback:** set `DETECTION_BACKEND=roboflow` on Render while that code still
-  exists (issue #48 removes it; after that, revert the removal commit).
+- **Rollback:** the Roboflow code was removed (issue #48), so going back to it
+  means reverting that commit and restoring the `ROBOFLOW_*` keys on Render. The
+  usual fix for a bad deploy is to redeploy the previous Modal version
+  (`modal deploy` from the earlier commit) or the previous Render deploy.
 
 ## Cost and cold starts
 

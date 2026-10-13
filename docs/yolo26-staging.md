@@ -40,7 +40,7 @@ RGB, bilinear 224×224 resizing, ImageNet normalization, and softmax. It returns
 the top species and probability in the existing species-plus-box API shape.
 The app already normalizes scientific names such as `Imperata cylindrica` to
 its species IDs. The Roboflow Workflow remains the default; select the local
-pipeline with `DETECTION_BACKEND=yolo26` and `ROBOFLOW_MOCK=false`.
+pipeline with `DETECTION_BACKEND=yolo26` and `DETECTION_MOCK=false`.
 
 Both models were trained from the current dataset of 15 pollen species.
 YOLO26 detects `Pollen` and `non-pollen`; EfficientNet-B0 classifies each
@@ -60,7 +60,7 @@ files under `docs/private/model-artifacts/`; they are ignored by Git.
 
 ```dotenv
 DETECTION_BACKEND=yolo26
-ROBOFLOW_MOCK=false
+DETECTION_MOCK=false
 YOLO26_WEIGHTS_PATH=/absolute/path/to/best.pt
 YOLO26_CLASSIFIER_WEIGHTS_PATH=/absolute/path/to/efficientnet_b0_pollen15.onnx
 YOLO26_CONFIDENCE=0.25
@@ -123,7 +123,7 @@ from held-out slides, test full-size images and concurrent requests on the
 staging service, and review memory, latency, and failure logs. Keep the
 Roboflow workflow configured through the initial rollout. Roll back by setting
 `DETECTION_BACKEND=roboflow` and redeploying. Do not enable
-`ROBOFLOW_MOCK=true` for the local model path because the mock response takes
+`DETECTION_MOCK=true` for the local model path because the mock response takes
 precedence over the selected backend.
 
 ## Production cutover and rollback
@@ -151,7 +151,7 @@ On the production service, configure these values for the cutover:
 
 ```text
 DETECTION_BACKEND=yolo26
-ROBOFLOW_MOCK=false
+DETECTION_MOCK=false
 INSTALL_ML_DEPENDENCIES=true
 YOLO26_WEIGHTS_PATH=/tmp/pollens-models/yolo26l_v12_best.pt
 YOLO26_CLASSIFIER_WEIGHTS_PATH=/tmp/pollens-models/efficientnet_b0_pollen15.onnx
@@ -195,7 +195,7 @@ catalog has 23 species while these models support 15, and the planned
 annotation feature is not yet available.
 
 To roll back, set `DETECTION_BACKEND=roboflow` and redeploy or restart the
-existing service. Keep `ROBOFLOW_MOCK=false`, the Roboflow workflow credentials,
+existing service. Keep `DETECTION_MOCK=false`, the Roboflow workflow credentials,
 and the provider-aware start command. The launcher skips model download and
 uses the existing two-worker Roboflow path. Confirm an authenticated detection
 request succeeds and returns `mock: false`. Rollback affects new requests
