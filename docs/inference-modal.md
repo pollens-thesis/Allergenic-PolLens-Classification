@@ -73,6 +73,34 @@ curl -H "Authorization: Bearer $INFERENCE_TOKEN" -F image=@slide.jpg $URL/detect
 Without the header `/detect` must return 401. Local tests (no models needed):
 `pip install fastapi httpx pillow pytest python-multipart && pytest services/inference`.
 
+## Production (live since 2026-10-14)
+
+- **Where:** Modal workspace `ninoelma874`, app `pollens-inference`, class
+  `Inference`; the endpoint URL is shown on the function `Inference.web` in the
+  dashboard and printed by `modal deploy`. Region `ap-southeast`
+  (`REGION` in `modal_app.py`), next to Render in Singapore. Narrow regions cost
+  1.75× the compute price; `'ap'` is 1.15× if credit gets tight.
+- **Render settings:** `DETECTION_BACKEND=remote`, `INFERENCE_URL` (the base URL,
+  no `/detect`, no trailing `/`), `INFERENCE_TOKEN` (the value of the Modal secret
+  `pollens-inference`). `INFERENCE_TIMEOUT` defaults to 120 s and gunicorn's
+  timeout to 130 s (`api/start_yolo26.sh`).
+- **Check it:** `GET <url>/healthz` must show `detector` and `classifier` true.
+  `modal app logs pollens-inference` replays recent history (it exits; it does not
+  stream) and should show `POST /detect -> 200` after you analyze a slide on the
+  site. Measured on 2026-10-14: first cold start ~13 s, warm calls 2–5 s; calls
+  through Modal's `us-east` entry point add about 1 s of overhead from the
+  Philippines (not measured from Render).
+- **Rotate the token:** `modal secret create pollens-inference
+  INFERENCE_TOKEN=<new> --force`, then set the same value on Render. Anyone with
+  the old value can call `/detect` until then.
+- **Gotchas:** Modal re-imports `modal_app.py` inside the container, so path code
+  there must not raise (an `HERE.parents[1]` did and crash-looped the first
+  deploy); use `curl -L` when testing by hand (long requests redirect); on Windows
+  set `PYTHONUTF8=1` for the Modal CLI; `modal volume put` needs the volume to
+  exist (`upload_models.py` creates it).
+- **Rollback:** set `DETECTION_BACKEND=roboflow` on Render while that code still
+  exists (issue #48 removes it; after that, revert the removal commit).
+
 ## Cost and cold starts
 
 - The container is 1 CPU / 2 GiB and scales to zero after 5 minutes idle, so an

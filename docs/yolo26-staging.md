@@ -1,5 +1,13 @@
 # YOLO26 + EfficientNet staging and deployment
 
+> **Status 2026-10-14:** this describes the in-process path
+> (`DETECTION_BACKEND=yolo26`, models loaded inside the Render service), which
+> needs more memory than the free plan offers and is **not deployed**. Production
+> hosts the same models on Modal and the API calls them with
+> `DETECTION_BACKEND=remote`: see [inference-modal.md](inference-modal.md). The
+> artifact and checksum steps below still apply to the weights. References to
+> Roboflow as "the default" are historical.
+
 The selected private Colab notebook is `PolLens_YOLO_Detection_v12.ipynb`.
 Its exported `best.pt` is a two-class **detector**: class 0 `Pollen`, class 1
 `non-pollen`. Only class 0 may become a crop for the species classifier.

@@ -1,5 +1,10 @@
 # Roboflow pipeline: YOLOv11 detect → ResNet-34 classify
 
+> **Historical — retired 2026-10-14.** Production detection now runs on the
+> YOLO26 + EfficientNet-B0 service on Modal (`docs/inference-modal.md`,
+> `DETECTION_BACKEND=remote`). This Workflow remains only as a rollback until
+> issue #48 removes its code and credentials. Kept for the thesis record.
+
 The detection model is a two-stage **Roboflow Workflow**: a YOLOv11 detector
 finds every pollen grain (one class, `pollen`), each box is cropped, and a
 ResNet-34 classifier names the species. The backend calls the Workflow through
