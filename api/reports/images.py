@@ -12,8 +12,8 @@ from django.conf import settings
 from PIL import Image, UnidentifiedImageError
 
 # MPO is the multi-picture container phones (iPhones especially) write for
-# ".jpeg" photos: its first frame is a plain JPEG that browsers and Roboflow
-# read as one, so it is accepted and stored as .jpg.
+# ".jpeg" photos: its first frame is a plain JPEG that browsers and the
+# inference service read as one, so it is accepted and stored as .jpg.
 ALLOWED_FORMATS = {'JPEG': '.jpg', 'MPO': '.jpg', 'PNG': '.png'}
 
 

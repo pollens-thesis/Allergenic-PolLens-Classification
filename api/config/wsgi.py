@@ -18,9 +18,10 @@ application = get_wsgi_application()
 # A model-enabled Render staging instance should fail its worker boot if the
 # private artifacts or model runtimes are not usable. This runs in each worker
 # process, so the staging start command uses one worker to avoid duplicate model
-# copies. Local development and the production Roboflow service remain lazy.
+# copies. Local development and the production service (which calls the hosted
+# inference service) remain lazy.
 if (
-    os.environ.get('DETECTION_BACKEND', 'roboflow').strip().lower() == 'yolo26'
+    os.environ.get('DETECTION_BACKEND', 'remote').strip().lower() == 'yolo26'
     and os.environ.get('YOLO26_WARM_MODELS_ON_START', '').strip().lower()
     in ('1', 'true', 'yes', 'on')
 ):

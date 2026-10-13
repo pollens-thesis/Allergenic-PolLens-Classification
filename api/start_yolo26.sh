@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Provider-aware Render start command. Roboflow remains the default so the
-# existing production service keeps working until an operator selects YOLO26.
+# Provider-aware Render start command. `remote` (the default) calls the hosted
+# inference service; `yolo26` loads the models in this process.
 set -euo pipefail
 
-backend="$(printf '%s' "${DETECTION_BACKEND:-roboflow}" | tr '[:upper:]' '[:lower:]')"
+backend="$(printf '%s' "${DETECTION_BACKEND:-remote}" | tr '[:upper:]' '[:lower:]')"
 
 if [[ "$backend" == "yolo26" ]]; then
   python -m scripts.prepare_yolo26_models
@@ -16,9 +16,6 @@ elif [[ "$backend" == "remote" ]]; then
   # gunicorn kills the worker while it waits out a cold start.
   worker_count="${GUNICORN_WORKERS:-2}"
   request_timeout="${GUNICORN_TIMEOUT:-130}"
-elif [[ "$backend" == "roboflow" ]]; then
-  worker_count="${GUNICORN_WORKERS:-2}"
-  request_timeout="${GUNICORN_TIMEOUT:-60}"
 else
   printf 'Unsupported DETECTION_BACKEND: %s\n' "$backend" >&2
   exit 1

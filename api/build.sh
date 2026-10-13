@@ -8,7 +8,7 @@ pip install -r requirements.txt
 
 # Keep the production build lightweight unless a model-enabled service opts in.
 # The YOLO26 staging Blueprint sets this at build time; the production
-# Blueprint leaves it unset and continues to use Roboflow.
+# Blueprint leaves it unset: production calls the hosted inference service.
 if [[ "${INSTALL_ML_DEPENDENCIES:-false}" == "true" ]]; then
   pip install -r requirements-ml.txt
 fi

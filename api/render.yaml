@@ -8,9 +8,9 @@ services:
     plan: free
     region: singapore
     buildCommand: ./build.sh
-    # Provider-aware launcher: Roboflow stays the default; DETECTION_BACKEND=remote
-    # calls the hosted inference service (INFERENCE_URL below); yolo26 loads the
-    # models in-process after its private bundle is configured.
+    # Provider-aware launcher: DETECTION_BACKEND=remote (the default) calls the
+    # hosted inference service (INFERENCE_URL below); yolo26 loads the models
+    # in-process after its private bundle is configured (not used on this plan).
     startCommand: ./start_yolo26.sh
     healthCheckPath: /healthz/
     envVars:
@@ -44,26 +44,16 @@ services:
         sync: false
       - key: AWS_SECRET_ACCESS_KEY
         sync: false
-      # Hosted inference service (services/inference on Modal). To switch
-      # detection to it, set DETECTION_BACKEND to "remote" in the dashboard once
-      # INFERENCE_URL and INFERENCE_TOKEN are filled in; it defaults to roboflow.
+      # Hosted inference service (services/inference on Modal, see
+      # docs/inference-modal.md): its base URL (no /detect) and the bearer token
+      # stored in the Modal secret pollens-inference.
+      - key: DETECTION_BACKEND
+        value: remote
       - key: INFERENCE_URL
         sync: false
       - key: INFERENCE_TOKEN
         sync: false
-      # The detection model is live (two-stage Workflow), so mock is off. Set
-      # ROBOFLOW_API_KEY, ROBOFLOW_WORKSPACE and ROBOFLOW_WORKFLOW_ID below (or
-      # the single-model MODEL_ID/VERSION pair). Set this to "true" only to serve
-      # canned sample detections, e.g. for a demo without a Roboflow key.
-      - key: ROBOFLOW_MOCK
+      # "true" serves canned sample detections instead of calling the model
+      # (demo/offline only); reports saved while it is on keep a Sample flag.
+      - key: DETECTION_MOCK
         value: "false"
-      - key: ROBOFLOW_API_KEY
-        sync: false
-      - key: ROBOFLOW_MODEL_ID
-        sync: false
-      - key: ROBOFLOW_MODEL_VERSION
-        sync: false
-      - key: ROBOFLOW_WORKSPACE
-        sync: false
-      - key: ROBOFLOW_WORKFLOW_ID
-        sync: false
