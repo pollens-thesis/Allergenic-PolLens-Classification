@@ -10,6 +10,12 @@ if [[ "$backend" == "yolo26" ]]; then
   export YOLO26_WARM_MODELS_ON_START=true
   worker_count=1
   request_timeout="${GUNICORN_TIMEOUT:-120}"
+elif [[ "$backend" == "remote" ]]; then
+  # The models live on the hosted inference service, so this process stays
+  # small. The timeout must exceed INFERENCE_TIMEOUT (default 120 s), or
+  # gunicorn kills the worker while it waits out a cold start.
+  worker_count="${GUNICORN_WORKERS:-2}"
+  request_timeout="${GUNICORN_TIMEOUT:-130}"
 elif [[ "$backend" == "roboflow" ]]; then
   worker_count="${GUNICORN_WORKERS:-2}"
   request_timeout="${GUNICORN_TIMEOUT:-60}"

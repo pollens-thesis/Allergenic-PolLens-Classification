@@ -256,9 +256,17 @@ SIGNIN_ALLOWED_EMAILS = [e.lower() for e in env_list('SIGNIN_ALLOWED_EMAILS')]
 
 
 # Inference providers — see reports.views.DetectView. Production continues
-# to use the Roboflow Workflow unless the local YOLO26 transition is selected.
+# to use the Roboflow Workflow unless the local YOLO26 transition ('yolo26') or
+# the hosted inference service ('remote', services/inference on Modal) is
+# selected.
 
 DETECTION_BACKEND = os.environ.get('DETECTION_BACKEND', 'roboflow').strip().lower()
+# 'remote': POST {INFERENCE_URL}/detect with `Authorization: Bearer
+# INFERENCE_TOKEN`. The timeout must cover a cold start (container + models)
+# plus inference on a large photo; keep GUNICORN_TIMEOUT above it.
+INFERENCE_URL = os.environ.get('INFERENCE_URL', '').strip().rstrip('/')
+INFERENCE_TOKEN = os.environ.get('INFERENCE_TOKEN', '').strip()
+INFERENCE_TIMEOUT = float(os.environ.get('INFERENCE_TIMEOUT', '120'))
 YOLO26_WEIGHTS_PATH = os.environ.get('YOLO26_WEIGHTS_PATH', '').strip()
 YOLO26_CLASSIFIER_WEIGHTS_PATH = os.environ.get('YOLO26_CLASSIFIER_WEIGHTS_PATH', '').strip()
 YOLO26_CONFIDENCE = float(os.environ.get('YOLO26_CONFIDENCE', '0.25'))
