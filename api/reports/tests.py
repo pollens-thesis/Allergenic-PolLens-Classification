@@ -612,6 +612,7 @@ class SpeciesListViewTests(APITestCase):
 
 
 @override_settings(
+    DETECTION_BACKEND='roboflow',
     ROBOFLOW_API_KEY='test-key', ROBOFLOW_MODEL_ID='workspace/model', ROBOFLOW_MODEL_VERSION='1',
     ROBOFLOW_WORKSPACE='', ROBOFLOW_WORKFLOW_ID='', ROBOFLOW_MOCK=False,
 )
@@ -693,6 +694,7 @@ class DetectViewTests(APITestCase):
 
 
 @override_settings(
+    DETECTION_BACKEND='roboflow',
     ROBOFLOW_API_KEY='test-key', ROBOFLOW_WORKSPACE='my-workspace',
     ROBOFLOW_WORKFLOW_ID='pollen-detect-classify', ROBOFLOW_MODEL_ID='', ROBOFLOW_MODEL_VERSION='',
     ROBOFLOW_MOCK=False,
@@ -1278,6 +1280,7 @@ class QARegressionTests(APITestCase):
 
     # --- detect --------------------------------------------------------------------
     @override_settings(
+        DETECTION_BACKEND='roboflow',
         ROBOFLOW_MOCK=False, ROBOFLOW_API_KEY='k', ROBOFLOW_MODEL_ID='w/m', ROBOFLOW_MODEL_VERSION='1',
         ROBOFLOW_WORKSPACE='', ROBOFLOW_WORKFLOW_ID='',
     )
