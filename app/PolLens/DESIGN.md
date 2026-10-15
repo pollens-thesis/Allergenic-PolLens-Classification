@@ -1,5 +1,5 @@
 ---
-name: PolLens
+name: PolleRgies
 description: A palynology research console set as a living reference atlas; every slide a numbered plate, every report an atlas entry.
 colors:
   page-grey: "#ecebe6"
@@ -260,13 +260,13 @@ components:
     rounded: "{rounded.md}"
 ---
 
-# Design System: PolLens Laboratory Console
+# Design System: PolleRgies Laboratory Console
 
 ## Overview
 
 **Creative North Star: "The Laboratory Console"**
 
-PolLens is a focused workspace for examining microscope slides and maintaining research records. It should feel precise, legible and calm at a bright lab bench. Short labels and a clear task hierarchy keep attention on the slide, its detections and the collection details. The warm grey page, paper surfaces, hairline rules and oxide action colour remain; species colours stay attached to data.
+PolleRgies is a focused workspace for examining microscope slides and maintaining research records. It should feel precise, legible and calm at a bright lab bench. Short labels and a clear task hierarchy keep attention on the slide, its detections and the collection details. The warm grey page, paper surfaces, hairline rules and oxide action colour remain; species colours stay attached to data.
 
 IBM Plex Sans carries the interface and IBM Plex Mono marks IDs, codes and figures. Source Serif 4 italic distinguishes scientific names from surrounding controls. Work surfaces use generous paper cards with a quiet shadow, while controls, data rows and microscope plates retain compact geometry. Information stays grouped by task. Required sample, status, missing-data and recovery messages remain visible.
 
@@ -353,7 +353,7 @@ The `dark-*` frontmatter tokens map to the same CSS variables under `:root[data-
 | Neutral filled button label | `on-neutral-action` → `dark-on-neutral-action` | `--button-neutral-fg` |
 | Neutral filled button hover surface | `neutral-action-hover` → `dark-neutral-action-hover` | `--button-neutral-hover` |
 
-Dark oxide uses dark foreground ink for filled actions; destructive actions use their own dark foreground token. Native controls adopt the mode's `color-scheme`, the dark dropdown chevron uses the refined faint-ink #9fadb6 stroke, and Sonner toasts follow the selected mode. Cards retain their geometry and gain the mode's shadow vocabulary. The sign-in wordmark alone is inverted for dark contrast; microscope slide pixels and catalog photos are never filtered.
+Dark oxide uses dark foreground ink for filled actions; destructive actions use their own dark foreground token. Native controls adopt the mode's `color-scheme`, the dark dropdown chevron uses the refined faint-ink #9fadb6 stroke, and Sonner toasts follow the selected mode. Cards retain their geometry and gain the mode's shadow vocabulary. The transparent PolleRgies logo keeps charcoal lettering in light mode and uses the dark theme text color with the same red microscope details in dark mode; microscope slide pixels and catalog photos are never filtered.
 
 **Current dark refinement (2026-10-13, user-requested):** a deeper charcoal page supports lifted panels, darker navigation and recessed fields. Separate navigation, hover, field, selected-control and neutral-action roles prevent white inverse tabs and field boundaries from competing with slide evidence. Selected Dashboard period, Reports status and Pollen Map visibility controls use a subdued fill plus a 1px inset outline; filled neutral buttons use the same quiet surface family with a distinct hover. Dark active section links use the oxide wash and a 38% oxide outline. Enabled editable fields with the shared neutral border use the darker field fill, clearer field outline and oxide caret; invalid/error and disabled states retain their own treatments. Light aliases preserve the incumbent light visuals. Data palettes, image pixels and the viewer surround remain fixed.
 
@@ -367,7 +367,7 @@ The viewer surround remains `viewer-surround` (#2a2a28) in both modes. Slide ove
 - **Map intensity ramp** (quantile classes, ColorBrewer YlOrBr, pale yellow to burnt orange): #ffffd4, #fed98e, #fe9929, #cc4c02. Sampled-but-zero areas use #e4e4e7 and unsampled areas use #f4f4f5, so "we looked and found nothing" differs from "no data".
 
 ### Named Rules
-**The One Oxide Rule.** Oxide marks a plate or figure number, the page's primary action, an inline text action, a selection, or focus. It does nothing else. It never tints a heading word, an icon or a background for mood.
+**The One Oxide Rule.** Oxide marks a plate or figure number, the page's primary action, an inline text action, selection and focus. The charcoal-and-red PolleRgies wordmark is a separate identity asset and does not set the interface accent. Outside the named roles, oxide never tints a heading, icon or background for mood.
 
 **The Data Is Not Decoration Rule.** Species colours and the map ramp only encode data. They never style chrome, and chrome colours never stand in for a species. Wherever a data colour appears, a code, name or number says the same thing.
 
@@ -384,7 +384,7 @@ Copy should name the task or data directly. Keep essential status, sample, missi
 ### Named Rules
 **The Plain Label Rule.** Labels use sentence case and name the field or value directly. Use oxide only for the primary action, focus and concise slide references.
 
-**The Mono Means Identifier Rule.** The mono face is for things you would copy, compare or count: IDs, species codes, counts and figures. It is not for prose, buttons or headings. The PolLens wordmark (mono, uppercase, 0.18em tracking) is an identity asset and sets no precedent.
+**The Mono Means Identifier Rule.** The mono face is for things you would copy, compare or count: IDs, species codes, counts and figures. It is not for prose, buttons or headings. The PolleRgies wordmark is an identity asset and sets no precedent.
 
 ## Layout
 
@@ -405,7 +405,7 @@ Dark cards use a rest shadow of `0 2px 4px rgb(0 0 0 / 14%), 0 12px 28px rgb(0 0
 
 ## Shapes
 
-Standalone cards use a 20px radius. Controls, fields, buttons and compact data rows use 1–3px corners; the corners of microscope image frames remain restrained so the imagery stays central. Circles are reserved for the wordmark's ring-and-dot, avatar initials and legend dots. Species swatches are 2px-cornered squares. Secondary summaries use a softly rounded `card-well` inside their parent card.
+Standalone cards use a 20px radius. Controls, fields, buttons and compact data rows use 1–3px corners; the corners of microscope image frames remain restrained so the imagery stays central. Circles are reserved for avatar initials and legend dots. Species swatches are 2px-cornered squares. Secondary summaries use a softly rounded `card-well` inside their parent card.
 
 ## Components
 
@@ -430,7 +430,7 @@ Quiet and exact, with no gradient and no shadow.
 - **Shadow Strategy:** subtle two-layer shadow on standalone cards, slightly deeper on interactive hover (see Elevation & Depth).
 - **Border:** a 1px hairline.
 - **Internal Padding:** 16–20px by default. The plate title uses IBM Plex Sans and sits on a baseline row with its mono slide label at the right.
-- **Dashboard:** shared Location and Period controls come first. A full-width compact summary shows grains counted, pollen types and average model confidence. Analysis status controls remain on Reports. Recent Collections sits in the wider left column beside Top Pollen Counts; the paired cards stretch to the same height and align their headers. Collection Conditions follows across the full width. Phones stack these sections in the same reading order.
+- **Dashboard:** shared Location and Period controls come first. A full-width compact summary shows grains counted, pollen types and average model confidence. Analysis status controls remain on Reports. Recent Collections sits in the wider left column beside Top Pollen Counts; the paired cards stretch to the same height and align their headers. Phones stack these sections in the same reading order.
 
 ### Inputs / Fields
 - **Style:** light fields retain plate paper and a 1px hairline frame. Enabled dark editable fields with the shared neutral border use the recessed field surface and clearer field outline; invalid/error and disabled states retain their own styling. Both keep 2px corners, 8px × 12px padding, medium-weight ink for entered/selected values, and regular-weight placeholder-grey hints. The label sits above in 12.5px caption grey or as a caption label.
@@ -465,13 +465,13 @@ One detection per row, sitting beside the plate as its key. Each row has a speci
 The Allergen Reference is an atlas of plates: a searchable grid, 6 across from `xl` (6 × 4 for the 23 species), 4 at `lg`, 3 at `sm`, 2 on phones. Each card is a hairline plate: a 4:3 photo over the **binomial** (serif italic 600, 16px, the primary) and the **plant names** below it (English · Filipino, 13px caption grey, the secondary), the risk stamp, and a footer rule with the species swatch and mono code on the left and the grain count on the right. The whole card is the button; it opens the full record in a dialog (photo with its credit line, plate-label code, binomial title, names, family, description, a ruled grid of readings, where it grows in the Philippines, and the source line). Search matches scientific name, English and Filipino names and code, accent- and case-insensitively. Photos are freely licensed (Wikimedia Commons) and always credited; a missing photo shows a "No photo yet" plate, never a stand-in.
 
 ### Dashboard Metrics
-The dashboard leads with an exact-location select and a 6/12-month switch, defaulting to 6 Months. The selected scope's grains counted, pollen types and average model confidence appear immediately below in a compact three-column summary. Confidence shows a dash when there are no counted grains. The summary spans the available width; Needs Review and Pending controls remain on Reports. Collection/slide/location totals, the visible date window, Count Details and the Needs Attention heading are removed. Card headings lead directly into their data without descriptive subtitles. From wide desktop sizes, Recent Collections occupies the wider left column beside Top Pollen Counts; Collection Conditions spans the full width below. Phones stack these sections in that order.
+The dashboard leads with an exact-location select and a 6/12-month switch, defaulting to 6 Months. The selected scope's grains counted, pollen types and average model confidence appear immediately below in a compact three-column summary. Confidence shows a dash when there are no counted grains. The summary spans the available width; Needs Review and Pending controls remain on Reports. Collection/slide/location totals, the visible date window, Count Details and the Needs Attention heading are removed. Card headings lead directly into their data without descriptive subtitles. From wide desktop sizes, Recent Collections occupies the wider left column beside Top Pollen Counts. Phones stack these sections in that order.
 
-Recent Collections shows up to five finalized records directly. Sample ID, location, collection date/time, top species, slide and grain counts, status and sample stamps stay readable on phones. Each row opens its report; All Reports retains the selected location, inclusive dates and finalized status.
+Recent Collections shows up to five finalized records directly. Sample ID, location, collection date, top species, slide and grain counts, status and sample stamps stay readable on phones. Each row opens its report; All Reports retains the selected location, inclusive dates and finalized status.
 
 Top Pollen Counts ranks up to five species by summed positive grain counts across every slide in every matching finalized collection, including older records outside the recent five. Scientific names wrap in serif italic; mono species codes and exact counts accompany species-colour comparison bars scaled to the largest displayed count. Each row opens supporting reports with species, exact location, finalized status and inclusive dates preserved. The dashboard no longer renders the location or monthly occurrence views.
 
-Collection Conditions shows ranges of saved temperature, humidity and wind measurements, each with its recorded-collection count; weather-condition counts remain in a named disclosure. Missing measurements are excluded and labelled “Not recorded”; recorded zero remains a valid reading. Finalized means Completed + Needs Review, while Pending is excluded from dashboard figures. All controls have at least 44px touch targets and mobile pages never depend on horizontal tables. Sample readings keep the overall warning, recent-record stamps, and ranking/row stamps wherever sample grain counts contribute. Counts and saved conditions do not claim seasonality, airborne concentration, risk or weather causation.
+Weather conditions are not collected or displayed in the current interface. Legacy weather values on older reports remain available in the API for compatibility. Finalized means Completed + Needs Review, while Pending is excluded from dashboard figures. All controls have at least 44px touch targets and mobile pages never depend on horizontal tables. Sample readings keep the overall warning, recent-record stamps, and ranking/row stamps wherever sample grain counts contribute. Counts do not claim seasonality, airborne concentration or risk.
 
 ## Do's and Don'ts
 

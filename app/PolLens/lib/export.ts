@@ -6,7 +6,9 @@
 //           Detections sheet (one row per pollen type per slide)
 //   CSV   — the Detections rows alone, the long format stats software (R, SPSS)
 //           wants for analysis
-//   JSON  — a faithful copy of the records, for archiving or other tools
+//   JSON  — report records for archiving or other tools; collection times and
+//           legacy weather fields are omitted, and other researchers' names
+//           are withheld
 //
 // Slide images are deliberately not included: a batch of microscope photos
 // would inflate a file into the hundreds of megabytes (and their links expire).
@@ -16,7 +18,6 @@
 import {
   aggregateSlideDetections,
   getCollectionDate,
-  getCollectionTime,
   getConfidenceGrainCount,
   getReportGrains,
   getSpecies,
@@ -26,6 +27,7 @@ import {
   speciesLabel,
   type Specimen,
 } from "@/lib/data";
+import { BRAND_NAME } from "@/lib/brand";
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -47,15 +49,17 @@ function stamp(): string {
 export function exportReportsJson(reports: Specimen[]): void {
   const payload = {
     exportedAt: new Date().toISOString(),
-    formatVersion: 3,
-    note: "Slide images are not included; download a report's PDF for those.",
+    formatVersion: 4,
+    note: "Slide images, collection times and weather fields are omitted. Researcher names are withheld on reports owned by other users.",
     reportCount: reports.length,
     // Image links are presigned and expire, and canEdit is about the exporter.
     reports: reports.map((report) => {
-      const { canEdit, ...rest } = report;
-      void canEdit;
+      const { canEdit, weather, researcher, ...rest } = report;
+      void weather;
       return {
         ...rest,
+        collectedAt: getCollectionDate(report.collectedAt),
+        ...(canEdit && researcher ? { researcher } : {}),
         slides: report.slides.map((slide) => {
           const { imageUrl, ...slideRest } = slide;
           void imageUrl;
@@ -66,7 +70,7 @@ export function exportReportsJson(reports: Specimen[]): void {
   };
   downloadBlob(
     new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
-    `pollens-reports-${stamp()}.json`,
+    `${BRAND_NAME}-reports-${stamp()}.json`,
   );
 }
 
@@ -78,13 +82,8 @@ const DETECTION_COLUMNS = [
   "status",
   "sample_detections",
   "collection_date",
-  "collection_time",
   "location",
   "researcher",
-  "weather_condition",
-  "temperature_c",
-  "humidity_pct",
-  "wind_kph",
   "slide_number",
   "slide_file",
   "slide_total_grains",
@@ -113,13 +112,8 @@ function detectionRows(reports: Specimen[]): Value[][] {
         report.status,
         report.sampleDetections ? "true" : "false",
         getCollectionDate(report.collectedAt),
-        getCollectionTime(report.collectedAt),
         report.location,
-        report.researcher,
-        report.weather?.condition ?? null,
-        report.weather?.temperatureC ?? null,
-        report.weather?.humidityPct ?? null,
-        report.weather?.windKph ?? null,
+        report.canEdit && report.researcher ? report.researcher : null,
         index + 1,
         slide.fileName,
         getTotalGrains(slide.detections),
@@ -167,7 +161,7 @@ export function exportReportsCsv(reports: Specimen[]): void {
   // and CRLF line endings, as RFC 4180 specifies.
   downloadBlob(
     new Blob(["﻿" + lines.join("\r\n") + "\r\n"], { type: "text/csv;charset=utf-8" }),
-    `pollens-detections-${stamp()}.csv`,
+    `${BRAND_NAME}-detections-${stamp()}.csv`,
   );
 }
 
@@ -177,7 +171,6 @@ const REPORT_COLUMNS = [
   "Status",
   "Sample Detections",
   "Collection Date",
-  "Collection Time",
   "Location",
   "Researcher",
   "Slides",
@@ -185,10 +178,6 @@ const REPORT_COLUMNS = [
   "Pollen Types",
   "Top Pollen",
   "Avg. Model Confidence",
-  "Weather",
-  "Temperature (°C)",
-  "Humidity (%)",
-  "Wind (km/h)",
 ];
 
 function reportRows(reports: Specimen[]): Value[][] {
@@ -202,18 +191,13 @@ function reportRows(reports: Specimen[]): Value[][] {
       report.status === "Needs review" ? "Needs Review" : report.status,
       report.sampleDetections ? "Yes" : "No",
       getCollectionDate(report.collectedAt),
-      getCollectionTime(report.collectedAt),
       report.location,
-      report.researcher,
+      report.canEdit && report.researcher ? report.researcher : null,
       report.slides.length,
       getReportGrains(report),
       detections.length,
       top ? speciesLabel(getSpecies(top.speciesId)) : null,
       avgConfidence === null ? null : Number(avgConfidence.toFixed(4)),
-      report.weather?.condition ?? null,
-      report.weather?.temperatureC ?? null,
-      report.weather?.humidityPct ?? null,
-      report.weather?.windKph ?? null,
     ];
   });
 }
@@ -251,5 +235,5 @@ export async function exportReportsXlsx(reports: Specimen[], filename?: string):
       stickyRowsCount: 1,
     },
   ]).toBlob();
-  downloadBlob(blob, filename ?? `pollens-reports-${stamp()}.xlsx`);
+  downloadBlob(blob, filename ?? `${BRAND_NAME}-reports-${stamp()}.xlsx`);
 }

@@ -23,10 +23,10 @@ import {
   type ReportStatus,
   type Specimen,
   type SpecimenSlide,
-  type WeatherConditions,
 } from "@/lib/data";
 import type { NewReportInput } from "@/lib/analysis";
 import { apiFetch, SessionExpiredError } from "@/lib/api";
+import { BRAND_NAME } from "@/lib/brand";
 
 export class ReportStoreError extends Error {
   constructor(message: string) {
@@ -67,7 +67,6 @@ const FIELD_LABELS: Record<string, string> = {
   location: "Location",
   collectedAt: "Collection date",
   researcher: "Researcher",
-  weather: "Weather",
   slides: "Slides",
   status: "Status",
 };
@@ -97,7 +96,7 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
     return await apiFetch(path, init);
   } catch (error) {
     if (error instanceof SessionExpiredError) throw error;
-    throw new ReportStoreError("Couldn't reach the PolLens server. Check your connection and try again.");
+    throw new ReportStoreError(`Couldn't reach the ${BRAND_NAME} server. Check your connection and try again.`);
   }
 }
 
@@ -176,7 +175,6 @@ export async function createReport(
   formData.append("researcher", input.researcher.trim());
   formData.append("status", "Pending");
   formData.append("sampleDetections", String(sampleDetections));
-  if (input.weather) formData.append("weather", JSON.stringify(input.weather));
   formData.append("slides", JSON.stringify(input.slides));
   input.slides.forEach((slide, index) => {
     const file = images[String(index)];
@@ -194,7 +192,6 @@ export type ReportPatch = {
   collectedAt?: CollectedAt;
   location?: string;
   researcher?: string;
-  weather?: WeatherConditions | null;
   /** Per-slide notes, by slide id ("{sampleId}-S{n}"). */
   notes?: Record<string, string>;
   status?: ReportStatus;

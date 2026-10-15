@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // ACCOUNT — who the console says you are.
 //
-// PolLens is opened by an institution rather than by a person: a department or
+// PolleRgies is opened by an institution rather than by a person: a department or
 // laboratory mailbox signs in, and the reports saved from it belong to that
 // institution. So the profile is not typed in. The signed-in address is the
 // only thing stored, and the name shown everywhere is read off it.

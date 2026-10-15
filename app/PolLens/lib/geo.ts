@@ -207,14 +207,13 @@ function addTo(place: PlaceStats, detections: SpecimenDetection[], collectedAt: 
     const existing = place.detections.find((d) => d.speciesId === detection.speciesId);
     if (existing) {
       const grains = existing.grainCount + detection.grainCount;
-      const oldConfidenceGrains = getConfidenceGrainCount(existing);
-      const newConfidenceGrains = getConfidenceGrainCount(detection);
-      const confidenceGrainCount = oldConfidenceGrains + newConfidenceGrains;
-      existing.avgConfidence = confidenceGrainCount
-        ? (existing.avgConfidence * oldConfidenceGrains + detection.avgConfidence * newConfidenceGrains) /
-          confidenceGrainCount
+      const confidenceGrains = getConfidenceGrainCount(existing) + getConfidenceGrainCount(detection);
+      existing.avgConfidence = confidenceGrains
+        ? (existing.avgConfidence * getConfidenceGrainCount(existing) +
+            detection.avgConfidence * getConfidenceGrainCount(detection)) /
+          confidenceGrains
         : 0;
-      existing.confidenceGrainCount = confidenceGrainCount;
+      existing.confidenceGrainCount = confidenceGrains;
       existing.grainCount = grains;
     } else {
       place.detections.push({ ...detection });

@@ -1,11 +1,9 @@
 // ---------------------------------------------------------------------------
 // ANALYSIS SERVICE — the seam between the UI and the backend.
 //
-// Inference and lookups the Analyze screen performs go through this module, and
-// every function here is async. Once signed in, detection goes through the
-// backend's Roboflow proxy (POST /api/v1/reports/detect/) and weather through
-// its Open-Meteo proxy (GET /api/v1/reports/weather/). Persisting a finished
-// report is lib/store.ts's job, not this file's.
+// Inference from the Analyze screen goes through this module. Once signed in,
+// detection goes through the backend's Roboflow proxy
+// (POST /api/v1/reports/detect/). Persisting a finished report is lib/store.ts's job.
 //
 // Until the Roboflow model is deployed the backend answers /detect/ from a
 // canned, Roboflow-shaped response (ROBOFLOW_MOCK), so this file already runs
@@ -23,16 +21,14 @@ import {
   type GrainPrediction,
   type SpecimenDetection,
   type SpeciesId,
-  type WeatherConditions,
 } from "@/lib/data";
-import { apiFetch, hasSession, SessionExpiredError } from "@/lib/api";
+import { apiFetch, SessionExpiredError } from "@/lib/api";
+import { BRAND_NAME } from "@/lib/brand";
 
 export type AnalysisResult = {
   detections: SpecimenDetection[];
   /** Every grain with its box, so the reading can be shown over the image. */
   grains: DetectedGrain[];
-  /** Filled in when a weather lookup is wired up; null means "ask the researcher". */
-  weather: WeatherConditions | null;
   /** The server answered from its built-in sample (ROBOFLOW_MOCK), not the model. */
   sampleDetections: boolean;
 };
@@ -52,7 +48,6 @@ export type NewReportInput = {
   collectedAt: CollectedAt;
   location: string;
   researcher: string;
-  weather: WeatherConditions | null;
   slides: NewSlideInput[];
 };
 
@@ -125,7 +120,7 @@ async function detectionFailure(res: Response): Promise<DetectionError> {
   const body = (await res.json().catch(() => null)) as { detail?: unknown } | null;
   const detail = typeof body?.detail === "string" ? body.detail : "";
   if (res.status === 503) {
-    return new DetectionError("Detection is unavailable on the server right now. Contact the PolLens team.");
+    return new DetectionError(`Detection is unavailable on the server right now. Contact the ${BRAND_NAME} team.`);
   }
   if (res.status === 502 || res.status === 504) {
     return new DetectionError(
@@ -154,7 +149,7 @@ export async function analyzeSpecimen(file: File): Promise<AnalysisResult> {
     res = await apiFetch("/api/v1/reports/detect/", { method: "POST", body });
   } catch (error) {
     if (error instanceof SessionExpiredError) throw error;
-    throw new DetectionError("Couldn't reach the PolLens server. Check your connection and try again.");
+    throw new DetectionError(`Couldn't reach the ${BRAND_NAME} server. Check your connection and try again.`);
   }
   if (!res.ok) throw await detectionFailure(res);
 
@@ -163,42 +158,6 @@ export async function analyzeSpecimen(file: File): Promise<AnalysisResult> {
   return {
     detections: aggregateGrainPredictions(predictions),
     grains: toDetectedGrains(predictions),
-    weather: null, // filled on the Analyze screen from the location search — see fetchWeather
     sampleDetections: payload.mock === true,
   };
-}
-
-/**
- * Weather at a collection site at the collection date and time (Asia/Manila),
- * via the backend's Open-Meteo proxy, already mapped onto `WeatherConditions`.
- * `lat`/`lon` come from a place picked in the location search; `date`
- * ("YYYY-MM-DD") and optional `time` ("HH:MM") pick the hour — without a date
- * it's the conditions now. Null when unavailable; the fields then stay manual.
- */
-export async function fetchWeather(site: {
-  lat: number;
-  lon: number;
-  date?: string;
-  time?: string;
-}): Promise<WeatherConditions | null> {
-  if (!hasSession()) return null;
-  const params = new URLSearchParams({ lat: String(site.lat), lon: String(site.lon) });
-  if (site.date) params.set("date", site.date);
-  if (site.date && site.time) params.set("time", site.time);
-  try {
-    const res = await apiFetch(`/api/v1/reports/weather/?${params}`);
-    if (!res.ok) return null;
-    const w = (await res.json()) as WeatherConditions;
-    // Readings to the precision a field sheet records.
-    const round = (n: number | null, digits: number) =>
-      n === null ? null : Math.round(n * 10 ** digits) / 10 ** digits;
-    return {
-      condition: w.condition,
-      temperatureC: round(w.temperatureC, 1),
-      humidityPct: round(w.humidityPct, 0),
-      windKph: round(w.windKph, 1),
-    };
-  } catch {
-    return null;
-  }
 }

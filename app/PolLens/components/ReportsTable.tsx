@@ -18,9 +18,7 @@ import { toast } from "sonner";
 import {
   aggregateSlideDetections,
   formatCollectedAt,
-  formatTime,
   getCollectionDate,
-  getCollectionTime,
   toReportRow,
   type ReportStatus,
   type Specimen,
@@ -80,7 +78,7 @@ function searchText(report: Specimen, catalog: ReturnType<typeof useSpeciesCatal
       report.sampleId,
       report.reportName ?? "",
       report.location,
-      report.collectedAt,
+      getCollectionDate(report.collectedAt),
       formatDate(report.collectedAt),
       formatCollectedAt(report.collectedAt),
       report.status,
@@ -103,13 +101,11 @@ function formatDate(collectedAt: string) {
   });
 }
 
-/** Collection date, with the recorded time on a quieter second line. */
+/** Collection date only; older records may still carry a time in storage. */
 function CollectedCell({ collectedAt }: { collectedAt: string }) {
-  const time = getCollectionTime(collectedAt);
   return (
     <td className="py-2.5 pr-3 whitespace-nowrap text-text-muted">
       {formatDate(collectedAt)}
-      {time && <span className="mt-0.5 block text-[12.5px] text-text-muted">{formatTime(time)}</span>}
     </td>
   );
 }
@@ -480,7 +476,6 @@ export default function ReportsTable({
       <ul className="flex flex-col gap-2 xl:hidden">
         <AnimatePresence initial={false}>
           {pageReports.map((r) => {
-            const time = getCollectionTime(r.collectedAt);
             return (
               <motion.li
                 key={r.sampleId}
@@ -534,7 +529,6 @@ export default function ReportsTable({
                       <span aria-hidden>·</span>
                       <span>
                         {formatDate(r.collectedAt)}
-                        {time && ` · ${formatTime(time)}`}
                       </span>
                     </div>
                     <div className="mt-1.5 text-[12.5px] text-text-muted">

@@ -7,6 +7,7 @@ import type { Species } from "@/lib/data";
 import { useSpeciesCatalog } from "@/lib/species-catalog";
 import { useReportGrainCounts } from "@/lib/report-grain-counts";
 import { additionalSpeciesNames, CLASSIFIER_SPECIES_IDS, DATASET_SPECIES_NAMES } from "@/lib/species-names";
+import { pollenTrendColor } from "@/lib/pollen-trend-colors";
 import RiskBadge from "@/components/RiskBadge";
 import { buttonVariants } from "@/components/Button";
 
@@ -268,7 +269,7 @@ function SpeciesCard({
             <span
               aria-hidden
               className="h-2.5 w-2.5 shrink-0 rounded-[2px] ring-1 ring-black/15"
-              style={{ backgroundColor: sp.color }}
+              style={{ backgroundColor: pollenTrendColor(sp.id, sp.color) }}
             />
             <span className="text-[12px] tracking-wider text-text" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
               {sp.code}
@@ -367,14 +368,14 @@ function SpeciesRecord({
                   <RecordItem label="Code">
                     <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{sp.code}</span>
                   </RecordItem>
-                  <RecordItem label="Chart and Map Colour">
+                  <RecordItem label="Pollen Trends Colour">
                     <span className="inline-flex items-center gap-1.5">
                       <span
                         aria-hidden
                         className="h-3 w-3 rounded-[2px] ring-1 ring-black/15"
-                        style={{ backgroundColor: sp.color }}
+                        style={{ backgroundColor: pollenTrendColor(sp.id, sp.color) }}
                       />
-                      <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{sp.color}</span>
+                      <span>Matches the trend chart</span>
                     </span>
                   </RecordItem>
                 </dl>

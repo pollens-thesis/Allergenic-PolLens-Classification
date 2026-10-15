@@ -6,6 +6,7 @@ import { Fragment } from "react";
 
 export const SECTION_SHORTCUTS = [
   { key: "d", label: "Dashboard", href: "/dashboard" },
+  { key: "t", label: "Pollen Trends", href: "/trends" },
   { key: "a", label: "Analyze Specimen", href: "/upload" },
   { key: "r", label: "Reports", href: "/reports" },
   { key: "m", label: "Pollen Map", href: "/map" },

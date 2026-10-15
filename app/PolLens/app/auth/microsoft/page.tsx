@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import MicrosoftRedirectBridge from "@/components/MicrosoftRedirectBridge";
+import { BRAND_NAME } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: { absolute: "Signing In · PolLens" },
+  title: { absolute: `Signing In · ${BRAND_NAME}` },
 };
 
 /**

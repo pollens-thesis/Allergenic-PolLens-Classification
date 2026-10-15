@@ -58,13 +58,22 @@ export function matchesDashboardOccurrence(report: Specimen, speciesId: string):
 }
 
 /** Exact supporting records for a species, location and optional calendar month. */
-export function dashboardOccurrenceHref(summary: { from: string; to: string; locationFilter: string }, speciesId: SpeciesId, locationKey?: string, monthKey?: string): string {
+export function dashboardOccurrenceHref(summary: {
+  from: string;
+  to: string;
+  locationFilter: string;
+  currentDate?: string;
+  currentMonthKey?: string;
+}, speciesId: SpeciesId, locationKey?: string, monthKey?: string): string {
   let { from, to } = summary;
   if (monthKey) {
     const [year, month] = monthKey.split("-").map(Number);
     const lastDay = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
     from = `${monthKey}-01` > from ? `${monthKey}-01` : from;
     to = lastDay < to ? lastDay : to;
+    if (monthKey === summary.currentMonthKey && summary.currentDate && summary.currentDate < to) {
+      to = summary.currentDate;
+    }
   }
   const href = dashboardReportsHref({ from, to, locationFilter: locationKey ? `location:${locationKey}` : summary.locationFilter }, "Finalized");
   return `${href}&q=${encodeURIComponent(getSpecies(speciesId).scientificName)}`;

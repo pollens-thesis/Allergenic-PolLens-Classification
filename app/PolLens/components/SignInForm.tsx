@@ -11,6 +11,7 @@ import { microsoftConfigured, signInWithMicrosoft } from "@/lib/microsoft";
 import MicrosoftIcon from "@/components/MicrosoftIcon";
 import { updateSettings, useSettings } from "@/lib/settings";
 import { isSignedIn, safeNext } from "@/lib/session";
+import { BRAND_NAME } from "@/lib/brand";
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
@@ -180,7 +181,7 @@ export default function SignInForm() {
             <div ref={buttonSlotRef} className="flex min-h-[44px] items-center justify-center" />
           ) : (
             <p className="text-[13.5px] text-danger">
-              Google sign-in isn&apos;t available right now. Use Microsoft, or contact the PolLens team.
+              Google sign-in isn&apos;t available right now. Use Microsoft, or contact the {BRAND_NAME} team.
             </p>
           )}
 

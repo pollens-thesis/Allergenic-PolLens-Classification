@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildDashboardSummary } from "@/lib/dashboard";
+import { buildDashboardSummary, getDashboardYearOptions } from "@/lib/dashboard";
 import { dashboardReportsHref, dashboardOccurrenceHref, getDashboardLocation, getDashboardLocationOptions, matchesDashboardLocation, matchesDashboardOccurrence } from "@/lib/dashboard-locations";
 import {
   aggregateSlideDetections,
@@ -25,7 +25,7 @@ test("sampling counts collections with no pollen, counts slides separately, and 
   assert.equal(summary.pendingCount, 1);
   assert.equal(summary.needsReviewCount, 1);
   assert.equal(summary.sampleCount, 1);
-  assert.deepEqual(summary.locations[0].monthly, [0, 0, 0, 0, 0, 2]);
+  assert.deepEqual(summary.locations[0].monthly, [0, 0, 2, 0, 0, 0]);
   assert.equal(summary.locations[0].slideCount, 3);
 });
 
@@ -55,11 +55,16 @@ test("reviewed missed pollen changes counts without inventing model confidence",
   assert.ok(Math.abs((getWeightedAvgConfidence(combined) ?? 0) - 0.7) < 1e-9);
 });
 
-test("date windows use collection dates, include the boundaries, and preserve historical sampling gaps", () => {
-  const records = [report({ collectedAt: "2026-04-01" }), report({ collectedAt: "2026-09-27T23:59" }), report({ collectedAt: "2026-03-31", location: "Mauban, Quezon" }), report({ collectedAt: "2026-09-28" }), report({ status: "Pending", location: "Sariaya, Quezon" })];
+test("date windows use calendar half-years, include today, exclude future dates, and preserve historical gaps", () => {
+  const records = [report({ collectedAt: "2026-06-30" }), report({ collectedAt: "2026-09-27T23:59" }), report({ collectedAt: "2026-06-30", location: "Mauban, Quezon" }), report({ collectedAt: "2026-09-28" }), report({ status: "Pending", location: "Sariaya, Quezon" })];
   const summary = buildDashboardSummary(records, 6, now);
-  assert.equal(summary.from, "2026-04-01");
-  assert.equal(summary.collectionCount, 2);
+  assert.equal(summary.from, "2026-07-01");
+  assert.equal(summary.to, "2026-12-31");
+  assert.equal(summary.currentDate, "2026-09-27");
+  assert.equal(summary.collectionCount, 1);
+  assert.equal(summary.monthlyGrainCounts[2].monthKey, "2026-09");
+  assert.equal(summary.monthlyGrainCounts[2].series.amaranthus_spinosus, 0);
+  assert.equal(summary.monthlyGrainCounts[3].series.amaranthus_spinosus, null);
   const gap = summary.locations.find((location) => location.label === "Mauban, Quezon")!;
   assert.equal(gap.collectionCount, 0);
   assert.deepEqual(gap.monthly, [0, 0, 0, 0, 0, 0]);
@@ -67,11 +72,31 @@ test("date windows use collection dates, include the boundaries, and preserve hi
   assert.equal(summary.locations.reduce((sum, location) => sum + location.collectionCount, 0), summary.collectionCount);
 });
 
-test("Philippine midnight determines the month and year boundaries", () => {
+test("calendar year and half-year periods use January–December, January–June, and July–December", () => {
+  const periodNow = new Date("2026-07-01T02:00:00Z");
+  const fullYear = buildDashboardSummary([], 12, periodNow);
+  const firstHalf = buildDashboardSummary([], 6, periodNow, "all", { year: 2026, half: 1 });
+  const secondHalf = buildDashboardSummary([], 6, periodNow, "all", { year: 2026, half: 2 });
+  assert.deepEqual([fullYear.from, fullYear.to], ["2026-01-01", "2026-12-31"]);
+  assert.deepEqual([firstHalf.from, firstHalf.to], ["2026-01-01", "2026-06-30"]);
+  assert.deepEqual([secondHalf.from, secondHalf.to], ["2026-07-01", "2026-12-31"]);
+  assert.deepEqual(fullYear.monthly.map((month) => month.monthKey), Array.from({ length: 12 }, (_, index) => `2026-${String(index + 1).padStart(2, "0")}`));
+  assert.deepEqual(firstHalf.monthly.map((month) => month.monthKey), ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"]);
+  assert.deepEqual(secondHalf.monthly.map((month) => month.monthKey), ["2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12"]);
+});
+
+test("year options cover saved years through the current Philippine year", () => {
+  const reports = [report({ collectedAt: "2024-03-02" }), report({ collectedAt: "2026-01-01" }), report({ collectedAt: "2027-02-01" })];
+  assert.deepEqual(getDashboardYearOptions(reports, new Date("2026-06-01T00:00:00Z")), [2026, 2025, 2024]);
+});
+
+test("Philippine midnight determines the current year and partial month", () => {
   const summary = buildDashboardSummary([], 12, new Date("2025-12-31T16:01:00Z"));
-  assert.equal(summary.to, "2026-01-01");
-  assert.equal(summary.from, "2025-02-01");
-  assert.equal(summary.monthly.at(-1)?.monthKey, "2026-01");
+  assert.equal(summary.to, "2026-12-31");
+  assert.equal(summary.from, "2026-01-01");
+  assert.equal(summary.currentDate, "2026-01-01");
+  assert.equal(summary.monthly.at(-1)?.monthKey, "2026-12");
+  assert.equal(summary.currentMonthKey, "2026-01");
 });
 
 test("Quezon province includes province-only records but excludes Quezon City in Metro Manila", () => {
@@ -121,8 +146,8 @@ test("selected municipality scopes all totals, review links, and recent collecti
   const url = new URL(dashboardReportsHref(summary, "Needs review"), "https://pollens.test");
   assert.equal(url.searchParams.get("locationScope"), filter);
   assert.equal(url.searchParams.get("status"), "Needs review");
-  assert.equal(url.searchParams.get("from"), "2025-10-01");
-  assert.equal(url.searchParams.get("to"), "2026-09-27");
+  assert.equal(url.searchParams.get("from"), "2026-01-01");
+  assert.equal(url.searchParams.get("to"), "2026-12-31");
 });
 
 test("empty reports yield no locations or invented collection counts", () => {
@@ -134,17 +159,17 @@ test("empty reports yield no locations or invented collection counts", () => {
   assert.deepEqual(getDashboardLocationOptions([]), { provinces: [], locations: [] });
 });
 
-test("top pollen counts sum every finalized slide in scope and retain sample contributions", () => {
+test("top pollen counts sum finalized slides in the selected calendar half and retain sample contributions", () => {
   const slide = (grains: number, speciesId: SpeciesId = "imperata_cylindrica") => ({ ...report().slides[0], detections: [{ speciesId, grainCount: grains, avgConfidence: 0.8 }] });
   const records = [
-    report({ slides: [slide(4), slide(6)] }),
+    report({ collectedAt: "2026-05-27", slides: [slide(4), slide(6)] }),
     report({ collectedAt: "2026-04-01", status: "Needs review", sampleDetections: true, slides: [slide(5), slide(2, "oryza_sativa"), slide(0, "cocos_nucifera")] }),
     report({ status: "Pending", sampleDetections: true, slides: [slide(999)] }),
     report({ location: "Mauban, Quezon", slides: [slide(999)] }),
-    report({ collectedAt: "2026-03-31", slides: [slide(999)] }),
+    report({ collectedAt: "2025-03-31", slides: [slide(999)] }),
     report({ collectedAt: "2026-09-28", slides: [slide(999)] }),
   ];
-  const summary = buildDashboardSummary(records, 6, now, `location:${getDashboardLocation("Lucban, Quezon").key}`);
+  const summary = buildDashboardSummary(records, 6, now, `location:${getDashboardLocation("Lucban, Quezon").key}`, { year: 2026, half: 1 });
   assert.deepEqual(summary.topPollenCounts, [
     { speciesId: "imperata_cylindrica", grainCount: 15, sampleGrainCount: 5 },
     { speciesId: "oryza_sativa", grainCount: 2, sampleGrainCount: 2 },
@@ -161,6 +186,44 @@ test("top five rank ties deterministically without padding absent or zero-count 
   assert.equal(summary.grainCount, 18);
   assert.equal(summary.topPollenCounts.every((item) => item.sampleGrainCount === 0), true);
   assert.deepEqual(buildDashboardSummary([report({ sampleDetections: true })], 6, now).topPollenCounts, []);
+});
+
+test("monthly grain trends follow the selected calendar half and location and include only the 15 classifier species", () => {
+  const slide = (...detections: { speciesId: SpeciesId; grainCount: number; avgConfidence: number }[]) => ({
+    ...report().slides[0],
+    detections,
+  });
+  const records = [
+    report({ collectedAt: "2026-04-05", slides: [slide(
+      { speciesId: "imperata_cylindrica", grainCount: 2, avgConfidence: 0.8 },
+      { speciesId: "cocos_nucifera", grainCount: 9, avgConfidence: 0.7 },
+      { speciesId: "mangifera_indica", grainCount: 1, avgConfidence: 0.9 },
+    )] }),
+    report({ collectedAt: "2026-04-20", status: "Needs review", slides: [slide(
+      { speciesId: "imperata_cylindrica", grainCount: 3, avgConfidence: 0.8 },
+    )] }),
+    report({ collectedAt: "2026-06-12", slides: [slide(
+      { speciesId: "imperata_cylindrica", grainCount: 4, avgConfidence: 0.8 },
+    )] }),
+    report({ collectedAt: "2026-09-20", status: "Pending", slides: [slide(
+      { speciesId: "imperata_cylindrica", grainCount: 999, avgConfidence: 0.8 },
+    )] }),
+    report({ collectedAt: "2026-04-10", location: "Mauban, Quezon", slides: [slide(
+      { speciesId: "imperata_cylindrica", grainCount: 500, avgConfidence: 0.8 },
+    )] }),
+  ];
+  const locationFilter = `location:${getDashboardLocation("Lucban, Quezon").key}`;
+  const summary = buildDashboardSummary(records, 6, now, locationFilter, { year: 2026, half: 1 });
+
+  assert.equal(summary.monthlyGrainCounts.length, 6);
+  assert.equal(Object.keys(summary.monthlyGrainCounts[0].series).length, 15);
+  assert.equal(summary.monthlyGrainCounts[0].monthKey, "2026-01");
+  assert.equal(summary.monthlyGrainCounts[3].monthKey, "2026-04");
+  assert.equal(summary.monthlyGrainCounts[3].series.imperata_cylindrica, 5);
+  assert.equal(summary.monthlyGrainCounts[3].series.mangifera_indica, 1);
+  assert.equal(summary.monthlyGrainCounts[3].series.cocos_nucifera, undefined);
+  assert.equal(summary.monthlyGrainCounts[0].series.imperata_cylindrica, 0);
+  assert.equal(summary.monthlyGrainCounts[5].series.imperata_cylindrica, 4);
 });
 
 test("recent collections show five deterministic records while pollen totals include older records", () => {
@@ -182,29 +245,16 @@ test("species occurrence counts each collection once across repeated slides and 
   const slide = { ...report().slides[0], detections: [detection, { ...detection, speciesId: "oryza_sativa" as const, grainCount: 0 }] };
   const records = [report({ slides: [slide, slide] }), report({ status: "Needs review", slides: [slide], collectedAt: "2026-04-02", location: "Mauban, Quezon" }), report({ status: "Pending", slides: [slide] }), report(), report({ collectedAt: "2026-06-12" })];
   const summary = buildDashboardSummary(records, 6, now);
-  assert.equal(summary.collectionCount, 4);
+  assert.equal(summary.collectionCount, 2);
   assert.equal(summary.species.length, 1);
-  assert.equal(summary.species[0].collectionCount, 2);
-  assert.deepEqual(summary.species[0].monthly, [1, 0, 0, 0, 0, 1]);
-  assert.equal(summary.monthly[5].collectionCount, 2);
-  assert.equal(summary.monthly[2].collectionCount, 1);
-  assert.equal(summary.species[0].monthly[2], 0);
+  assert.equal(summary.species[0].collectionCount, 1);
+  assert.deepEqual(summary.species[0].monthly, [0, 0, 1, 0, 0, 0]);
+  assert.equal(summary.monthly[2].collectionCount, 2);
+  assert.equal(summary.species[0].monthly[2], 1);
   assert.equal(summary.monthly[1].collectionCount, 0);
   assert.equal(summary.locations.find((location) => location.label === "Lucban, Quezon")?.occurrences.imperata_cylindrica, 1);
   assert.equal(matchesDashboardOccurrence(records[0], "oryza_sativa"), false);
   assert.equal(matchesDashboardOccurrence(records[0], "imperata_cylindrica"), true);
-});
-
-test("weather excludes missing measurements, retains zero readings, and follows period, status and location", () => {
-  const records = [report({ weather: { condition: "Sunny", temperatureC: 30, humidityPct: null, windKph: 0 } }), report({ weather: { condition: "Rainy", temperatureC: 20, humidityPct: 80, windKph: null } }), report(), report({ status: "Pending", weather: { condition: "Windy", temperatureC: 99, humidityPct: 10, windKph: 99 } }), report({ location: "Mauban, Quezon", weather: { condition: "Sunny", temperatureC: 40, humidityPct: null, windKph: 5 } }), report({ collectedAt: "2025-01-01", weather: { condition: "Sunny", temperatureC: 100, humidityPct: 100, windKph: 100 } })];
-  const summary = buildDashboardSummary(records, 6, now, `location:${getDashboardLocation("Lucban, Quezon").key}`);
-  assert.equal(summary.collectionCount, 3);
-  assert.equal(summary.conditions.recordedCount, 2);
-  assert.deepEqual(summary.conditions.temperature, { minimum: 20, maximum: 30, recordedCount: 2 });
-  assert.deepEqual(summary.conditions.humidity, { minimum: 80, maximum: 80, recordedCount: 1 });
-  assert.deepEqual(summary.conditions.wind, { minimum: 0, maximum: 0, recordedCount: 1 });
-  assert.deepEqual(summary.conditions.conditions, [{ label: "Rainy", collectionCount: 1 }, { label: "Sunny", collectionCount: 1 }]);
-  assert.equal(buildDashboardSummary([report()], 6, now).conditions.temperature, null);
 });
 
 test("occurrence links preserve exact species and location, finalized status, leap months and partial month bounds", () => {

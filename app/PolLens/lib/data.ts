@@ -215,6 +215,8 @@ export type GrainAnnotation = {
   speciesId: SpeciesId | null;
   box: BoundingBox;
   reviewedAt: string;
+  /** Sample-report annotations are review-only and are never training candidates. */
+  trainingEligible?: boolean;
 };
 
 /** Grain records for one slide, numbered in the order the model reported them. */
@@ -371,20 +373,11 @@ export function getWeightedAvgConfidence(detections: SpecimenDetection[]): numbe
 }
 
 // ---------------------------------------------------------------------------
-// Weather recorded at collection time. Entered by hand today; the same shape is
-// what a weather API lookup would fill in later (see fetchWeather in
-// lib/analysis.ts), which is why every measurement is nullable.
+// Legacy weather fields remain in the API shape so older reports can still be
+// read and preserved. New reports do not collect or display weather.
 // ---------------------------------------------------------------------------
 
 export type WeatherCondition = "Sunny" | "Partly cloudy" | "Overcast" | "Rainy" | "Windy";
-
-export const weatherConditionOptions: WeatherCondition[] = [
-  "Sunny",
-  "Partly cloudy",
-  "Overcast",
-  "Rainy",
-  "Windy",
-];
 
 export type WeatherConditions = {
   condition: WeatherCondition;
@@ -393,25 +386,14 @@ export type WeatherConditions = {
   windKph: number | null;
 };
 
-/** e.g. "Sunny · 31°C · 68% RH · 12 km/h", skipping anything not recorded. */
-export function formatWeather(weather: WeatherConditions | null): string {
-  if (!weather) return "Not recorded";
-  const parts: string[] = [weather.condition];
-  if (weather.temperatureC !== null) parts.push(`${weather.temperatureC}°C`);
-  if (weather.humidityPct !== null) parts.push(`${weather.humidityPct}% RH`);
-  if (weather.windKph !== null) parts.push(`${weather.windKph} km/h`);
-  return parts.join(" · ");
-}
-
 // ---------------------------------------------------------------------------
 // Specimens
 // ---------------------------------------------------------------------------
 
 /**
  * When the specimen was collected in the field — not when it was analyzed.
- * ISO 8601, either "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm" when the hour is known.
- * Sorts correctly as a plain string, which avoids the timezone traps of
- * parsing a bare date with `new Date()`.
+ * Collection date as YYYY-MM-DD. Older API records may still include a time
+ * suffix, which the interface intentionally ignores.
  */
 export type CollectedAt = string;
 
@@ -420,21 +402,7 @@ export function getCollectionDate(collectedAt: CollectedAt): string {
   return collectedAt.split("T")[0];
 }
 
-/** The time half, e.g. "08:30", or null when only the date was recorded. */
-export function getCollectionTime(collectedAt: CollectedAt): string | null {
-  return collectedAt.split("T")[1] ?? null;
-}
-
-/** "08:30" → "8:30 AM". */
-export function formatTime(hhmm: string): string {
-  const [rawHour, minute] = hhmm.split(":");
-  const hour = Number(rawHour);
-  const suffix = hour < 12 ? "AM" : "PM";
-  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-  return `${hour12}:${minute} ${suffix}`;
-}
-
-/** "Jul 29, 2026 · 8:30 AM", or just the date when no time was recorded. */
+/** Format the collection date only, even for older records containing a time. */
 export function formatCollectedAt(collectedAt: CollectedAt): string {
   // Parsed as local midnight; `new Date("2026-07-29")` would be UTC midnight
   // and render as the previous day for anyone west of Greenwich.
@@ -444,8 +412,7 @@ export function formatCollectedAt(collectedAt: CollectedAt): string {
     day: "numeric",
     year: "numeric",
   });
-  const time = getCollectionTime(collectedAt);
-  return time ? `${formatted} · ${formatTime(time)}` : formatted;
+  return formatted;
 }
 
 /**
@@ -474,7 +441,7 @@ export type SpecimenSlide = {
 };
 
 /**
- * A report — one collection session. Location, time and weather describe the
+ * A report — one collection session. Location and collection date describe the
  * session and are shared; the readings and notes live per slide.
  */
 export type Specimen = {
@@ -484,7 +451,8 @@ export type Specimen = {
   collectedAt: CollectedAt;
   location: string; // "" only while Pending
   slides: SpecimenSlide[];
-  weather: WeatherConditions | null; // null when conditions weren't recorded
+  /** Legacy API field; new reports do not collect weather. */
+  weather: WeatherConditions | null;
   researcher: string;
   status: ReportStatus;
   /** When it was analyzed and stored (ISO timestamp) — not the collection date. */

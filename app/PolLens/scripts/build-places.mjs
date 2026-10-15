@@ -7,10 +7,8 @@
 // "Town, Province" exactly the way lib/geo.ts's parseLocation reads locations —
 // so anything picked from the search is guaranteed to land on the map.
 //
-// Each entry carries the centre of its boundary's bounding box, which is what
-// the weather lookup is sent (coordinates always resolve; free-text names often
-// don't). A bbox centre can fall just outside an oddly shaped town, but it is
-// well inside the few-kilometre scale current weather is reported at.
+// Each entry carries the centre of its boundary's bounding box for map and
+// location workflows. A bbox centre can fall just outside an oddly shaped town.
 //
 // Usage: node scripts/build-places.mjs   (re-run whenever public/geo changes)
 // ---------------------------------------------------------------------------

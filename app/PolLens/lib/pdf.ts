@@ -16,10 +16,8 @@ import { jsPDF } from "jspdf";
 import {
   aggregateSlideDetections,
   formatCollectedAt,
-  formatTime,
   getConfidenceGrainCount,
   getCollectionDate,
-  getCollectionTime,
   getSpecies,
   getTopDetection,
   getTotalGrains,
@@ -30,6 +28,7 @@ import {
   type SpecimenDetection,
   type SpecimenSlide,
 } from "@/lib/data";
+import { BRAND_NAME } from "@/lib/brand";
 import type { Species } from "@/lib/data";
 import type { PlaceStats } from "@/lib/geo";
 
@@ -120,7 +119,7 @@ function paragraph(cursor: Cursor, text: string, italic = false) {
 
 /**
  * The document's masthead: a dark band carrying the report's identity, so a
- * printed page is recognisable as a PolLens record at a glance.
+ * printed page is recognisable as a PolleRgies record at a glance.
  */
 function masthead(
   cursor: Cursor,
@@ -135,7 +134,7 @@ function masthead(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor("#8fa396");
-  doc.text("PolLens  ·  Research Console", MARGIN, 10);
+  doc.text(`${BRAND_NAME}  ·  Research Console`, MARGIN, 10);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
@@ -512,7 +511,7 @@ function footer(doc: jsPDF, sampleId: string, generated: string) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(MUTED);
-    doc.text(`PolLens · ${sampleId} · generated ${generated}`, MARGIN, PAGE.height - 9.5);
+    doc.text(`${BRAND_NAME} · ${sampleId} · generated ${generated}`, MARGIN, PAGE.height - 9.5);
     doc.text(`Page ${page} of ${pages}`, PAGE.width - MARGIN, PAGE.height - 9.5, {
       align: "right",
     });
@@ -538,17 +537,15 @@ export async function downloadReportPdf(
   });
 
   doc.setProperties({
-    title: `PolLens ${report.reportName || report.sampleId} — specimen report`,
+    title: `${BRAND_NAME} ${report.reportName || report.sampleId} — specimen report`,
     subject: `Pollen analysis for ${report.location || "an unspecified location"}`,
-    author: report.researcher,
-    creator: "PolLens Research Console",
+    ...(report.canEdit && report.researcher ? { author: report.researcher } : {}),
+    creator: `${BRAND_NAME} Research Console`,
   });
 
   const aggregated = aggregateSlideDetections(report.slides);
   const totalGrains = getTotalGrains(aggregated);
   const top = getTopDetection(aggregated);
-  const collectionTime = getCollectionTime(report.collectedAt);
-  const weather = report.weather;
 
   masthead(cursor, {
     title: "Pollen Count Report",
@@ -572,13 +569,8 @@ export async function downloadReportPdf(
   metaGrid(cursor, [
     ["Report Name", report.reportName || report.sampleId],
     ["Date Collected", shortDate(report.collectedAt)],
-    ["Time Collected", collectionTime ? formatTime(collectionTime) : "Not recorded"],
     ["Location", report.location || "No location recorded"],
-    ["Researcher", report.researcher],
-    ["Weather", weather ? weather.condition : "Not recorded"],
-    ["Temperature", weather?.temperatureC != null ? `${weather.temperatureC}°C` : "—"],
-    ["Humidity", weather?.humidityPct != null ? `${weather.humidityPct}% RH` : "—"],
-    ["Wind", weather?.windKph != null ? `${weather.windKph} km/h` : "—"],
+    ...(report.canEdit && report.researcher ? [["Researcher", report.researcher] as [string, string]] : []),
     ["Status", statusLabel(report.status)],
     [
       "Slides",
@@ -629,7 +621,7 @@ export async function downloadReportPdf(
   }
 
   footer(doc, report.sampleId, generated);
-  doc.save(`PolLens-${report.sampleId}.pdf`);
+  doc.save(`${BRAND_NAME}-${report.sampleId}.pdf`);
 }
 
 // ---------------------------------------------------------------------------
@@ -899,9 +891,9 @@ export async function downloadLocationReportPdf(input: LocationReportInput): Pro
   const documentLabel = input.documentLabel ?? "Location Report";
 
   doc.setProperties({
-    title: `PolLens — ${input.title} (${documentLabel.toLowerCase()})`,
+    title: `${BRAND_NAME} — ${input.title} (${documentLabel.toLowerCase()})`,
     subject: `Pollen recorded for ${input.title} (${input.speciesLabel})`,
-    creator: "PolLens Research Console",
+    creator: `${BRAND_NAME} Research Console`,
   });
 
   const detections = combinePlaces(input.places);
@@ -975,5 +967,5 @@ export async function downloadLocationReportPdf(input: LocationReportInput): Pro
   }
 
   footer(doc, input.title, generated);
-  doc.save(`PolLens-${input.fileSlug}-pollen-report.pdf`);
+  doc.save(`${BRAND_NAME}-${input.fileSlug}-pollen-report.pdf`);
 }

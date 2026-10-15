@@ -95,7 +95,7 @@ export default function LocationSearch({
 }: {
   value: string;
   onChange: (text: string) => void;
-  /** Fired when a suggestion is chosen (with coordinates for the weather lookup). */
+  /** Fired when a suggestion is chosen. */
   onSelectPlace?: (place: Place) => void;
   placeholder?: string;
   className?: string;
@@ -240,7 +240,7 @@ export default function LocationSearch({
       {warnUnrecognised && !focused && !recognised && (
         <p className="mt-1 flex items-start gap-1 text-[12px] text-processing">
           <TriangleAlert size={12} strokeWidth={2} className="mt-0.5 shrink-0" />
-          Not a recognized town or province — it won&apos;t appear on the map or fill the weather.
+          Not a recognized town or province — it won&apos;t appear on the map.
         </p>
       )}
     </div>
