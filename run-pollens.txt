@@ -1,10 +1,10 @@
-PolLens — start frontend + backend (paste into cmd, not PowerShell)
+PolleRgies — start frontend + backend (paste into cmd, not PowerShell)
 ====================================================================
 
 OPTION A — one paste, opens two separate cmd windows automatically:
 --------------------------------------------------------------------
-start "PolLens Backend"  cmd /k "cd /d D:\Thesis\api && venv\Scripts\activate && python manage.py runserver"
-start "PolLens Frontend" cmd /k "cd /d D:\Thesis\app\PolLens && npm run dev"
+start "PolleRgies Backend"  cmd /k "cd /d D:\Thesis\api && venv\Scripts\activate && python manage.py runserver"
+start "PolleRgies Frontend" cmd /k "cd /d D:\Thesis\app\PolLens && npm run dev"
 
 
 OPTION B — manual, paste one block into each of two separately opened cmd windows:

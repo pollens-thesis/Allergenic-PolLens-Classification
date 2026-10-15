@@ -537,17 +537,13 @@ export default function GrainReviewEditor({
 
   return (
     <section ref={editorRef} className="grain-review-editor mt-3" aria-label={`Review annotations for ${fileName}`}>
-      {sampleDetections ? (
-        <>
-          {annotationHeading}
-          <p className="rounded-sm border border-border bg-surface-sunken px-3 py-2 text-[13px] text-text-muted">
-            Sample detections are illustrative and cannot be saved as training annotations.
-          </p>
-        </>
-      ) : (
-        <>
-          {annotationHeading}
-          <div className={`grain-review-workspace ${summaryContent ? "grain-review-has-summary" : ""}`}>
+      {annotationHeading}
+      {sampleDetections && (
+        <p className="mb-3 rounded-sm border border-border bg-surface-sunken px-3 py-2 text-[13px] text-text-muted">
+          Sample detections are illustrative. Saved annotations are review-only and will not be used as training data.
+        </p>
+      )}
+      <div className={`grain-review-workspace ${summaryContent ? "grain-review-has-summary" : ""}`}>
             <div className="min-w-0 w-fit max-w-full">
               {imageUrl && (
                 <div className="mb-2 flex w-fit max-w-full flex-wrap rounded-sm border border-border bg-surface p-0.5" role="group" aria-label="Annotation tools">
@@ -894,8 +890,6 @@ export default function GrainReviewEditor({
               ))}
             </ul>
           )}
-        </>
-      )}
     </section>
   );
 }

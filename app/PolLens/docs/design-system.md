@@ -1,4 +1,4 @@
-# PolLens Design System — Laboratory Rationale
+# PolleRgies Design System — Laboratory Rationale
 
 > **Superseded (2026-09-25).** The console was restyled as "Pollen Atlas Plates". The
 > authoritative visual system — palette, type roles, components and rules — is now
@@ -6,7 +6,7 @@
 > background and single Atkinson family described below are historical. The legibility
 > reasoning for Atkinson Hyperlegible still applies to UI text and data.
 
-PolLens is used every day in a palynology laboratory: researchers read microscope
+PolleRgies is used every day in a palynology laboratory: researchers read microscope
 slides, check what the detection model found, and record reports. The interface
 follows established practice from laboratory, microscopy and control-room software,
 and from published legibility and colour research, not from consumer-app trends.
@@ -39,7 +39,7 @@ user-settable colours and annotation names can be toggled on the image
 **Basis.**
 
 - **ISA-101 "high-performance HMI"** is the control-room display standard. Most of the display is neutral gray, and saturated colour is reserved for abnormal states, so colour always means something ([control.com, "Going Gray"](https://control.com/technical-articles/going-gray/); [HMI Library, ISA-101](https://hmilibrary.com/standards/isa-101)).
-- In PolLens, keeping the interface neutral means the only strong colour on screen is the species boxes on a slide.
+- In PolleRgies, keeping the interface neutral means the only strong colour on screen is the species boxes on a slide.
 - Usability evaluations of laboratory information systems report "consistency and standards" as the most frequently violated heuristic ([J Med Syst 2014](https://link.springer.com/article/10.1007/s10916-014-0035-z)). That argues for one restrained, consistent visual language over decorative variety.
 
 **Contrast.** All text colours pass WCAG AA (4.5:1 or better) on every surface they
@@ -123,11 +123,6 @@ from the Philippine Standard Geographic Code (PSGC) list the map is drawn from
 - **Why a fixed list:** every chosen place is spelled the way the map matches it.
 - **Free text:** still allowed, with a warning that it won't be plotted.
 
-**Weather.** Weather is pre-filled from Open-Meteo using the chosen place's
-coordinates, for the collection date and time.
-
-- **Labelled source:** it is always labelled as auto-filled conditions for the collection date and time.
-- **Override:** any manual change is marked "Edited by researcher" and is never silently overwritten.
-
-This keeps a clear record of where each value came from, which is a basic
-expectation for laboratory records.
+**Weather.** The current interface does not collect or display weather
+conditions. Older reports may retain legacy weather values in the API for
+compatibility.

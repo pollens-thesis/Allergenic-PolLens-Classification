@@ -21,7 +21,7 @@ are not the main place the work happens.
 
 ## Product Purpose
 
-PolLens identifies and counts airborne allergenic pollen grains in microscope slide images,
+PolleRgies identifies and counts airborne allergenic pollen grains in microscope slide images,
 stores each collection session as a report, and shows where each pollen type turns up across
 the Philippines.
 
@@ -39,7 +39,9 @@ general-purpose botanical classifier.
 ## Operating Context
 
 - A **report is one collection session**. It holds several slides, each with its own image,
-  detections and note. Location, date/time, researcher and weather belong to the session.
+  detections and note. Location, collection date and researcher belong to the session.
+- Collection time is not collected or returned. Other researchers can view shared reports,
+  but only the report owner sees the researcher's name.
 - Lifecycle: analyze on `/upload` → stored as **Pending** → reviewed on `/upload/result`
   (notes and corrections autosave) → **Generate Report** → **Needs Review** → **Completed**
   after sign-off. A completed report can be flagged **Needs Review** again. "Finalised" means
@@ -62,8 +64,9 @@ general-purpose botanical classifier.
   Roboflow Workflow since 2026-10-01; the classifier still needs retraining, issue #31).
   If the server's mock switch is on it returns a built-in sample reading, and the UI must
   label that as sample detections, never as results; reports saved that way keep the label.
-- Weather for the collection date and time comes from Open-Meteo, pre-filled and always
-  editable by the researcher.
+  Owners and staff can annotate sample reports while they are in Needs Review, but those
+  annotations are review-only and marked ineligible for model training.
+- Weather conditions are outside the current collection workflow.
 - The map is a choropleth over static PSGC boundaries, not tile maps with pins. Location
   entry is a search over the same place list, so saved locations always land on the map.
 - Uploads are JPEG/PNG up to 25 MB per slide (iPhone "JPEG"s, which are MPO files, are accepted).
@@ -81,7 +84,10 @@ general-purpose botanical classifier.
 
 ## Brand Commitments
 
-- Name: **PolLens**.
+- Name: **PolleRgies**.
+- Descriptor: **Allergenic Pollen Identification in the Philippines**.
+- Logo: the **P** and **R** carry the Rx-inspired identity, with a small crossed
+  stroke on the **R**; a microscope lens forms the pollen “o”.
 - Voice: plain, precise research language. Labels name what they count ("grains counted",
   not concentrations). Controls use Title Case. Spelling is American ("Analyzed").
 

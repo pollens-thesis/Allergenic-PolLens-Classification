@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   LayoutGrid,
+  ChartLine,
   ScanLine,
   FileText,
   Map,
@@ -20,11 +20,14 @@ import { displayName, getInitials } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import HelpAboutDialog, { SECTION_SHORTCUTS } from "@/components/HelpAboutDialog";
 import { SidebarToggle, ThemeToggle } from "@/components/AppearanceControls";
+import PolleRgiesWordmark from "@/components/PolleRgiesWordmark";
+import { BRAND_NAME } from "@/lib/brand";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
   { href: "/upload", label: "Analyze Specimen", icon: ScanLine },
   { href: "/reports", label: "Reports", icon: FileText },
+  { href: "/trends", label: "Pollen Trends", icon: ChartLine },
   { href: "/map", label: "Pollen Map", icon: Map },
   { href: "/dataset", label: "Allergen Reference", icon: Leaf },
 ];
@@ -33,16 +36,11 @@ const NAV_ITEMS = [
 // is the way in, so the same destination isn't offered twice.
 const SETTINGS_HREF = "/settings";
 
-/** The PolLens mark, shown in the rail and in the mobile bar. */
-function Wordmark() {
+/** The PolleRgies mark, shown in the rail and in the mobile bar. */
+function Wordmark({ compact = false }: { compact?: boolean }) {
   return (
-    <Image
-      src="/brand/pollens-logo.png"
-      alt="PolLens"
-      width={2172}
-      height={724}
-      className="pollens-wordmark block h-auto w-[145px] shrink-0 lg:w-[132px]"
-      loading="eager"
+    <PolleRgiesWordmark
+      className={`shrink-0 ${compact ? "text-[1.1rem]" : "text-[1.4rem]"}`}
     />
   );
 }
@@ -328,9 +326,9 @@ export default function Sidebar() {
       <aside id="desktop-sidebar" className="desktop-sidebar hidden border-r border-border bg-surface-nav lg:block">
         <div className="sidebar-rail sticky top-0 flex h-dvh flex-col justify-between gap-4 px-5 py-4">
           <div className="min-h-0 overflow-y-auto">
-            <div className="sidebar-top mb-6 flex items-center justify-between gap-2">
-              <Link href="/dashboard" aria-label="PolLens Dashboard" className="sidebar-wordmark focus-ring min-w-0 rounded">
-                <Wordmark />
+            <div className="sidebar-top mb-6 flex items-center justify-between gap-4">
+              <Link href="/dashboard" aria-label={`${BRAND_NAME} Dashboard`} className="sidebar-wordmark focus-ring min-w-0 rounded">
+                <Wordmark compact />
               </Link>
               <SidebarToggle />
             </div>

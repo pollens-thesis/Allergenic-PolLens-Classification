@@ -8,30 +8,25 @@ import {
   FileText,
   ImagePlus,
   X,
-  CloudSun,
   Loader2,
   Maximize2,
   TriangleAlert,
-  RefreshCw,
   Microscope,
 } from "lucide-react";
 import {
   getTotalGrains,
-  weatherConditionOptions,
   formatCollectedAt,
   type Specimen,
   type SpecimenDetection,
-  type WeatherCondition,
-  type WeatherConditions,
 } from "@/lib/data";
-import { analyzeSpecimen, DetectionError, fetchWeather, type AnalysisResult } from "@/lib/analysis";
+import { analyzeSpecimen, DetectionError, type AnalysisResult } from "@/lib/analysis";
 import { SessionExpiredError } from "@/lib/api";
 import { createReport, deleteReport, listReports } from "@/lib/store";
 import { displayName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import { Button, buttonVariants } from "@/components/Button";
 import ImageLightbox from "@/components/ImageLightbox";
-import LocationSearch, { type Place } from "@/components/LocationSearch";
+import LocationSearch from "@/components/LocationSearch";
 
 type ItemStatus = "pending" | "analyzing" | "analyzed" | "failed";
 
@@ -46,8 +41,7 @@ function newItemId(): string {
 const ACCEPTED_TYPES = ["image/jpeg", "image/png"];
 const MAX_IMAGE_MB = 25;
 
-/** One uploaded slide. Detections are per image; the collection details
- *  (location, researcher, weather) are shared by the whole batch. */
+/** One uploaded slide. Detections are per image; collection details are shared by the whole batch. */
 type BatchItem = {
   id: string;
   file: File;
@@ -60,129 +54,17 @@ type BatchItem = {
   error?: string;
 };
 
-/** Local "now", split into the shapes <input type="date"|"time"> expect. */
-function nowParts() {
+/** Local date for the <input type="date"> default. */
+function todayDate() {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  return {
-    date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
-    time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
-  };
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
-
-const EMPTY_WEATHER: WeatherConditions = {
-  condition: "Sunny",
-  temperatureC: null,
-  humidityPct: null,
-  windKph: null,
-};
 
 const fieldClass =
   "focus-ring w-full rounded-md border border-border bg-surface px-3 py-2 text-[13px] font-medium text-text placeholder:font-normal placeholder:text-text-placeholder";
 
 const sectionHeadingClass = "caption-label text-[13px] mb-2";
-
-/** Number input that keeps an empty box as `null` rather than 0. */
-function MeasurementField({
-  label,
-  value,
-  onChange,
-  disabled = false,
-  min,
-  max,
-}: {
-  label: string;
-  value: number | null;
-  onChange: (next: number | null) => void;
-  disabled?: boolean;
-  min?: number;
-  max?: number;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-[12.5px] text-text-muted">{label}</span>
-      <input
-        type="number"
-        inputMode="decimal"
-        min={min}
-        max={max}
-        value={value ?? ""}
-        disabled={disabled}
-        placeholder="—"
-        onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
-        className={`${fieldClass} disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-text-faint`}
-      />
-    </label>
-  );
-}
-
-/**
- * Where the weather values came from, so an auto-filled reading is never
- * mistaken for an observation: Open-Meteo's conditions for the
- * picked place, or the researcher's own entry/override.
- */
-function WeatherStatusLine({
-  source,
-  status,
-  place,
-  collectedDate,
-  collectedTime,
-  onRefresh,
-}: {
-  source: "manual" | "auto" | "edited";
-  status: "idle" | "loading" | "failed";
-  place: Place | null;
-  collectedDate: string;
-  collectedTime: string;
-  onRefresh?: () => void;
-}) {
-  const when = collectedDate
-    ? formatCollectedAt(collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate)
-    : null;
-  let message: React.ReactNode;
-  if (status === "loading") {
-    message = (
-      <>
-        <Loader2 size={12} strokeWidth={2} className="animate-spin" />
-        {when ? `Fetching the weather at ${place?.label} for ${when}…` : `Fetching the current weather at ${place?.label}…`}
-      </>
-    );
-  } else if (status === "failed") {
-    message = (
-      <span className="text-processing">
-        No weather available for this place and time — enter it manually.
-      </span>
-    );
-  } else if (source === "auto") {
-    message = (
-      <>
-        <CloudSun size={12} strokeWidth={2} className="text-text-muted" />
-        Open-Meteo for {when}
-        {collectedTime ? "" : " (midday — no time set)"}; editable.
-      </>
-    );
-  } else if (source === "edited") {
-    message = <>Researcher entered; overrides Open-Meteo.</>;
-  } else {
-    message = <>Select a place to prefill weather.</>;
-  }
-
-  return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-text-muted">
-      <span className="flex items-center gap-1.5">{message}</span>
-      {onRefresh && status !== "loading" && (
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="focus-ring inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-accent hover:bg-accent-muted"
-        >
-          <RefreshCw size={12} strokeWidth={2} />
-          Fill from Open-Meteo
-        </button>
-      )}
-    </div>
-  );
-}
 
 /** One row in the batch list: thumbnail, file name, and a live one-line summary. */
 function SpecimenListRow({
@@ -284,8 +166,6 @@ export default function AnalyzeWorkspace() {
   const [location, setLocation] = useState("");
   const [researcher, setResearcher] = useState("");
   const [collectedDate, setCollectedDate] = useState("");
-  const [collectedTime, setCollectedTime] = useState("");
-  const [weather, setWeather] = useState<WeatherConditions | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -296,25 +176,12 @@ export default function AnalyzeWorkspace() {
   // Which pending analysis is waiting for "Discard?" to be confirmed.
   const [confirmingDiscard, setConfirmingDiscard] = useState<string | null>(null);
   const [pendingError, setPendingError] = useState<string | null>(null);
-  // Where the weather fields' values came from. "auto" = Open-Meteo for
-  // `weatherPlace`; any manual change flips it to "edited" (the researcher's
-  // override), and nothing re-fetches over it unless they ask.
-  const [weatherSource, setWeatherSource] = useState<"manual" | "auto" | "edited">("manual");
-  const [weatherPlace, setWeatherPlace] = useState<Place | null>(null);
-  const [weatherStatus, setWeatherStatus] = useState<"idle" | "loading" | "failed">("idle");
-  const weatherRequest = useRef(0);
-  // The source as of now, for async callbacks that outlive the render they started in.
-  const weatherSourceRef = useRef(weatherSource);
-  useEffect(() => {
-    weatherSourceRef.current = weatherSource;
-  }, [weatherSource]);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const settings = useSettings();
   const researcherName = displayName(settings);
 
-  // Time is optional — a researcher who only knows the day can leave it blank.
-  const collectedAt = collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate;
+  const collectedAt = collectedDate;
 
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const canAnalyze = items.length > 0 && !!reportName.trim() && !!collectedDate && !isAnalyzing;
@@ -356,64 +223,6 @@ export default function AnalyzeWorkspace() {
     );
   }
 
-  function updateWeather<K extends keyof WeatherConditions>(key: K, value: WeatherConditions[K]) {
-    // The researcher's own reading: cancel any lookup still in flight so it
-    // can't overwrite this, and never auto-fill over it again unless asked.
-    weatherRequest.current++;
-    setWeather((current) => ({ ...(current ?? EMPTY_WEATHER), [key]: value }));
-    setWeatherSource("edited");
-    setWeatherStatus("idle");
-  }
-
-  /**
-   * Pre-fill the weather fields with the conditions at the picked place on the
-   * collection date and time; they stay editable.
-   */
-  async function fillWeather(place: Place, date = collectedDate, time = collectedTime) {
-    const request = ++weatherRequest.current;
-    setWeatherPlace(place);
-    setWeatherStatus("loading");
-    const found = await fetchWeather({ lat: place.lat, lon: place.lon, date, time });
-    if (request !== weatherRequest.current) return; // a newer pick won
-    if (found) {
-      setWeather(found);
-      setWeatherSource("auto");
-      setWeatherStatus("idle");
-    } else {
-      // Don't keep another date's (or place's) readings under this one.
-      setWeatherStatus("failed");
-      if (weatherSourceRef.current === "auto") {
-        setWeather(null);
-        setWeatherSource("manual");
-      }
-    }
-  }
-
-  // A new collection date or time re-fetches the weather for it — unless the
-  // researcher has typed their own readings, which are never overwritten.
-  useEffect(() => {
-    if (!weatherPlace || weatherSource === "edited" || !collectedDate) return;
-    const timer = setTimeout(() => void fillWeather(weatherPlace, collectedDate, collectedTime), 500);
-    return () => clearTimeout(timer);
-    // Only the date/time trigger this; picking a place fetches on its own.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collectedDate, collectedTime]);
-
-  function handleLocationChange(text: string) {
-    setLocation(text);
-    // Typing away from the picked place detaches the weather from it: its
-    // auto-filled readings belong to that place, not this one.
-    if (weatherPlace && text !== weatherPlace.label) {
-      setWeatherPlace(null);
-      weatherRequest.current++;
-      setWeatherStatus("idle");
-      if (weatherSource === "auto") {
-        setWeather(null);
-        setWeatherSource("manual");
-      }
-    }
-  }
-
   function handleFiles(fileList: FileList | null) {
     if (isAnalyzing) return;
     const files = Array.from(fileList ?? []);
@@ -453,9 +262,7 @@ export default function AnalyzeWorkspace() {
     // Stamp the batch with "now" the first time images arrive. Both fields stay
     // editable, so a slide read long after collection can be corrected.
     if (!collectedDate) {
-      const { date, time } = nowParts();
-      setCollectedDate(date);
-      setCollectedTime(time);
+      setCollectedDate(todayDate());
     }
     if (inputRef.current) inputRef.current.value = "";
   }
@@ -475,14 +282,7 @@ export default function AnalyzeWorkspace() {
     setSelectedId(null);
     setReportName("");
     setAnalyzeError(null);
-    setWeather(null);
-    setWeatherSource("manual");
-    setWeatherPlace(null);
-    setWeatherStatus("idle");
-    weatherRequest.current++; // a lookup still in flight must not refill the form
-    const { date, time } = nowParts();
-    setCollectedDate(date);
-    setCollectedTime(time);
+    setCollectedDate(todayDate());
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -508,7 +308,6 @@ export default function AnalyzeWorkspace() {
     // reading; only the rest go to the model.
     const analyzed: { item: BatchItem; analysis: AnalysisResult }[] = [];
     const failures: string[] = [];
-    let batchWeather = weather;
 
     for (const item of items) {
       if (item.analysis) {
@@ -529,10 +328,6 @@ export default function AnalyzeWorkspace() {
       }
       patchItem(item.id, { status: "analyzed", detections: analysis.detections, analysis });
       analyzed.push({ item, analysis });
-      if (analysis.weather) {
-        batchWeather = analysis.weather;
-        setWeather(analysis.weather);
-      }
     }
 
     // Never hand a partial batch to the report page as if it were complete.
@@ -547,9 +342,6 @@ export default function AnalyzeWorkspace() {
       return;
     }
 
-    // Weather is omitted until the researcher or Open-Meteo records it.
-    const weatherSet = weatherSource !== "manual" || batchWeather !== null;
-
     let report: Specimen;
     try {
       report = await createReport(
@@ -558,7 +350,6 @@ export default function AnalyzeWorkspace() {
           collectedAt,
           location,
           researcher: researcher || researcherName,
-          weather: weatherSet ? batchWeather : null,
           slides: analyzed.map(({ item, analysis }) => ({
             fileName: item.file.name,
             detections: analysis.detections,
@@ -774,8 +565,7 @@ export default function AnalyzeWorkspace() {
                 </span>
                 <LocationSearch
                   value={location}
-                  onChange={handleLocationChange}
-                  onSelectPlace={fillWeather}
+                  onChange={setLocation}
                   placeholder="Search town or province, e.g. Candelaria"
                   className={fieldClass}
                 />
@@ -799,17 +589,6 @@ export default function AnalyzeWorkspace() {
                   className={fieldClass}
                 />
               </label>
-              <label className="block">
-                <span className="mb-1 block text-[12.5px] text-text-muted">
-                  Time Collected <span className="text-text-faint">(optional)</span>
-                </span>
-                <input
-                  type="time"
-                  value={collectedTime}
-                  onChange={(e) => setCollectedTime(e.target.value)}
-                  className={fieldClass}
-                />
-              </label>
             </div>
 
             {items.length > 0 && !reportName.trim() && (
@@ -822,63 +601,8 @@ export default function AnalyzeWorkspace() {
                 Set the collection date before running the analysis.
               </p>
             )}
-
-            <WeatherStatusLine
-              source={weatherSource}
-              status={weatherStatus}
-              place={weatherPlace}
-              collectedDate={collectedDate}
-              collectedTime={collectedTime}
-              onRefresh={weatherPlace ? () => fillWeather(weatherPlace) : undefined}
-            />
-            <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <label className="col-span-2 block sm:col-span-1">
-                <span className="mb-1 block text-[12.5px] text-text-muted">Weather</span>
-                <select
-                  value={weather?.condition ?? ""}
-                  onChange={(e) => {
-                    if (!e.target.value) {
-                      weatherRequest.current++;
-                      setWeather(null);
-                      setWeatherSource("manual");
-                      setWeatherStatus("idle");
-                    } else {
-                      updateWeather("condition", e.target.value as WeatherCondition);
-                    }
-                  }}
-                  className={fieldClass}
-                >
-                  <option value="">Not recorded</option>
-                  {weatherConditionOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <MeasurementField
-                label="Temperature (°C)"
-                value={weather?.temperatureC ?? null}
-                disabled={!weather}
-                onChange={(next) => updateWeather("temperatureC", next)}
-              />
-              <MeasurementField
-                label="Humidity (%)"
-                value={weather?.humidityPct ?? null}
-                disabled={!weather}
-                onChange={(next) => updateWeather("humidityPct", next)}
-                min={0}
-                max={100}
-              />
-              <MeasurementField
-                label="Wind (km/h)"
-                value={weather?.windKph ?? null}
-                disabled={!weather}
-                onChange={(next) => updateWeather("windKph", next)}
-                min={0}
-              />
-            </div>
           </div>
+
           </fieldset>
 
           {uploadError && (

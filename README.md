@@ -1,6 +1,6 @@
-# PolLens
+# PolleRgies
 
-PolLens is a research console for reviewing allergenic pollen in microscope
+PolleRgies is a research console for identifying allergenic pollen in microscope
 slide images. This public repository contains the web app and API. It does not
 contain the thesis's private datasets, model weights, credentials, or reports.
 
@@ -23,7 +23,7 @@ guide is [docs/deployment.md](docs/deployment.md).
 The API can use the Colab-trained YOLO26-L Detection v12 model to locate pollen
 grains and an EfficientNet-B0 ONNX model to classify each pollen crop. YOLO26's
 two classes are `Pollen` and `non-pollen`; only `Pollen` boxes go to the
-classifier. The classifier names one of 15 trained species. The wider PolLens
+classifier. The classifier names one of 15 trained species. The full PolleRgies
 catalog still has 23 species, so results need researcher review.
 
 Since 2026-10-14 production runs these models on **Modal's free plan**

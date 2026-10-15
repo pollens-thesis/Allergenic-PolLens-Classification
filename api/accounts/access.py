@@ -1,5 +1,5 @@
 """
-Who may use PolLens — an allowlist applied to every sign-in (Google or
+Who may use PolleRgies — an allowlist applied to every sign-in (Google or
 Microsoft) and re-checked on every authenticated request, so removing someone
 takes effect immediately rather than when their tokens expire.
 

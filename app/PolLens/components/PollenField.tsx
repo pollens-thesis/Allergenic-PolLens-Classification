@@ -12,7 +12,7 @@ const PORES = [
   { x: 0, y: -89, r: 8 },
 ];
 
-/** A quiet, illustrative pollen grain for the sign-in frontispiece. */
+/** A quiet, illustrative pollen grain for the public welcome page. */
 export default function PollenField() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden overflow-hidden xl:block">

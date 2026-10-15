@@ -4,7 +4,7 @@
   color-scheme: light;
   --sidebar-width: 15rem;
   /*
-   * PolLens Laboratory Console. The console reads like a palynology reference atlas:
+   * PolleRgies Laboratory Console. The console reads like a palynology reference atlas:
    * plate-paper cards with hairline frames on a quiet grey page, ink text,
    * and one oxide accent kept for plate/figure numbers, focus and the primary
    * action. The species overlay palette stays the only strong colour in the
@@ -46,6 +46,23 @@
   --accent-muted: #8c2f1b17; /* ~9% */
   --accent-fg: #ffffff;
 
+  /* Stable, distinct line colors for the 15 pollen trend series. */
+  --trend-amaranthus-spinosus: #931010;
+  --trend-brachiaria-mutica: #934510;
+  --trend-chloris-barbata: #937910;
+  --trend-chrysopogon-aciculatus: #799310;
+  --trend-dactyloctenium-aegyptium: #459310;
+  --trend-digitaria-ciliaris: #109310;
+  --trend-imperata-cylindrica: #109345;
+  --trend-leucaena-leucocephala: #109379;
+  --trend-mangifera-indica: #107993;
+  --trend-mimosa-pudica: #104593;
+  --trend-oryza-sativa: #101093;
+  --trend-panicum-maximum: #451093;
+  --trend-pennisetum-polystachion: #791093;
+  --trend-sorghum-halepense: #931079;
+  --trend-tridax-procumbens: #931045;
+
   /* Status — each also carries a label and a stamp pattern (StatusBadge) */
   --success: #1f6a3a;
   --success-bg: #1f6a3a14;
@@ -81,8 +98,8 @@
   --duration-slow: 260ms;
 }
 
-/* The same research console under lower ambient light. Slide pixels and
-   species colors remain unchanged; only interface surfaces and ink adapt. */
+/* Under lower ambient light, slide pixels and species reference colors stay
+   unchanged while the trend palette brightens for contrast. */
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #111518;
@@ -109,6 +126,21 @@
   --accent-active: #d58c70;
   --accent-muted: #e4a0841c;
   --accent-fg: #2b1913;
+  --trend-amaranthus-spinosus: #eb5c5c;
+  --trend-brachiaria-mutica: #eb955c;
+  --trend-chloris-barbata: #ebce5c;
+  --trend-chrysopogon-aciculatus: #ceeb5c;
+  --trend-dactyloctenium-aegyptium: #95eb5c;
+  --trend-digitaria-ciliaris: #5ceb5c;
+  --trend-imperata-cylindrica: #5ceb95;
+  --trend-leucaena-leucocephala: #5cebce;
+  --trend-mangifera-indica: #5cceeb;
+  --trend-mimosa-pudica: #5c95eb;
+  --trend-oryza-sativa: #5c5ceb;
+  --trend-panicum-maximum: #955ceb;
+  --trend-pennisetum-polystachion: #ce5ceb;
+  --trend-sorghum-halepense: #eb5cce;
+  --trend-tridax-procumbens: #eb5c95;
   --success: #92cba6;
   --success-bg: #92cba614;
   --processing: #dfc080;
@@ -126,10 +158,24 @@
   --card-shadow-hover: 0 3px 6px rgb(0 0 0 / 18%), 0 14px 30px rgb(0 0 0 / 24%);
 }
 
-/* The transparent wordmark's black lettering needs a light ink in dark mode.
-   This applies only to the brand asset, never microscope or catalog images. */
-:root[data-theme="dark"] .pollens-wordmark {
-  filter: invert(1) hue-rotate(180deg);
+.polle-rgies-wordmark {
+  background-color: transparent;
+}
+
+.polle-rgies-wordmark-image--dark {
+  display: none;
+}
+
+:root[data-theme="dark"] .polle-rgies-wordmark {
+  background-color: transparent;
+}
+
+:root[data-theme="dark"] .polle-rgies-wordmark-image--light {
+  display: none;
+}
+
+:root[data-theme="dark"] .polle-rgies-wordmark-image--dark {
+  display: block;
 }
 
 :root[data-theme="dark"] select:not([multiple]):not([size]) {

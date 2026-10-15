@@ -1,9 +1,13 @@
-# PolLens — current state
+# PolleRgies — current state
 
 A research console for identifying airborne pollen allergens from microscope
 imagery. A researcher uploads slide photographs, the app counts and classifies
 the grains on them, and the readings accumulate into a searchable history and a
 map of where each pollen type is turning up.
+
+**Product name (2026-10-15):** PolleRgies. Its charcoal-and-red wordmark pairs
+a plain lowercase “o” with a microscope integrated into the capital “R”; the
+microscope details carry the red accent.
 
 This document describes what exists **today**. Where something is a stand-in for
 a real service, it says so and points at the seam where the real one plugs in.
@@ -73,7 +77,7 @@ component library, and no data-fetching library.
 | `/upload` | **Analyze specimen** — the working screen. Upload slides, describe the collection, run the analysis. |
 | `/upload/result` | The reading the analysis produced: pollen detected, the slide, the details entered — plus notes, and the button that saves it as a report. |
 | `/reports` | **Report** — every saved report, searchable and filterable by status. |
-| `/reports/[sampleId]` | One report in full: slides, images, readings, notes, conditions, PDF export. |
+| `/reports/[sampleId]` | One report in full: slides, images, readings, notes, collection details and PDF export. |
 | `/map` | Choropleth of the Philippines, shaded by grains counted. |
 | `/dataset` | **Dead link.** Allergen reference — planned, not built. |
 
@@ -86,7 +90,7 @@ The screen the app exists for.
 
 - **A report is a batch, not a slide.** One collection session produces several
   slides, so a report holds `slides[]`, each with its own image, readings and
-  note. Location, time and weather belong to the session; readings belong to the
+  note. Location, collection date and researcher belong to the session; readings belong to the
   slide. Analysing five images and saving once produces one report with five
   slides.
 - Drag-and-drop or browse, multiple files at once. Each slide is analysed in
@@ -104,7 +108,7 @@ The screen the app exists for.
 - Collection time is recorded separately from analysis time — a slide is often
   read days after it was collected, and the map and the report list care about
   the former.
-- Weather at collection is recorded per session, entered by hand.
+- Weather conditions are not collected or displayed in the current workflow.
 - The researcher name defaults to the signed-in account, and is editable per
   batch.
 
@@ -125,8 +129,7 @@ produces one summary PDF over the selection: the combined reading, the places it
 spans, and the records behind it. Per-slide images and notes stay in each
 report's own specimen PDF.
 
-A report page shows what the researcher recorded — date, time, location,
-researcher, and each weather field on its own — then the combined reading, then
+A report page shows the collection date and location. The researcher name is visible only to the report's owner. It then shows the combined reading, then
 every slide with its image, per-species counts and confidence, and its note.
 
 **Selecting a pollen type boxes its grains on the slide.** Each species' grains
@@ -271,8 +274,8 @@ Roboflow reports a box as a centre point plus a size in pixels, so the mapping
 to the normalised `BoundingBox` this app stores is written out in the
 `analyzeSpecimen` doc comment.
 
-`fetchWeather(location)` returns `null` today, which is what keeps the
-conditions fields manually entered. The Analyze screen already handles both.
+Legacy weather values remain part of the report API shape so older reports can
+be read, but current screens and exports omit them.
 
 ### Persistence — `lib/store.ts`
 

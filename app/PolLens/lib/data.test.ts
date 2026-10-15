@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { getReviewedDetections, type GrainAnnotation } from "@/lib/data";
+import { formatCollectedAt, getReviewedDetections, type GrainAnnotation } from "@/lib/data";
+
+test("collection date formatting hides legacy time suffixes", () => {
+  assert.equal(formatCollectedAt("2026-10-15T11:45"), formatCollectedAt("2026-10-15"));
+});
 
 test("a corrected model grain moves to the researcher species and retains its confidence", () => {
   const detections = [{

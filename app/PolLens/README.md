@@ -1,7 +1,7 @@
-# PolLens
+# PolleRgies
 
-A research console for identifying airborne pollen allergens from microscope
-imagery. Upload slide photographs, count and classify the grains on them, and
+A research console for identifying allergenic pollen in microscope slide
+images. Upload slide photographs, count and classify the grains on them, and
 build a searchable set of reports and a map of where each pollen type is turning
 up.
 
@@ -27,7 +27,7 @@ npm run test:appearance  # browser preferences, storage fallback and tab sync
 | Route | What it is |
 |---|---|
 | `/` | Sign-in — Google or Microsoft (work/school); only allowlisted accounts get in. |
-| `/dashboard` | Location and Period filters first (6 Months by default), then a full-width summary of grains counted, pollen types and average model confidence. Analysis status controls remain on Reports. Up to five recent finalized collections, Top Pollen Counts ranked by grains across all matching finalized slides, and saved Collection Conditions. Counts link to supporting reports. Mobile stacks the panels with record metadata intact. |
+| `/dashboard` | Location and Period filters first (6 Months by default), then a full-width summary of grains counted, pollen types and average model confidence. Analysis status controls remain on Reports. Up to five recent finalized collections and Top Pollen Counts ranked by grains across all matching finalized slides. Counts link to supporting reports. Mobile stacks the panels with record metadata intact. |
 | `/upload` | **Analyze Specimen** — assemble a batch of slides, describe the collection, run the analysis; lists your pending analyses to resume. |
 | `/upload/result?report=…` | A **Pending** report: the reading beside each slide, notes, collection details (autosaved) — and **Generate Report**, which moves it to **Needs Review**. |
 | `/reports` | **Reports** — every report (shared across researchers), filterable by status/location/date, PDF and Excel export. |
@@ -39,8 +39,8 @@ npm run test:appearance  # browser preferences, storage fallback and tab sync
 ## What it does
 
 **A report is a batch, not a slide.** One collection session produces several
-slides, each with its own image, reading and note; the location, time and
-weather belong to the session. Analysing five images and saving once produces
+slides, each with its own image, reading and note; the location, collection
+date and researcher belong to the session. Analysing five images and saving once produces
 one report with five slides.
 
 **Analysis and review are two screens, with the report on the server in
@@ -74,7 +74,7 @@ columns scrolled sideways.
 
 **Choose your appearance.** Use the desktop rail's sidebar button to switch between
 expanded navigation (240px) and an icon rail (80px). Dark Mode / Light Mode is in
-the rail, the mobile header, sign-in, and Account & Settings → Appearance. Light
+the rail, the mobile header, the public welcome page, and Account & Settings → Appearance. Light
 and expanded navigation are the defaults. Preferences save in this browser,
 survive sign-out and synchronize across tabs; if storage is blocked, controls
 still work for the current page session. Mobile keeps its labelled drawer.

@@ -95,11 +95,11 @@ class SlideInputSerializer(serializers.Serializer):
 
 
 def check_collected_at(value):
-    """The regex only checks the shape; this rejects impossible dates like 2026-99-99."""
+    """The date-only regex checks the shape; this rejects impossible dates like 2026-99-99."""
     try:
-        datetime.datetime.strptime(value, '%Y-%m-%dT%H:%M' if 'T' in value else '%Y-%m-%d')
+        datetime.datetime.strptime(value, '%Y-%m-%d')
     except ValueError:
-        raise serializers.ValidationError('Not a real date/time.')
+        raise serializers.ValidationError('Not a real date.')
     return value
 
 
@@ -121,7 +121,7 @@ class ReportCreateSerializer(serializers.Serializer):
         source='report_name', max_length=255, allow_blank=True, required=False, default='',
     )
     collectedAt = serializers.RegexField(
-        r'^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$', source='collected_at',
+        r'^\d{4}-\d{2}-\d{2}$', source='collected_at',
     )
     location = serializers.CharField(allow_blank=True, max_length=255)
     researcher = serializers.CharField(allow_blank=True, max_length=255)
@@ -267,7 +267,7 @@ class ReportUpdateSerializer(serializers.Serializer):
         source='report_name', max_length=255, allow_blank=True, required=False,
     )
     collectedAt = serializers.RegexField(
-        r'^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$', source='collected_at', required=False,
+        r'^\d{4}-\d{2}-\d{2}$', source='collected_at', required=False,
     )
     location = serializers.CharField(allow_blank=True, max_length=255, required=False)
     researcher = serializers.CharField(allow_blank=True, max_length=255, required=False)
@@ -391,9 +391,16 @@ class GrainAnnotationSerializer(serializers.Serializer):
     speciesId = serializers.CharField(source='species_id', allow_null=True)
     box = BoundingBoxSerializer(source='*')
     reviewedAt = serializers.DateTimeField(source='updated_at')
+    trainingEligible = serializers.SerializerMethodField(method_name='get_training_eligible')
 
     def get_grainId(self, obj):
         return f'G{obj.grain.number}' if obj.grain_id else None
+
+    def get_training_eligible(self, obj):
+        return (
+            not obj.slide.report.sample_detections
+            and obj.kind in ('confirmed', 'corrected', 'missed')
+        )
 
 
 class DetectionSerializer(serializers.Serializer):
@@ -435,11 +442,11 @@ class SlideSerializer(serializers.Serializer):
 class ReportSerializer(serializers.Serializer):
     sampleId = serializers.CharField(source='sample_id')
     reportName = serializers.CharField(source='report_name')
-    collectedAt = serializers.CharField(source='collected_at')
+    collectedAt = serializers.SerializerMethodField()
     location = serializers.CharField()
     slides = SlideSerializer(many=True)
     weather = serializers.SerializerMethodField()
-    researcher = serializers.CharField()
+    researcher = serializers.SerializerMethodField()
     status = serializers.CharField()
     sampleDetections = serializers.BooleanField(source='sample_detections')
     createdAt = serializers.DateTimeField(source='created_at')
@@ -452,6 +459,18 @@ class ReportSerializer(serializers.Serializer):
         if user is None or not user.is_authenticated:
             return False
         return user.is_staff or obj.owner_id == user.id
+
+    def get_collectedAt(self, obj):
+        # Legacy rows may retain a time suffix, but the public API exposes dates only.
+        return obj.collected_at.split('T', 1)[0]
+
+    def get_researcher(self, obj):
+        # Keep the name visible only to the researcher who owns this report.
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user is None or not user.is_authenticated or obj.owner_id != user.id:
+            return ''
+        return obj.researcher
 
     def get_weather(self, obj):
         if obj.weather_condition is None:

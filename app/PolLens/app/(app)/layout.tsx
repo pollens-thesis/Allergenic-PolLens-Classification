@@ -2,9 +2,10 @@ import SessionGuard from "@/components/SessionGuard";
 import Sidebar from "@/components/Sidebar";
 
 /**
- * Every page in this group requires a signed-in researcher; `/` (sign-in) sits
- * outside it. The shell — navigation rail (or the mobile bar below `lg`) and the
- * main column — is drawn once here; pages supply a PageHeader and PageBody.
+ * Every page in this group requires a signed-in researcher; `/` is the public
+ * welcome page with the sign-in dialog. The shell — navigation rail (or the
+ * mobile bar below `lg`) and the main column — is drawn once here; pages supply
+ * a PageHeader and PageBody.
  */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (

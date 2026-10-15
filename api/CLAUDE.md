@@ -192,9 +192,13 @@ between the thesis proposal paper and the frontend.
     missed grain), `kind` (`confirmed`, `corrected`, `false_positive`,
     `missed`, `uncertain`), `speciesId` where applicable, and a normalized
     `box`. Only the report owner or staff may annotate, only while status is
-    `Needs review`; sample detections are rejected. Original model `Detection`
-    and `Grain` rows stay unchanged. A `false_positive` annotation removes
-    that grain from reviewed report and dashboard counts; deleting the
+    `Needs review`; sample-detection reports can also be reviewed. Each returned
+    annotation includes `trainingEligible`: false for every sample-report
+    annotation, and otherwise true only for confirmed/corrected/missed labels.
+    Future training exports must honor this field and exclude sample reports.
+    Original model `Detection` and `Grain` rows stay unchanged. A
+    `false_positive` annotation removes that grain from reviewed report and
+    dashboard counts; deleting the
     annotation restores its model reading. A `missed` annotation adds its
     selected pollen species and box to reviewed counts without inventing a
     confidence score. Confirmed/corrected/missed annotations are future

@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   Check,
   CloudOff,
-  CloudSun,
   FileCheck2,
   FlaskConical,
   Loader2,
@@ -20,12 +19,9 @@ import {
   getTotalGrains,
   getWeightedAvgConfidence,
   sortByAbundance,
-  weatherConditionOptions,
   type SpeciesId,
   type Specimen,
   type SpecimenDetection,
-  type WeatherCondition,
-  type WeatherConditions,
 } from "@/lib/data";
 import { findSpecies, useSpeciesCatalog } from "@/lib/species-catalog";
 import { deleteReport, getReport, updateReport, type ReportPatch } from "@/lib/store";
@@ -34,8 +30,7 @@ import { displayName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import SpecimenImageViewer from "@/components/SpecimenImageViewer";
 import SpecimenInspector from "@/components/SpecimenInspector";
-import LocationSearch, { findPlace, loadPlaces, type Place } from "@/components/LocationSearch";
-import { fetchWeather } from "@/lib/analysis";
+import LocationSearch from "@/components/LocationSearch";
 import RiskBadge from "@/components/RiskBadge";
 import SummaryTile from "@/components/SummaryTile";
 import SpeciesName from "@/components/SpeciesName";
@@ -47,16 +42,7 @@ import { toast } from "sonner";
 const fieldClass =
   "focus-ring w-full rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text placeholder:text-text-faint";
 
-const sectionHeadingClass = "caption-label text-[13px] mb-2";
-
 const AUTOSAVE_MS = 600;
-
-const EMPTY_WEATHER: WeatherConditions = {
-  condition: "Sunny",
-  temperatureC: null,
-  humidityPct: null,
-  windKph: null,
-};
 
 /**
  * One pollen type found on a slide: how many grains, and how sure the model is.
@@ -168,40 +154,6 @@ function SlideThumbnail({ imageUrl }: { imageUrl?: string }) {
   );
 }
 
-/** Number input that keeps an empty box as `null` rather than 0. */
-function MeasurementField({
-  label,
-  value,
-  onChange,
-  disabled = false,
-  min,
-  max,
-}: {
-  label: string;
-  value: number | null;
-  onChange: (next: number | null) => void;
-  disabled?: boolean;
-  min?: number;
-  max?: number;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-[12.5px] text-text-muted">{label}</span>
-      <input
-        type="number"
-        inputMode="decimal"
-        min={min}
-        max={max}
-        value={value ?? ""}
-        disabled={disabled}
-        placeholder="—"
-        onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
-        className={`${fieldClass} disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-text-faint`}
-      />
-    </label>
-  );
-}
-
 type SaveState = "idle" | "saving" | "saved" | "failed";
 
 /** `newer` wins field by field; per-slide notes are merged, not replaced. */
@@ -239,11 +191,6 @@ export default function AnalysisResultWorkspace({
   const [location, setLocation] = useState("");
   const [researcher, setResearcher] = useState("");
   const [collectedDate, setCollectedDate] = useState("");
-  const [collectedTime, setCollectedTime] = useState("");
-  const [weather, setWeather] = useState<WeatherConditions | null>(null);
-  // The location as a known place (with coordinates), so weather can be looked up.
-  const [place, setPlace] = useState<Place | null>(null);
-  const [fillingWeather, setFillingWeather] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -257,7 +204,6 @@ export default function AnalysisResultWorkspace({
   // a newer one (or after Generate) and overwrite it.
   const saveChain = useRef<Promise<unknown>>(Promise.resolve());
   const finished = useRef(false);
-  const weatherRequest = useRef(0);
   const refreshedImages = useRef(false);
   const router = useRouter();
   const settings = useSettings();
@@ -280,18 +226,11 @@ export default function AnalysisResultWorkspace({
         if (!found) return;
         setSelectedId(found.slides[0]?.id ?? null);
         setNotes(Object.fromEntries(found.slides.map((slide) => [slide.id, slide.notes])));
-        const [date, time = ""] = found.collectedAt.split("T");
+        const [date] = found.collectedAt.split("T");
         setReportName(found.reportName ?? "");
         setLocation(found.location);
         setResearcher(found.researcher);
         setCollectedDate(date);
-        setCollectedTime(time);
-        setWeather(found.weather);
-        if (found.location) {
-          loadPlaces().then((places) => {
-            if (!cancelled) setPlace(places ? findPlace(places, found.location) : null);
-          });
-        }
       })
       .catch((error: unknown) => {
         if (cancelled || error instanceof SessionExpiredError) return;
@@ -373,33 +312,9 @@ export default function AnalysisResultWorkspace({
     };
   }, [sampleId_]);
 
-  function setCollected(date: string, time: string) {
+  function setCollected(date: string) {
     setCollectedDate(date);
-    setCollectedTime(time);
-    if (date) edit({ collectedAt: time ? `${date}T${time}` : date });
-  }
-
-  function updateWeather<K extends keyof WeatherConditions>(key: K, value: WeatherConditions[K]) {
-    weatherRequest.current++; // a lookup still in flight must not overwrite this
-    const next = { ...(weather ?? EMPTY_WEATHER), [key]: value };
-    setWeather(next);
-    edit({ weather: next });
-  }
-
-  /** Conditions at the place on the collection date/time, from Open-Meteo. */
-  async function fillWeatherFromOpenMeteo() {
-    if (!place) return;
-    const request = ++weatherRequest.current;
-    setFillingWeather(true);
-    const found = await fetchWeather({ lat: place.lat, lon: place.lon, date: collectedDate, time: collectedTime });
-    if (request !== weatherRequest.current) return; // superseded by an edit or a newer lookup
-    setFillingWeather(false);
-    if (!found) {
-      toast.error("No weather available for this place and time.");
-      return;
-    }
-    setWeather(found);
-    edit({ weather: found });
+    if (date) edit({ collectedAt: date });
   }
 
   /** A slide image failed to load — most likely its signed link expired. */
@@ -417,10 +332,9 @@ export default function AnalysisResultWorkspace({
     // Everything on screen goes with the status change, so nothing typed is
     // lost; queued behind any autosave still in flight.
     const fields: ReportPatch = {
-      collectedAt: collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate,
+      collectedAt: collectedDate,
       location,
-      researcher: researcher.trim() || researcherName,
-      weather,
+      ...(report.researcher ? { researcher: researcher.trim() || researcherName } : {}),
       notes,
     };
     const ok = await enqueue(async () => {
@@ -811,43 +725,32 @@ export default function AnalysisResultWorkspace({
               onChange={(text) => {
                 setLocation(text);
                 edit({ location: text });
-                if (place && text !== place.label) setPlace(null);
               }}
-              onSelectPlace={setPlace}
               placeholder="Search town or province"
               className={fieldClass}
             />
           </label>
-          <label className="block">
-            <span className="mb-1 block text-[12.5px] text-text-muted">Researcher</span>
-            <input
-              type="text"
-              value={researcher}
-              onChange={(e) => {
-                setResearcher(e.target.value);
-                edit({ researcher: e.target.value });
-              }}
-              placeholder={researcherName}
-              className={fieldClass}
-            />
-          </label>
+          {report?.researcher && (
+            <label className="block">
+              <span className="mb-1 block text-[12.5px] text-text-muted">Researcher</span>
+              <input
+                type="text"
+                value={researcher}
+                onChange={(e) => {
+                  setResearcher(e.target.value);
+                  edit({ researcher: e.target.value });
+                }}
+                placeholder={researcherName}
+                className={fieldClass}
+              />
+            </label>
+          )}
           <label className="block">
             <span className="mb-1 block text-[12.5px] text-text-muted">Date Collected</span>
             <input
               type="date"
               value={collectedDate}
-              onChange={(e) => setCollected(e.target.value, collectedTime)}
-              className={fieldClass}
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[12.5px] text-text-muted">
-              Time Collected <span className="text-text-faint">(optional)</span>
-            </span>
-            <input
-              type="time"
-              value={collectedTime}
-              onChange={(e) => setCollected(collectedDate, e.target.value)}
+              onChange={(e) => setCollected(e.target.value)}
               className={fieldClass}
             />
           </label>
@@ -859,65 +762,10 @@ export default function AnalysisResultWorkspace({
           <p className="mt-2 text-[13px] text-danger">Add a location to generate the report.</p>
         ) : (
           <p className="mt-2 text-[12.5px] text-text-muted">
-            Collected {formatCollectedAt(collectedTime ? `${collectedDate}T${collectedTime}` : collectedDate)}
+            Collected {formatCollectedAt(collectedDate)}
           </p>
         )}
 
-        <div className="mt-4">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <h4 className={`${sectionHeadingClass} mb-0`}>
-              Conditions at Collection
-            </h4>
-            {place && collectedDate && (
-              <button
-                type="button"
-                onClick={() => void fillWeatherFromOpenMeteo()}
-                disabled={fillingWeather}
-                className="focus-ring inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[12.5px] text-accent hover:bg-accent-muted disabled:opacity-50"
-              >
-                {fillingWeather ? (
-                  <Loader2 size={12} strokeWidth={2} className="animate-spin" />
-                ) : (
-                  <CloudSun size={12} strokeWidth={2} />
-                )}
-                Fill from Open-Meteo
-              </button>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <label className="col-span-2 block sm:col-span-1">
-              <span className="mb-1 block text-[12.5px] text-text-muted">Weather</span>
-              <select
-                value={weather?.condition ?? ""}
-                onChange={(e) => {
-                  if (!e.target.value) {
-                    weatherRequest.current++;
-                    setWeather(null);
-                    edit({ weather: null });
-                  } else {
-                    updateWeather("condition", e.target.value as WeatherCondition);
-                  }
-                }}
-                className={fieldClass}
-              >
-                <option value="">Not recorded</option>
-                {weatherConditionOptions.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </label>
-            <MeasurementField label="Temperature (°C)" value={weather?.temperatureC ?? null} disabled={!weather} onChange={(next) => updateWeather("temperatureC", next)} />
-            <MeasurementField
-              label="Humidity (%)"
-              value={weather?.humidityPct ?? null}
-              disabled={!weather}
-              onChange={(next) => updateWeather("humidityPct", next)}
-              min={0}
-              max={100}
-            />
-            <MeasurementField label="Wind (km/h)" value={weather?.windKph ?? null} disabled={!weather} onChange={(next) => updateWeather("windKph", next)} min={0} />
-          </div>
-        </div>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">

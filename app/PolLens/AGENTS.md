@@ -4,9 +4,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ---
 
-# PolLens frontend — agent brief
+# PolleRgies frontend — agent brief
 
-PolLens is a research console for identifying airborne allergenic pollen in
+PolleRgies is a research console for identifying airborne allergenic pollen in
 microscope slide images. This folder is the Next.js frontend, inside the
 single project repo `pollens-thesis/Allergenic-PolLens-Classification` (the Django API is the
 sibling folder `api/`). Read the root `AGENTS.md` for the layout; there are
@@ -19,7 +19,7 @@ Live: https://pollens-theta.vercel.app · API: https://pollens-api.onrender.com
 
 | File | What it decides |
 |---|---|
-| `PRODUCT.md` | Who uses PolLens, its purpose, constraints, product principles, open adviser decisions |
+| `PRODUCT.md` | Who uses PolleRgies, its purpose, constraints, product principles, open adviser decisions |
 | `DESIGN.md` + `.impeccable/design.json` | The visual system ("Laboratory Console"): palette, type roles, components, named rules |
 | `.impeccable/surfaces/app-app-layout-tsx.md` | The direction contract the current look was built from |
 | `../../docs/system-spec.md` (root repo) | Paper vs. frontend reconciliation; what's decided and what's still open |
@@ -69,7 +69,8 @@ paper — flag conflicts in `docs/system-spec.md` instead.
   `lg` is 240px expanded or an 80px icon rail, with an always-visible toggle and
   accessible names/title hints. Mobile keeps its labelled drawer and header theme
   control, regardless of saved desktop collapse. Account & Settings → Appearance
-  and sign-in also expose theme controls. `lib/appearance.ts` stores theme and
+  and the public welcome page expose theme controls; sign-in opens in a dialog.
+  `lib/appearance.ts` stores theme and
   desktop collapse in `pollens.appearance.v1`, locally per browser and separately
   from authentication, with cross-tab sync and memory fallback if storage is
   blocked. The root script restores both before content paints. Native controls,
@@ -150,7 +151,7 @@ the backend change first.
   archive, system-info display, evaluation targets).
 4. **Open sign-in (planned, not built)** — the owner plans to let any Google
   account sign in. It's a backend switch first (adviser item 12 in
-  `docs/system-spec.md`); when it lands, sign-in page copy that says who may
+  `docs/system-spec.md`); when it lands, sign-in dialog copy that says who may
   sign in, and the "not authorised" message, may need updating. Don't change
   them before the backend does.
 

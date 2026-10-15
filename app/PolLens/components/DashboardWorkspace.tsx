@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CloudOff } from "lucide-react";
-import { buildDashboardSummary, type DashboardRange } from "@/lib/dashboard";
+import {
+  buildDashboardSummary,
+  getCurrentDashboardHalf,
+  getCurrentDashboardYear,
+  getDashboardYearOptions,
+  type DashboardHalf,
+  type DashboardRange,
+} from "@/lib/dashboard";
 import { ALL_DASHBOARD_LOCATIONS, dashboardReportsHref, getDashboardLocationOptions } from "@/lib/dashboard-locations";
 import { type Specimen } from "@/lib/data";
 import { listReports } from "@/lib/store";
@@ -12,16 +19,18 @@ import { Button } from "@/components/Button";
 import DashboardStats from "@/components/DashboardStats";
 import DashboardRecentCollections from "@/components/DashboardRecentCollections";
 import DashboardTopPollenCounts from "@/components/DashboardTopPollenCounts";
-import DashboardCollectionConditions from "@/components/DashboardCollectionConditions";
+import PollenTrendChart from "@/components/PollenTrendChart";
 import { useSpeciesCatalog } from "@/lib/species-catalog";
+import CollectionPeriodFilter from "@/components/CollectionPeriodFilter";
 
 type Result = { email: string; reports: Specimen[] | null; error: string | null };
-const ranges: DashboardRange[] = [6, 12];
 
 export default function DashboardWorkspace() {
   const { email } = useSettings();
   const catalog = useSpeciesCatalog();
-  const [range, setRange] = useState<DashboardRange>(6);
+  const [range, setRange] = useState<DashboardRange>(12);
+  const [year, setYear] = useState(() => getCurrentDashboardYear());
+  const [half, setHalf] = useState<DashboardHalf>(() => getCurrentDashboardHalf());
   const [location, setLocation] = useState(ALL_DASHBOARD_LOCATIONS);
   const [now, setNow] = useState(() => new Date());
   const [result, setResult] = useState<Result | null>(null);
@@ -44,15 +53,20 @@ export default function DashboardWorkspace() {
   const reports = result?.email === email ? result.reports : null;
   const error = result?.email === email ? result.error : null;
   const locations = useMemo(() => getDashboardLocationOptions(reports ?? []), [reports]);
+  const years = useMemo(() => getDashboardYearOptions(reports ?? [], now), [reports, now]);
+  const activeYear = years.includes(year) ? year : getCurrentDashboardYear(now);
   const activeLocation = [...locations.provinces, ...locations.locations].some((option) => option.value === location) ? location : ALL_DASHBOARD_LOCATIONS;
-  const summary = useMemo(() => buildDashboardSummary(reports ?? [], range, now, activeLocation), [reports, range, now, activeLocation]);
+  const summary = useMemo(
+    () => buildDashboardSummary(reports ?? [], range, now, activeLocation, { year: activeYear, half }),
+    [reports, range, now, activeLocation, activeYear, half],
+  );
   const loaded = reports !== null;
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <section className="min-w-0" aria-label="Dashboard filters" aria-busy={!loaded && !error}>
-        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
-          <label className="flex min-w-0 flex-col gap-1 text-[12px] text-text-muted sm:w-72">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:gap-4">
+          <label className="flex min-w-0 flex-col gap-1 text-[12px] text-text-muted sm:w-40">
             Location
             <select value={activeLocation} onChange={(event) => setLocation(event.target.value)} disabled={!loaded} className="focus-ring min-h-11 min-w-0 rounded-sm border border-border bg-surface px-3 text-[13px] text-text disabled:cursor-not-allowed disabled:opacity-50">
               <option value={ALL_DASHBOARD_LOCATIONS}>All Locations</option>
@@ -60,16 +74,16 @@ export default function DashboardWorkspace() {
               {locations.locations.length > 0 && <optgroup label="Recorded Locations">{locations.locations.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</optgroup>}
             </select>
           </label>
-          <div className="flex flex-col gap-1">
-            <span className="text-[12px] text-text-muted">Period</span>
-            <div className="flex rounded-sm border border-border bg-surface p-0.5" role="group" aria-label="Collection date range">
-              {ranges.map((months) => (
-                <button key={months} type="button" aria-pressed={range === months} onClick={() => setRange(months)} aria-label={`Show ${months} months`}
-                  className={`focus-ring min-h-11 flex-1 whitespace-nowrap rounded-sm px-3 py-2 text-[13px] transition-colors active:scale-[0.98] ${range === months ? "control-selection bg-selected text-selected-fg" : "text-text-muted hover:bg-surface-sunken hover:text-text"}`}
-                >{months} Months</button>
-              ))}
-            </div>
-          </div>
+          <CollectionPeriodFilter
+            year={activeYear}
+            years={years}
+            range={range}
+            half={half}
+            disabled={!loaded}
+            onYearChange={setYear}
+            onRangeChange={setRange}
+            onHalfChange={setHalf}
+          />
         </div>
       </section>
       {error && (
@@ -80,11 +94,11 @@ export default function DashboardWorkspace() {
       )}
       <DashboardStats summary={loaded ? summary : null} failed={Boolean(error)} />
       {loaded && summary.sampleCount > 0 && <p className="text-[12px] text-processing" role="note">Sample detections in {summary.sampleCount} {summary.sampleCount === 1 ? "collection" : "collections"}; pollen counts are illustrative.</p>}
+      <PollenTrendChart summary={loaded ? summary : null} failed={Boolean(error)} catalog={catalog} />
       <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(18rem,1fr)]">
         <DashboardRecentCollections collections={loaded ? summary.recentCollections : null} failed={Boolean(error)} catalog={catalog} reportsHref={dashboardReportsHref(summary, "Finalized")} />
         <DashboardTopPollenCounts summary={loaded ? summary : null} failed={Boolean(error)} catalog={catalog} />
       </div>
-      <DashboardCollectionConditions summary={loaded ? summary : null} failed={Boolean(error)} />
     </div>
   );
 }

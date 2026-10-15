@@ -9,14 +9,11 @@ import {
   ArrowLeft,
   CalendarDays,
   CircleCheck,
-  Clock,
   CloudOff,
-  CloudSun,
   Download,
   FileSpreadsheet,
   Flag,
   Trash2,
-  Droplets,
   FileText,
   FlaskConical,
   Loader2,
@@ -24,18 +21,14 @@ import {
   Microscope,
   Pencil,
   Save,
-  Thermometer,
   User,
-  Wind,
   X,
 } from "lucide-react";
 import {
   aggregateSlideDetections,
   formatCollectedAt,
-  formatTime,
   getCollectionDate,
   getConfidenceGrainCount,
-  getCollectionTime,
   getReviewedDetections,
   getTotalGrains,
   getWeightedAvgConfidence,
@@ -54,6 +47,7 @@ import {
   updateReport,
 } from "@/lib/store";
 import { exportReportsXlsx } from "@/lib/export";
+import { BRAND_NAME } from "@/lib/brand";
 import { SessionExpiredError } from "@/lib/api";
 import RiskBadge from "@/components/RiskBadge";
 import SummaryTile from "@/components/SummaryTile";
@@ -406,7 +400,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
     if (!report || report.status !== "Completed") return;
     setDownloading("xlsx");
     try {
-      await exportReportsXlsx([report], `${report.sampleId}.xlsx`);
+      await exportReportsXlsx([report], `${BRAND_NAME}-${report.sampleId}.xlsx`);
     } catch {
       toast.error("Couldn't build the Excel file. Try again.");
     } finally {
@@ -459,8 +453,6 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
   const colors = overlayColors(aggregated);
   const totalGrains = getTotalGrains(aggregated);
   const overallConfidence = getWeightedAvgConfidence(aggregated);
-  const collectionTime = getCollectionTime(report.collectedAt);
-  const weather = report.weather;
   const reportAnnotations = report.slides.flatMap((slide) => slide.annotations ?? []);
   const reviewedModelGrains = new Set(
     reportAnnotations.flatMap((annotation) => annotation.grainId ? [annotation.grainId] : []),
@@ -692,40 +684,15 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
               { month: "short", day: "numeric", year: "numeric" },
             )}
           />
-          <MetaItem
-            icon={Clock}
-            label="Time Collected"
-            value={collectionTime ? formatTime(collectionTime) : "Not recorded"}
-          />
           <MetaItem icon={MapPin} label="Location" value={report.location || "No location recorded"} />
-          <MetaItem icon={User} label="Researcher" value={report.researcher} />
+          {report.canEdit && report.researcher && (
+            <MetaItem icon={User} label="Researcher" value={report.researcher} />
+          )}
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-4">
-          <MetaItem
-            icon={CloudSun}
-            label="Weather"
-            value={weather ? weather.condition : "Not recorded"}
-          />
-          <MetaItem
-            icon={Thermometer}
-            label="Temperature"
-            value={weather?.temperatureC !== null && weather ? `${weather.temperatureC}°C` : "—"}
-          />
-          <MetaItem
-            icon={Droplets}
-            label="Humidity"
-            value={weather?.humidityPct !== null && weather ? `${weather.humidityPct}% RH` : "—"}
-          />
-          <MetaItem
-            icon={Wind}
-            label="Wind"
-            value={weather?.windKph !== null && weather ? `${weather.windKph} km/h` : "—"}
-          />
-        </div>
       </div>
 
-      {/* Per slide: its reading on the left, the boxed image on the right */}
+      {/* Per slide: the boxed image on the left, its reading on the right */}
       <div className="card-panel p-4 sm:p-5">
         <h3 className="t-plate-title mb-1 text-text">
           Slide Images
@@ -743,7 +710,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
             const selectedSpecies = highlighted[slide.id] ?? null;
             const select = (speciesId: SpeciesId | null) =>
               setHighlighted((current) => ({ ...current, [slide.id]: speciesId }));
-            const isEditableReview = report.status === "Needs review" && report.canEdit && !report.sampleDetections;
+            const isEditableReview = report.status === "Needs review" && report.canEdit;
             const slideSummary = (
               <div className="min-w-0">
                 {slide.detections.length === 0 ? (
@@ -880,31 +847,18 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                     reviewedDetections={slide.detections}
                     selectedSpeciesId={selectedSpecies}
                     annotations={slide.annotations}
+                    sampleDetections={report.sampleDetections}
                     summaryContent={slideSummary}
                     trailingContent={slideNote}
                     onSaved={(annotation) => handleAnnotationSaved(slide.id, annotation)}
                     onRemoved={(annotationId) => handleAnnotationRemoved(slide.id, annotationId)}
                   />
                 ) : (
-                  <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-                    {slideDetails}
+                  <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
                     <div className="min-w-0">
                       {slideImage}
-                      {report.status === "Needs review" && report.canEdit && report.sampleDetections && (
-                        <GrainReviewEditor
-                          sampleId={report.sampleId}
-                          slideId={slide.id}
-                          imageUrl={imageUrls[slide.id]}
-                          fileName={slide.fileName}
-                          grains={slide.grains}
-                          detections={slide.detections}
-                          annotations={slide.annotations}
-                          sampleDetections
-                          onSaved={(annotation) => handleAnnotationSaved(slide.id, annotation)}
-                          onRemoved={(annotationId) => handleAnnotationRemoved(slide.id, annotationId)}
-                        />
-                      )}
                     </div>
+                    {slideDetails}
                   </div>
                 )}
               </div>

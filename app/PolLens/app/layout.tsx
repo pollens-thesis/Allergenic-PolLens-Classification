@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans, Source_Serif_4 } from "next/font/google";
 import { AppearanceToaster } from "@/components/AppearanceControls";
+import { BRAND_NAME, BRAND_DESCRIPTOR } from "@/lib/brand";
 import "./globals.css";
 
 // A technical sans carries controls and running text. Keep the serif for
@@ -29,8 +30,8 @@ const serif = Source_Serif_4({
 });
 
 export const metadata: Metadata = {
-  title: { default: "PolLens", template: "%s · PolLens" },
-  description: "Helping researchers identify pollen allergens from microscope imagery. Sign in to the PolLens research console.",
+  title: { default: BRAND_NAME, template: `%s · ${BRAND_NAME}` },
+  description: `${BRAND_DESCRIPTOR}. Analyze microscope slides, review detections, and maintain research records.`,
 };
 
 export default function RootLayout({
