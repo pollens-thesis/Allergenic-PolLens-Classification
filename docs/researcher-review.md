@@ -37,19 +37,21 @@ note to persist it, or cancel to discard the draft.
   added grains do not receive a fabricated confidence score.
 - Original detections remain available alongside researcher annotations so
   the team can inspect both the model output and the reviewed result.
-- Annotation controls are read-only for sample reports and reports the
-  signed-in user cannot edit.
+- Sample detections stay marked as illustrative. Their annotations are saved
+  for review only and are marked ineligible for model training.
+- Annotation controls are read-only for reports the signed-in user cannot edit.
 - Label choices follow the 15 species in the current training dataset. The
   Allergen Reference uses the same species set and the familiar research names.
 
 ## Local validation
 
 Start the API and Next.js app using their local setup guides, then sign in and
-open a non-sample report in **Needs Review**. Test label correction, moving and
+open a report in **Needs Review**. Test label correction, moving and
 resizing a box, cancelling an edit, removing and restoring a false positive,
-drawing and removing a missed grain, and saving a slide note. Confirm the model
-and reviewed counts change as described above and that sample reports do not
-allow saving annotations.
+drawing and removing a missed grain, and saving a slide note. Repeat with a
+sample report and confirm it keeps the Sample label and its annotations return
+`trainingEligible: false`. Confirm the model and reviewed counts change as
+described above.
 
 Run the API checks from `api/`:
 
