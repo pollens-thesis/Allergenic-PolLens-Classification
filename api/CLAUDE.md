@@ -103,6 +103,12 @@ between the thesis proposal paper and the frontend.
     call `/logout/`) is frontend work outside this file's scope; see
     `../docs/login-frontend-handoff.md` for the full handoff instead of
     re-deriving it from scratch.
+- **Final models (2026-10-13):** the user selected YOLO26-L Detection v12
+  (`pollens_yolo26l_v12_2026-10-12_best.pt`) and EfficientNet-B0 pollen15.
+  The main local `.env` selects `DETECTION_BACKEND=yolo26`, mock off, and
+  exact private artifact paths with SHA-256 pins. Only pollen boxes enter
+  the ONNX classifier. See `../docs/final-models.md` for the local model selection and
+  `../docs/inference-modal.md` for the current hosted deployment.
 - **Reports:** server-side storage for analysis batches. Production detection
   calls the hosted inference service from the `/detect/` proxy (Modal, see
   below); the in-process YOLO26 path is not deployed. There is no async pipeline.
@@ -172,7 +178,28 @@ between the thesis proposal paper and the frontend.
     non-resetting global counter).
   - **`GET /api/v1/reports/<sample_id>/`** (`reports.views.ReportDetailView`,
     `IsAuthenticated`): single report by `sampleId`. `404 {"detail": "Report
-    not found."}` if missing.
+    not found."}` if missing. Each slide includes `detections` with the
+    reviewed counts, `modelDetections` with the original model summary,
+    model `grains`, and separate `annotations` made during review. A verified
+    false positive is removed from `detections`; a manually boxed missed grain
+    is added to its identified species count. Original predictions remain in
+    `modelDetections` and `grains` for audit. `confidenceGrainCount` tells the
+    frontend how many grains have model confidence; missed grains count as
+    pollen but do not change confidence averages.
+  - **`PUT/DELETE /api/v1/reports/<sample_id>/annotations/<uuid>/`**
+    (`reports.views.ReportAnnotationDetailView`): save, update or remove one
+    researcher annotation. PUT sends `slideId`, `grainId` (null only for a
+    missed grain), `kind` (`confirmed`, `corrected`, `false_positive`,
+    `missed`, `uncertain`), `speciesId` where applicable, and a normalized
+    `box`. Only the report owner or staff may annotate, only while status is
+    `Needs review`; sample detections are rejected. Original model `Detection`
+    and `Grain` rows stay unchanged. A `false_positive` annotation removes
+    that grain from reviewed report and dashboard counts; deleting the
+    annotation restores its model reading. A `missed` annotation adds its
+    selected pollen species and box to reviewed counts without inventing a
+    confidence score. Confirmed/corrected/missed annotations are future
+    training candidates; false positives and uncertain labels are retained
+    separately. Model training export and redeployment are not automated.
   - **`GET /api/v1/reports/monthly-counts/`** (`reports.views.ReportMonthlyCountsView`,
     `IsAuthenticated`; registered in `config/urls.py` **before**
     `<sample_id>/` so that dynamic segment doesn't swallow the literal

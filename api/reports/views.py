@@ -204,16 +204,21 @@ class DetectionNotConfigured(Exception):
 @lru_cache(maxsize=2)
 def _yolo26_detector(weights_path):
     """Load one detector per worker process and weights path."""
+    from .inference.artifacts import verify_artifact
     from .inference.yolo26 import YOLO26PollenDetector
 
+    verify_artifact(weights_path, settings.YOLO26_WEIGHTS_SHA256)
     return YOLO26PollenDetector(weights_path)
 
 
 @lru_cache(maxsize=2)
 def _yolo26_classifier(weights_path):
     """Load one local classifier session per worker process and weights path."""
+    from .inference.artifacts import verify_artifact
     from .inference.efficientnet_classifier import EfficientNetB0Classifier
 
+    verify_artifact(weights_path, settings.YOLO26_CLASSIFIER_SHA256)
+    verify_artifact(Path(weights_path).with_name('class_names.json'), settings.YOLO26_CLASS_NAMES_SHA256)
     return EfficientNetB0Classifier(weights_path)
 
 

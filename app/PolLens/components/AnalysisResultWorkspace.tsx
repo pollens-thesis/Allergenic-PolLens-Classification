@@ -16,6 +16,7 @@ import {
 import {
   aggregateSlideDetections,
   formatCollectedAt,
+  getConfidenceGrainCount,
   getTotalGrains,
   getWeightedAvgConfidence,
   sortByAbundance,
@@ -77,6 +78,7 @@ function DetectionRow({
   const speciesCatalog = useSpeciesCatalog();
   const species = findSpecies(speciesCatalog, detection.speciesId);
   const confidencePct = Math.round(detection.avgConfidence * 100);
+  const hasModelConfidence = getConfidenceGrainCount(detection) > 0;
 
   return (
     <li>
@@ -132,11 +134,11 @@ function DetectionRow({
 
         <div className="mt-2.5">
           <div className="mb-1 flex items-center justify-between text-[12.5px] text-text-muted">
-            <span>Avg. Confidence</span>
-            <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{confidencePct}%</span>
+            <span>Avg. Model Confidence</span>
+            <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{hasModelConfidence ? `${confidencePct}%` : "—"}</span>
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-sunken">
-            <div className="h-full rounded-full bg-text/75" style={{ width: `${confidencePct}%` }} />
+            {hasModelConfidence && <div className="h-full rounded-full bg-text/75" style={{ width: `${confidencePct}%` }} />}
           </div>
         </div>
       </button>
@@ -668,7 +670,7 @@ export default function AnalysisResultWorkspace({
                   >
                     <SlideThumbnail imageUrl={slide.imageUrl} />
                     <span className="min-w-0">
-                      <span className="block text-[11px] text-text-faint" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                      <span className="block text-xs text-text-faint" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                         SLIDE {index + 1}
                       </span>
                       <span className="mt-0.5 block truncate text-[12.5px]">{slide.fileName}</span>

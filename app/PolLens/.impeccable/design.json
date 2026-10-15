@@ -113,6 +113,473 @@
         "displayName": "Frontispiece Grain (sign-in only)",
         "canonical": "#8c2f1b",
         "cssVar": "--hero-grain"
+      },
+      "dark-page-grey": {
+        "role": "neutral",
+        "displayName": "Dark Page Grey",
+        "canonical": "#111518",
+        "cssVar": "--bg",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Page and sticky header background"
+      },
+      "dark-plate-paper": {
+        "role": "neutral",
+        "displayName": "Dark Plate Paper",
+        "canonical": "#1e2529",
+        "cssVar": "--surface",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Cards, fields, table rows, navigation and dialogs"
+      },
+      "dark-well": {
+        "role": "neutral",
+        "displayName": "Dark Well",
+        "canonical": "#171d21",
+        "cssVar": "--surface-sunken",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Inset summaries, active navigation and hover fills"
+      },
+      "dark-hairline": {
+        "role": "neutral",
+        "displayName": "Dark Hairline",
+        "canonical": "#37434b",
+        "cssVar": "--border",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Card frames, rules and dividers"
+      },
+      "dark-hairline-strong": {
+        "role": "neutral",
+        "displayName": "Dark Hairline Strong",
+        "canonical": "#687d89",
+        "cssVar": "--border-strong",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Hover, active and selected borders"
+      },
+      "dark-ink": {
+        "role": "neutral",
+        "displayName": "Dark Ink",
+        "canonical": "#edf0f2",
+        "cssVar": "--text",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Primary text, headings and ink buttons"
+      },
+      "dark-caption-grey": {
+        "role": "neutral",
+        "displayName": "Dark Caption Grey",
+        "canonical": "#b9c3c9",
+        "cssVar": "--text-muted",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Secondary text and captions"
+      },
+      "dark-faint-grey": {
+        "role": "neutral",
+        "displayName": "Dark Faint Grey",
+        "canonical": "#9fadb6",
+        "cssVar": "--text-faint",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Quiet icons and tertiary text"
+      },
+      "placeholder-grey": {
+        "role": "neutral",
+        "displayName": "Placeholder Grey",
+        "canonical": "#6d6c66",
+        "cssVar": "--text-placeholder",
+        "purpose": "Empty-field hints"
+      },
+      "dark-placeholder-grey": {
+        "role": "neutral",
+        "displayName": "Dark Placeholder Grey",
+        "canonical": "#99a9b3",
+        "cssVar": "--text-placeholder",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Empty-field hints"
+      },
+      "dark-oxide": {
+        "role": "primary",
+        "displayName": "Dark Oxide",
+        "canonical": "#e4a084",
+        "cssVar": "--accent",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Primary actions, slide references, focus and selection"
+      },
+      "oxide-hover": {
+        "role": "primary",
+        "displayName": "Oxide Hover",
+        "canonical": "#742617",
+        "cssVar": "--accent-hover",
+        "purpose": "Primary action hover"
+      },
+      "dark-oxide-hover": {
+        "role": "primary",
+        "displayName": "Dark Oxide Hover",
+        "canonical": "#edb69f",
+        "cssVar": "--accent-hover",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Primary action hover"
+      },
+      "oxide-active": {
+        "role": "primary",
+        "displayName": "Oxide Active",
+        "canonical": "#5e1f13",
+        "cssVar": "--accent-active",
+        "purpose": "Primary action press"
+      },
+      "dark-oxide-active": {
+        "role": "primary",
+        "displayName": "Dark Oxide Active",
+        "canonical": "#d58c70",
+        "cssVar": "--accent-active",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Primary action press"
+      },
+      "oxide-wash": {
+        "role": "primary",
+        "displayName": "Oxide Wash",
+        "canonical": "#8c2f1b17",
+        "cssVar": "--accent-muted",
+        "purpose": "Selected row fill"
+      },
+      "dark-oxide-wash": {
+        "role": "primary",
+        "displayName": "Dark Oxide Wash",
+        "canonical": "#e4a0841c",
+        "cssVar": "--accent-muted",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Selected row fill"
+      },
+      "on-oxide": {
+        "role": "primary",
+        "displayName": "On Oxide",
+        "canonical": "#ffffff",
+        "cssVar": "--accent-fg",
+        "purpose": "Text on the oxide action"
+      },
+      "dark-on-oxide": {
+        "role": "primary",
+        "displayName": "Dark On Oxide",
+        "canonical": "#2b1913",
+        "cssVar": "--accent-fg",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Text on the oxide action"
+      },
+      "dark-status-green": {
+        "role": "status",
+        "displayName": "Dark Status Green",
+        "canonical": "#92cba6",
+        "cssVar": "--success",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Completed text and consequence outlines"
+      },
+      "status-green-wash": {
+        "role": "status",
+        "displayName": "Status Green Wash",
+        "canonical": "#1f6a3a14",
+        "cssVar": "--success-bg",
+        "purpose": "Completed stamp and confirmation hover fill"
+      },
+      "dark-status-green-wash": {
+        "role": "status",
+        "displayName": "Dark Status Green Wash",
+        "canonical": "#92cba614",
+        "cssVar": "--success-bg",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Completed stamp and confirmation hover fill"
+      },
+      "dark-status-ochre": {
+        "role": "status",
+        "displayName": "Dark Status Ochre",
+        "canonical": "#dfc080",
+        "cssVar": "--processing",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Pending and warnings"
+      },
+      "status-ochre-wash": {
+        "role": "status",
+        "displayName": "Status Ochre Wash",
+        "canonical": "#8a5a0014",
+        "cssVar": "--processing-bg",
+        "purpose": "Pending/resume hover fill"
+      },
+      "dark-status-ochre-wash": {
+        "role": "status",
+        "displayName": "Dark Status Ochre Wash",
+        "canonical": "#dfc08014",
+        "cssVar": "--processing-bg",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Pending/resume hover fill"
+      },
+      "dark-status-red": {
+        "role": "status",
+        "displayName": "Dark Status Red",
+        "canonical": "#eea09b",
+        "cssVar": "--danger",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Needs Review, errors and destructive actions"
+      },
+      "status-red-wash": {
+        "role": "status",
+        "displayName": "Status Red Wash",
+        "canonical": "#b3261e14",
+        "cssVar": "--danger-bg",
+        "purpose": "Review hatch and caution hover fill"
+      },
+      "dark-status-red-wash": {
+        "role": "status",
+        "displayName": "Dark Status Red Wash",
+        "canonical": "#eea09b14",
+        "cssVar": "--danger-bg",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Review hatch and caution hover fill"
+      },
+      "on-status-red": {
+        "role": "status",
+        "displayName": "On Status Red",
+        "canonical": "#ffffff",
+        "cssVar": "--danger-fg",
+        "purpose": "Text on destructive actions"
+      },
+      "dark-on-status-red": {
+        "role": "status",
+        "displayName": "Dark On Status Red",
+        "canonical": "#2d1716",
+        "cssVar": "--danger-fg",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Text on destructive actions"
+      },
+      "dark-frontispiece-paper": {
+        "role": "neutral",
+        "displayName": "Dark Frontispiece Paper",
+        "canonical": "#151b1f",
+        "cssVar": "--hero-bg",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Sign-in frontispiece background"
+      },
+      "frontispiece-paper-deep": {
+        "role": "neutral",
+        "displayName": "Frontispiece Paper Deep",
+        "canonical": "#d9d7cf",
+        "cssVar": "--hero-bg-deep",
+        "purpose": "Sign-in frontispiece depth"
+      },
+      "dark-frontispiece-paper-deep": {
+        "role": "neutral",
+        "displayName": "Dark Frontispiece Paper Deep",
+        "canonical": "#252f35",
+        "cssVar": "--hero-bg-deep",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Sign-in frontispiece depth"
+      },
+      "frontispiece-ink": {
+        "role": "neutral",
+        "displayName": "Frontispiece Ink",
+        "canonical": "#171717",
+        "cssVar": "--hero-fg",
+        "purpose": "Sign-in primary text"
+      },
+      "dark-frontispiece-ink": {
+        "role": "neutral",
+        "displayName": "Dark Frontispiece Ink",
+        "canonical": "#edf0f2",
+        "cssVar": "--hero-fg",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Sign-in primary text"
+      },
+      "frontispiece-caption": {
+        "role": "neutral",
+        "displayName": "Frontispiece Caption",
+        "canonical": "#4d4c47",
+        "cssVar": "--hero-fg-muted",
+        "purpose": "Sign-in secondary text"
+      },
+      "dark-frontispiece-caption": {
+        "role": "neutral",
+        "displayName": "Dark Frontispiece Caption",
+        "canonical": "#b9c3c9",
+        "cssVar": "--hero-fg-muted",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Sign-in secondary text"
+      },
+      "dark-frontispiece-grain": {
+        "role": "illustration",
+        "displayName": "Dark Frontispiece Grain",
+        "canonical": "#e4a084",
+        "cssVar": "--hero-grain",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Illustrated sign-in pollen grains"
+      },
+      "frontispiece-grain-soft": {
+        "role": "illustration",
+        "displayName": "Frontispiece Grain Soft",
+        "canonical": "#9c4a33",
+        "cssVar": "--hero-grain-soft",
+        "purpose": "Secondary illustrated sign-in grains"
+      },
+      "dark-frontispiece-grain-soft": {
+        "role": "illustration",
+        "displayName": "Dark Frontispiece Grain Soft",
+        "canonical": "#c88e77",
+        "cssVar": "--hero-grain-soft",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Secondary illustrated sign-in grains"
+      },
+      "navigation-surface": {
+        "role": "neutral",
+        "displayName": "Navigation Surface",
+        "canonical": "#fafaf7",
+        "cssVar": "--surface-nav",
+        "purpose": "Desktop rail, mobile header and drawer",
+        "sourceValue": "var(--surface)"
+      },
+      "dark-navigation-surface": {
+        "role": "neutral",
+        "displayName": "Dark Navigation Surface",
+        "canonical": "#151b1f",
+        "cssVar": "--surface-nav",
+        "purpose": "Desktop rail, mobile header and drawer",
+        "selector": ":root[data-theme=\"dark\"]"
+      },
+      "hover-surface": {
+        "role": "neutral",
+        "displayName": "Hover Surface",
+        "canonical": "#f1f0eb",
+        "cssVar": "--surface-hover",
+        "purpose": "Hover fill for navigation, appearance, secondary and ghost controls",
+        "sourceValue": "var(--surface-sunken)"
+      },
+      "dark-hover-surface": {
+        "role": "neutral",
+        "displayName": "Dark Hover Surface",
+        "canonical": "#2c363c",
+        "cssVar": "--surface-hover",
+        "purpose": "Hover fill for navigation, appearance, secondary and ghost controls",
+        "selector": ":root[data-theme=\"dark\"]"
+      },
+      "field-surface": {
+        "role": "neutral",
+        "displayName": "Field Surface",
+        "canonical": "#fafaf7",
+        "cssVar": "--field-bg",
+        "purpose": "Recessed editable fields",
+        "sourceValue": "var(--surface)"
+      },
+      "dark-field-surface": {
+        "role": "neutral",
+        "displayName": "Dark Field Surface",
+        "canonical": "#151c20",
+        "cssVar": "--field-bg",
+        "purpose": "Recessed editable fields",
+        "selector": ":root[data-theme=\"dark\"]"
+      },
+      "field-outline": {
+        "role": "neutral",
+        "displayName": "Field Outline",
+        "canonical": "#d9d8d2",
+        "cssVar": "--field-border",
+        "purpose": "Distinguishable enabled editable-field boundaries",
+        "sourceValue": "var(--border)"
+      },
+      "dark-field-outline": {
+        "role": "neutral",
+        "displayName": "Dark Field Outline",
+        "canonical": "#687d89",
+        "cssVar": "--field-border",
+        "purpose": "Distinguishable enabled editable-field boundaries",
+        "selector": ":root[data-theme=\"dark\"]"
+      },
+      "selected-control": {
+        "role": "neutral",
+        "displayName": "Selected Control",
+        "canonical": "#171717",
+        "cssVar": "--selected-bg",
+        "purpose": "Selected Dashboard period, Reports status and Pollen Map visibility controls",
+        "sourceValue": "var(--text)"
+      },
+      "dark-selected-control": {
+        "role": "neutral",
+        "displayName": "Dark Selected Control",
+        "canonical": "#36434b",
+        "cssVar": "--selected-bg",
+        "purpose": "Selected Dashboard period, Reports status and Pollen Map visibility controls",
+        "selector": ":root[data-theme=\"dark\"]"
+      },
+      "on-selected-control": {
+        "role": "neutral",
+        "displayName": "On Selected Control",
+        "canonical": "#ecebe6",
+        "cssVar": "--selected-fg",
+        "purpose": "Selected-control labels",
+        "sourceValue": "var(--bg)"
+      },
+      "dark-on-selected-control": {
+        "role": "neutral",
+        "displayName": "Dark On Selected Control",
+        "canonical": "#edf0f2",
+        "cssVar": "--selected-fg",
+        "purpose": "Selected-control labels",
+        "selector": ":root[data-theme=\"dark\"]"
+      },
+      "selected-outline": {
+        "role": "neutral",
+        "displayName": "Selected Outline",
+        "canonical": "transparent",
+        "cssVar": "--selected-border",
+        "purpose": "Inset outline on selected controls",
+        "sourceValue": "transparent"
+      },
+      "dark-selected-outline": {
+        "role": "neutral",
+        "displayName": "Dark Selected Outline",
+        "canonical": "#839ba9",
+        "cssVar": "--selected-border",
+        "purpose": "Inset outline on selected controls",
+        "selector": ":root[data-theme=\"dark\"]"
+      },
+      "neutral-action": {
+        "role": "neutral",
+        "displayName": "Neutral Action",
+        "canonical": "#171717",
+        "cssVar": "--button-neutral",
+        "purpose": "Neutral filled button surface",
+        "sourceValue": "var(--text)"
+      },
+      "dark-neutral-action": {
+        "role": "neutral",
+        "displayName": "Dark Neutral Action",
+        "canonical": "#36434b",
+        "cssVar": "--button-neutral",
+        "purpose": "Neutral filled button surface",
+        "selector": ":root[data-theme=\"dark\"]"
+      },
+      "on-neutral-action": {
+        "role": "neutral",
+        "displayName": "On Neutral Action",
+        "canonical": "#ecebe6",
+        "cssVar": "--button-neutral-fg",
+        "purpose": "Neutral filled button label",
+        "sourceValue": "var(--bg)"
+      },
+      "dark-on-neutral-action": {
+        "role": "neutral",
+        "displayName": "Dark On Neutral Action",
+        "canonical": "#edf0f2",
+        "cssVar": "--button-neutral-fg",
+        "purpose": "Neutral filled button label",
+        "selector": ":root[data-theme=\"dark\"]"
+      },
+      "neutral-action-hover": {
+        "role": "neutral",
+        "displayName": "Neutral Action Hover",
+        "canonical": "color-mix(in srgb, var(--text) 85%, transparent)",
+        "cssVar": "--button-neutral-hover",
+        "purpose": "Neutral filled button hover surface",
+        "sourceValue": "color-mix(in srgb, var(--text) 85%, transparent)"
+      },
+      "dark-neutral-action-hover": {
+        "role": "neutral",
+        "displayName": "Dark Neutral Action Hover",
+        "canonical": "#455660",
+        "cssVar": "--button-neutral-hover",
+        "purpose": "Neutral filled button hover surface",
+        "selector": ":root[data-theme=\"dark\"]"
       }
     },
     "dataPalettes": {
@@ -234,6 +701,16 @@
         "name": "card-well",
         "value": "border-radius: 14px; background: var(--surface-sunken);",
         "purpose": "Secondary summaries inset inside a work card."
+      },
+      {
+        "name": "control-selection",
+        "value": "outline: 1px solid var(--selected-border); outline-offset: -1px;",
+        "purpose": "Subdued selected-control and filled neutral-action boundary."
+      },
+      {
+        "name": "dark-editable-fields",
+        "value": ":root[data-theme=\"dark\"] enabled neutral-border fields: background-color: var(--field-bg); border-color: var(--field-border); caret-color: var(--accent);",
+        "purpose": "Distinguishable editable boundaries; excludes invalid/error and disabled states."
       }
     ],
     "shadows": [
@@ -246,6 +723,18 @@
         "name": "card-hover",
         "value": "0 2px 4px rgb(23 23 23 / 4%), 0 12px 28px rgb(23 23 23 / 7%)",
         "purpose": "Subtle emphasis for interactive cards on hover."
+      },
+      {
+        "name": "card-rest-dark",
+        "value": "0 2px 4px rgb(0 0 0 / 14%), 0 12px 28px rgb(0 0 0 / 18%)",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Quiet separation for standalone dark card panels."
+      },
+      {
+        "name": "card-hover-dark",
+        "value": "0 3px 6px rgb(0 0 0 / 18%), 0 14px 30px rgb(0 0 0 / 24%)",
+        "selector": ":root[data-theme=\"dark\"]",
+        "purpose": "Subtle emphasis for interactive dark cards on hover."
       }
     ],
     "motion": [
@@ -295,7 +784,233 @@
         "value": "1280px",
         "purpose": "Plate + key split (3fr/2fr); dashboard Recent Collections and Top Pollen Counts sit side by side, with Collection Conditions full width below."
       }
-    ]
+    ],
+    "appearance": {
+      "approvedAt": "2026-10-13",
+      "authority": "User-approved established-world extension; adviser/paper reconciliation remains open.",
+      "source": [
+        "app/globals.css",
+        "lib/appearance.ts",
+        "components/AppearanceControls.tsx",
+        "components/Sidebar.tsx",
+        "app/layout.tsx"
+      ],
+      "defaultTheme": "light",
+      "defaultSidebar": "expanded",
+      "storageKey": "pollens.appearance.v1",
+      "persistence": "Browser-local, separate from authentication and retained across sign-out; same-page events and storage events sync tabs; malformed values use defaults; blocked storage falls back to current-page memory.",
+      "initialPaint": "Early root script sets data-theme and data-sidebar before content paints.",
+      "themeBindings": {
+        "--bg": {
+          "light": "page-grey",
+          "dark": "dark-page-grey"
+        },
+        "--surface": {
+          "light": "plate-paper",
+          "dark": "dark-plate-paper"
+        },
+        "--surface-sunken": {
+          "light": "well",
+          "dark": "dark-well"
+        },
+        "--border": {
+          "light": "hairline",
+          "dark": "dark-hairline"
+        },
+        "--border-strong": {
+          "light": "hairline-strong",
+          "dark": "dark-hairline-strong"
+        },
+        "--text": {
+          "light": "ink",
+          "dark": "dark-ink"
+        },
+        "--text-muted": {
+          "light": "caption-grey",
+          "dark": "dark-caption-grey"
+        },
+        "--text-faint": {
+          "light": "faint-grey",
+          "dark": "dark-faint-grey"
+        },
+        "--text-placeholder": {
+          "light": "placeholder-grey",
+          "dark": "dark-placeholder-grey"
+        },
+        "--accent": {
+          "light": "oxide",
+          "dark": "dark-oxide"
+        },
+        "--accent-hover": {
+          "light": "oxide-hover",
+          "dark": "dark-oxide-hover"
+        },
+        "--accent-active": {
+          "light": "oxide-active",
+          "dark": "dark-oxide-active"
+        },
+        "--accent-muted": {
+          "light": "oxide-wash",
+          "dark": "dark-oxide-wash"
+        },
+        "--accent-fg": {
+          "light": "on-oxide",
+          "dark": "dark-on-oxide"
+        },
+        "--success": {
+          "light": "status-green",
+          "dark": "dark-status-green"
+        },
+        "--success-bg": {
+          "light": "status-green-wash",
+          "dark": "dark-status-green-wash"
+        },
+        "--processing": {
+          "light": "status-ochre",
+          "dark": "dark-status-ochre"
+        },
+        "--processing-bg": {
+          "light": "status-ochre-wash",
+          "dark": "dark-status-ochre-wash"
+        },
+        "--danger": {
+          "light": "status-red",
+          "dark": "dark-status-red"
+        },
+        "--danger-bg": {
+          "light": "status-red-wash",
+          "dark": "dark-status-red-wash"
+        },
+        "--danger-fg": {
+          "light": "on-status-red",
+          "dark": "dark-on-status-red"
+        },
+        "--hero-bg": {
+          "light": "frontispiece-paper",
+          "dark": "dark-frontispiece-paper"
+        },
+        "--hero-bg-deep": {
+          "light": "frontispiece-paper-deep",
+          "dark": "dark-frontispiece-paper-deep"
+        },
+        "--hero-fg": {
+          "light": "frontispiece-ink",
+          "dark": "dark-frontispiece-ink"
+        },
+        "--hero-fg-muted": {
+          "light": "frontispiece-caption",
+          "dark": "dark-frontispiece-caption"
+        },
+        "--hero-grain": {
+          "light": "frontispiece-grain",
+          "dark": "dark-frontispiece-grain"
+        },
+        "--hero-grain-soft": {
+          "light": "frontispiece-grain-soft",
+          "dark": "dark-frontispiece-grain-soft"
+        },
+        "--surface-nav": {
+          "light": "navigation-surface",
+          "dark": "dark-navigation-surface"
+        },
+        "--surface-hover": {
+          "light": "hover-surface",
+          "dark": "dark-hover-surface"
+        },
+        "--field-bg": {
+          "light": "field-surface",
+          "dark": "dark-field-surface"
+        },
+        "--field-border": {
+          "light": "field-outline",
+          "dark": "dark-field-outline"
+        },
+        "--selected-bg": {
+          "light": "selected-control",
+          "dark": "dark-selected-control"
+        },
+        "--selected-fg": {
+          "light": "on-selected-control",
+          "dark": "dark-on-selected-control"
+        },
+        "--selected-border": {
+          "light": "selected-outline",
+          "dark": "dark-selected-outline"
+        },
+        "--button-neutral": {
+          "light": "neutral-action",
+          "dark": "dark-neutral-action"
+        },
+        "--button-neutral-fg": {
+          "light": "on-neutral-action",
+          "dark": "dark-on-neutral-action"
+        },
+        "--button-neutral-hover": {
+          "light": "neutral-action-hover",
+          "dark": "dark-neutral-action-hover"
+        }
+      },
+      "fixedTokens": [
+        "viewer-surround"
+      ],
+      "fixedDataPalettes": [
+        "slideOverlay",
+        "catalogSeries",
+        "mapIntensity"
+      ],
+      "imagery": "Microscope pixels and catalog photos are never filtered; only the transparent brand wordmark is inverted in dark mode.",
+      "mapBadgeLabels": {
+        "lightFill": "#171717",
+        "darkFill": "#ffffff",
+        "rule": "readableOn uses fill luminance, independently of interface theme."
+      },
+      "controls": [
+        "Desktop rail",
+        "Mobile header theme button",
+        "Account & Settings → Appearance (sidebar control desktop-only)",
+        "Signed-out theme button"
+      ],
+      "nativeControls": "color-scheme follows the selected theme; the dark select chevron uses faint ink (#9fadb6). Enabled neutral-border fields use field-bg/field-border and an oxide caret; invalid/error and disabled states retain their own treatment.",
+      "toasts": "AppearanceToaster passes the selected theme to Sonner.",
+      "darkRefinement": {
+        "date": "2026-10-13",
+        "authority": "User-requested refinement of the established Laboratory Console; prior appearance defaults and persistence remain unchanged.",
+        "source": [
+          "app/globals.css",
+          "components/Button.tsx",
+          "components/Sidebar.tsx",
+          "components/DashboardWorkspace.tsx",
+          "components/ReportsTable.tsx",
+          "components/PollenMap.tsx",
+          "components/AppearanceControls.tsx"
+        ],
+        "direction": "Deeper charcoal page, lifted panels, darker navigation and recessed editable fields. Quiet outlined selected controls replace bright inverse tabs; neutral filled actions have a separate hover surface. Light role aliases preserve incumbent visuals.",
+        "selectedControls": [
+          "Dashboard period",
+          "Reports status",
+          "Pollen Map sampled/all visibility"
+        ],
+        "navigationActive": "Oxide wash with a 1px inset outline mixed from 38% oxide.",
+        "contrastChecks": {
+          "foregroundOnSharedHoverMin": 5.11,
+          "fieldBorderOnPanelMin": 3.61,
+          "selectedOutlineOnFill": 3.51,
+          "filledActionLabelMin": 6.25,
+          "scope": "Measured implemented dark interface pairs; not every image or data colour.",
+          "rounding": "Ratios rounded to two decimal places."
+        }
+      }
+    },
+    "sidebar": {
+      "breakpoint": "1024px (lg)",
+      "expandedWidth": "240px (15rem)",
+      "collapsedWidth": "80px (5rem)",
+      "cssVar": "--sidebar-width",
+      "attribute": "data-sidebar",
+      "toggle": "Always visible; action aria-label and title, aria-expanded and aria-controls=desktop-sidebar.",
+      "collapsedLabels": "Desktop text/wordmark hide; links, theme, help and account retain accessible names and title hints; active navigation retains aria-current.",
+      "mobile": "56px header, compact theme button and 17rem labelled drawer (max 85vw), unaffected by stored desktop collapse."
+    }
   },
   "components": [
     {
@@ -312,7 +1027,7 @@
       "refersTo": "button-secondary",
       "description": "Default for every other action (Mark Completed, Excel).",
       "html": "<button class=\"ds-btn-secondary\">Mark Completed</button>",
-      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; gap: 8px; background: var(--surface, #fafaf7); color: var(--text, #171717); font-family: var(--font-body, 'IBM Plex Sans', system-ui, sans-serif); font-size: 14px; font-weight: 500; padding: 8px 16px; border: 1px solid var(--border, #d9d8d2); border-radius: 2px; cursor: pointer; transition: background-color 120ms cubic-bezier(0.16,1,0.3,1), border-color 120ms cubic-bezier(0.16,1,0.3,1), transform 120ms; } .ds-btn-secondary:hover { border-color: var(--border-strong, #b3b1a8); background: var(--surface-sunken, #f1f0eb); } .ds-btn-secondary:active { transform: scale(0.97); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; }"
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; gap: 8px; background: var(--surface, #fafaf7); color: var(--text, #171717); font-family: var(--font-body, 'IBM Plex Sans', system-ui, sans-serif); font-size: 14px; font-weight: 500; padding: 8px 16px; border: 1px solid var(--border, #d9d8d2); border-radius: 2px; cursor: pointer; transition: background-color 120ms cubic-bezier(0.16,1,0.3,1), border-color 120ms cubic-bezier(0.16,1,0.3,1), transform 120ms; } .ds-btn-secondary:hover { border-color: var(--border-strong, #b3b1a8); background: var(--surface-hover, #f1f0eb); } .ds-btn-secondary:active { transform: scale(0.97); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; }"
     },
     {
       "name": "Destructive Button",
@@ -320,7 +1035,7 @@
       "refersTo": "button-destructive",
       "description": "Irreversible actions, confirmed in a dialog.",
       "html": "<button class=\"ds-btn-destructive\">Delete Report</button>",
-      "css": ".ds-btn-destructive { display: inline-flex; align-items: center; gap: 8px; background: var(--danger, #b3261e); color: #fff; font-family: var(--font-body, 'IBM Plex Sans', system-ui, sans-serif); font-size: 14px; font-weight: 500; padding: 8px 16px; border: none; border-radius: 2px; cursor: pointer; transition: opacity 120ms cubic-bezier(0.16,1,0.3,1), transform 120ms; } .ds-btn-destructive:hover { opacity: 0.9; } .ds-btn-destructive:active { transform: scale(0.97); } .ds-btn-destructive:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; }"
+      "css": ".ds-btn-destructive { display: inline-flex; align-items: center; gap: 8px; background: var(--danger, #b3261e); color: var(--danger-fg, #fff); font-family: var(--font-body, 'IBM Plex Sans', system-ui, sans-serif); font-size: 14px; font-weight: 500; padding: 8px 16px; border: none; border-radius: 2px; cursor: pointer; transition: opacity 120ms cubic-bezier(0.16,1,0.3,1), transform 120ms; } .ds-btn-destructive:hover { opacity: 0.9; } .ds-btn-destructive:active { transform: scale(0.97); } .ds-btn-destructive:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; }"
     },
     {
       "name": "Consequence Buttons",
@@ -328,23 +1043,23 @@
       "refersTo": "button-caution",
       "description": "Outline buttons whose status hue names the consequence: caution (red) leaves or removes, confirm (green) completes, resume (ochre) returns to a pending item.",
       "html": "<button class=\"ds-btn-caution\">Sign Out</button> <button class=\"ds-btn-confirm\">Mark Completed</button> <button class=\"ds-btn-resume\">Resume Analysis</button>",
-      "css": ".ds-btn-caution,.ds-btn-confirm,.ds-btn-resume { display:inline-flex; align-items:center; gap:8px; background:var(--surface,#fafaf7); font-family:var(--font-body,'IBM Plex Sans',system-ui,sans-serif); font-size:14px; font-weight:500; padding:8px 16px; border-radius:2px; cursor:pointer; transition:background-color 120ms cubic-bezier(0.16,1,0.3,1), border-color 120ms, transform 120ms; } .ds-btn-caution { color:var(--danger,#b3261e); border:1px solid rgb(179 38 30 / 0.4); } .ds-btn-caution:hover { border-color:var(--danger,#b3261e); background:var(--danger-bg,#b3261e14); } .ds-btn-confirm { color:var(--success,#1f6a3a); border:1px solid rgb(31 106 58 / 0.4); } .ds-btn-confirm:hover { border-color:var(--success,#1f6a3a); background:var(--success-bg,#1f6a3a14); } .ds-btn-resume { color:var(--processing,#8a5a00); border:1px solid rgb(138 90 0 / 0.4); } .ds-btn-resume:hover { border-color:var(--processing,#8a5a00); background:var(--processing-bg,#8a5a0014); } .ds-btn-caution:active,.ds-btn-confirm:active,.ds-btn-resume:active { transform:scale(0.97); }"
+      "css": ".ds-btn-caution,.ds-btn-confirm,.ds-btn-resume { display:inline-flex; align-items:center; gap:8px; background:var(--surface,#fafaf7); font-family:var(--font-body,'IBM Plex Sans',system-ui,sans-serif); font-size:14px; font-weight:500; padding:8px 16px; border-radius:2px; cursor:pointer; transition:background-color 120ms cubic-bezier(0.16,1,0.3,1), border-color 120ms, transform 120ms; } .ds-btn-caution { color:var(--danger,#b3261e); border:1px solid color-mix(in srgb, var(--danger, #b3261e) 40%, transparent); } .ds-btn-caution:hover { border-color:var(--danger,#b3261e); background:var(--danger-bg,#b3261e14); } .ds-btn-confirm { color:var(--success,#1f6a3a); border:1px solid color-mix(in srgb, var(--success, #1f6a3a) 40%, transparent); } .ds-btn-confirm:hover { border-color:var(--success,#1f6a3a); background:var(--success-bg,#1f6a3a14); } .ds-btn-resume { color:var(--processing,#8a5a00); border:1px solid color-mix(in srgb, var(--processing, #8a5a00) 40%, transparent); } .ds-btn-resume:hover { border-color:var(--processing,#8a5a00); background:var(--processing-bg,#8a5a0014); } .ds-btn-caution:active,.ds-btn-confirm:active,.ds-btn-resume:active { transform:scale(0.97); }"
     },
     {
       "name": "Text Field",
       "kind": "input",
       "refersTo": "input-field",
-      "description": "Every form field: hairline frame on plate paper, label above.",
+      "description": "Enabled editable field: recessed fill and clearer boundary in dark mode; light keeps plate paper and hairline. Error/invalid and disabled fields retain their own states.",
       "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Researcher</span><input class=\"ds-input\" type=\"text\" placeholder=\"Name on the report\"></label>",
-      "css": ".ds-field { display: block; } .ds-field-label { display: block; margin-bottom: 4px; font-family: var(--font-body, 'IBM Plex Sans', system-ui, sans-serif); font-size: 12.5px; color: var(--text-muted, #4d4c47); } .ds-input { width: 100%; background: var(--surface, #fafaf7); color: var(--text, #171717); font-family: var(--font-body, 'IBM Plex Sans', system-ui, sans-serif); font-size: 13px; padding: 8px 12px; border: 1px solid var(--border, #d9d8d2); border-radius: 2px; } .ds-input::placeholder { color: var(--text-faint, #5f5e59); } .ds-input:hover { border-color: var(--border-strong, #b3b1a8); } .ds-input:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; }"
+      "css": ".ds-field { display: block; } .ds-field-label { display: block; margin-bottom: 4px; font-family: var(--font-body, 'IBM Plex Sans', system-ui, sans-serif); font-size: 12.5px; color: var(--text-muted, #4d4c47); } .ds-input { width: 100%; background: var(--field-bg, #fafaf7); color: var(--text, #171717); font-family: var(--font-body, 'IBM Plex Sans', system-ui, sans-serif); font-size: 13px; padding: 8px 12px; border: 1px solid var(--field-border, #d9d8d2); border-radius: 2px; } .ds-input::placeholder { color: var(--text-placeholder, #6d6c66); } .ds-input:hover { border-color: var(--border-strong, #b3b1a8); } .ds-input:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; }"
     },
     {
       "name": "Rail Navigation",
       "kind": "nav",
       "refersTo": "nav-item",
-      "description": "Pinned plate-paper rail; active item on the well in ink.",
+      "description": "Desktop rail at lg: 240px expanded or 80px icon rail; expand control stays visible, active links retain aria-current and hidden text retains accessible names/title hints. Mobile uses a labelled drawer independently of desktop collapse.",
       "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\"/></svg>Dashboard</a><a class=\"ds-nav-item\" aria-current=\"page\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"/><polyline points=\"14 2 14 8 20 8\"/></svg>Reports</a><a class=\"ds-nav-item\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><polygon points=\"1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6\"/></svg>Pollen Map</a></nav>",
-      "css": ".ds-nav { display: flex; flex-direction: column; gap: 4px; width: 220px; padding: 20px; background: var(--surface, #fafaf7); border-right: 1px solid var(--border, #d9d8d2); } .ds-nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 2px; font-family: var(--font-body, 'IBM Plex Sans', system-ui, sans-serif); font-size: 13.5px; font-weight: 500; color: var(--text-muted, #4d4c47); text-decoration: none; transition: background-color 120ms cubic-bezier(0.16,1,0.3,1), color 120ms cubic-bezier(0.16,1,0.3,1); } .ds-nav-item:hover, .ds-nav-item[aria-current=page] { background: var(--surface-sunken, #f1f0eb); color: var(--text, #171717); } .ds-nav-item:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; }"
+      "css": ".ds-nav { display: flex; flex-direction: column; gap: 4px; width: var(--sidebar-width, 240px); padding: 20px; background: var(--surface-nav, #fafaf7); border-right: 1px solid var(--border, #d9d8d2); } .ds-nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 2px; font-family: var(--font-body, 'IBM Plex Sans', system-ui, sans-serif); font-size: 13.5px; font-weight: 500; color: var(--text-muted, #4d4c47); text-decoration: none; transition: background-color 120ms cubic-bezier(0.16,1,0.3,1), color 120ms cubic-bezier(0.16,1,0.3,1); } .ds-nav-item:hover { background: var(--surface-hover, #f1f0eb); color: var(--text, #171717); } .ds-nav-item[aria-current=page] { background: var(--surface-sunken, #f1f0eb); color: var(--text, #171717); } :host-context([data-theme=\"dark\"]) .ds-nav-item[aria-current=page] { background: var(--accent-muted, #e4a0841c); outline: 1px solid color-mix(in srgb,var(--accent,#e4a084) 38%,transparent); outline-offset: -1px; } .ds-nav-item:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; }"
     },
     {
       "name": "Status Stamps",
@@ -359,7 +1074,7 @@
       "kind": "chip",
       "description": "Filters a plate's boxes by type: swatch, mono code, faint count.",
       "html": "<div class=\"ds-chips\"><button class=\"ds-chip\" aria-pressed=\"true\">All Types</button><button class=\"ds-chip\" aria-pressed=\"false\"><span class=\"ds-swatch\" style=\"background:#E69F00\"></span><span class=\"ds-code\">AXON</span><span class=\"ds-count\">11</span></button><button class=\"ds-chip\" aria-pressed=\"false\"><span class=\"ds-swatch\" style=\"background:#56B4E9\"></span><span class=\"ds-code\">BRAC</span><span class=\"ds-count\">4</span></button></div>",
-      "css": ".ds-chips { display: flex; flex-wrap: wrap; gap: 6px; } .ds-chip { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--border, #d9d8d2); border-radius: 2px; background: rgba(250,250,247,0.5); color: var(--text-muted, #4d4c47); font-family: var(--font-body, 'IBM Plex Sans', system-ui, sans-serif); font-size: 12.5px; cursor: pointer; transition: border-color 120ms, color 120ms; } .ds-chip:hover { border-color: var(--border-strong, #b3b1a8); color: var(--text, #171717); } .ds-chip[aria-pressed=true] { border-color: var(--border-strong, #b3b1a8); background: var(--surface, #fafaf7); color: var(--text, #171717); } .ds-chip:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; } .ds-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; } .ds-code { font-family: var(--font-mono, 'IBM Plex Mono', ui-monospace, monospace); font-weight: 500; } .ds-count { color: var(--text-faint, #5f5e59); font-variant-numeric: tabular-nums; }"
+      "css": ".ds-chips { display: flex; flex-wrap: wrap; gap: 6px; } .ds-chip { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--border, #d9d8d2); border-radius: 2px; background: color-mix(in srgb, var(--surface, #fafaf7) 50%, transparent); color: var(--text-muted, #4d4c47); font-family: var(--font-body, 'IBM Plex Sans', system-ui, sans-serif); font-size: 12.5px; cursor: pointer; transition: border-color 120ms, color 120ms; } .ds-chip:hover { border-color: var(--border-strong, #b3b1a8); color: var(--text, #171717); } .ds-chip[aria-pressed=true] { border-color: var(--border-strong, #b3b1a8); background: var(--surface, #fafaf7); color: var(--text, #171717); } .ds-chip:focus-visible { outline: 2px solid var(--accent, #8c2f1b); outline-offset: 3px; } .ds-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; } .ds-code { font-family: var(--font-mono, 'IBM Plex Mono', ui-monospace, monospace); font-weight: 500; } .ds-count { color: var(--text-faint, #5f5e59); font-variant-numeric: tabular-nums; }"
     },
     {
       "name": "Specimen Work Card",
@@ -367,7 +1082,7 @@
       "refersTo": "plate",
       "description": "Rounded work card with a Plex Sans title, mono slide reference, neutral slide surround and ruled caption strip. The image frame inside stays compact.",
       "html": "<section class=\"ds-plate\"><div class=\"ds-plate-head\"><h3 class=\"ds-plate-title\">Specimen Image</h3><span class=\"ds-plate-label\">Slide 1 of 2</span></div><div class=\"ds-figure\"><div class=\"ds-slide\"></div><div class=\"ds-caption\"><span><span class=\"ds-plate-label\">Slide 1</span> slide-1.png · 15 grains · mostly <i>Axonopus compressus</i></span><span class=\"ds-readout\">15/15 shown</span></div></div></section>",
-      "css": ".ds-plate { background: var(--surface, #fafaf7); border: 1px solid var(--border, #d9d8d2); border-radius: 20px; box-shadow: 0 1px 2px rgb(23 23 23 / 3%), 0 9px 24px rgb(23 23 23 / 4%); padding: 20px; max-width: 560px; } .ds-plate-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 16px; } .ds-plate-title { margin: 0; font-family: var(--font-display, 'IBM Plex Sans', system-ui, sans-serif); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; color: var(--text, #171717); } .ds-plate-label { font-family: var(--font-mono, 'IBM Plex Mono', ui-monospace, monospace); font-size: 12px; font-weight: 500; color: var(--accent, #8c2f1b); } .ds-figure { border: 1px solid var(--border, #d9d8d2); border-radius: 2px; overflow: hidden; } .ds-slide { height: 220px; background: var(--viewer-bg, #2a2a28); } .ds-caption { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; border-top: 1px solid var(--border, #d9d8d2); font-family: var(--font-display, 'IBM Plex Sans', system-ui, sans-serif); font-size: 14px; color: var(--text, #171717); } .ds-readout { font-family: var(--font-mono, 'IBM Plex Mono', ui-monospace, monospace); font-weight: 500; font-size: 12.5px; color: var(--text-muted, #4d4c47); white-space: nowrap; }"
+      "css": ".ds-plate { background: var(--surface, #fafaf7); border: 1px solid var(--border, #d9d8d2); border-radius: 20px; box-shadow: var(--card-shadow, 0 1px 2px rgb(23 23 23 / 3%), 0 9px 24px rgb(23 23 23 / 4%)); padding: 20px; max-width: 560px; } .ds-plate-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 16px; } .ds-plate-title { margin: 0; font-family: var(--font-display, 'IBM Plex Sans', system-ui, sans-serif); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; color: var(--text, #171717); } .ds-plate-label { font-family: var(--font-mono, 'IBM Plex Mono', ui-monospace, monospace); font-size: 12px; font-weight: 500; color: var(--accent, #8c2f1b); } .ds-figure { border: 1px solid var(--border, #d9d8d2); border-radius: 2px; overflow: hidden; } .ds-slide { height: 220px; background: var(--viewer-bg, #2a2a28); } .ds-caption { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; border-top: 1px solid var(--border, #d9d8d2); font-family: var(--font-display, 'IBM Plex Sans', system-ui, sans-serif); font-size: 14px; color: var(--text, #171717); } .ds-readout { font-family: var(--font-mono, 'IBM Plex Mono', ui-monospace, monospace); font-weight: 500; font-size: 12.5px; color: var(--text-muted, #4d4c47); white-space: nowrap; }"
     },
     {
       "name": "Key Row",
@@ -381,7 +1096,7 @@
       "kind": "card",
       "description": "Shared exact-location and 6/12-month controls appear first, defaulting to 6 Months, followed by grains counted, pollen types and average model confidence. The summary spans the available width; analysis status controls remain on Reports. Recent Collections shows up to five finalized records beside Top Pollen Counts; saved Collection Conditions spans the width below. Top counts sum grains across all matching finalized slides and link to supporting reports. Sample contributions remain stamped.",
       "html": "<div class=\"ds-dashboard\"><div class=\"ds-dashboard-controls\"><label>Location<select><option>All Locations</option></select></label><div><span>Period</span><div class=\"ds-dashboard-period\"><button type=\"button\" aria-pressed=\"true\">6 Months</button><button type=\"button\" aria-pressed=\"false\">12 Months</button></div></div></div><div class=\"ds-dashboard-summary\"><dl class=\"ds-dashboard-panel ds-dashboard-metrics\" aria-label=\"Pollen summary\"><div><dt>Grains Counted</dt><dd>—</dd></div><div><dt>Pollen Types</dt><dd>—</dd></div><div><dt>Average Model Confidence</dt><dd>—</dd></div></dl></div><div class=\"ds-dashboard-columns\"><section class=\"ds-dashboard-panel\"><strong>Recent Collections</strong></section><section class=\"ds-dashboard-panel\"><strong>Top Pollen Counts</strong></section></div><section class=\"ds-dashboard-panel\"><strong>Collection Conditions</strong><p class=\"ds-dashboard-note\">Temperature · Humidity · Wind Speed</p><details><summary>Weather Condition Breakdown</summary><p>Saved weather-condition counts</p></details></section></div>",
-      "css": ".ds-dashboard{display:flex;min-width:0;flex-direction:column;gap:16px;font-family:var(--font-body,'IBM Plex Sans',system-ui,sans-serif);font-size:13px;color:var(--text,#171717)}.ds-dashboard p{margin:4px 0 0;color:var(--text-muted,#4d4c47)}.ds-dashboard-note{font-size:12px}.ds-dashboard-controls{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}.ds-dashboard-controls label,.ds-dashboard-controls>div{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text-muted,#4d4c47)}.ds-dashboard select,.ds-dashboard-period button{min-height:44px;border:1px solid var(--border,#d9d8d2);border-radius:2px;background:var(--surface,#fafaf7);padding:8px 12px;font:inherit;font-size:13px;color:var(--text,#171717)}.ds-dashboard-period{display:flex;gap:4px}.ds-dashboard-period button{cursor:pointer}.ds-dashboard-period button[aria-pressed=true]{background:var(--text,#171717);color:var(--bg,#ecebe6)}.ds-dashboard-panel{min-width:0;padding:16px;border:1px solid var(--border,#d9d8d2);border-radius:20px;background:var(--surface,#fafaf7);box-shadow:0 1px 2px rgb(23 23 23 / 3%),0 9px 24px rgb(23 23 23 / 4%)}.ds-dashboard-panel strong{font-size:16px;font-weight:600}.ds-dashboard-summary{display:grid;min-width:0;gap:12px}.ds-dashboard-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:0;padding:12px}.ds-dashboard-metrics>div{display:flex;min-width:0;flex-direction:column;padding:0 12px;border-left:1px solid var(--border,#d9d8d2)}.ds-dashboard-metrics>div:first-child{padding-left:0;border-left:0}.ds-dashboard-metrics>div:last-child{padding-right:0}.ds-dashboard-metrics dt{flex:1;min-height:32px;font-size:12px;line-height:16px;color:var(--text-muted,#4d4c47)}.ds-dashboard-metrics dd{margin:8px 0 0;font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:20px;line-height:24px;color:var(--text,#171717)}.ds-dashboard-columns{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}.ds-dashboard summary{min-height:44px;display:flex;align-items:center;cursor:pointer}.ds-dashboard a:hover,.ds-dashboard-period button[aria-pressed=false]:hover{background:var(--surface-sunken,#f1f0eb)}.ds-dashboard a:focus-visible,.ds-dashboard button:focus-visible,.ds-dashboard select:focus-visible,.ds-dashboard summary:focus-visible{outline:2px solid var(--accent,#8c2f1b);outline-offset:3px}.ds-dashboard-period button:active{transform:scale(0.98)}@media(min-width:640px){.ds-dashboard-panel{padding:20px}.ds-dashboard-metrics{padding:12px 20px}.ds-dashboard-metrics dt{min-height:0}}@media(min-width:1280px){.ds-dashboard-columns{grid-template-columns:minmax(0,1.65fr) minmax(18rem,1fr)}}"
+      "css": ".ds-dashboard{display:flex;min-width:0;flex-direction:column;gap:16px;font-family:var(--font-body,'IBM Plex Sans',system-ui,sans-serif);font-size:13px;color:var(--text,#171717)}.ds-dashboard p{margin:4px 0 0;color:var(--text-muted,#4d4c47)}.ds-dashboard-note{font-size:12px}.ds-dashboard-controls{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}.ds-dashboard-controls label,.ds-dashboard-controls>div{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text-muted,#4d4c47)}.ds-dashboard select,.ds-dashboard-period button{min-height:44px;border:1px solid var(--border,#d9d8d2);border-radius:2px;background:var(--surface,#fafaf7);padding:8px 12px;font:inherit;font-size:13px;color:var(--text,#171717)}.ds-dashboard-period{display:flex;gap:4px}.ds-dashboard-period button{cursor:pointer}.ds-dashboard select{background:var(--field-bg,#fafaf7);border-color:var(--field-border,#d9d8d2)}.ds-dashboard-period button[aria-pressed=true]{background:var(--selected-bg,#171717);color:var(--selected-fg,#ecebe6);outline:1px solid var(--selected-border,transparent);outline-offset:-1px}.ds-dashboard-panel{min-width:0;padding:16px;border:1px solid var(--border,#d9d8d2);border-radius:20px;background:var(--surface,#fafaf7);box-shadow:var(--card-shadow,0 1px 2px rgb(23 23 23 / 3%),0 9px 24px rgb(23 23 23 / 4%))}.ds-dashboard-panel strong{font-size:16px;font-weight:600}.ds-dashboard-summary{display:grid;min-width:0;gap:12px}.ds-dashboard-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:0;padding:12px}.ds-dashboard-metrics>div{display:flex;min-width:0;flex-direction:column;padding:0 12px;border-left:1px solid var(--border,#d9d8d2)}.ds-dashboard-metrics>div:first-child{padding-left:0;border-left:0}.ds-dashboard-metrics>div:last-child{padding-right:0}.ds-dashboard-metrics dt{flex:1;min-height:32px;font-size:12px;line-height:16px;color:var(--text-muted,#4d4c47)}.ds-dashboard-metrics dd{margin:8px 0 0;font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:20px;line-height:24px;color:var(--text,#171717)}.ds-dashboard-columns{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}.ds-dashboard summary{min-height:44px;display:flex;align-items:center;cursor:pointer}.ds-dashboard a:hover,.ds-dashboard-period button[aria-pressed=false]:hover{background:var(--surface-sunken,#f1f0eb)}.ds-dashboard a:focus-visible,.ds-dashboard button:focus-visible,.ds-dashboard select:focus-visible,.ds-dashboard summary:focus-visible{outline:2px solid var(--accent,#8c2f1b);outline-offset:3px}.ds-dashboard-period button:active{transform:scale(0.98)}@media(min-width:640px){.ds-dashboard-panel{padding:20px}.ds-dashboard-metrics{padding:12px 20px}.ds-dashboard-metrics dt{min-height:0}}@media(min-width:1280px){.ds-dashboard-columns{grid-template-columns:minmax(0,1.65fr) minmax(18rem,1fr)}}"
     },
     {
       "name": "Species Card",
@@ -389,14 +1104,29 @@
       "refersTo": "plate",
       "description": "Allergen Reference grid card using the shared rounded card surface: photo, scientific name, plant names, risk stamp, and a footer with swatch, code and grain count. Opens the full record.",
       "html": "<button class=\"ds-species-card\"><span class=\"ds-species-photo\"></span><span class=\"ds-species-body\"><i class=\"ds-binomial\">Mimosa pudica</i><span class=\"ds-plant\">Sensitive plant · Makahiya</span><span class=\"ds-foot\"><span>MIMO</span><span>0 grains</span></span></span></button>",
-      "css": ".ds-species-card{display:flex;flex-direction:column;width:180px;overflow:hidden;border:1px solid var(--border,#d9d8d2);border-radius:20px;background:var(--surface,#fafaf7);box-shadow:0 1px 2px rgb(23 23 23 / 3%),0 9px 24px rgb(23 23 23 / 4%);text-align:left;cursor:pointer;padding:0} .ds-species-card:hover{border-color:var(--border-strong,#b3b1a8);box-shadow:0 2px 4px rgb(23 23 23 / 4%),0 12px 28px rgb(23 23 23 / 7%)} .ds-species-photo{aspect-ratio:4/3;background:var(--surface-sunken,#f1f0eb);border-bottom:1px solid var(--border,#d9d8d2)} .ds-species-body{display:flex;flex-direction:column;padding:10px 12px 12px} .ds-binomial{font-family:var(--font-taxonomy,'Source Serif 4',Georgia,serif);font-style:italic;font-weight:600;font-size:16px;color:var(--text,#171717)} .ds-plant{font-size:13px;color:var(--text-muted,#4d4c47);margin-top:2px} .ds-foot{display:flex;justify-content:space-between;margin-top:12px;padding-top:8px;border-top:1px solid var(--border,#d9d8d2);font-size:12px;font-family:var(--font-mono,monospace)}"
+      "css": ".ds-species-card{display:flex;flex-direction:column;width:180px;overflow:hidden;border:1px solid var(--border,#d9d8d2);border-radius:20px;background:var(--surface,#fafaf7);box-shadow:var(--card-shadow,0 1px 2px rgb(23 23 23 / 3%),0 9px 24px rgb(23 23 23 / 4%));text-align:left;cursor:pointer;padding:0} .ds-species-card:hover{border-color:var(--border-strong,#b3b1a8);box-shadow:var(--card-shadow-hover,0 2px 4px rgb(23 23 23 / 4%),0 12px 28px rgb(23 23 23 / 7%))} .ds-species-photo{aspect-ratio:4/3;background:var(--surface-sunken,#f1f0eb);border-bottom:1px solid var(--border,#d9d8d2)} .ds-species-body{display:flex;flex-direction:column;padding:10px 12px 12px} .ds-binomial{font-family:var(--font-taxonomy,'Source Serif 4',Georgia,serif);font-style:italic;font-weight:600;font-size:16px;color:var(--text,#171717)} .ds-plant{font-size:13px;color:var(--text-muted,#4d4c47);margin-top:2px} .ds-foot{display:flex;justify-content:space-between;margin-top:12px;padding-top:8px;border-top:1px solid var(--border,#d9d8d2);font-size:12px;font-family:var(--font-mono,monospace)}"
+    },
+    {
+      "name": "Appearance Controls",
+      "kind": "button",
+      "description": "Theme action and desktop rail action remain accessible in the expanded and collapsed shell; browser-local preferences synchronize across tabs. Theme is also available in mobile header, sign-in and Appearance settings.",
+      "html": "<div class=\"ds-appearance\"><button class=\"ds-appearance-control\" type=\"button\" aria-label=\"Switch to Dark Mode\" title=\"Switch to Dark Mode\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.462.402.806a6.25 6.25 0 0 0 8.268 8.268c.344-.215.828-.004.803.398\"/></svg><span>Dark Mode</span></button><button class=\"ds-appearance-control ds-appearance-compact\" type=\"button\" aria-label=\"Collapse Sidebar\" title=\"Collapse Sidebar\" aria-expanded=\"true\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M9 3v18m7-12-3 3 3 3\"/></svg></button></div>",
+      "css": ".ds-appearance{display:flex;flex-wrap:wrap;gap:8px}.ds-appearance-control{display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:44px;padding:8px 12px;border:1px solid var(--border,#d9d8d2);border-radius:2px;background:var(--surface,#fafaf7);color:var(--text-muted,#4d4c47);font-family:var(--font-body,\"IBM Plex Sans\",system-ui,sans-serif);font-size:13.5px;font-weight:500;cursor:pointer}.ds-appearance-compact{width:44px;padding-inline:0}.ds-appearance-control:hover{background:var(--surface-hover,#f1f0eb);color:var(--text,#171717)}.ds-appearance-control:focus-visible{outline:2px solid var(--accent,#8c2f1b);outline-offset:3px}"
+    },
+    {
+      "name": "Neutral Filled Action",
+      "kind": "button",
+      "refersTo": "button-neutral",
+      "description": "Filled neutral action retains the light ink-button treatment and uses subdued charcoal with an inset outline in dark mode. Oxide remains reserved for the primary accented action.",
+      "html": "<button class=\"ds-btn-neutral\" type=\"button\">All Slides</button>",
+      "css": ".ds-btn-neutral{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--button-neutral,#171717);color:var(--button-neutral-fg,#ecebe6);outline:1px solid var(--selected-border,transparent);outline-offset:-1px;border:0;border-radius:2px;padding:8px 16px;font-family:var(--font-body,\"IBM Plex Sans\",system-ui,sans-serif);font-size:14px;font-weight:500;cursor:pointer;transition:background-color 120ms cubic-bezier(0.16,1,0.3,1),transform 120ms cubic-bezier(0.16,1,0.3,1)}.ds-btn-neutral:hover{background:var(--button-neutral-hover,color-mix(in srgb,#171717 85%,transparent))}.ds-btn-neutral:active{background:var(--button-neutral,#171717);transform:scale(0.97)}.ds-btn-neutral:focus-visible{outline:2px solid var(--accent,#8c2f1b);outline-offset:3px}"
     }
   ],
   "narrative": {
     "northStar": "The Laboratory Console",
-    "overview": "PolLens is a focused workspace for examining microscope slides and maintaining research records. It should feel precise, legible and calm at a bright lab bench. Short labels and a clear task hierarchy keep attention on the slide, its detections and the collection details. The warm grey page, paper surfaces, hairline rules and oxide action colour remain; species colours stay attached to data.\n\nIBM Plex Sans carries the interface and IBM Plex Mono marks IDs, codes and figures. Source Serif 4 italic distinguishes scientific names from surrounding controls. Work surfaces use generous paper cards with a quiet shadow, while controls, data rows and microscope plates retain compact geometry. Information stays grouped by task. Required sample, status, missing-data and recovery messages remain visible.\n\nDo not invent measurements, model performance, calibration marks or instrument readouts. The interface should show only what the image or report supports.",
+    "overview": "PolLens is a focused workspace for examining microscope slides and maintaining research records. It should feel precise, legible and calm at a bright lab bench. Short labels and a clear task hierarchy keep attention on the slide, its detections and the collection details. The warm grey page, paper surfaces, hairline rules and oxide action colour remain; species colours stay attached to data.\n\nIBM Plex Sans carries the interface and IBM Plex Mono marks IDs, codes and figures. Source Serif 4 italic distinguishes scientific names from surrounding controls. Work surfaces use generous paper cards with a quiet shadow, while controls, data rows and microscope plates retain compact geometry. Information stays grouped by task. Required sample, status, missing-data and recovery messages remain visible.\n\nLight remains the default for bright bench light. The user-approved appearance extension (2026-10-13) adds a dark version of the same console for lower ambient light and a collapsible desktop navigation rail. Typography, task hierarchy, status patterns and data palettes keep the same roles in both modes.\n\nDo not invent measurements, model performance, calibration marks or instrument readouts. The interface should show only what the image or report supports.",
     "keyCharacteristics": [
-      "Warm grey page, plate-paper cards, hairline frames and restrained card shadows.",
+      "Warm grey page and plate-paper cards by default; dark semantic surfaces on request, with hairline frames and restrained card shadows.",
       "One oxide accent for plate/figure numbers, the primary action and focus.",
       "IBM Plex Sans for the interface; IBM Plex Mono for IDs, codes and figures; Source Serif 4 italic for scientific names.",
       "Short page titles, compact controls and secondary details behind clear disclosures.",
@@ -432,15 +1162,15 @@
       }
     ],
     "dos": [
-      "Do keep the page grey (#ecebe6), plates on plate paper (#fafaf7) and frames at a 1px hairline (#d9d8d2).",
-      "Do spend oxide (#8c2f1b) only on plate/figure numbers, the one primary action, inline text actions, selection and focus.",
+      "Do keep the light page grey (#ecebe6), plates on plate paper (#fafaf7) and frames at a 1px hairline (#d9d8d2); use the corresponding semantic dark tokens when dark mode is selected.",
+      "Do spend the mode's oxide (light #8c2f1b) only on plate/figure numbers, the one primary action, inline text actions, selection and focus.",
       "Do use concise Plex Mono slide references (\"Slide 2 of 3\") and sentence-case Plex Sans field labels.",
       "Do set scientific names in serif italic, followed by the mono species code.",
       "Do set IDs, species codes, counts and figures in IBM Plex Mono with tabular numerals.",
       "Do give every status a stamp pattern and a word as well as a colour.",
       "Do caption each specimen plate under a hairline rule with file, grain count and dominant species.",
       "Do keep the viewer surround a neutral dark (#2a2a28) so slide colour reads true.",
-      "Do keep the theme light. The console is used under bright bench light."
+      "Do default to light for bright bench light and honor the user's saved dark mode and desktop rail preference."
     ],
     "donts": [
       "Don't use soft drop shadows, glows or floating rounded cards. Separate with hairlines and wells.",
@@ -451,7 +1181,7 @@
       "Don't use the mono face for prose, buttons or section headings.",
       "Don't draw scale bars, magnification readouts or calibrated units on slide images. The images carry no calibration.",
       "Don't add icons to stat figures or show placeholder numbers while data is loading.",
-      "Don't introduce a dark theme or a second accent colour."
+      "Don't add a second accent colour or apply theme filters to specimen imagery, species colours or map data fills."
     ]
   }
 }

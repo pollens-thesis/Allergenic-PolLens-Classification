@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import {
+  getConfidenceGrainCount,
   getTotalGrains,
   getWeightedAvgConfidence,
   sortByAbundance,
@@ -233,9 +234,9 @@ function InspectorBody({
                   <i className="t-binomial text-[14px] text-text">{focusSpecies.scientificName}</i>
                 </div>
                 <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[12.5px]">
-                  <dt className="text-text-muted">Confidence</dt>
+                  <dt className="text-text-muted">Model confidence</dt>
                   <dd className="text-right text-text tabular-nums" style={mono}>
-                    {(grain.confidence * 100).toFixed(1)}%
+                    {grain.source === "manual" ? "Manual annotation" : `${(grain.confidence * 100).toFixed(1)}%`}
                   </dd>
                   <dt className="text-text-muted">Position (x, y)</dt>
                   <dd className="text-right text-text tabular-nums" style={mono}>
@@ -295,9 +296,7 @@ function InspectorBody({
                           {detection.grainCount}
                         </span>
                         <span className="w-10 shrink-0 text-right text-[12px] text-text-muted tabular-nums" style={mono}>
-                          {(detection.confidenceGrainCount ?? detection.grainCount) > 0
-                            ? `${Math.round(detection.avgConfidence * 100)}%`
-                            : "—"}
+                          {getConfidenceGrainCount(detection) > 0 ? `${Math.round(detection.avgConfidence * 100)}%` : "—"}
                         </span>
                       </button>
                       {active && typeGrains.length > 0 && (
@@ -317,7 +316,7 @@ function InspectorBody({
                                 style={mono}
                               >
                                 <span>{g.id}</span>
-                                <span>{Math.round(g.confidence * 100)}%</span>
+                                <span>{g.source === "manual" ? "manual" : `${Math.round(g.confidence * 100)}%`}</span>
                               </button>
                             </li>
                           ))}

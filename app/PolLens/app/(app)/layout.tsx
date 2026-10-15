@@ -9,7 +9,7 @@ import Sidebar from "@/components/Sidebar";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SessionGuard>
-      <div className="grid min-h-screen w-full grid-cols-1 content-start bg-bg lg:grid-cols-[15rem_1fr]">
+      <div className="app-shell grid min-h-screen w-full grid-cols-1 content-start bg-bg lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]">
         <div className="min-w-0 lg:contents">
           <Sidebar />
         </div>

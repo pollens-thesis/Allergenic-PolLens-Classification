@@ -26,6 +26,57 @@ colors:
   frontispiece-paper-deep: "#d9d7cf"
   frontispiece-grain: "#8c2f1b"
   frontispiece-grain-soft: "#9c4a33"
+  placeholder-grey: "#6d6c66"
+  on-status-red: "#ffffff"
+  frontispiece-ink: "#171717"
+  frontispiece-caption: "#4d4c47"
+  dark-page-grey: "#111518"
+  dark-plate-paper: "#1e2529"
+  dark-well: "#171d21"
+  dark-hairline: "#37434b"
+  dark-hairline-strong: "#687d89"
+  dark-ink: "#edf0f2"
+  dark-caption-grey: "#b9c3c9"
+  dark-faint-grey: "#9fadb6"
+  dark-placeholder-grey: "#99a9b3"
+  dark-oxide: "#e4a084"
+  dark-oxide-hover: "#edb69f"
+  dark-oxide-active: "#d58c70"
+  dark-oxide-wash: "#e4a0841c"
+  dark-on-oxide: "#2b1913"
+  dark-status-green: "#92cba6"
+  dark-status-green-wash: "#92cba614"
+  dark-status-ochre: "#dfc080"
+  dark-status-ochre-wash: "#dfc08014"
+  dark-status-red: "#eea09b"
+  dark-status-red-wash: "#eea09b14"
+  dark-on-status-red: "#2d1716"
+  dark-frontispiece-paper: "#151b1f"
+  dark-frontispiece-paper-deep: "#252f35"
+  dark-frontispiece-ink: "#edf0f2"
+  dark-frontispiece-caption: "#b9c3c9"
+  dark-frontispiece-grain: "#e4a084"
+  dark-frontispiece-grain-soft: "#c88e77"
+  navigation-surface: "#fafaf7"
+  dark-navigation-surface: "#151b1f"
+  hover-surface: "#f1f0eb"
+  dark-hover-surface: "#2c363c"
+  field-surface: "#fafaf7"
+  dark-field-surface: "#151c20"
+  field-outline: "#d9d8d2"
+  dark-field-outline: "#687d89"
+  selected-control: "#171717"
+  dark-selected-control: "#36434b"
+  on-selected-control: "#ecebe6"
+  dark-on-selected-control: "#edf0f2"
+  selected-outline: "transparent"
+  dark-selected-outline: "#839ba9"
+  neutral-action: "#171717"
+  dark-neutral-action: "#36434b"
+  on-neutral-action: "#ecebe6"
+  dark-on-neutral-action: "#edf0f2"
+  neutral-action-hover: "color-mix(in srgb, var(--text) 85%, transparent)"
+  dark-neutral-action-hover: "#455660"
 typography:
   display:
     fontFamily: "IBM Plex Sans, system-ui, sans-serif"
@@ -79,6 +130,8 @@ rounded:
   lg: "2px"
   xl: "3px"
 spacing:
+  sidebar-expanded: "240px"
+  sidebar-collapsed: "80px"
   gutter-mobile: "16px"
   gutter-tablet: "24px"
   gutter-desktop: "40px"
@@ -166,6 +219,45 @@ components:
     textColor: "{colors.status-red}"
     rounded: "{rounded.sm}"
     padding: "2px 8px"
+  button-accent-dark:
+    backgroundColor: "{colors.dark-oxide}"
+    textColor: "{colors.dark-on-oxide}"
+    rounded: "{rounded.md}"
+    padding: "8px 16px"
+    typography: "{typography.body}"
+  button-accent-dark-hover:
+    backgroundColor: "{colors.dark-oxide-hover}"
+  button-accent-dark-active:
+    backgroundColor: "{colors.dark-oxide-active}"
+  button-destructive-dark:
+    backgroundColor: "{colors.dark-status-red}"
+    textColor: "{colors.dark-on-status-red}"
+    rounded: "{rounded.md}"
+    padding: "8px 16px"
+  plate-dark:
+    backgroundColor: "{colors.dark-plate-paper}"
+    rounded: "{rounded.lg}"
+    padding: "{spacing.plate-padding}"
+  input-field-dark:
+    backgroundColor: "{colors.dark-field-surface}"
+    textColor: "{colors.dark-ink}"
+    rounded: "{rounded.md}"
+    padding: "8px 12px"
+    typography: "{typography.body-small}"
+  button-neutral:
+    backgroundColor: "{colors.neutral-action}"
+    textColor: "{colors.on-neutral-action}"
+    rounded: "{rounded.md}"
+    padding: "8px 16px"
+  button-neutral-dark:
+    backgroundColor: "{colors.dark-neutral-action}"
+    textColor: "{colors.dark-on-neutral-action}"
+    rounded: "{rounded.md}"
+    padding: "8px 16px"
+  selected-control-dark:
+    backgroundColor: "{colors.dark-selected-control}"
+    textColor: "{colors.dark-on-selected-control}"
+    rounded: "{rounded.md}"
 ---
 
 # Design System: PolLens Laboratory Console
@@ -178,10 +270,12 @@ PolLens is a focused workspace for examining microscope slides and maintaining r
 
 IBM Plex Sans carries the interface and IBM Plex Mono marks IDs, codes and figures. Source Serif 4 italic distinguishes scientific names from surrounding controls. Work surfaces use generous paper cards with a quiet shadow, while controls, data rows and microscope plates retain compact geometry. Information stays grouped by task. Required sample, status, missing-data and recovery messages remain visible.
 
+Light remains the default for bright bench light. The user-approved appearance extension (2026-10-13) adds a dark version of the same console for lower ambient light and a collapsible desktop navigation rail. Typography, task hierarchy, status patterns and data palettes keep the same roles in both modes.
+
 Do not invent measurements, model performance, calibration marks or instrument readouts. The interface should show only what the image or report supports.
 
 **Key Characteristics:**
-- Warm grey page, plate-paper cards, hairline frames and restrained card shadows.
+- Warm grey page and plate-paper cards by default; dark semantic surfaces on request, with hairline frames and restrained card shadows.
 - One oxide accent for plate/figure numbers, the primary action and focus.
 - IBM Plex Sans for the interface; IBM Plex Mono for IDs, codes and figures; Source Serif 4 italic for scientific names.
 - Short page titles, compact controls and secondary details behind clear disclosures.
@@ -191,7 +285,7 @@ Do not invent measurements, model performance, calibration marks or instrument r
 
 ## Colors
 
-A near-achromatic warm paper palette with one oxide accent. Status colours are muted and each one is paired with a pattern. Saturated colour is left to the data.
+The default light mode uses a near-achromatic warm paper palette with one oxide accent. Dark mode changes the same semantic roles through CSS variables. Status colours remain paired with patterns, and saturated data colours retain their values.
 
 ### Primary
 - **Oxide** (#8c2f1b): plate and figure numbers ("Slide 1", "Slide 2 of 3"), the primary action on a page (Download PDF, Save, Analyze), inline text actions, the focus outline, the selected detection row's border, and the `accent-color` of native checkboxes. It darkens to **Oxide Hover** (#742617) and **Oxide Active** (#5e1f13). **Oxide Wash** (#8c2f1b, ~9%) fills a selected key row. Text on oxide is white.
@@ -215,6 +309,57 @@ A near-achromatic warm paper palette with one oxide accent. Status colours are m
 
 ### Frontispiece (sign-in only)
 - **Frontispiece Paper** (#e3e1da) and **Deep** (#d9d7cf) set the sign-in plate. **Frontispiece Grain** (#8c2f1b) and **Grain Soft** (#9c4a33) draw its illustrated pollen grains. These tokens do not appear inside the signed-in console.
+
+### Dark mode (user-approved extension, 2026-10-13)
+The `dark-*` frontmatter tokens map to the same CSS variables under `:root[data-theme="dark"]`; the light tokens above remain the defaults. Both modes use the same components and semantic roles.
+
+| Semantic role | Light token → dark token | CSS variable |
+|---|---|---|
+| Page and sticky header background | `page-grey` → `dark-page-grey` | `--bg` |
+| Cards, table rows and dialogs | `plate-paper` → `dark-plate-paper` | `--surface` |
+| Inset summaries and quiet navigation states | `well` → `dark-well` | `--surface-sunken` |
+| Card frames, rules and dividers | `hairline` → `dark-hairline` | `--border` |
+| Hover, active and selected borders | `hairline-strong` → `dark-hairline-strong` | `--border-strong` |
+| Primary text and headings | `ink` → `dark-ink` | `--text` |
+| Secondary text and captions | `caption-grey` → `dark-caption-grey` | `--text-muted` |
+| Quiet icons and tertiary text | `faint-grey` → `dark-faint-grey` | `--text-faint` |
+| Empty-field hints | `placeholder-grey` → `dark-placeholder-grey` | `--text-placeholder` |
+| Primary actions, slide references, focus and selection | `oxide` → `dark-oxide` | `--accent` |
+| Primary action hover | `oxide-hover` → `dark-oxide-hover` | `--accent-hover` |
+| Primary action press | `oxide-active` → `dark-oxide-active` | `--accent-active` |
+| Selected row fill | `oxide-wash` → `dark-oxide-wash` | `--accent-muted` |
+| Text on the oxide action | `on-oxide` → `dark-on-oxide` | `--accent-fg` |
+| Completed text and consequence outlines | `status-green` → `dark-status-green` | `--success` |
+| Completed stamp and confirmation hover fill | `status-green-wash` → `dark-status-green-wash` | `--success-bg` |
+| Pending and warnings | `status-ochre` → `dark-status-ochre` | `--processing` |
+| Pending/resume hover fill | `status-ochre-wash` → `dark-status-ochre-wash` | `--processing-bg` |
+| Needs Review, errors and destructive actions | `status-red` → `dark-status-red` | `--danger` |
+| Review hatch and caution hover fill | `status-red-wash` → `dark-status-red-wash` | `--danger-bg` |
+| Text on destructive actions | `on-status-red` → `dark-on-status-red` | `--danger-fg` |
+| Sign-in frontispiece background | `frontispiece-paper` → `dark-frontispiece-paper` | `--hero-bg` |
+| Sign-in frontispiece depth | `frontispiece-paper-deep` → `dark-frontispiece-paper-deep` | `--hero-bg-deep` |
+| Sign-in primary text | `frontispiece-ink` → `dark-frontispiece-ink` | `--hero-fg` |
+| Sign-in secondary text | `frontispiece-caption` → `dark-frontispiece-caption` | `--hero-fg-muted` |
+| Illustrated sign-in pollen grains | `frontispiece-grain` → `dark-frontispiece-grain` | `--hero-grain` |
+| Secondary illustrated sign-in grains | `frontispiece-grain-soft` → `dark-frontispiece-grain-soft` | `--hero-grain-soft` |
+| Desktop rail, mobile header and drawer | `navigation-surface` → `dark-navigation-surface` | `--surface-nav` |
+| Hover fill for navigation, appearance, secondary and ghost controls | `hover-surface` → `dark-hover-surface` | `--surface-hover` |
+| Recessed editable fields | `field-surface` → `dark-field-surface` | `--field-bg` |
+| Distinguishable enabled editable-field boundaries | `field-outline` → `dark-field-outline` | `--field-border` |
+| Selected Dashboard period, Reports status and Pollen Map visibility controls | `selected-control` → `dark-selected-control` | `--selected-bg` |
+| Selected-control labels | `on-selected-control` → `dark-on-selected-control` | `--selected-fg` |
+| Inset outline on selected controls | `selected-outline` → `dark-selected-outline` | `--selected-border` |
+| Neutral filled button surface | `neutral-action` → `dark-neutral-action` | `--button-neutral` |
+| Neutral filled button label | `on-neutral-action` → `dark-on-neutral-action` | `--button-neutral-fg` |
+| Neutral filled button hover surface | `neutral-action-hover` → `dark-neutral-action-hover` | `--button-neutral-hover` |
+
+Dark oxide uses dark foreground ink for filled actions; destructive actions use their own dark foreground token. Native controls adopt the mode's `color-scheme`, the dark dropdown chevron uses the refined faint-ink #9fadb6 stroke, and Sonner toasts follow the selected mode. Cards retain their geometry and gain the mode's shadow vocabulary. The sign-in wordmark alone is inverted for dark contrast; microscope slide pixels and catalog photos are never filtered.
+
+**Current dark refinement (2026-10-13, user-requested):** a deeper charcoal page supports lifted panels, darker navigation and recessed fields. Separate navigation, hover, field, selected-control and neutral-action roles prevent white inverse tabs and field boundaries from competing with slide evidence. Selected Dashboard period, Reports status and Pollen Map visibility controls use a subdued fill plus a 1px inset outline; filled neutral buttons use the same quiet surface family with a distinct hover. Dark active section links use the oxide wash and a 38% oxide outline. Enabled editable fields with the shared neutral border use the darker field fill, clearer field outline and oxide caret; invalid/error and disabled states retain their own treatments. Light aliases preserve the incumbent light visuals. Data palettes, image pixels and the viewer surround remain fixed.
+
+Measured dark-mode contrast minima in this refinement (rounded to two decimals): normal interface foregrounds 5.11:1 against the lightest shared hover surface; editable-field borders 3.61:1 against the panel; selected-control outline 3.51:1 against its fill; filled action labels 6.25:1. These are checks on the implemented pairs, not a claim about every image or data colour.
+
+The viewer surround remains `viewer-surround` (#2a2a28) in both modes. Slide overlay colours, catalog species colours, map intensity colours, zero fills and unsampled fills stay fixed. Map ranking badge labels use constant #171717 ink on light data fills and white on dark data fills, independently of the interface theme.
 
 ### Data palettes (not UI colours)
 - **Slide overlay palette** (Okabe–Ito without black): #E69F00, #56B4E9, #009E73, #F0E442, #0072B2, #D55E00, #CC79A7. Colours are assigned per report in order of abundance, so every type on a slide gets a distinct colour and keeps it across slides. Every box also carries its species code.
@@ -243,7 +388,7 @@ Copy should name the task or data directly. Keep essential status, sample, missi
 
 ## Layout
 
-The signed-in console is a two-column shell. A pinned plate-paper rail sits on the left from `lg` (1024px) up, and a content column sits to its right. Below `lg` the rail becomes a fixed 56px plate-paper bar with a right-hand drawer (17rem, max 85vw) that shows the same nav labels, never an icon-only tab bar.
+The signed-in console is a two-column shell. A pinned semantic-surface rail sits on the left from `lg` (1024px) up, and a content column sits to its right. It defaults to 240px (15rem) expanded and can collapse to an 80px (5rem) icon rail; the grid follows `--sidebar-width`. The expand/collapse control remains visible in both states. Below `lg` the rail becomes a fixed 56px surface bar with a theme button and a right-hand drawer (17rem, max 85vw) that shows the same nav labels. Stored desktop collapse never hides mobile drawer labels.
 
 Every page uses one page frame. A compact full-bleed header with a hairline bottom rule, sticky from `lg` up, holds the h1 and an optional back link or useful description. The body sits below it. Header and body share one of three left-aligned measures: **wide** for workspaces, tables and the map, **medium** for a single reference table, and **narrow** for settings and single-column forms. Gutters step 16 → 24 → 40px. Header padding is 16–20px; body vertical padding is 20–24px.
 
@@ -252,6 +397,8 @@ Inside the body, standalone work surfaces use the shared `card-panel` treatment 
 ## Elevation & Depth
 
 Depth stays quiet: page grey behind, plate paper on top, sunken wells inside, and a 1px hairline frame around each card. Shared cards use a 20px radius and a subtle two-layer shadow; hover strengthens the border and lifts the shadow slightly. Embedded rows, inputs, chips and the slide image frame keep their compact geometry. Avoid glows and decorative gradients. The only blur is the sticky page header's translucent page-grey band, which keeps content legible as it scrolls under.
+
+Dark cards use a rest shadow of `0 2px 4px rgb(0 0 0 / 14%), 0 12px 28px rgb(0 0 0 / 18%)` and a hover shadow of `0 3px 6px rgb(0 0 0 / 18%), 0 14px 30px rgb(0 0 0 / 24%)`. Light shadows remain unchanged.
 
 ### Named Rules
 **The Quiet Card Rule.** Use `card-panel` for a standalone work surface, with a 20px radius, hairline frame and restrained shadow. Use `card-well` for a secondary inset summary. Keep controls, rows, species marks and the microscope image frame compact; card styling should clarify hierarchy, not decorate data.
@@ -265,11 +412,11 @@ Standalone cards use a 20px radius. Controls, fields, buttons and compact data r
 ### Buttons
 Quiet and exact, with no gradient and no shadow.
 - **Shape:** square-cut (2px). Medium weight. 14px text at 8px × 16px, or 12.5px at 6px × 12px for small.
-- **Accent (primary action):** oxide with white text, darkening on hover and on press. One per view: the action the page exists for.
-- **Secondary:** plate paper, ink text and a hairline frame. Hover raises the border to Hairline Strong and fills with Well. This is the default for neutral actions (Export Excel/CSV/JSON, Try Again, Keep Analysis).
+- **Accent (primary action):** mode-specific oxide with its `on-oxide` foreground; the light variant has white text, while the dark variant has dark ink. Hover and press use their corresponding mode tokens. One per view: the action the page exists for.
+- **Secondary:** plate paper, ink text and a hairline frame. Hover raises the border to Hairline Strong and fills with the mode's hover surface. This is the default for neutral actions (Export Excel/CSV/JSON, Try Again, Keep Analysis).
 - **Consequence outlines (caution / confirm / resume):** plate paper with text and a 40% frame in a status hue, filling with that hue's wash on hover. The colour says what the action does to the record, in the same hue as the stamp it leads to: **caution** (status red) for leaving or removing (Sign Out, Discard, Delete, Flag for Review), **confirm** (status green) for Mark Completed, **resume** (status ochre) for Resume Analysis. Each keeps its label and icon, so colour is never the only cue.
-- **Destructive:** status red with white text. Hover drops to 90% opacity.
-- **Ink / Ghost:** an ink button (ink ground, page-grey text) and a ghost button (caption-grey text that fills with Well on hover) exist in the primitive for rare use.
+- **Destructive:** mode-specific status red with its `on-status-red` foreground (white in light mode, dark ink in dark mode). Hover drops to 90% opacity.
+- **Neutral / Ghost:** filled neutral actions use `neutral-action` and `on-neutral-action`, with `neutral-action-hover` on hover and the selected-control inset outline. In light mode these aliases retain the ink ground and page-grey text; dark mode uses a subdued charcoal fill and light ink. Ghost buttons use caption-grey text and the hover surface.
 - **Motion:** colour transitions at 120ms on `cubic-bezier(0.16, 1, 0.3, 1)`, and a 0.97 press scale. Disabled buttons drop to 50% opacity.
 - **Focus:** a 2px oxide outline, offset 3px, on every interactive element.
 
@@ -286,14 +433,20 @@ Quiet and exact, with no gradient and no shadow.
 - **Dashboard:** shared Location and Period controls come first. A full-width compact summary shows grains counted, pollen types and average model confidence. Analysis status controls remain on Reports. Recent Collections sits in the wider left column beside Top Pollen Counts; the paired cards stretch to the same height and align their headers. Collection Conditions follows across the full width. Phones stack these sections in the same reading order.
 
 ### Inputs / Fields
-- **Style:** full-width plate paper, a 1px hairline frame, 2px corners, 8px × 12px padding, medium-weight ink for entered/selected values, and regular-weight placeholder-grey hints. The label sits above in 12.5px caption grey or as a caption label.
+- **Style:** light fields retain plate paper and a 1px hairline frame. Enabled dark editable fields with the shared neutral border use the recessed field surface and clearer field outline; invalid/error and disabled states retain their own styling. Both keep 2px corners, 8px × 12px padding, medium-weight ink for entered/selected values, and regular-weight placeholder-grey hints. The label sits above in 12.5px caption grey or as a caption label.
 - **Focus:** the shared 2px oxide outline at a 3px offset.
 - **Native controls:** checkboxes and radios take `accent-color` oxide.
 
 ### Navigation
-- **Rail:** plate paper with a hairline right border. The wordmark sits at the top, then 13.5px medium nav items with 16px line icons (1.75 stroke). The account card is pinned to the foot under a hairline rule and is the only way into Settings.
-- **States:** the default item is caption grey. Hover and active fill with Well and turn ink. The active state also carries `aria-current` and holds across a section's sub-pages.
-- **Mobile:** a fixed bar and a drawer that springs in from the right. The drawer can be dragged or Escaped closed, and page scroll locks while it is open.
+- **Rail:** the mode's navigation surface with a hairline right border, 240px expanded or 80px collapsed on desktop. The wordmark sits at the top, then 13.5px medium nav items with 16px line icons (1.75 stroke). The account card is pinned to the foot under a hairline rule and is the only way into Settings.
+- **States:** the default item is caption grey. Hover uses the hover surface and ink. Light active navigation retains Well; dark active section links use oxide wash and a 1px inset outline mixed from 38% oxide. The active state also carries `aria-current` and holds across a section's sub-pages.
+- **Collapsed desktop:** visible text and the wordmark hide, while navigation, Help & About, theme and account controls retain accessible names and `title` hints. The sidebar control announces Expand Sidebar / Collapse Sidebar, exposes `aria-expanded` and targets `desktop-sidebar` with `aria-controls`. Active navigation retains `aria-current`.
+- **Mobile:** a fixed bar with a compact theme control and a drawer that springs in from the right. The drawer keeps full labels regardless of desktop collapse. It can be dragged or Escaped closed, and page scroll locks while it is open.
+
+### Appearance controls
+The rail offers Light Mode / Dark Mode and a persistent sidebar toggle. Account & Settings adds an Appearance section with the theme control and a labelled desktop sidebar control; the signed-out screen also offers the theme control. Theme buttons have accessible names and `title` hints saying which mode they will switch to.
+
+`lib/appearance.ts` saves `{ theme: "light" | "dark", sidebarCollapsed: boolean }` in localStorage under `pollens.appearance.v1`. The default is light with the desktop rail expanded; there is no automatic system-theme selection. Preferences are local to the browser, separate from authentication and retained across sign-out. Same-page changes and storage events synchronize the document and other tabs. Malformed values fall back to the defaults. When storage is blocked, the controls still work in memory for the current page session. An early script in the root layout applies saved `data-theme` and `data-sidebar` before content paints, avoiding an initial wrong theme or rail width.
 
 ### Status Stamps
 Never colour alone. Each status is a 1px-cornered stamp with its own pattern, so the three read apart in greyscale, in print and for colour-blind readers.
@@ -323,15 +476,15 @@ Collection Conditions shows ranges of saved temperature, humidity and wind measu
 ## Do's and Don'ts
 
 ### Do:
-- **Do** keep the page grey (#ecebe6), plates on plate paper (#fafaf7) and frames at a 1px hairline (#d9d8d2).
-- **Do** spend oxide (#8c2f1b) only on plate/figure numbers, the one primary action, inline text actions, selection and focus.
+- **Do** keep the light page grey (#ecebe6), plates on plate paper (#fafaf7) and frames at a 1px hairline (#d9d8d2); use the corresponding semantic dark tokens when dark mode is selected.
+- **Do** spend the mode's oxide (light #8c2f1b) only on plate/figure numbers, the one primary action, inline text actions, selection and focus.
 - **Do** use concise Plex Mono slide references ("Slide 2 of 3") and sentence-case Plex Sans field labels.
 - **Do** set scientific names in serif italic, followed by the mono species code.
 - **Do** set IDs, species codes, counts and figures in IBM Plex Mono with tabular numerals.
 - **Do** give every status a stamp pattern and a word as well as a colour.
 - **Do** caption each specimen plate under a hairline rule with file, grain count and dominant species.
 - **Do** keep the viewer surround a neutral dark (#2a2a28) so slide colour reads true.
-- **Do** keep the theme light. The console is used under bright bench light.
+- **Do** default to light for bright bench light and honor the user's saved dark mode and desktop rail preference.
 
 ### Don't:
 - **Don't** use soft drop shadows, glows or floating rounded cards. Separate with hairlines and wells.
@@ -342,4 +495,8 @@ Collection Conditions shows ranges of saved temperature, humidity and wind measu
 - **Don't** use the mono face for prose, buttons or section headings.
 - **Don't** draw scale bars, magnification readouts or calibrated units on slide images. The images carry no calibration.
 - **Don't** add icons to stat figures or show placeholder numbers while data is loading.
-- **Don't** introduce a dark theme or a second accent colour.
+- **Don't** add a second accent colour or apply theme filters to specimen imagery, species colours or map data fills.
+
+### Slide review workspace (2026-10-13)
+
+Editable slide reviews place the image, annotation controls, and pollen summary in that order across three columns when the editor has at least 56rem of available width. At 42–56rem, the image and controls share a row with the summary below; narrower screens stack all three. Summary rows wrap names and retain counts, confidence, and risk labels. Slide notes follow the complete workspace. Layout responds to the editor container so collapsing the app sidebar can make room for the third column.

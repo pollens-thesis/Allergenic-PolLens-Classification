@@ -18,7 +18,7 @@ import { overlayColor, overlayColors } from "@/lib/slide-colors";
 import { CLASSIFIER_SPECIES_IDS, researchSpeciesName } from "@/lib/species-names";
 
 const inputClass =
-  "focus-ring w-full rounded-sm border border-border bg-surface px-2 py-1.5 text-[13px] text-text";
+  "focus-ring min-h-11 w-full rounded-sm border border-border bg-surface px-2 py-2 text-[13px] text-text";
 
 function clamp(value: number): number {
   return Math.max(0, Math.min(1, value));
@@ -120,7 +120,8 @@ export default function GrainReviewEditor({
   annotations = [],
   sampleDetections = false,
   reviewedDetections,
-  leadingContent,
+  summaryContent,
+  trailingContent,
   onSaved,
   onRemoved,
 }: {
@@ -134,7 +135,8 @@ export default function GrainReviewEditor({
   selectedSpeciesId?: SpeciesId | null;
   annotations?: GrainAnnotation[];
   sampleDetections?: boolean;
-  leadingContent?: ReactNode;
+  summaryContent?: ReactNode;
+  trailingContent?: ReactNode;
   onSaved: (annotation: GrainAnnotation) => void;
   onRemoved: (id: string) => void;
 }) {
@@ -534,7 +536,7 @@ export default function GrainReviewEditor({
   );
 
   return (
-    <section ref={editorRef} className="mt-3" aria-label={`Review annotations for ${fileName}`}>
+    <section ref={editorRef} className="grain-review-editor mt-3" aria-label={`Review annotations for ${fileName}`}>
       {sampleDetections ? (
         <>
           {annotationHeading}
@@ -544,164 +546,32 @@ export default function GrainReviewEditor({
         </>
       ) : (
         <>
-          <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(18rem,2fr)_minmax(0,4fr)]">
-            <div className="min-w-0 xl:border-r xl:pr-5">
-              {leadingContent}
-              <div className="mt-5 border-t border-border pt-4">
-                {annotationHeading}
-                {imageUrl && (
-                  <div className="mb-3 inline-flex rounded-sm border border-border bg-surface p-0.5" role="group" aria-label="Annotation tools">
-                    <button
-                      type="button"
-                      aria-pressed={!drawing}
-                      onClick={selectTool}
-                      disabled={saving}
-                      className={`focus-ring inline-flex items-center gap-1.5 rounded-[2px] px-2.5 py-1.5 text-[12px] disabled:opacity-50 ${!drawing ? "bg-accent text-accent-fg" : "text-text-muted hover:bg-surface-sunken"}`}
-                    >
-                      <MousePointer2 size={13} /> Select / move
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={drawing}
-                      onClick={drawTool}
-                      disabled={saving || Boolean(pendingBox) || hasDraftChanges}
-                      title={hasDraftChanges ? "Confirm or cancel the current changes first" : undefined}
-                      className={`focus-ring inline-flex items-center gap-1.5 rounded-[2px] px-2.5 py-1.5 text-[12px] disabled:cursor-not-allowed disabled:opacity-50 ${drawing ? "bg-accent text-accent-fg" : "text-text-muted hover:bg-surface-sunken"}`}
-                    >
-                      <Crosshair size={13} strokeWidth={1.75} /> Draw missed pollen
-                    </button>
-                  </div>
-                )}
-              <div className="mt-3" data-review-keep-selection>
-              {(pendingBox || selectedManual || selectedGrain) && (
-                <h5 className="mb-2 text-[13px] font-semibold text-text">
-                  {pendingBox ? "Identify Missed Pollen" : selectedManual ? "Missed Pollen" : selectedGrain?.id}
-                </h5>
+          {annotationHeading}
+          <div className={`grain-review-workspace ${summaryContent ? "grain-review-has-summary" : ""}`}>
+            <div className="min-w-0 w-fit max-w-full">
+              {imageUrl && (
+                <div className="mb-2 flex w-fit max-w-full flex-wrap rounded-sm border border-border bg-surface p-0.5" role="group" aria-label="Annotation tools">
+                  <button
+                    type="button"
+                    aria-pressed={!drawing}
+                    onClick={selectTool}
+                    disabled={saving}
+                    className={`focus-ring inline-flex items-center gap-1.5 rounded-[2px] min-h-11 px-3 py-2 text-[12px] disabled:opacity-50 ${!drawing ? "bg-accent text-accent-fg" : "text-text-muted hover:bg-surface-sunken"}`}
+                  >
+                    <MousePointer2 size={13} /> Select / move
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={drawing}
+                    onClick={drawTool}
+                    disabled={saving || Boolean(pendingBox) || hasDraftChanges}
+                    title={hasDraftChanges ? "Confirm or cancel the current changes first" : undefined}
+                    className={`focus-ring inline-flex items-center gap-1.5 rounded-[2px] min-h-11 px-3 py-2 text-[12px] disabled:cursor-not-allowed disabled:opacity-50 ${drawing ? "bg-accent text-accent-fg" : "text-text-muted hover:bg-surface-sunken"}`}
+                  >
+                    <Crosshair size={13} strokeWidth={1.75} /> Draw missed pollen
+                  </button>
+                </div>
               )}
-              {selectedGrain || pendingBox || selectedManual ? (
-                <>
-                  {selectedGrain && selectedAnnotation?.kind === "false_positive" && (
-                    <p className="mb-3 text-[12.5px] text-danger">
-                      Removed from the reviewed pollen count. Restore it below to include it again.
-                    </p>
-                  )}
-                  {selectedGrain && selectedAnnotation?.kind !== "false_positive" && (
-                    <p className="mb-3 text-[12.5px] text-text-muted">
-                      {(() => {
-                        const modelSpecies = findSpecies(speciesCatalog, selectedGrain.speciesId);
-                        return <>Model: <span className="italic" style={{ fontFamily: "var(--font-display)" }}>
-                          {modelSpecies.scientificName}
-                        </span> ({researchSpeciesName(modelSpecies)}) · {Math.round(selectedGrain.confidence * 100)}% model confidence</>;
-                      })()}
-                    </p>
-                  )}
-                  {selectedAnnotation?.kind !== "false_positive" && (
-                    <label className="mb-3 block">
-                      <span className="mb-1 block text-[12.5px] text-text-muted">
-                        {pendingBox || selectedManual ? "Identify pollen species" : "Researcher label"}
-                      </span>
-                      <select
-                        value={speciesDraft}
-                        onChange={(event) => setSpeciesDraft(event.target.value as SpeciesId | "")}
-                        disabled={saving}
-                        className={inputClass}
-                      >
-                        <option value="" disabled>Select a species</option>
-                        {annotationSpecies.map((species) => (
-                          <option key={species.id} value={species.id}>
-                            {species.scientificName} ({researchSpeciesName(species)})
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  )}
-
-                  {selectedGrain && selectedAnnotation?.kind !== "false_positive" && (
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button" disabled={saving || !speciesDraft || !boxDraft}
-                        onClick={() => {
-                          const corrected = speciesDraft !== selectedGrain.speciesId;
-                          void save(
-                            corrected ? "corrected" : "confirmed",
-                            corrected ? speciesDraft || null : selectedGrain.speciesId,
-                            selectedGrain.id,
-                            boxDraft ?? selectedGrain.box,
-                            selectedAnnotation,
-                          );
-                        }}
-                        className="focus-ring rounded-sm bg-accent px-2.5 py-1.5 text-[12.5px] text-accent-fg disabled:opacity-50"
-                      >
-                        <Check size={13} className="mr-1 inline" /> Confirm changes
-                      </button>
-                      <button
-                        type="button" disabled={saving}
-                        onClick={() => save("false_positive", null, selectedGrain.id, boxDraft ?? selectedGrain.box, selectedAnnotation)}
-                        className="focus-ring rounded-sm border border-danger/40 px-2.5 py-1.5 text-[12.5px] text-danger hover:bg-danger/5 disabled:opacity-50"
-                      >
-                        Remove as Non-pollen
-                      </button>
-                    </div>
-                  )}
-
-                  {(pendingBox || selectedManual) && (
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button" disabled={saving || !speciesDraft || !boxDraft}
-                        onClick={() => save("missed", speciesDraft || null, null, boxDraft!, selectedManual)}
-                        className="focus-ring rounded-sm bg-accent px-2.5 py-1.5 text-[12.5px] text-accent-fg disabled:opacity-50"
-                      >
-                        {selectedManual ? <><Check size={13} className="mr-1 inline" />Confirm changes</> : "Add Identified Pollen"}
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {hasDraftChanges && (selectedGrain || selectedManual || pendingBox) && (
-                      <button
-                        type="button" disabled={saving}
-                        onClick={cancelChanges}
-                        className="focus-ring rounded-sm border border-border px-2.5 py-1.5 text-[12.5px] text-text-muted hover:bg-surface-sunken disabled:opacity-50"
-                      >
-                        Cancel changes
-                      </button>
-                    )}
-                    {selectedGrain && (
-                      <button
-                        type="button" disabled={saving}
-                        onClick={() => save("uncertain", null, selectedGrain.id, boxDraft ?? selectedGrain.box, selectedAnnotation)}
-                        className="focus-ring inline-flex items-center gap-1.5 rounded-sm px-2 py-1 text-[12px] text-text-muted hover:bg-surface-sunken"
-                      >
-                        <CircleHelp size={13} /> Mark Uncertain
-                      </button>
-                    )}
-                    {selectedAnnotation && (
-                      <button
-                        type="button" disabled={saving}
-                        onClick={() => removeAnnotation(selectedAnnotation)}
-                        className="focus-ring inline-flex items-center gap-1.5 rounded-sm px-2 py-1 text-[12px] text-text-muted hover:bg-surface-sunken disabled:opacity-50"
-                      >
-                        {saving ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
-                        {selectedAnnotation.kind === "false_positive" ? "Restore Detection" : "Reset to Model"}
-                      </button>
-                    )}
-                    {selectedManual && (
-                      <button
-                        type="button" disabled={saving}
-                        onClick={() => removeAnnotation(selectedManual)}
-                        className="focus-ring inline-flex items-center gap-1.5 rounded-sm px-2 py-1 text-[12px] text-danger hover:bg-danger/5 disabled:opacity-50"
-                      >
-                        <Trash2 size={13} /> Remove Missed Grain
-                      </button>
-                    )}
-                  </div>
-                  {saving && <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-text-muted"><Loader2 size={13} className="animate-spin" /> Saving annotation…</p>}
-                </>
-              ) : null}
-              </div>
-            </div>
-          </div>
-          <div className="min-w-0">
               {imageUrl ? (
                 <div className="relative isolate overflow-hidden border border-border bg-viewer">
                   <div ref={canvasRef} className="relative mx-auto w-fit max-w-full select-none">
@@ -709,7 +579,7 @@ export default function GrainReviewEditor({
                     <img
                       src={imageUrl}
                       alt={`Annotated slide ${fileName}`}
-                      className="block h-auto w-auto max-h-[calc(100dvh_-_8rem)] max-w-full object-contain lg:max-h-[calc(100dvh_-_13rem)]"
+                      className="block h-auto w-auto max-h-[48dvh] max-w-full object-contain lg:max-h-[calc(100dvh_-_13rem)]"
                       draggable={false}
                     />
                     {shownGrains.map((grain) => {
@@ -855,7 +725,151 @@ export default function GrainReviewEditor({
                 </p>
               )}
             </div>
+            <div
+              role="group"
+              aria-label={`Annotation controls for ${fileName}`}
+              className="grain-review-controls min-w-0 border-t border-border pt-3"
+            >
+              <div data-review-keep-selection>
+                {(pendingBox || selectedManual || selectedGrain) && (
+                  <h5 className="mb-2 text-[13px] font-semibold text-text">
+                    {pendingBox ? "Identify Missed Pollen" : selectedManual ? "Missed Pollen" : selectedGrain?.id}
+                  </h5>
+                )}
+                {selectedGrain || pendingBox || selectedManual ? (
+                  <>
+                    {selectedGrain && selectedAnnotation?.kind === "false_positive" && (
+                      <p className="mb-3 text-[12.5px] text-danger">
+                        Removed from the reviewed pollen count. Restore it below to include it again.
+                      </p>
+                    )}
+                    {selectedGrain && selectedAnnotation?.kind !== "false_positive" && (
+                      <p className="mb-3 text-[12.5px] text-text-muted">
+                        {(() => {
+                          const modelSpecies = findSpecies(speciesCatalog, selectedGrain.speciesId);
+                          return <>Model: <span className="italic" style={{ fontFamily: "var(--font-display)" }}>
+                            {modelSpecies.scientificName}
+                          </span> ({researchSpeciesName(modelSpecies)}) · {Math.round(selectedGrain.confidence * 100)}% model confidence</>;
+                        })()}
+                      </p>
+                    )}
+                    {selectedAnnotation?.kind !== "false_positive" && (
+                      <label className="mb-3 block">
+                        <span className="mb-1 block text-[12.5px] text-text-muted">
+                          {pendingBox || selectedManual ? "Identify pollen species" : "Researcher label"}
+                        </span>
+                        <select
+                          value={speciesDraft}
+                          onChange={(event) => setSpeciesDraft(event.target.value as SpeciesId | "")}
+                          disabled={saving}
+                          className={inputClass}
+                        >
+                          <option value="" disabled>Select a species</option>
+                          {annotationSpecies.map((species) => (
+                            <option key={species.id} value={species.id}>
+                              {species.scientificName} ({researchSpeciesName(species)})
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+
+                    {selectedGrain && selectedAnnotation?.kind !== "false_positive" && (
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button" disabled={saving || !speciesDraft || !boxDraft}
+                          onClick={() => {
+                            const corrected = speciesDraft !== selectedGrain.speciesId;
+                            void save(
+                              corrected ? "corrected" : "confirmed",
+                              corrected ? speciesDraft || null : selectedGrain.speciesId,
+                              selectedGrain.id,
+                              boxDraft ?? selectedGrain.box,
+                              selectedAnnotation,
+                            );
+                          }}
+                          className="focus-ring rounded-sm bg-accent min-h-11 px-3 py-2 text-[12.5px] text-accent-fg disabled:opacity-50"
+                        >
+                          <Check size={13} className="mr-1 inline" /> Confirm changes
+                        </button>
+                        <button
+                          type="button" disabled={saving}
+                          onClick={() => save("false_positive", null, selectedGrain.id, boxDraft ?? selectedGrain.box, selectedAnnotation)}
+                          className="focus-ring rounded-sm border border-danger/40 min-h-11 px-3 py-2 text-[12.5px] text-danger hover:bg-danger/5 disabled:opacity-50"
+                        >
+                          Remove as Non-pollen
+                        </button>
+                    </div>
+                  )}
+
+                  {(pendingBox || selectedManual) && (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button" disabled={saving || !speciesDraft || !boxDraft}
+                        onClick={() => save("missed", speciesDraft || null, null, boxDraft!, selectedManual)}
+                        className="focus-ring rounded-sm bg-accent min-h-11 px-3 py-2 text-[12.5px] text-accent-fg disabled:opacity-50"
+                      >
+                        {selectedManual ? <><Check size={13} className="mr-1 inline" />Confirm changes</> : "Add Identified Pollen"}
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {hasDraftChanges && (selectedGrain || selectedManual || pendingBox) && (
+                      <button
+                        type="button" disabled={saving}
+                        onClick={cancelChanges}
+                        className="focus-ring rounded-sm border border-border min-h-11 px-3 py-2 text-[12.5px] text-text-muted hover:bg-surface-sunken disabled:opacity-50"
+                      >
+                        Cancel changes
+                      </button>
+                    )}
+                    {selectedGrain && (
+                      <button
+                        type="button" disabled={saving}
+                        onClick={() => save("uncertain", null, selectedGrain.id, boxDraft ?? selectedGrain.box, selectedAnnotation)}
+                        className="focus-ring inline-flex items-center gap-1.5 rounded-sm min-h-11 px-2 py-2 text-[12px] text-text-muted hover:bg-surface-sunken"
+                      >
+                        <CircleHelp size={13} /> Mark Uncertain
+                      </button>
+                    )}
+                    {selectedAnnotation && (
+                      <button
+                        type="button" disabled={saving}
+                        onClick={() => removeAnnotation(selectedAnnotation)}
+                        className="focus-ring inline-flex items-center gap-1.5 rounded-sm min-h-11 px-2 py-2 text-[12px] text-text-muted hover:bg-surface-sunken disabled:opacity-50"
+                      >
+                        {saving ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
+                        {selectedAnnotation.kind === "false_positive" ? "Restore Detection" : "Reset to Model"}
+                      </button>
+                    )}
+                    {selectedManual && (
+                      <button
+                        type="button" disabled={saving}
+                        onClick={() => removeAnnotation(selectedManual)}
+                        className="focus-ring inline-flex items-center gap-1.5 rounded-sm min-h-11 px-2 py-2 text-[12px] text-danger hover:bg-danger/5 disabled:opacity-50"
+                      >
+                        <Trash2 size={13} /> Remove Missed Grain
+                      </button>
+                    )}
+                  </div>
+                  {saving && <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-text-muted"><Loader2 size={13} className="animate-spin" /> Saving annotation…</p>}
+                </>
+              ) : (
+                <p className="text-[13px] leading-relaxed text-text-muted">
+                  Select a box on the image to review its label, or draw missed pollen.
+                </p>
+              )}
+              </div>
+            </div>
+            {summaryContent && (
+              <div className="grain-review-summary" role="group" aria-label={`Pollen summary for ${fileName}`}>
+                <h5 className="mb-3 text-[13px] font-semibold text-text">Pollen Summary</h5>
+                {summaryContent}
+              </div>
+            )}
           </div>
+          {trailingContent}
 
           {annotations.some((annotation) => annotation.kind === "uncertain") && (
             <p className="mt-3 flex items-start gap-1.5 text-[12px] text-text-muted">

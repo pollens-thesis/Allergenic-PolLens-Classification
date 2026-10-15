@@ -16,6 +16,7 @@ import { signOut } from "@/lib/session";
 import { listReports } from "@/lib/store";
 import { exportReportsCsv, exportReportsJson, exportReportsXlsx } from "@/lib/export";
 import { buttonVariants } from "@/components/Button";
+import { SidebarToggle, ThemeToggle } from "@/components/AppearanceControls";
 
 export default function SettingsWorkspace() {
   const settings = useSettings();
@@ -47,6 +48,14 @@ export default function SettingsWorkspace() {
 
   return (
     <div className="card-panel divide-y divide-border overflow-hidden">
+      <section className="p-4 sm:p-5">
+        <h2 className="t-plate-title text-text">Appearance</h2>
+        <p className="mt-1 text-[13px] text-text-muted">Display preferences are saved in this browser.</p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <ThemeToggle className="border border-border" />
+          <span className="hidden lg:inline-flex"><SidebarToggle labelled /></span>
+        </div>
+      </section>
       <section className="p-4 sm:p-5">
         <h2 className="t-plate-title text-text">Data Export</h2>
 

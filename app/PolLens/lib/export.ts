@@ -17,6 +17,7 @@ import {
   aggregateSlideDetections,
   getCollectionDate,
   getCollectionTime,
+  getConfidenceGrainCount,
   getReportGrains,
   getSpecies,
   getTopDetection,
@@ -136,7 +137,7 @@ function detectionRows(reports: Specimen[]): Value[][] {
           species.commonName || null,
           species.riskLevel,
           detection.grainCount,
-          Number(detection.avgConfidence.toFixed(4)),
+          getConfidenceGrainCount(detection) > 0 ? Number(detection.avgConfidence.toFixed(4)) : null,
           slide.notes,
         ]);
       }
@@ -183,7 +184,7 @@ const REPORT_COLUMNS = [
   "Total Grains",
   "Pollen Types",
   "Top Pollen",
-  "Avg. Confidence",
+  "Avg. Model Confidence",
   "Weather",
   "Temperature (°C)",
   "Humidity (%)",
@@ -194,7 +195,7 @@ function reportRows(reports: Specimen[]): Value[][] {
   return reports.map((report) => {
     const detections = aggregateSlideDetections(report.slides);
     const top = getTopDetection(detections);
-    const averageConfidence = getWeightedAvgConfidence(detections);
+    const avgConfidence = getWeightedAvgConfidence(detections);
     return [
       report.sampleId,
       report.reportName ?? "",
@@ -208,7 +209,7 @@ function reportRows(reports: Specimen[]): Value[][] {
       getReportGrains(report),
       detections.length,
       top ? speciesLabel(getSpecies(top.speciesId)) : null,
-      averageConfidence === null ? null : Number(averageConfidence.toFixed(4)),
+      avgConfidence === null ? null : Number(avgConfidence.toFixed(4)),
       report.weather?.condition ?? null,
       report.weather?.temperatureC ?? null,
       report.weather?.humidityPct ?? null,
@@ -237,7 +238,7 @@ export async function exportReportsXlsx(reports: Specimen[], filename?: string):
       sheet: "Reports",
       data: [
         header(REPORT_COLUMNS),
-        ...withPercent(reportRows(reports), REPORT_COLUMNS.indexOf("Avg. Confidence")),
+        ...withPercent(reportRows(reports), REPORT_COLUMNS.indexOf("Avg. Model Confidence")),
       ],
       stickyRowsCount: 1,
     },

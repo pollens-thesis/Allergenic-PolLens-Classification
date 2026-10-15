@@ -49,6 +49,10 @@ general-purpose botanical classifier.
   creator (or staff) edits, reviews or deletes it.
 - Outputs researchers take away: a per-report PDF (with the boxed slide images), summary PDFs
   by place or selection, and Excel/CSV/JSON exports.
+- Appearance defaults to light and an expanded desktop sidebar. Researchers can
+  choose dark mode and collapse the desktop sidebar to an icon rail; phones retain
+  labelled drawer navigation. These preferences stay in the current browser,
+  independent of sign-in, and do not alter specimen evidence or data colours.
 - Sign-in uses Google or Microsoft (work/school) accounts. Access is limited to allowlisted
   domains (up.edu.ph, mseuf.edu.ph) and individually added researchers.
 
@@ -69,8 +73,9 @@ general-purpose botanical classifier.
   is authoritative for implementation. Conflicts are recorded in `docs/system-spec.md` in the
   root repo.
 - **Open decisions (with the adviser, not settled):** architecture sign-off (Render + Vercel
-  vs. the paper's all-on-Vercel); map pins vs. choropleth; the paper's dark theme vs. the
-  current light UI; an archive with year-over-year comparison; a system-information display;
+  vs. the paper's all-on-Vercel); map pins vs. choropleth; reconciling the paper's theme
+  descriptions with the user-approved (2026-10-13) light-default UI and optional dark
+  mode (built, without implying adviser sign-off); an archive with year-over-year comparison; a system-information display;
   evaluation targets (accuracy/F1, which architectures, comparison with expert
   palynologists); per-species metadata (common name, season, allergenic risk).
 

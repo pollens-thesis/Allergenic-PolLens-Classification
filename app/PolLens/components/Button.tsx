@@ -19,18 +19,18 @@ export const buttonVariants = cva(
   {
     variants: {
       intent: {
-        primary: "bg-text text-bg hover:bg-text/85 active:bg-text/90",
+        primary: "control-selection bg-button-neutral text-button-neutral-fg hover:bg-button-neutral-hover active:bg-button-neutral/90",
         accent: "bg-accent text-accent-fg hover:bg-[var(--accent-hover)] active:bg-[var(--accent-active)]",
         secondary:
-          "bg-surface text-text border border-border hover:border-border-strong hover:bg-surface-sunken",
-        destructive: "bg-danger text-white hover:opacity-90",
+          "bg-surface text-text border border-border hover:border-border-strong hover:bg-surface-hover",
+        destructive: "bg-danger text-danger-fg hover:opacity-90",
         // Outline intents whose colour says what the action does to the record,
         // in the same hues as the status stamps (StatusBadge): leaving or
         // removing (red), completing (green), returning to a pending item (ochre).
         caution: "bg-surface text-danger border border-danger/40 hover:border-danger hover:bg-danger-bg",
         confirm: "bg-surface text-success border border-success/40 hover:border-success hover:bg-success-bg",
         resume: "bg-surface text-processing border border-processing/40 hover:border-processing hover:bg-processing-bg",
-        ghost: "text-text-muted hover:text-text hover:bg-surface-sunken",
+        ghost: "text-text-muted hover:text-text hover:bg-surface-hover",
       },
       size: {
         sm: "text-[12.5px] px-3 py-1.5",

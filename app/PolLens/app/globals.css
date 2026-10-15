@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
+  --sidebar-width: 15rem;
   /*
    * PolLens Laboratory Console. The console reads like a palynology reference atlas:
    * plate-paper cards with hairline frames on a quiet grey page, ink text,
@@ -14,6 +16,16 @@
   --surface: #fafaf7;         /* plates: panels, inputs, table rows, sidebar */
   --surface-sunken: #f1f0eb;  /* wells: stat strips, summary tiles */
   --border: #d9d8d2;          /* hairline plate frame and rules */
+  --surface-nav: var(--surface);
+  --surface-hover: var(--surface-sunken);
+  --field-bg: var(--surface);
+  --field-border: var(--border);
+  --selected-bg: var(--text);
+  --selected-fg: var(--bg);
+  --selected-border: transparent;
+  --button-neutral: var(--text);
+  --button-neutral-fg: var(--bg);
+  --button-neutral-hover: color-mix(in srgb, var(--text) 85%, transparent);
   --border-strong: #b3b1a8;   /* hover/active/selected borders */
 
   /* Elevated data cards — adapted from the rounded TimeTracker reference. */
@@ -41,6 +53,7 @@
   --processing-bg: #8a5a0014;
   --danger: #b3261e;
   --danger-bg: #b3261e14;
+  --danger-fg: #ffffff;
 
   /* Image viewer surround — neutral, unsaturated, so it doesn't shift how
      the slide's own colours are perceived */
@@ -68,10 +81,86 @@
   --duration-slow: 260ms;
 }
 
+/* The same research console under lower ambient light. Slide pixels and
+   species colors remain unchanged; only interface surfaces and ink adapt. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111518;
+  --surface: #1e2529;
+  --surface-sunken: #171d21;
+  --surface-nav: #151b1f;
+  --surface-hover: #2c363c;
+  --field-bg: #151c20;
+  --field-border: #687d89;
+  --selected-bg: #36434b;
+  --selected-fg: #edf0f2;
+  --selected-border: #839ba9;
+  --button-neutral: #36434b;
+  --button-neutral-fg: #edf0f2;
+  --button-neutral-hover: #455660;
+  --border: #37434b;
+  --border-strong: #687d89;
+  --text: #edf0f2;
+  --text-muted: #b9c3c9;
+  --text-faint: #9fadb6;
+  --text-placeholder: #99a9b3;
+  --accent: #e4a084;
+  --accent-hover: #edb69f;
+  --accent-active: #d58c70;
+  --accent-muted: #e4a0841c;
+  --accent-fg: #2b1913;
+  --success: #92cba6;
+  --success-bg: #92cba614;
+  --processing: #dfc080;
+  --processing-bg: #dfc08014;
+  --danger: #eea09b;
+  --danger-bg: #eea09b14;
+  --danger-fg: #2d1716;
+  --hero-bg: #151b1f;
+  --hero-bg-deep: #252f35;
+  --hero-fg: #edf0f2;
+  --hero-fg-muted: #b9c3c9;
+  --hero-grain: #e4a084;
+  --hero-grain-soft: #c88e77;
+  --card-shadow: 0 2px 4px rgb(0 0 0 / 14%), 0 12px 28px rgb(0 0 0 / 18%);
+  --card-shadow-hover: 0 3px 6px rgb(0 0 0 / 18%), 0 14px 30px rgb(0 0 0 / 24%);
+}
+
+/* The transparent wordmark's black lettering needs a light ink in dark mode.
+   This applies only to the brand asset, never microscope or catalog images. */
+:root[data-theme="dark"] .pollens-wordmark {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+:root[data-theme="dark"] select:not([multiple]):not([size]) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%239fadb6' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+:root[data-sidebar="collapsed"] { --sidebar-width: 5rem; }
+
+@media (min-width: 64rem) {
+  :root[data-sidebar="collapsed"] .desktop-sidebar .sidebar-label,
+  :root[data-sidebar="collapsed"] .sidebar-wordmark { display: none; }
+  :root[data-sidebar="collapsed"] .sidebar-rail { padding-inline: 12px; }
+  :root[data-sidebar="collapsed"] .sidebar-top,
+  :root[data-sidebar="collapsed"] .desktop-sidebar nav a,
+  :root[data-sidebar="collapsed"] .desktop-sidebar .sidebar-rail > div:last-child > button,
+  :root[data-sidebar="collapsed"] .desktop-sidebar a[href="/settings"] {
+    justify-content: center;
+  }
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-sunken: var(--surface-sunken);
+  --color-surface-nav: var(--surface-nav);
+  --color-surface-hover: var(--surface-hover);
+  --color-selected: var(--selected-bg);
+  --color-selected-fg: var(--selected-fg);
+  --color-button-neutral: var(--button-neutral);
+  --color-button-neutral-fg: var(--button-neutral-fg);
+  --color-button-neutral-hover: var(--button-neutral-hover);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-text: var(--text);
@@ -89,6 +178,7 @@
   --color-processing-bg: var(--processing-bg);
   --color-danger: var(--danger);
   --color-danger-bg: var(--danger-bg);
+  --color-danger-fg: var(--danger-fg);
   --color-viewer: var(--viewer-bg);
   --color-hero-bg: var(--hero-bg);
   --color-hero-bg-deep: var(--hero-bg-deep);
@@ -265,7 +355,7 @@ select:not([multiple]):not([size]):disabled {
 }
 
 ::selection {
-  background: #8c2f1b2e;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
   color: var(--text);
 }
 
@@ -299,4 +389,78 @@ html {
 .focus-ring:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
+}
+
+/* Use the editor's available width, including a collapsed app sidebar, to
+   keep the evidence, actions and species key together without cramped rows. */
+.grain-review-editor {
+  container: slide-review / inline-size;
+}
+
+.grain-review-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+}
+
+.grain-review-summary {
+  min-width: 0;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+@container slide-review (min-width: 42rem) {
+  .grain-review-workspace {
+    grid-template-columns: minmax(0, 1fr) 18rem;
+  }
+  .grain-review-controls {
+    position: sticky;
+    top: 7rem;
+    border-top: 0;
+    border-left: 1px solid var(--border);
+    padding-top: 0;
+    padding-left: 0.75rem;
+  }
+  .grain-review-summary { grid-column: 1 / -1; }
+}
+
+@container slide-review (min-width: 56rem) {
+  .grain-review-has-summary {
+    grid-template-columns: minmax(0, 1fr) 16rem minmax(18rem, 1fr);
+  }
+  .grain-review-summary {
+    grid-column: auto;
+    border-top: 0;
+    border-left: 1px solid var(--border);
+    padding-top: 0;
+    padding-left: 1rem;
+  }
+}
+
+/* Quiet selection fills replace bright inverse tabs in lower ambient light. */
+.control-selection {
+  outline: 1px solid var(--selected-border);
+  outline-offset: -1px;
+}
+
+/* Fields sit below the work surface; their boundaries remain distinguishable
+   from panel rules. Error colours and disabled fields retain their own states. */
+:root[data-theme="dark"] :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]), textarea, select).border-border:not([aria-invalid="true"]):not([class*="border-danger"]):not(:disabled) {
+  background-color: var(--field-bg);
+  border-color: var(--field-border);
+  caret-color: var(--accent);
+}
+
+:root[data-theme="dark"] .app-navigation a[aria-current="page"] {
+  background-color: var(--accent-muted);
+}
+
+:root[data-theme="dark"] .app-navigation a[aria-current="page"]:not(:focus-visible) {
+  outline: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  outline-offset: -1px;
+}
+
+:root[data-theme="dark"] .app-navigation a[aria-current="page"] svg {
+  color: var(--accent);
 }

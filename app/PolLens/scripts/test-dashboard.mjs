@@ -9,7 +9,7 @@ import ts from "typescript";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const output = mkdtempSync(join(tmpdir(), "pollens-dashboard-tests-"));
 try {
-  for (const name of ["data", "geo", "dashboard-locations", "dashboard", "dashboard.test"]) {
+  for (const name of ["species-names", "data", "geo", "dashboard-locations", "dashboard", "dashboard.test"]) {
     const source = readFileSync(join(root, "lib", `${name}.ts`), "utf8").replaceAll('"@/lib/', '"./');
     const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true } });
     writeFileSync(join(output, `${name}.js`), compiled.outputText);

@@ -337,13 +337,13 @@ export default function ReportsTable({
                     aria-label={option === "Needs review" ? "Needs Review" : option}
                     className={clsx(
                       "focus-ring relative h-full min-h-11 rounded px-2 text-[12px] whitespace-nowrap sm:px-2.5 sm:text-[13px]",
-                      active ? "text-bg" : "text-text-muted transition-colors hover:text-text",
+                      active ? "text-selected-fg" : "text-text-muted transition-colors hover:text-text",
                     )}
                   >
                     {active && (
                       <motion.span
                         layoutId="status-filter-pill"
-                        className="absolute inset-0 rounded bg-text"
+                        className="control-selection absolute inset-0 rounded bg-selected"
                         transition={{ type: "spring", stiffness: 500, damping: 40 }}
                       />
                     )}

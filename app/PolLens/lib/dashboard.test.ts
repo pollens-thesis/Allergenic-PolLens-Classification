@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { buildDashboardSummary } from "@/lib/dashboard";
 import { dashboardReportsHref, dashboardOccurrenceHref, getDashboardLocation, getDashboardLocationOptions, matchesDashboardLocation, matchesDashboardOccurrence } from "@/lib/dashboard-locations";
-import type { Specimen, SpeciesId } from "@/lib/data";
+import {
+  aggregateSlideDetections,
+  getReviewedDetections,
+  getWeightedAvgConfidence,
+  type GrainAnnotation,
+  type Specimen,
+  type SpeciesId,
+} from "@/lib/data";
 
 const now = new Date("2026-09-27T10:00:00Z");
 function report(overrides: Partial<Specimen> = {}): Specimen {
@@ -20,6 +27,32 @@ test("sampling counts collections with no pollen, counts slides separately, and 
   assert.equal(summary.sampleCount, 1);
   assert.deepEqual(summary.locations[0].monthly, [0, 0, 0, 0, 0, 2]);
   assert.equal(summary.locations[0].slideCount, 3);
+});
+
+test("reviewed missed pollen changes counts without inventing model confidence", () => {
+  const model = [{ speciesId: "amaranthus_spinosus" as const, grainCount: 2, avgConfidence: 0.8 }];
+  const grains = [
+    { id: "G1", speciesId: "amaranthus_spinosus" as const, confidence: 0.9, box: { x: 0, y: 0, width: 0.1, height: 0.1 } },
+    { id: "G2", speciesId: "amaranthus_spinosus" as const, confidence: 0.7, box: { x: 0.2, y: 0.2, width: 0.1, height: 0.1 } },
+  ];
+  const annotations: GrainAnnotation[] = [
+    { id: "remove-g1", grainId: "G1", kind: "false_positive", speciesId: null, box: grains[0].box, reviewedAt: "2026-10-10T00:00:00Z" },
+    { id: "missed-amar", grainId: null, kind: "missed", speciesId: "amaranthus_spinosus", box: { x: 0.4, y: 0.4, width: 0.1, height: 0.1 }, reviewedAt: "2026-10-10T00:00:00Z" },
+    { id: "missed-bra", grainId: null, kind: "missed", speciesId: "brachiaria_mutica", box: { x: 0.6, y: 0.6, width: 0.1, height: 0.1 }, reviewedAt: "2026-10-10T00:00:00Z" },
+  ];
+  const reviewed = getReviewedDetections(model, grains, annotations);
+  const amaranthus = reviewed.find((entry) => entry.speciesId === "amaranthus_spinosus");
+  const brachiaria = reviewed.find((entry) => entry.speciesId === "brachiaria_mutica");
+
+  assert.equal(amaranthus?.grainCount, 2);
+  assert.equal(amaranthus?.confidenceGrainCount, 1);
+  assert.ok(Math.abs((amaranthus?.avgConfidence ?? 0) - 0.7) < 1e-9);
+  assert.equal(brachiaria?.grainCount, 1);
+  assert.equal(brachiaria?.confidenceGrainCount, 0);
+  assert.equal(brachiaria?.avgConfidence, 0);
+
+  const combined = aggregateSlideDetections([{ ...report().slides[0], detections: reviewed }]);
+  assert.ok(Math.abs((getWeightedAvgConfidence(combined) ?? 0) - 0.7) < 1e-9);
 });
 
 test("date windows use collection dates, include the boundaries, and preserve historical sampling gaps", () => {
