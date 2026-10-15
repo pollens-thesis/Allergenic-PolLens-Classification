@@ -111,3 +111,8 @@ Everything runs against the Django API in `../../api` (see the root repo's
   by a server-side allowlist; sessions renew automatically.
 - **Species metadata** (common name, season, allergenic risk) is still being
   collected — the UI shows "Not Assessed" rather than a made-up level.
+- **Common names** shown anywhere in the app are the Allergen Reference labels
+  (`DATASET_SPECIES_NAMES` in `lib/species-names.ts`, applied by
+  `withReferenceName` where a catalog enters the app); the catalog's own English
+  name is kept as `catalogName` and still listed as another name on the
+  reference page. Species outside the 15 classifier classes keep the catalog name.

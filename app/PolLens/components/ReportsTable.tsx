@@ -73,7 +73,7 @@ function fold(text: string): string {
 function searchText(report: Specimen, catalog: ReturnType<typeof useSpeciesCatalog>): string {
   const species = aggregateSlideDetections(report.slides).map((d) => {
     const sp = findSpecies(catalog, d.speciesId);
-    return `${d.speciesId} ${sp.code} ${sp.scientificName} ${sp.commonName}`;
+    return `${d.speciesId} ${sp.code} ${sp.scientificName} ${sp.commonName} ${sp.catalogName ?? ""}`;
   });
   return fold(
     [

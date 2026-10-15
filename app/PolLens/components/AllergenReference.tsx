@@ -26,7 +26,7 @@ function fold(text: string): string {
 
 function searchText(sp: Species): string {
   return fold([
-    sp.scientificName, sp.commonName, sp.filipinoName ?? "",
+    sp.scientificName, sp.commonName, sp.catalogName ?? "", sp.filipinoName ?? "",
     DATASET_SPECIES_NAMES[sp.id] ?? "", sp.code,
   ].join(" "));
 }
