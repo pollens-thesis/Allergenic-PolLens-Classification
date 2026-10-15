@@ -14,7 +14,7 @@ from .access import is_allowed
 from .models import User
 from .serializers import GoogleLoginSerializer, LogoutSerializer, UserSerializer
 
-NOT_ALLOWED_DETAIL = "This account isn't authorised to use PolLens. Ask the project team to add it."
+NOT_ALLOWED_DETAIL = "This account isn't authorised to use PolleRgies. Ask the project team to add it."
 
 
 def issue_session(email, institution, full_name=''):

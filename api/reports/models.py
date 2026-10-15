@@ -36,6 +36,8 @@ WEATHER_CONDITION_CHOICES = [
     ('Rainy', 'Rainy'), ('Windy', 'Windy'),
 ]
 
+# Keep model validation compatible with existing timestamped rows. API inputs
+# and outputs are date-only.
 COLLECTED_AT_VALIDATOR = RegexValidator(
     r'^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$',
     'collectedAt must be "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm".',
@@ -88,9 +90,9 @@ class Report(models.Model):
         related_name='reports',
     )
 
-    # Opaque ISO string ("YYYY-MM-DD" or "YYYY-MM-DDTHH:mm") stored as-is —
-    # not a DateTimeField, so round-trip fidelity matches the frontend's own
-    # string-comparison sort in app/PolLens/lib/data.ts.
+    # Opaque ISO string stored as-is — not a DateTimeField, so date-only values
+    # keep their calendar day regardless of the browser timezone. Existing rows
+    # may retain a time suffix; API serializers omit it and reject new times.
     collected_at = models.CharField(max_length=16, validators=[COLLECTED_AT_VALIDATOR])
     location = models.CharField(max_length=255, blank=True)  # required to complete, not while Pending
     researcher = models.CharField(max_length=255)
@@ -320,7 +322,8 @@ class GrainAnnotation(models.Model):
     The model's Grain row is kept unchanged so its original class, confidence,
     and box remain available for evaluation. False-positive annotations are
     excluded from the reviewed result counts; other annotations remain review
-    labels alongside the model prediction.
+    labels alongside the model prediction. Annotations on sample-detection
+    reports are review-only and are marked training-ineligible by the serializer.
     """
 
     KIND_CHOICES = [

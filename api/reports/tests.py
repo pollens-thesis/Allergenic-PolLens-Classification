@@ -313,6 +313,13 @@ class ReportListFilterTests(APITestCase):
 
         self.assertEqual(len(response.data), 1)
 
+    def test_search_cannot_reveal_a_legacy_collection_time(self):
+        make_report(collected_at='2026-07-26T14:30')
+
+        response = self.client.get(self.url, {'q': '14:30'})
+
+        self.assertEqual(len(response.data), 0)
+
     def test_search_does_not_duplicate_report_with_multiple_detections(self):
         report = make_report(species_id='amaranthus_spinosus')
         slide = report.slides.get()
@@ -397,6 +404,7 @@ class ReportAnnotationDetailViewTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertFalse(response.data['trainingEligible'])
         detail = self.client.get(f'/api/v1/reports/{self.report.sample_id}/').data['slides'][0]
         listed = self.client.get('/api/v1/reports/').data[0]['slides'][0]
         self.assertEqual(detail['detections'][0]['grainCount'], 2)
@@ -423,6 +431,7 @@ class ReportAnnotationDetailViewTests(APITestCase):
             format='json',
         )
         self.assertEqual(missed.status_code, status.HTTP_200_OK, missed.data)
+        self.assertTrue(missed.data['trainingEligible'])
         detail = self.client.get(f'/api/v1/reports/{self.report.sample_id}/').data['slides'][0]
         reviewed_by_species = {row['speciesId']: row for row in detail['detections']}
         self.assertEqual(reviewed_by_species['amaranthus_spinosus']['grainCount'], 2)
@@ -481,6 +490,7 @@ class ReportAnnotationDetailViewTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertTrue(response.data['trainingEligible'])
         detail = self.client.get(f'/api/v1/reports/{self.report.sample_id}/').data['slides'][0]
         reviewed_by_species = {row['speciesId']: row for row in detail['detections']}
         model_by_species = {row['speciesId']: row for row in detail['modelDetections']}
@@ -493,6 +503,38 @@ class ReportAnnotationDetailViewTests(APITestCase):
         monthly = self.client.get('/api/v1/reports/monthly-counts/').data
         self.assertEqual(monthly[-1]['series']['pennisetum_polystachion'], 0)
         self.assertEqual(monthly[-1]['series']['leucaena_leucocephala'], 1)
+
+    def test_sample_report_annotations_are_review_only(self):
+        self.report.sample_detections = True
+        self.report.save(update_fields=['sample_detections'])
+        annotation_id = uuid.uuid4()
+
+        response = self.client.put(
+            f'/api/v1/reports/{self.report.sample_id}/annotations/{annotation_id}/',
+            {
+                'slideId': f'{self.report.sample_id}-S1',
+                'kind': 'missed',
+                'speciesId': 'brachiaria_mutica',
+                'box': {'x': 0.6, 'y': 0.2, 'width': 0.1, 'height': 0.12},
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertFalse(response.data['trainingEligible'])
+        detail = self.client.get(f'/api/v1/reports/{self.report.sample_id}/').data
+        self.assertTrue(detail['sampleDetections'])
+        self.assertFalse(detail['slides'][0]['annotations'][0]['trainingEligible'])
+        listed = next(
+            row for row in self.client.get('/api/v1/reports/').data
+            if row['sampleId'] == self.report.sample_id
+        )
+        self.assertFalse(listed['slides'][0]['annotations'][0]['trainingEligible'])
+        counts = {
+            row['speciesId']: row['grainCount']
+            for row in detail['slides'][0]['detections']
+        }
+        self.assertEqual(counts['brachiaria_mutica'], 1)
 
 
 def month_key(offset):
@@ -997,6 +1039,16 @@ class ReportUpdateDeleteTests(APITestCase):
     def patch(self, body):
         return self.client.patch(self.url, body, format='json')
 
+    def test_owner_can_see_researcher_name_but_only_collection_date(self):
+        self.report.collected_at = '2026-10-15T11:45'
+        self.report.save(update_fields=['collected_at'])
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['researcher'], 'Dr. Santos')
+        self.assertEqual(response.data['collectedAt'], '2026-10-15')
+
     def test_owner_edits_details_and_slide_notes(self):
         response = self.patch({
             'reportName': '  Lucban morning  ',
@@ -1039,11 +1091,21 @@ class ReportUpdateDeleteTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_other_researchers_can_read_but_not_change_or_delete(self):
+        self.report.collected_at = '2026-10-15T11:45'
+        self.report.save(update_fields=['collected_at'])
         self.client.force_authenticate(user=self.other)
 
         get = self.client.get(self.url)
         self.assertEqual(get.status_code, 200)
         self.assertIs(get.data['canEdit'], False)
+        self.assertEqual(get.data['researcher'], '')
+        self.assertEqual(get.data['collectedAt'], '2026-10-15')
+        listed = next(
+            report for report in self.client.get('/api/v1/reports/').data
+            if report['sampleId'] == self.report.sample_id
+        )
+        self.assertEqual(listed['researcher'], '')
+        self.assertEqual(listed['collectedAt'], '2026-10-15')
         self.assertEqual(self.patch({'location': 'x'}).status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(self.client.delete(self.url).status_code, status.HTTP_403_FORBIDDEN)
 
@@ -1147,6 +1209,7 @@ class QARegressionTests(APITestCase):
     def test_impossible_collected_at_is_400(self):
         self.assertEqual(self.patch_report({'collectedAt': '2026-99-99'}).status_code, 400)
         self.assertEqual(self.patch_report({'collectedAt': '2026-02-30T10:00'}).status_code, 400)
+        self.assertEqual(self.patch_report({'collectedAt': '2026-02-28T10:00'}).status_code, 400)
 
     def test_blank_researcher_becomes_unknown(self):
         self.assertEqual(self.patch_report({'researcher': '  '}).data['researcher'], 'Unknown')

@@ -15,6 +15,6 @@ class AllowlistedJWTAuthentication(JWTAuthentication):
         user = super().get_user(validated_token)
         if not is_allowed(user.email):
             raise AuthenticationFailed(
-                "This account isn't authorised to use PolLens.", code='not_allowed',
+                "This account isn't authorised to use PolleRgies.", code='not_allowed',
             )
         return user

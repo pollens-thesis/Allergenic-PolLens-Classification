@@ -101,6 +101,7 @@ class ReportListCreateView(APIView):
 
         date_from = request.query_params.get('from', '').strip()
         date_to = request.query_params.get('to', '').strip()
+        reports = reports.annotate(collected_date=Substr('collected_at', 1, 10))
         for label, value in (('from', date_from), ('to', date_to)):
             if value and not DATE_PARAM_VALIDATOR.match(value):
                 return Response(
@@ -108,7 +109,6 @@ class ReportListCreateView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
         if date_from or date_to:
-            reports = reports.annotate(collected_date=Substr('collected_at', 1, 10))
             if date_from:
                 reports = reports.filter(collected_date__gte=date_from)
             if date_to:
@@ -120,7 +120,7 @@ class ReportListCreateView(APIView):
                 Q(sample_id__icontains=query)
                 | Q(report_name__icontains=query)
                 | Q(location__icontains=query)
-                | Q(collected_at__icontains=query)
+                | Q(collected_date__icontains=query)
                 | Q(slides__detections__species__id__icontains=query)
             ).distinct()
 
@@ -758,11 +758,6 @@ class ReportAnnotationDetailView(APIView):
         if report.status != 'Needs review':
             return None, Response(
                 {'detail': 'Annotations can only be changed while a report Needs review.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        if report.sample_detections:
-            return None, Response(
-                {'detail': 'Sample detections cannot be used as model-training annotations.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return report, None
