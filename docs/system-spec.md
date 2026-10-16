@@ -112,25 +112,24 @@ only in the gitignored `docs/private/`. Render (Root Directory `api`) and Vercel
     names, botanical descriptions and credited Wikimedia Commons photos (Species
     fields, editable in Django admin; marked for UPLB verification). **Season and
     allergenic risk are still open** — risk stays "Not assessed".
-12. **Open sign-in to any Google account** — planned by the user (2026-09-26),
-    **not built**. Today sign-in is an allowlist (`up.edu.ph`, `mseuf.edu.ph` and
-    subdomains, plus `SIGNIN_ALLOWED_EMAILS`), and both lists empty admits nobody
-    (fails closed on purpose). Opening it needs: an explicit `SIGNIN_ALLOW_ALL`
-    switch in `api/accounts/access.py` (not "empty means everyone"); the Google
-    OAuth consent screen set to *In production*; and a scope decision, since the
-    paper's users are researchers. Consequences to weigh: every signed-in user sees
-    the whole shared corpus and can upload to R2 / write to Neon (free-tier quotas);
-    Microsoft sign-in would open to any work/school account. **Update
-    2026-10-16:** the first consequence is now handled by report verification
-    (next section), so a stranger's reports stay private until a verifier
-    approves them. Open sign-in itself is still a separate, later change (issue #9).
+12. **Open sign-in to any Google account** — decided by the user 2026-09-26 and
+    **built 2026-10-16** (issue #9): `SIGNIN_ALLOW_ALL=true` on Render lets any
+    Google account and any Microsoft work/school account in; the domain allowlist
+    only applies while the switch is off (it ships off, and is turned on after
+    the verification UI is live). Personal Microsoft accounts stay refused, since
+    they can carry someone else's address. What it costs: anyone signed in can run
+    detection on Modal and upload to R2 / write to Neon (free-tier quotas; the
+    `detect` throttle limits each user), and reports from new users stay private
+    until a verifier approves them (next section). Admins can block an account.
+    Still worth confirming with the adviser: whether researchers outside UP/MSEUF
+    should be able to see the collective data at all, and the terms/privacy wording.
 
 ## Roles and report verification (2026-10-16)
 
 **Why:** Doc Fajardo wants PolLens open to everyone so it collects allergenic
 pollen data for the whole country, but a report from an unknown user can't be
 trusted. **This reverses the 2026-09-24 "no roles / shared corpus" decision** (see
-Notes). Backend built in issue #59; frontend is issue #60 (Niño), not built yet.
+Notes). Backend built in issue #59 (PR #61); frontend in issue #60.
 
 **Roles** (`accounts.User`; `/api/v1/auth/me/` returns `role`):
 - **admin** — Django `is_superuser`, set with `python manage.py grant_admin <email>`
@@ -163,15 +162,14 @@ separate from `status`; plus `verified_by`, `verified_at`, `decline_reason`):
 - Each report carries `verification`, `verifiedAt`, `declineReason` (owner and
   verifiers only) and `canVerify` for the caller.
 
-**Frontend (issue #60, not built):** read `role`; use `isPublic` (finalised *and*
+**Frontend (issue #60):** read `role`; use `isPublic` (finalised *and*
 verified) wherever community data is aggregated; verification badge and filter;
 Approve/Decline and Resubmit in the report; a `/review` queue page for verifiers;
 a `/users` page for admins.
 
-**Still open:** whether the researcher's name should be visible to verifiers (today
-`researcher` is blank for everyone but the owner); whether only `Verified` reports
-may feed future classifier training (`trainingEligible` doesn't check it yet); opening
-sign-in to any Google account (item 12) now builds on this.
+**Decided 2026-10-16:** only admins (and the owner) see a researcher's name; only
+`Verified` reports feed classifier training (`trainingEligible` requires it); admins
+can block and unblock accounts (`PATCH /api/v1/users/<id>/ {"isActive": bool}`).
 
 ## Paper Features vs. Frontend Implementation
 

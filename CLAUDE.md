@@ -63,19 +63,17 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   public `/privacy` and `/terms` pages (footer on every page and in Settings).
   Brand verification (logo) was rejected once as "home page not registered";
   retry **Verify branding** after 2026-10-17 (`docs/deployment.md`).
-- **Roles and report verification (2026-10-16, issue #59, PR in review):**
-  Doc Fajardo wants the app open to everyone as a nationwide dataset, so reports
-  from normal users are verified first. Three roles: admin (`is_superuser`, made
-  with `manage.py grant_admin <email>`; appoints verifiers), verifier (approves
-  or declines with a required reason) and user. Only `Verified` reports reach
-  other people, the map, stats and exports. Backend only: the frontend
-  (review queue, users page, `isPublic` filtering) is issue #60 for Niño, and
-  until it ships the map and dashboard still count whatever the list returns.
-  This reverses the 2026-09-24 "no roles" decision (`docs/system-spec.md`). After
-  the deploy, run `grant_admin` for the admins.
-- **Planned, not built:** opening sign-in to any Google account (adviser item
-  12 in `docs/system-spec.md`; issue #9). Roles come first. Today only the allowlist signs in
-  (`up.edu.ph`, `mseuf.edu.ph` + `SIGNIN_ALLOWED_EMAILS`).
+- **Roles, report verification and open sign-in (2026-10-16, issues #59/#60/#9,
+  PR #61):** Doc Fajardo wants the app open to everyone as a nationwide dataset,
+  so reports from normal users are verified first. Roles: admin (`is_superuser`,
+  made with `manage.py grant_admin <email>`; appoints verifiers and can block
+  accounts), verifier (approves or declines with a required reason) and user. Only
+  `Verified` reports reach other people, the map, stats and exports, and only
+  they feed classifier training; only admins (and the owner) see a researcher's
+  name. `SIGNIN_ALLOW_ALL=true` (Render, ships `false`) lets any Google account
+  and any Microsoft work/school account sign in; turn it on last, after the
+  frontend (#60) is live and the admins exist (`docs/deployment.md`). This reverses
+  the 2026-09-24 "no roles" decision (`docs/system-spec.md`).
 - **Workflow and board:** `CONTRIBUTING.md` is in use (first cycle: issue #1 →
   PR #2, the accented-name fix `5c23fd9`). The GitHub Projects board **"PolLens"
   exists** (org `pollens-thesis`, project number **1**, columns Backlog → Ready →
