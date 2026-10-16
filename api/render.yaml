@@ -30,7 +30,12 @@ services:
       # Microsoft Entra app registration (Application/client ID); blank = Microsoft sign-in off.
       - key: MICROSOFT_CLIENT_ID
         sync: false
-      # Who may sign in. A domain also admits its subdomains; both empty admits nobody.
+      # Open sign-in (any Google account, any Microsoft work/school account).
+      # Turn on once report verification is live; see docs/deployment.md.
+      - key: SIGNIN_ALLOW_ALL
+        value: "false"
+      # Who may sign in when SIGNIN_ALLOW_ALL is off. A domain also admits its
+      # subdomains; both empty admits nobody.
       - key: SIGNIN_ALLOWED_DOMAINS
         value: up.edu.ph,mseuf.edu.ph
       - key: SIGNIN_ALLOWED_EMAILS

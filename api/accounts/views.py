@@ -260,13 +260,16 @@ class UserListView(APIView):
 
 class UserDetailView(APIView):
     """
-    PATCH /api/v1/users/<id>/ — `{"isVerifier": true|false}` appoints or removes
-    a verifier (admin only). Admins themselves are made with the `grant_admin`
-    command, never through the API.
+    PATCH /api/v1/users/<id>/ — admin only. `{"isVerifier": bool}` appoints or
+    removes a verifier; `{"isActive": false}` blocks an account (it is signed
+    out on its next request) and `true` unblocks it. Admins themselves are
+    made with the `grant_admin` command, never through the API, and can't be
+    changed or blocked here.
     """
 
     permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser]
+    FIELDS = {'isVerifier': 'is_verifier', 'isActive': 'is_active'}
 
     def patch(self, request, user_id):
         if not request.user.is_superuser:
@@ -275,16 +278,20 @@ class UserDetailView(APIView):
         if user is None:
             return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
         data = request.data if isinstance(request.data, dict) else {}
-        if set(data) != {'isVerifier'} or not isinstance(data['isVerifier'], bool):
+        if (
+            not data or not set(data) <= set(self.FIELDS)
+            or not all(isinstance(value, bool) for value in data.values())
+        ):
             return Response(
-                {'detail': 'Send {"isVerifier": true|false}.'},
+                {'detail': 'Send isVerifier and/or isActive as true or false.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if user.is_superuser:
             return Response(
-                {'detail': "Admins already verify everything; their role can't be changed here."},
+                {'detail': "Admins can't be changed or blocked here."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        user.is_verifier = data['isVerifier']
-        user.save(update_fields=['is_verifier'])
+        for key, value in data.items():
+            setattr(user, self.FIELDS[key], value)
+        user.save(update_fields=[self.FIELDS[key] for key in data])
         return Response(ManagedUserSerializer(user).data)

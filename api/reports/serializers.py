@@ -402,8 +402,10 @@ class GrainAnnotationSerializer(serializers.Serializer):
         return f'G{obj.grain.number}' if obj.grain_id else None
 
     def get_training_eligible(self, obj):
+        report = obj.slide.report
         return (
-            not obj.slide.report.sample_detections
+            not report.sample_detections
+            and report.verification == 'Verified'
             and obj.kind in ('confirmed', 'corrected', 'missed')
         )
 
@@ -495,10 +497,10 @@ class ReportSerializer(serializers.Serializer):
         return obj.collected_at.split('T', 1)[0]
 
     def get_researcher(self, obj):
-        # Keep the name visible only to the researcher who owns this report.
-        request = self.context.get('request')
-        user = getattr(request, 'user', None)
-        if user is None or not user.is_authenticated or obj.owner_id != user.id:
+        # The name is visible only to the researcher who owns this report and to
+        # admins (not to other users or verifiers).
+        user = self._user()
+        if user is None or not (user.is_superuser or obj.owner_id == user.id):
             return ''
         return obj.researcher
 

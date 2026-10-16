@@ -37,10 +37,11 @@ class ManagedUserSerializer(serializers.ModelSerializer):
 
     fullName = serializers.CharField(source='full_name', read_only=True)
     isVerifier = serializers.BooleanField(source='is_verifier')
+    isActive = serializers.BooleanField(source='is_active')
     reportCount = serializers.IntegerField(read_only=True)
     joinedAt = serializers.DateTimeField(source='date_joined', read_only=True)
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'fullName', 'institution', 'role', 'isVerifier', 'reportCount', 'joinedAt')
+        fields = ('id', 'email', 'fullName', 'institution', 'role', 'isVerifier', 'isActive', 'reportCount', 'joinedAt')
         read_only_fields = ('id', 'email', 'institution', 'role')

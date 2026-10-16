@@ -45,10 +45,15 @@ between the thesis proposal paper and the frontend.
     both empty admits nobody. Enforced at both sign-ins (403) **and** on
     every request by `accounts.authentication.AllowlistedJWTAuthentication`
     (the DRF default auth class), so removing someone takes effect on their
-    next request (401). **Planned (2026-09-26), not built:** opening sign-in
-    to any Google account — add an explicit `SIGNIN_ALLOW_ALL` switch rather
-    than making empty lists mean "everyone" (keep fail-closed); see adviser
-    item 12 in `../docs/system-spec.md`.
+    next request (401). **Open sign-in (2026-10-16, issue #9):** `SIGNIN_ALLOW_ALL=true`
+    (`settings.SIGNIN_ALLOW_ALL`, default false, an explicit switch so empty lists
+    still fail closed) makes `is_allowed()` admit any address, at both sign-ins,
+    on every request and on refresh. Google admits any verified account (gmail
+    too); Microsoft still admits work/school accounts only (the personal tenant
+    is rejected, because a personal account can carry someone else's address).
+    `render.yaml` ships it `false`; it is turned on in Render after the
+    verification UI is live. Blocking an account (`is_active=false`, via the
+    users API) signs it out on its next request.
   - **Throttling:** DRF anon/user rates plus scopes `login` (both sign-in
     views) and `detect`; overridable via `THROTTLE_*` env vars; effectively
     unlimited when running `manage.py test`.
@@ -66,8 +71,9 @@ between the thesis proposal paper and the frontend.
     read-only `role` property (`admin` = `is_superuser`, `verifier`, `user`)
     and `can_verify`. Admins are made with `manage.py grant_admin <email>
     [--revoke]`; they appoint verifiers via `GET /api/v1/users/` and
-    `PATCH /api/v1/users/<id>/ {"isVerifier": bool}` (admin only, 403
-    otherwise; admins can't be created or edited through the API).
+    `PATCH /api/v1/users/<id>/` with `isVerifier` and/or `isActive` booleans
+    (admin only, 403 otherwise; admins can't be created, edited or blocked
+    through the API; any other key is a 400).
     See "Roles and report verification" in `../docs/system-spec.md`.
   - The request-body key (`id_token`) and response shape
     (`{ "access": ..., "refresh": ... }`, matching
@@ -169,8 +175,9 @@ between the thesis proposal paper and the frontend.
     - Every report returns `verification`, `verifiedAt`, `declineReason`
       (owner + verifiers) and `canVerify`.
     - Migration `reports/0013` marks all existing non-Pending reports Verified.
-    - Not yet done: the frontend (issue #60); whether the researcher's name
-      should show to verifiers; `trainingEligible` ignores verification.
+    - `researcher` (the name) is shown only to the report's owner and to admins
+      (`is_superuser`), not to verifiers or other users. `trainingEligible`
+      also requires the report to be `Verified`.
   - **`GET /api/v1/reports/`** (`reports.views.ReportListCreateView`,
     `IsAuthenticated`): returns a plain JSON array of every report (no
     pagination), each shaped exactly like `Specimen` in
@@ -218,8 +225,8 @@ between the thesis proposal paper and the frontend.
     `box`. Only the report owner or staff may annotate, only while status is
     `Needs review`; sample-detection reports can also be reviewed. Each returned
     annotation includes `trainingEligible`: false for every sample-report
-    annotation, and otherwise true only for confirmed/corrected/missed labels.
-    Future training exports must honor this field and exclude sample reports.
+    annotation, and otherwise true only for confirmed/corrected/missed labels
+    on a `Verified` report (2026-10-16). Future training exports must honor this field and exclude sample reports.
     Original model `Detection` and `Grain` rows stay unchanged. A
     `false_positive` annotation removes that grain from reviewed report and
     dashboard counts; deleting the

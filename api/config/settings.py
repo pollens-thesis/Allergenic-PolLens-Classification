@@ -247,8 +247,10 @@ GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '')
 # account can authenticate, and the allowlist below decides who gets in.
 MICROSOFT_CLIENT_ID = os.environ.get('MICROSOFT_CLIENT_ID', '')
 
-# Who may sign in (accounts.access). A domain admits its subdomains too.
-# Both empty admits nobody.
+# Who may sign in (accounts.access). SIGNIN_ALLOW_ALL=true lets any Google
+# account and any Microsoft work/school account in (issue #9); otherwise a
+# domain admits its subdomains too, and both lists empty admits nobody.
+SIGNIN_ALLOW_ALL = env_bool('SIGNIN_ALLOW_ALL', False)
 SIGNIN_ALLOWED_DOMAINS = [
     d.lower() for d in env_list('SIGNIN_ALLOWED_DOMAINS', 'up.edu.ph,mseuf.edu.ph')
 ]

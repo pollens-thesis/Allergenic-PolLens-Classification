@@ -1477,6 +1477,37 @@ class ReportVerificationTests(APITestCase):
         self.as_user(self.owner)
         self.assertIs(self.client.get(self.url).data['canVerify'], False)
 
+    # --- who sees the researcher's name / training -----------------------------
+
+    def test_only_the_owner_and_admins_see_the_researcher_name(self):
+        self.submit()
+        self.verify(self.verifier, {'decision': 'approve'})
+        for user, expected in (
+            (self.owner, 'Dr. Santos'), (self.admin, 'Dr. Santos'),
+            (self.verifier, ''), (self.other, ''),
+        ):
+            self.as_user(user)
+            self.assertEqual(self.client.get(self.url).data['researcher'], expected, user.email)
+            listed = next(
+                r for r in self.client.get('/api/v1/reports/').data
+                if r['sampleId'] == self.report.sample_id
+            )
+            self.assertEqual(listed['researcher'], expected, user.email)
+
+    def test_annotations_only_train_once_the_report_is_verified(self):
+        self.submit()
+        self.as_user(self.owner)
+        body = {
+            'slideId': f'{self.report.sample_id}-S1', 'grainId': None, 'kind': 'missed',
+            'speciesId': 'amaranthus_spinosus',
+            'box': {'x': 0.1, 'y': 0.1, 'width': 0.1, 'height': 0.1},
+        }
+        url = f'{self.url}annotations/{uuid.uuid4()}/'
+        self.assertFalse(self.client.put(url, body, format='json').data['trainingEligible'])
+        self.verify(self.verifier, {'decision': 'approve'})
+        slide = self.client.get(self.url).data['slides'][0]
+        self.assertTrue(slide['annotations'][0]['trainingEligible'])
+
     # --- resubmit and edits -------------------------------------------------
 
     def test_owner_can_resubmit_a_declined_report(self):
