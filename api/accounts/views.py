@@ -31,11 +31,11 @@ def issue_session(email, institution, full_name=''):
     our JWT pair. Returns a Response.
     """
     email = email.strip().lower()
-    if not is_allowed(email):
+    user = User.objects.filter(email__iexact=email).first()
+    if not (user is not None and user.is_superuser) and not is_allowed(email):
         return Response({'detail': NOT_ALLOWED_DETAIL}, status=status.HTTP_403_FORBIDDEN)
 
     full_name = (full_name or '').strip()[:255]
-    user = User.objects.filter(email__iexact=email).first()
     if user is None:
         try:
             user = User.objects.create(email=email, institution=institution, full_name=full_name)

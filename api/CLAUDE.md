@@ -70,7 +70,10 @@ between the thesis proposal paper and the frontend.
     **Roles (added 2026-10-16, issue #59):** `is_verifier` plus the
     read-only `role` property (`admin` = `is_superuser`, `verifier`, `user`)
     and `can_verify`. Admins are made with `manage.py grant_admin <email>
-    [--revoke]`; they appoint verifiers via `GET /api/v1/users/` and
+    [--revoke]`, or at every deploy from the Render setting `ADMIN_EMAILS` via
+    `grant_admin --from-env` in `build.sh` (adds only, creates a missing
+    account; never revokes). An admin is always allowed to sign in, whatever
+    the allowlist says (`accounts.access.may_sign_in`); they appoint verifiers via `GET /api/v1/users/` and
     `PATCH /api/v1/users/<id>/` with `isVerifier` and/or `isActive` booleans
     (admin only, 403 otherwise; admins can't be created, edited or blocked
     through the API; any other key is a 400).

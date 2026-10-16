@@ -32,8 +32,14 @@ services:
         sync: false
       # Open sign-in (any Google account, any Microsoft work/school account).
       # Turn on once report verification is live; see docs/deployment.md.
+      # sync: false so the dashboard value is never overwritten by a Blueprint
+      # sync; unset means off.
       - key: SIGNIN_ALLOW_ALL
-        value: "false"
+        sync: false
+      # Admin accounts, comma-separated emails (kept out of this public repo).
+      # build.sh makes each one an admin on every deploy; it never removes any.
+      - key: ADMIN_EMAILS
+        sync: false
       # Who may sign in when SIGNIN_ALLOW_ALL is off. A domain also admits its
       # subdomains; both empty admits nobody.
       - key: SIGNIN_ALLOWED_DOMAINS

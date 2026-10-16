@@ -26,7 +26,12 @@ def user_can_authenticate(user):
     applied when refreshing tokens, so someone removed from the list can't
     keep a session alive by refreshing.
     """
-    return user is not None and user.is_active and is_allowed(user.email)
+    return user is not None and user.is_active and may_sign_in(user)
+
+
+def may_sign_in(user):
+    """An admin is always let in, so a closed allowlist can never lock out the people running the app."""
+    return user.is_superuser or is_allowed(user.email)
 
 
 def is_allowed(email):

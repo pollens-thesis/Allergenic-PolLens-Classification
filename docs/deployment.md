@@ -127,6 +127,8 @@ MSEUF IT blocks it, Google sign-in still works.
    | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` for now (step 4 replaces it) |
    | `GOOGLE_OAUTH_CLIENT_ID` | Same as local `api/.env` |
    | `MICROSOFT_CLIENT_ID` | From step 1b (leave empty to disable Microsoft sign-in) |
+   | `ADMIN_EMAILS` | The admins' emails, comma-separated (never commit them). Every deploy makes each one an admin, creating the account if they have not signed in yet; see "Admins" below |
+   | `SIGNIN_ALLOW_ALL` | Leave unset (off) until the verification screens are live; then `true` for open sign-in |
    | `SIGNIN_ALLOWED_EMAILS` | Individual addresses allowed in besides the domains, comma-separated (e.g. your Gmail, the adviser) |
    | `AWS_STORAGE_BUCKET_NAME` | `pollens-media` |
    | `AWS_S3_ENDPOINT_URL` | `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com` |
@@ -176,6 +178,16 @@ later, use **Deployments** → **⋯** → **Redeploy**.
    `VERCEL_URL` to `AllowedOrigins`.
 4. **Microsoft Entra** (if you did step 1b) → your app → **Authentication** →
    Single-page application → add `VERCEL_URL/auth/microsoft` → Save.
+
+**Admins:** an admin appoints verifiers and blocks accounts (Users page), and
+can always sign in even when the allowlist is closed. Put their emails in the
+Render setting `ADMIN_EMAILS` (comma-separated); `build.sh` runs
+`python manage.py grant_admin --from-env` on every deploy, so adding an address
+and redeploying (Render redeploys when a setting changes) is all it takes. It
+only adds admins: removing an address from the setting does not demote anyone.
+To demote, run `python manage.py grant_admin <email> --revoke` against the
+database. Locally, `grant_admin <email>` does the same for an account that has
+signed in.
 
 **Open sign-in (issue #9):** set `SIGNIN_ALLOW_ALL=true` on Render to let any
 Google account and any Microsoft work/school account sign in (personal Microsoft

@@ -15,3 +15,5 @@ fi
 
 python manage.py collectstatic --noinput
 python manage.py migrate --noinput
+# Admins named in the ADMIN_EMAILS setting (Render dashboard). Only ever adds.
+python manage.py grant_admin --from-env

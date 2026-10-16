@@ -448,3 +448,81 @@ class RoleTests(APITestCase):
         self.assertFalse(self.user.is_superuser or self.user.is_staff)
         with self.assertRaises(CommandError):
             call_command('grant_admin', 'nobody@up.edu.ph')
+
+    # --- ADMIN_EMAILS, applied at deploy ---------------------------------------
+
+    def run_from_env(self, value):
+        from django.core.management import call_command
+
+        with patch.dict('os.environ', {'ADMIN_EMAILS': value}):
+            call_command('grant_admin', '--from-env')
+
+    def test_from_env_creates_missing_accounts_and_upgrades_existing_ones(self):
+        self.run_from_env(' New.Admin@Gmail.com, user@up.edu.ph ;\nsecond@example.org ')
+
+        created = User.objects.get(email='new.admin@gmail.com')
+        self.assertTrue(created.is_superuser and created.is_staff and created.is_active)
+        self.assertFalse(created.has_usable_password())
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_superuser and self.user.is_staff)
+        self.assertTrue(User.objects.get(email='second@example.org').is_superuser)
+
+    def test_from_env_is_repeatable_and_never_revokes(self):
+        self.run_from_env('new@gmail.com')
+        self.run_from_env('new@gmail.com')
+        self.run_from_env('')  # the address was removed from the setting
+        self.assertEqual(User.objects.filter(email='new@gmail.com').count(), 1)
+        self.assertTrue(User.objects.get(email='new@gmail.com').is_superuser)
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.is_superuser)
+
+    def test_from_env_leaves_a_blocked_admin_blocked(self):
+        self.user.is_active = False
+        self.user.save()
+        self.run_from_env('user@up.edu.ph')
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_superuser)
+        self.assertFalse(self.user.is_active)
+
+    def test_grant_admin_needs_an_email_or_the_flag(self):
+        from django.core.management import CommandError, call_command
+
+        with self.assertRaises(CommandError):
+            call_command('grant_admin')
+        with self.assertRaises(CommandError):
+            call_command('grant_admin', 'user@up.edu.ph', '--from-env')
+
+    # --- admins are always let in ---------------------------------------------
+
+    @override_settings(
+        GOOGLE_OAUTH_CLIENT_ID='client-id', SIGNIN_ALLOW_ALL=False,
+        SIGNIN_ALLOWED_DOMAINS=['up.edu.ph'], SIGNIN_ALLOWED_EMAILS=[],
+    )
+    @patch('accounts.views.google_id_token.verify_oauth2_token')
+    def test_a_pre_created_admin_can_sign_in_under_a_closed_allowlist(self, mock_verify):
+        self.run_from_env('dr.fajardo@gmail.com')
+        mock_verify.return_value = {**GOOGLE_CLAIMS, 'email': 'Dr.Fajardo@gmail.com', 'hd': '', 'name': 'Dr Fajardo'}
+
+        response = self.client.post('/api/v1/auth/google/', {'id_token': 'x'}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        admin = User.objects.get(email='dr.fajardo@gmail.com')
+        self.assertEqual(admin.full_name, 'Dr Fajardo')
+        self.assertEqual(User.objects.filter(email__iexact='dr.fajardo@gmail.com').count(), 1)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {response.data["access"]}')
+        me = self.client.get('/api/v1/auth/me/')
+        self.assertEqual((me.status_code, me.data['role']), (200, 'admin'))
+        refreshed = self.client.post(
+            '/api/v1/auth/token/refresh/', {'refresh': response.data['refresh']}, format='json',
+        )
+        self.assertEqual(refreshed.status_code, status.HTTP_200_OK)
+
+    @override_settings(
+        GOOGLE_OAUTH_CLIENT_ID='client-id', SIGNIN_ALLOW_ALL=False,
+        SIGNIN_ALLOWED_DOMAINS=['up.edu.ph'], SIGNIN_ALLOWED_EMAILS=[],
+    )
+    @patch('accounts.views.google_id_token.verify_oauth2_token')
+    def test_a_non_admin_outside_a_closed_allowlist_is_still_refused(self, mock_verify):
+        mock_verify.return_value = {**GOOGLE_CLAIMS, 'email': 'stranger@gmail.com', 'hd': ''}
+        response = self.client.post('/api/v1/auth/google/', {'id_token': 'x'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
