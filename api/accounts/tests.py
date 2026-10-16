@@ -96,7 +96,10 @@ class MeViewTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
             response.data,
-            {'email': 'researcher@up.edu.ph', 'fullName': '', 'institution': 'up.edu.ph'},
+            {
+                'email': 'researcher@up.edu.ph', 'fullName': '',
+                'institution': 'up.edu.ph', 'role': 'user',
+            },
         )
 
 
@@ -175,6 +178,35 @@ class AllowlistTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertFalse(User.objects.filter(email='stranger@gmail.com').exists())
 
+    @override_settings(
+        GOOGLE_OAUTH_CLIENT_ID='client-id', SIGNIN_ALLOW_ALL=True,
+        SIGNIN_ALLOWED_DOMAINS=[], SIGNIN_ALLOWED_EMAILS=[],
+    )
+    @patch('accounts.views.google_id_token.verify_oauth2_token')
+    def test_open_sign_in_admits_any_google_account_on_every_request(self, mock_verify):
+        mock_verify.return_value = {**GOOGLE_CLAIMS, 'email': 'Stranger@gmail.com', 'hd': ''}
+
+        response = self.client.post('/api/v1/auth/google/', {'id_token': 'x'}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(User.objects.filter(email='stranger@gmail.com').exists())
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {response.data["access"]}')
+        self.assertEqual(self.client.get('/api/v1/auth/me/').status_code, status.HTTP_200_OK)
+        refreshed = self.client.post(
+            '/api/v1/auth/token/refresh/', {'refresh': response.data['refresh']}, format='json',
+        )
+        self.assertEqual(refreshed.status_code, status.HTTP_200_OK)
+
+    @override_settings(SIGNIN_ALLOW_ALL=True)
+    def test_open_sign_in_still_needs_an_email_address(self):
+        self.assertFalse(is_allowed('not-an-email'))
+        self.assertTrue(is_allowed('anyone@gmail.com'))
+
+    @override_settings(SIGNIN_ALLOW_ALL=False, SIGNIN_ALLOWED_DOMAINS=['up.edu.ph'], SIGNIN_ALLOWED_EMAILS=[])
+    def test_switch_off_keeps_the_allowlist(self):
+        self.assertFalse(is_allowed('anyone@gmail.com'))
+        self.assertTrue(is_allowed('a@up.edu.ph'))
+
     def test_removed_user_is_rejected_on_the_next_request(self):
         user = User.objects.create(email='researcher@up.edu.ph', institution='up.edu.ph')
         token = str(RefreshToken.for_user(user).access_token)
@@ -250,6 +282,16 @@ class MicrosoftLoginViewTests(APITestCase):
         response = self.post(make_microsoft_token(preferred_username='someone@other.edu'))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    @override_settings(SIGNIN_ALLOW_ALL=True, SIGNIN_ALLOWED_DOMAINS=[], SIGNIN_ALLOWED_EMAILS=[])
+    def test_open_sign_in_admits_any_work_account_but_still_not_personal_ones(self):
+        response = self.post(make_microsoft_token(preferred_username='someone@other.edu'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        personal = '9188040d-6c67-4c5b-b112-36a304b66dad'
+        token = make_microsoft_token(
+            tid=personal, iss=f'https://login.microsoftonline.com/{personal}/v2.0',
+        )
+        self.assertEqual(self.post(token).status_code, 401)
+
     def test_missing_token_is_400(self):
         self.assertEqual(self.client.post(self.url, {}, format='json').status_code, 400)
 
@@ -290,3 +332,197 @@ class MicrosoftNameTests(APITestCase):
             '/api/v1/auth/microsoft/', {'id_token': make_microsoft_token(name='Maria Santos')}, format='json',
         )
         self.assertEqual(User.objects.get(email='researcher@up.edu.ph').full_name, 'Maria Santos')
+
+
+class RoleTests(APITestCase):
+    """Admin / verifier / user roles (issue #59)."""
+
+    def setUp(self):
+        self.user = User.objects.create(email='user@up.edu.ph', institution='up.edu.ph')
+        self.verifier = User.objects.create(
+            email='verifier@up.edu.ph', institution='up.edu.ph', is_verifier=True,
+        )
+        self.admin = User.objects.create(
+            email='admin@up.edu.ph', institution='up.edu.ph', is_superuser=True, is_staff=True,
+        )
+
+    def test_me_returns_the_role(self):
+        for user, role in ((self.user, 'user'), (self.verifier, 'verifier'), (self.admin, 'admin')):
+            self.client.force_authenticate(user=user)
+            self.assertEqual(self.client.get('/api/v1/auth/me/').data['role'], role)
+
+    def test_an_admin_who_is_also_flagged_verifier_is_an_admin(self):
+        self.admin.is_verifier = True
+        self.assertEqual(self.admin.role, 'admin')
+
+    def test_an_inactive_verifier_cannot_verify(self):
+        self.verifier.is_active = False
+        self.assertFalse(self.verifier.can_verify)
+
+    def test_only_admins_can_list_users(self):
+        for user in (self.user, self.verifier):
+            self.client.force_authenticate(user=user)
+            self.assertEqual(self.client.get('/api/v1/users/').status_code, 403)
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get('/api/v1/users/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [row['email'] for row in response.data],
+            ['admin@up.edu.ph', 'user@up.edu.ph', 'verifier@up.edu.ph'],
+        )
+        self.assertEqual(response.data[0]['role'], 'admin')
+        self.assertEqual(response.data[0]['reportCount'], 0)
+
+    def test_admin_appoints_and_removes_a_verifier(self):
+        self.client.force_authenticate(user=self.admin)
+        url = f'/api/v1/users/{self.user.id}/'
+        response = self.client.patch(url, {'isVerifier': True}, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['role'], 'verifier')
+        response = self.client.patch(url, {'isVerifier': False}, format='json')
+        self.assertEqual(response.data['role'], 'user')
+
+    def test_non_admins_cannot_appoint(self):
+        self.client.force_authenticate(user=self.verifier)
+        response = self.client.patch(
+            f'/api/v1/users/{self.user.id}/', {'isVerifier': True}, format='json',
+        )
+        self.assertEqual(response.status_code, 403)
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_verifier)
+
+    def test_the_users_api_cannot_grant_admin_or_touch_admins(self):
+        self.client.force_authenticate(user=self.admin)
+        url = f'/api/v1/users/{self.user.id}/'
+        self.assertEqual(self.client.patch(url, {'isSuperuser': True}, format='json').status_code, 400)
+        self.assertEqual(
+            self.client.patch(url, {'isVerifier': True, 'is_superuser': True}, format='json').status_code,
+            400,
+        )
+        self.assertEqual(
+            self.client.patch(
+                f'/api/v1/users/{self.admin.id}/', {'isVerifier': True}, format='json',
+            ).status_code,
+            400,
+        )
+        missing = self.client.patch('/api/v1/users/9999/', {'isVerifier': True}, format='json')
+        self.assertEqual(missing.status_code, 404)
+
+    def test_admin_blocks_and_unblocks_an_account(self):
+        self.client.force_authenticate(user=self.admin)
+        url = f'/api/v1/users/{self.user.id}/'
+        response = self.client.patch(url, {'isActive': False}, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.data['isActive'], False)
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_active)
+        response = self.client.patch(url, {'isActive': True, 'isVerifier': True}, format='json')
+        self.assertEqual((response.data['isActive'], response.data['role']), (True, 'verifier'))
+
+    def test_a_blocked_user_is_signed_out_on_the_next_request(self):
+        token = str(RefreshToken.for_user(self.user).access_token)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        self.assertEqual(self.client.get('/api/v1/auth/me/').status_code, 200)
+        self.user.is_active = False
+        self.user.save()
+        self.assertEqual(self.client.get('/api/v1/auth/me/').status_code, 401)
+
+    def test_admins_cannot_be_blocked_and_the_body_is_validated(self):
+        self.client.force_authenticate(user=self.admin)
+        own = f'/api/v1/users/{self.admin.id}/'
+        self.assertEqual(self.client.patch(own, {'isActive': False}, format='json').status_code, 400)
+        url = f'/api/v1/users/{self.user.id}/'
+        for body in ({}, {'isActive': 'no'}, {'isActive': False, 'email': 'x@y.z'}):
+            self.assertEqual(self.client.patch(url, body, format='json').status_code, 400, body)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_active)
+
+    def test_grant_admin_command(self):
+        from django.core.management import CommandError, call_command
+
+        call_command('grant_admin', 'USER@up.edu.ph')
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_superuser and self.user.is_staff)
+        call_command('grant_admin', 'user@up.edu.ph', '--revoke')
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_superuser or self.user.is_staff)
+        with self.assertRaises(CommandError):
+            call_command('grant_admin', 'nobody@up.edu.ph')
+
+    # --- ADMIN_EMAILS, applied at deploy ---------------------------------------
+
+    def run_from_env(self, value):
+        from django.core.management import call_command
+
+        with patch.dict('os.environ', {'ADMIN_EMAILS': value}):
+            call_command('grant_admin', '--from-env')
+
+    def test_from_env_creates_missing_accounts_and_upgrades_existing_ones(self):
+        self.run_from_env(' New.Admin@Gmail.com, user@up.edu.ph ;\nsecond@example.org ')
+
+        created = User.objects.get(email='new.admin@gmail.com')
+        self.assertTrue(created.is_superuser and created.is_staff and created.is_active)
+        self.assertFalse(created.has_usable_password())
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_superuser and self.user.is_staff)
+        self.assertTrue(User.objects.get(email='second@example.org').is_superuser)
+
+    def test_from_env_is_repeatable_and_never_revokes(self):
+        self.run_from_env('new@gmail.com')
+        self.run_from_env('new@gmail.com')
+        self.run_from_env('')  # the address was removed from the setting
+        self.assertEqual(User.objects.filter(email='new@gmail.com').count(), 1)
+        self.assertTrue(User.objects.get(email='new@gmail.com').is_superuser)
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.is_superuser)
+
+    def test_from_env_leaves_a_blocked_admin_blocked(self):
+        self.user.is_active = False
+        self.user.save()
+        self.run_from_env('user@up.edu.ph')
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_superuser)
+        self.assertFalse(self.user.is_active)
+
+    def test_grant_admin_needs_an_email_or_the_flag(self):
+        from django.core.management import CommandError, call_command
+
+        with self.assertRaises(CommandError):
+            call_command('grant_admin')
+        with self.assertRaises(CommandError):
+            call_command('grant_admin', 'user@up.edu.ph', '--from-env')
+
+    # --- admins are always let in ---------------------------------------------
+
+    @override_settings(
+        GOOGLE_OAUTH_CLIENT_ID='client-id', SIGNIN_ALLOW_ALL=False,
+        SIGNIN_ALLOWED_DOMAINS=['up.edu.ph'], SIGNIN_ALLOWED_EMAILS=[],
+    )
+    @patch('accounts.views.google_id_token.verify_oauth2_token')
+    def test_a_pre_created_admin_can_sign_in_under_a_closed_allowlist(self, mock_verify):
+        self.run_from_env('dr.fajardo@gmail.com')
+        mock_verify.return_value = {**GOOGLE_CLAIMS, 'email': 'Dr.Fajardo@gmail.com', 'hd': '', 'name': 'Dr Fajardo'}
+
+        response = self.client.post('/api/v1/auth/google/', {'id_token': 'x'}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        admin = User.objects.get(email='dr.fajardo@gmail.com')
+        self.assertEqual(admin.full_name, 'Dr Fajardo')
+        self.assertEqual(User.objects.filter(email__iexact='dr.fajardo@gmail.com').count(), 1)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {response.data["access"]}')
+        me = self.client.get('/api/v1/auth/me/')
+        self.assertEqual((me.status_code, me.data['role']), (200, 'admin'))
+        refreshed = self.client.post(
+            '/api/v1/auth/token/refresh/', {'refresh': response.data['refresh']}, format='json',
+        )
+        self.assertEqual(refreshed.status_code, status.HTTP_200_OK)
+
+    @override_settings(
+        GOOGLE_OAUTH_CLIENT_ID='client-id', SIGNIN_ALLOW_ALL=False,
+        SIGNIN_ALLOWED_DOMAINS=['up.edu.ph'], SIGNIN_ALLOWED_EMAILS=[],
+    )
+    @patch('accounts.views.google_id_token.verify_oauth2_token')
+    def test_a_non_admin_outside_a_closed_allowlist_is_still_refused(self, mock_verify):
+        mock_verify.return_value = {**GOOGLE_CLAIMS, 'email': 'stranger@gmail.com', 'hd': ''}
+        response = self.client.post('/api/v1/auth/google/', {'id_token': 'x'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

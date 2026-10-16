@@ -45,10 +45,15 @@ between the thesis proposal paper and the frontend.
     both empty admits nobody. Enforced at both sign-ins (403) **and** on
     every request by `accounts.authentication.AllowlistedJWTAuthentication`
     (the DRF default auth class), so removing someone takes effect on their
-    next request (401). **Planned (2026-09-26), not built:** opening sign-in
-    to any Google account — add an explicit `SIGNIN_ALLOW_ALL` switch rather
-    than making empty lists mean "everyone" (keep fail-closed); see adviser
-    item 12 in `../docs/system-spec.md`.
+    next request (401). **Open sign-in (2026-10-16, issue #9):** `SIGNIN_ALLOW_ALL=true`
+    (`settings.SIGNIN_ALLOW_ALL`, default false, an explicit switch so empty lists
+    still fail closed) makes `is_allowed()` admit any address, at both sign-ins,
+    on every request and on refresh. Google admits any verified account (gmail
+    too); Microsoft still admits work/school accounts only (the personal tenant
+    is rejected, because a personal account can carry someone else's address).
+    `render.yaml` ships it `false`; it is turned on in Render after the
+    verification UI is live. Blocking an account (`is_active=false`, via the
+    users API) signs it out on its next request.
   - **Throttling:** DRF anon/user rates plus scopes `login` (both sign-in
     views) and `detect`; overridable via `THROTTLE_*` env vars; effectively
     unlimited when running `manage.py test`.
@@ -62,9 +67,17 @@ between the thesis proposal paper and the frontend.
     `app/PolLens/lib/account.ts`'s "the signed-in address is the only
     thing stored" design. `institution` mirrors the Google ID token's
     `hd` (hosted domain) claim when present, refreshed on every login.
-    The paper's `role` field was deliberately not added — the frontend
-    has no consumer for it (see the Google OAuth row in
-    `../docs/system-spec.md`); add it only if that's revisited.
+    **Roles (added 2026-10-16, issue #59):** `is_verifier` plus the
+    read-only `role` property (`admin` = `is_superuser`, `verifier`, `user`)
+    and `can_verify`. Admins are made with `manage.py grant_admin <email>
+    [--revoke]`, or at every deploy from the Render setting `ADMIN_EMAILS` via
+    `grant_admin --from-env` in `build.sh` (adds only, creates a missing
+    account; never revokes). An admin is always allowed to sign in, whatever
+    the allowlist says (`accounts.access.may_sign_in`); they appoint verifiers via `GET /api/v1/users/` and
+    `PATCH /api/v1/users/<id>/` with `isVerifier` and/or `isActive` booleans
+    (admin only, 403 otherwise; admins can't be created, edited or blocked
+    through the API; any other key is a 400).
+    See "Roles and report verification" in `../docs/system-spec.md`.
   - The request-body key (`id_token`) and response shape
     (`{ "access": ..., "refresh": ... }`, matching
     `TokenObtainPairView`'s output) are now frontend-confirmed: as of
@@ -86,8 +99,8 @@ between the thesis proposal paper and the frontend.
     and its response shapes don't match this project's `{"detail": ...}`
     convention, so a small custom view was written instead.
   - **`GET /api/v1/auth/me/`** (`accounts.views.MeView`,
-    `IsAuthenticated`): no body. Returns `{ "email": "...", "institution":
-    "..." }` for the signed-in user (`institution` is `""` when the
+    `IsAuthenticated`): no body. Returns `{ "email": "...", "fullName":
+    "...", "institution": "...", "role": "admin|verifier|user" }` for the signed-in user (`institution` is `""` when the
     Google account has no `hd` claim). No caller in the frontend yet — see
     the Google OAuth row in `../docs/system-spec.md`.
   - **Test coverage**: `accounts/tests.py` covers `GoogleLoginView`,
@@ -142,11 +155,32 @@ between the thesis proposal paper and the frontend.
     clipped to [0,1] (a box entirely outside is 400); duplicate species in
     one slide's `detections` → 400; text fields capped at 255.
   - **Detect** responses include `"mock": true|false`.
-  - **Visibility:** shared corpus — every authenticated user can list/view
-    every report (`GET` endpoints have no owner filter). `Report.owner`
-    (FK → `accounts.User`, nullable) is captured for attribution and
-    future edit/delete permission checks only, and is never present in
-    API responses.
+  - **Visibility and verification (2026-10-16, issue #59):** a report is
+    shared only once `Report.verification` is `Verified`. Everyone sees their
+    own reports plus every Verified one; verifiers also see submitted
+    Awaiting/Declined ones (not other people's Pending drafts); staff/admins
+    see all (`reports.verification.visible_reports`, used by the list, detail,
+    annotation, verify and resubmit views). A hidden report is a 404, and
+    `monthly-counts` counts Verified reports only. `verification` is separate
+    from `status`. `owner` is still never in API responses.
+    - Submitting (Pending → Needs review) leaves a user's report `Awaiting`; a
+      verifier/admin owner's is `Verified` at once (only at that moment, so a
+      verifier can't clear their own declined report). Changing a Verified
+      report's content or annotations (not slide notes) by anyone returns a
+      non-verifier owner's report to `Awaiting`.
+    - `GET /api/v1/reports/?verification=awaiting|verified|declined` — the
+      review queue is `awaiting`.
+    - `POST /api/v1/reports/<id>/verify/ {"decision": "approve"|"decline",
+      "reason"}` — verifier/admin only (403), never the caller's own report
+      (403), only a submitted Awaiting one (400); decline needs a reason
+      (≤ 1000 chars, 400). `POST .../resubmit/` — owner only, Declined →
+      Awaiting.
+    - Every report returns `verification`, `verifiedAt`, `declineReason`
+      (owner + verifiers) and `canVerify`.
+    - Migration `reports/0013` marks all existing non-Pending reports Verified.
+    - `researcher` (the name) is shown only to the report's owner and to admins
+      (`is_superuser`), not to verifiers or other users. `trainingEligible`
+      also requires the report to be `Verified`.
   - **`GET /api/v1/reports/`** (`reports.views.ReportListCreateView`,
     `IsAuthenticated`): returns a plain JSON array of every report (no
     pagination), each shaped exactly like `Specimen` in
@@ -194,8 +228,8 @@ between the thesis proposal paper and the frontend.
     `box`. Only the report owner or staff may annotate, only while status is
     `Needs review`; sample-detection reports can also be reviewed. Each returned
     annotation includes `trainingEligible`: false for every sample-report
-    annotation, and otherwise true only for confirmed/corrected/missed labels.
-    Future training exports must honor this field and exclude sample reports.
+    annotation, and otherwise true only for confirmed/corrected/missed labels
+    on a `Verified` report (2026-10-16). Future training exports must honor this field and exclude sample reports.
     Original model `Detection` and `Grain` rows stay unchanged. A
     `false_positive` annotation removes that grain from reviewed report and
     dashboard counts; deleting the

@@ -11,7 +11,8 @@ class SlideInline(admin.TabularInline):
 
 @admin.register(Report)
 class ReportAdmin(admin.ModelAdmin):
-    list_display = ('sample_id', 'collected_at', 'location', 'researcher', 'status', 'owner')
+    list_display = ('sample_id', 'collected_at', 'location', 'researcher', 'status', 'verification', 'owner')
+    list_filter = ('status', 'verification')
     search_fields = ('sample_id', 'location', 'researcher')
     inlines = [SlideInline]
 

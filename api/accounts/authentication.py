@@ -1,7 +1,7 @@
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .access import is_allowed
+from .access import may_sign_in
 
 
 class AllowlistedJWTAuthentication(JWTAuthentication):
@@ -13,7 +13,7 @@ class AllowlistedJWTAuthentication(JWTAuthentication):
 
     def get_user(self, validated_token):
         user = super().get_user(validated_token)
-        if not is_allowed(user.email):
+        if not may_sign_in(user):
             raise AuthenticationFailed(
                 "This account isn't authorised to use PolleRgies.", code='not_allowed',
             )

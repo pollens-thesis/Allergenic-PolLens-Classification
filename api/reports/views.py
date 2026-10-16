@@ -30,7 +30,15 @@ logger = logging.getLogger(__name__)
 MANILA = zoneinfo.ZoneInfo('Asia/Manila')
 # Reports that describe finished work — what charts and maps count.
 FINALISED_STATUSES = ('Completed', 'Needs review')
-from .models import STATUS_CHOICES, GrainAnnotation, Report, Slide, Species
+from . import verification
+from .models import (
+    STATUS_CHOICES,
+    VERIFICATION_CHOICES,
+    GrainAnnotation,
+    Report,
+    Slide,
+    Species,
+)
 from .serializers import (
     GrainAnnotationInputSerializer,
     GrainAnnotationSerializer,
@@ -42,6 +50,7 @@ from .serializers import (
 
 DATE_PARAM_VALIDATOR = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 VALID_STATUSES = dict(STATUS_CHOICES)
+VALID_VERIFICATIONS = {value.lower(): value for value, _ in VERIFICATION_CHOICES}
 
 
 def image_error_response(exc):
@@ -72,8 +81,10 @@ def all_species_ids():
 
 class ReportListCreateView(APIView):
     """
-    GET  /api/v1/reports/   — list every report (shared corpus). `owner=me`
-                              narrows to the caller's own (e.g. their Pending).
+    GET  /api/v1/reports/   — list the reports the caller may see: every Verified
+                              one plus their own (verifiers also see what awaits
+                              them). `owner=me` narrows to the caller's own and
+                              `verification=awaiting|verified|declined` filters.
     POST /api/v1/reports/   — persist an analyzed batch as one Pending report.
     """
 
@@ -81,7 +92,16 @@ class ReportListCreateView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
-        reports = Report.objects.all()
+        reports = verification.visible_reports(Report.objects.all(), request.user)
+
+        verification_param = request.query_params.get('verification', '').strip().lower()
+        if verification_param and verification_param != 'all':
+            if verification_param not in VALID_VERIFICATIONS:
+                return Response(
+                    {'detail': f'"{verification_param}" is not a valid verification state.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            reports = reports.filter(verification=VALID_VERIFICATIONS[verification_param])
 
         status_param = request.query_params.get('status', '').strip()
         if status_param and status_param.lower() != 'all':
@@ -636,7 +656,7 @@ class ReportMonthlyCountsView(APIView):
         target_year_months = [f'{year:04d}-{month:02d}' for year, month in months]
         reports = (
             Report.objects
-            .filter(status__in=FINALISED_STATUSES)
+            .filter(status__in=FINALISED_STATUSES, verification=verification.VERIFIED)
             .annotate(year_month=Substr('collected_at', 1, 7))
             .filter(year_month__in=target_year_months)
             .prefetch_related('slides__detections', 'slides__grains', 'slides__annotations')
@@ -674,7 +694,8 @@ class SpeciesListView(APIView):
 
 class ReportDetailView(APIView):
     """
-    GET    /api/v1/reports/<sample_id>/ — a single report (any researcher).
+    GET    /api/v1/reports/<sample_id>/ — a single report the caller may see
+                                          (404 for someone else's unverified one).
     PATCH  /api/v1/reports/<sample_id>/ — edit details/notes, change status.
     DELETE /api/v1/reports/<sample_id>/ — delete it and its slide images.
 
@@ -684,8 +705,9 @@ class ReportDetailView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser]
 
-    def _get(self, sample_id):
-        return Report.objects.prefetch_related(
+    def _get(self, request, sample_id):
+        reports = verification.visible_reports(Report.objects.all(), request.user)
+        return reports.prefetch_related(
             'slides__detections', 'slides__grains', 'slides__annotations',
         ).filter(sample_id=sample_id).first()
 
@@ -698,13 +720,13 @@ class ReportDetailView(APIView):
         return request.user.is_staff or report.owner_id == request.user.id
 
     def get(self, request, sample_id):
-        report = self._get(sample_id)
+        report = self._get(request, sample_id)
         if report is None:
             return self._not_found()
         return Response(ReportSerializer(report, context={'request': request}).data)
 
     def patch(self, request, sample_id):
-        report = self._get(sample_id)
+        report = self._get(request, sample_id)
         if report is None:
             return self._not_found()
         if not self._can_edit(request, report):
@@ -719,10 +741,10 @@ class ReportDetailView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         serializer.save()
-        return Response(ReportSerializer(self._get(sample_id), context={'request': request}).data)
+        return Response(ReportSerializer(self._get(request, sample_id), context={'request': request}).data)
 
     def delete(self, request, sample_id):
-        report = self._get(sample_id)
+        report = self._get(request, sample_id)
         if report is None:
             return self._not_found()
         if not self._can_edit(request, report):
@@ -747,7 +769,9 @@ class ReportAnnotationDetailView(APIView):
 
     @staticmethod
     def _editable_report(request, sample_id):
-        report = Report.objects.filter(sample_id=sample_id).first()
+        report = verification.visible_reports(Report.objects.all(), request.user).filter(
+            sample_id=sample_id,
+        ).first()
         if report is None:
             return None, Response({'detail': 'Report not found.'}, status=status.HTTP_404_NOT_FOUND)
         if not (request.user.is_staff or report.owner_id == request.user.id):
@@ -761,6 +785,13 @@ class ReportAnnotationDetailView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return report, None
+
+    @staticmethod
+    def _reverify(report):
+        # Changing the grain readings changes what a verifier approved.
+        fields = verification.sync_after_change(report, content_changed=True)
+        if fields:
+            report.save(update_fields=fields)
 
     def put(self, request, sample_id, annotation_id):
         report, error = self._editable_report(request, sample_id)
@@ -806,6 +837,7 @@ class ReportAnnotationDetailView(APIView):
             annotation.box_height = box['height']
             annotation.reviewer = request.user
             annotation.save()
+            self._reverify(report)
 
         return Response(GrainAnnotationSerializer(annotation).data)
 
@@ -818,4 +850,91 @@ class ReportAnnotationDetailView(APIView):
         ).delete()
         if not deleted:
             return Response({'detail': 'Annotation not found.'}, status=status.HTTP_404_NOT_FOUND)
+        self._reverify(report)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ReportVerifyView(APIView):
+    """
+    POST /api/v1/reports/<sample_id>/verify/ — a verifier or admin rules on a
+    submitted report: `{"decision": "approve"}` or `{"decision": "decline",
+    "reason": "..."}` (the reason is required). Only Awaiting reports that have
+    left Pending, and never the ruler's own.
+    """
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser]
+
+    def post(self, request, sample_id):
+        if not request.user.can_verify:
+            return Response(
+                {'detail': 'Only a verifier or admin can verify reports.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        report = verification.visible_reports(Report.objects.all(), request.user).filter(
+            sample_id=sample_id,
+        ).first()
+        if report is None:
+            return Response({'detail': 'Report not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if report.owner_id == request.user.id:
+            return Response(
+                {'detail': 'You can\'t rule on your own report; another verifier must.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if report.status == 'Pending' or report.verification != verification.AWAITING:
+            return Response(
+                {'detail': 'Only a submitted report that is awaiting verification can be ruled on.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        data = request.data if isinstance(request.data, Mapping) else {}
+        decision = data.get('decision')
+        reason = data.get('reason')
+        if decision not in ('approve', 'decline'):
+            return Response(
+                {'detail': 'decision must be "approve" or "decline".'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if decision == 'decline':
+            if not isinstance(reason, str) or not reason.strip():
+                return Response(
+                    {'detail': 'A reason is required to decline a report.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if len(reason) > 1000:
+                return Response(
+                    {'detail': 'The reason can be at most 1000 characters.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        verification.decide(
+            report, request.user, approve=decision == 'approve',
+            reason=reason if decision == 'decline' else '',
+        )
+        report = ReportDetailView()._get(request, sample_id)
+        return Response(ReportSerializer(report, context={'request': request}).data)
+
+
+class ReportResubmitView(APIView):
+    """POST /api/v1/reports/<sample_id>/resubmit/ — the owner sends a Declined report back to the queue."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, sample_id):
+        report = verification.visible_reports(Report.objects.all(), request.user).filter(
+            sample_id=sample_id,
+        ).first()
+        if report is None:
+            return Response({'detail': 'Report not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if report.owner_id != request.user.id:
+            return Response(
+                {'detail': 'Only the researcher who created this report can resubmit it.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if report.verification != verification.DECLINED:
+            return Response(
+                {'detail': 'Only a declined report can be resubmitted.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        verification.resubmit(report)
+        report = ReportDetailView()._get(request, sample_id)
+        return Response(ReportSerializer(report, context={'request': request}).data)

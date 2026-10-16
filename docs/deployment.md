@@ -127,6 +127,8 @@ MSEUF IT blocks it, Google sign-in still works.
    | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` for now (step 4 replaces it) |
    | `GOOGLE_OAUTH_CLIENT_ID` | Same as local `api/.env` |
    | `MICROSOFT_CLIENT_ID` | From step 1b (leave empty to disable Microsoft sign-in) |
+   | `ADMIN_EMAILS` | The admins' emails, comma-separated (never commit them). Every deploy makes each one an admin, creating the account if they have not signed in yet; see "Admins" below |
+   | `SIGNIN_ALLOW_ALL` | Leave unset (off) until the verification screens are live; then `true` for open sign-in |
    | `SIGNIN_ALLOWED_EMAILS` | Individual addresses allowed in besides the domains, comma-separated (e.g. your Gmail, the adviser) |
    | `AWS_STORAGE_BUCKET_NAME` | `pollens-media` |
    | `AWS_S3_ENDPOINT_URL` | `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com` |
@@ -177,7 +179,26 @@ later, use **Deployments** → **⋯** → **Redeploy**.
 4. **Microsoft Entra** (if you did step 1b) → your app → **Authentication** →
    Single-page application → add `VERCEL_URL/auth/microsoft` → Save.
 
-**Who can sign in:** `SIGNIN_ALLOWED_DOMAINS` defaults to
+**Admins:** an admin appoints verifiers and blocks accounts (Users page), and
+can always sign in even when the allowlist is closed. Put their emails in the
+Render setting `ADMIN_EMAILS` (comma-separated); `build.sh` runs
+`python manage.py grant_admin --from-env` on every deploy, so adding an address
+and redeploying (Render redeploys when a setting changes) is all it takes. It
+only adds admins: removing an address from the setting does not demote anyone.
+To demote, run `python manage.py grant_admin <email> --revoke` against the
+database. Locally, `grant_admin <email>` does the same for an account that has
+signed in.
+
+**Open sign-in (issue #9):** set `SIGNIN_ALLOW_ALL=true` on Render to let any
+Google account and any Microsoft work/school account sign in (personal Microsoft
+accounts stay refused). Turn it on only after the roles and verification are
+deployed on both sides and `python manage.py grant_admin <email>` has been run for
+the admins, because every new user's reports then wait for a verifier. To close it
+again, set it back to `false`: the lists below apply, and people outside them are
+signed out on their next request. An admin can also block one account from the
+Users page.
+
+**Who can sign in** (when `SIGNIN_ALLOW_ALL` is off): `SIGNIN_ALLOWED_DOMAINS` defaults to
 `up.edu.ph,mseuf.edu.ph`; a domain also admits its subdomains, e.g.
 `student.mseuf.edu.ph`. Anyone else needs to be listed in
 `SIGNIN_ALLOWED_EMAILS`. Changes on Render take effect on the researcher's next
@@ -217,7 +238,7 @@ Open `VERCEL_URL` and check each step:
 | Browser console: *blocked by CORS policy* on `/api/v1/...` | `CORS_ALLOWED_ORIGINS` on Render doesn't exactly match `VERCEL_URL`: scheme, no trailing slash. |
 | Google button: *origin is not allowed for the client ID* | Step 4.2 isn't saved yet, or it's still propagating. |
 | Sign-in fails with *Invalid Google token* | Vercel and Render use different Google client IDs. |
-| *This account isn't authorised to use PolLens* | The email isn't on the allowlist: add its domain to `SIGNIN_ALLOWED_DOMAINS` or the address to `SIGNIN_ALLOWED_EMAILS` on Render. |
+| *This account isn't authorised to use PolLens* | Open sign-in is off and the email isn't on the allowlist: turn on `SIGNIN_ALLOW_ALL`, or add its domain to `SIGNIN_ALLOWED_DOMAINS` or the address to `SIGNIN_ALLOWED_EMAILS` on Render. |
 | Microsoft popup: *redirect URI mismatch* | Add `VERCEL_URL/auth/microsoft` as an SPA redirect URI (step 4.4). |
 | Google popup: *Access blocked* / *app not verified* | Since 2026-10-16 the consent screen is **In production** (project `pollens-506806`, Google Auth Platform), so test users are no longer needed; the backend allowlist still decides who gets in. If it is ever set back to Testing, add the person under Audience → Test users. Locally, sign in from exactly `http://localhost:3000`. |
 | Consent screen shows no logo / "Your branding is not being shown" | Brand verification is pending. The home page, `/privacy` and `/terms` are public, and Search Console verified `https://pollens-theta.vercel.app/` (HTML tag in `app/layout.tsx`; keep it). On 2026-10-16 Google answered "home page not registered to you" and said to wait 24 hours: then Google Auth Platform → Branding → **Verify branding** again. Sign-in works meanwhile, only the logo and name are withheld. |
