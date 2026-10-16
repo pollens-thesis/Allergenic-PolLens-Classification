@@ -13,7 +13,7 @@ import {
 
 const now = new Date("2026-09-27T10:00:00Z");
 function report(overrides: Partial<Specimen> = {}): Specimen {
-  return { sampleId: "test", collectedAt: "2026-09-27", location: "Lucban, Quezon", slides: [{ id: "slide", fileName: "test.png", notes: "", detections: [] }], weather: null, researcher: "Test researcher", status: "Completed", createdAt: "2026-09-27T10:00:00Z", canEdit: false, ...overrides };
+  return { sampleId: "test", collectedAt: "2026-09-27", location: "Lucban, Quezon", slides: [{ id: "slide", fileName: "test.png", notes: "", detections: [] }], weather: null, researcher: "Test researcher", status: "Completed", createdAt: "2026-09-27T10:00:00Z", canEdit: false, verification: "Verified", verifiedAt: null, declineReason: "", canVerify: false, ...overrides };
 }
 
 test("sampling counts collections with no pollen, counts slides separately, and excludes Pending", () => {
@@ -27,6 +27,13 @@ test("sampling counts collections with no pollen, counts slides separately, and 
   assert.equal(summary.sampleCount, 1);
   assert.deepEqual(summary.locations[0].monthly, [0, 0, 2, 0, 0, 0]);
   assert.equal(summary.locations[0].slideCount, 3);
+});
+
+test("reports a verifier has not accepted stay out of the shared figures", () => {
+  const records = [report(), report({ verification: "Awaiting" }), report({ verification: "Declined" })];
+  const summary = buildDashboardSummary(records, 6, now);
+  assert.equal(summary.collectionCount, 1);
+  assert.equal(summary.recentCollections.length, 1);
 });
 
 test("reviewed missed pollen changes counts without inventing model confidence", () => {

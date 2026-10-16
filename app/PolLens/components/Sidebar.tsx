@@ -11,13 +11,15 @@ import {
   FileText,
   Map,
   Leaf,
+  ShieldCheck,
+  Users,
   Menu,
   Settings,
   X,
   CircleHelp,
 } from "lucide-react";
 import { displayName, getInitials } from "@/lib/account";
-import { useSettings } from "@/lib/settings";
+import { useSettings, type Role } from "@/lib/settings";
 import HelpAboutDialog, { SECTION_SHORTCUTS } from "@/components/HelpAboutDialog";
 import { SidebarToggle, ThemeToggle } from "@/components/AppearanceControls";
 import PolleRgiesWordmark from "@/components/PolleRgiesWordmark";
@@ -30,7 +32,10 @@ const NAV_ITEMS = [
   { href: "/trends", label: "Pollen Trends", icon: ChartLine },
   { href: "/map", label: "Pollen Map", icon: Map },
   { href: "/dataset", label: "Allergen Reference", icon: Leaf },
-];
+  // Only for the people who can use them; the pages say so themselves if opened anyway.
+  { href: "/review", label: "Review Queue", icon: ShieldCheck, roles: ["verifier", "admin"] },
+  { href: "/users", label: "Users", icon: Users, roles: ["admin"] },
+] satisfies { href: string; label: string; icon: typeof Leaf; roles?: Role[] }[];
 
 // Settings is deliberately absent from the nav: the account card at the bottom
 // is the way in, so the same destination isn't offered twice.
@@ -151,7 +156,7 @@ export default function Sidebar() {
 
   const navLinks = (
     <nav className="app-navigation flex flex-col gap-1">
-      {NAV_ITEMS.map((item) => {
+      {NAV_ITEMS.filter((item) => !("roles" in item) || (item.roles as Role[]).includes(settings.role ?? "user")).map((item) => {
         // A section's own pages count as that section, so the tab stays
         // lit on /reports/PLN-2026-0142 and on /upload/result.
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);

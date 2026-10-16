@@ -53,7 +53,8 @@ import RiskBadge from "@/components/RiskBadge";
 import SummaryTile from "@/components/SummaryTile";
 import SpeciesName from "@/components/SpeciesName";
 import { downloadReportPdf } from "@/lib/pdf";
-import StatusBadge, { SampleBadge } from "@/components/StatusBadge";
+import StatusBadge, { SampleBadge, VerificationBadge } from "@/components/StatusBadge";
+import VerificationPanel from "@/components/VerificationPanel";
 import GrainReviewEditor from "@/components/GrainReviewEditor";
 import SpecimenImageViewer from "@/components/SpecimenImageViewer";
 import SpecimenInspector from "@/components/SpecimenInspector";
@@ -471,6 +472,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
           Sample detections · The trained model wasn&apos;t deployed. Counts are illustrative.
         </p>
       )}
+      <VerificationPanel report={report} onChange={setReport} />
       {/* Header */}
       <div className="card-panel p-4 sm:p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -481,6 +483,7 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
             {report.reportName && <p className="mt-1 text-[13px] text-text-muted">{report.location || "No location recorded"}</p>}
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <StatusBadge status={report.status} />
+              {report.status !== "Pending" && <VerificationBadge verification={report.verification} />}
               {report.sampleDetections && <SampleBadge />}
               <span className="text-[12.5px] text-text-muted" style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{report.sampleId}</span>
               <span className="text-[12.5px] text-text-muted">

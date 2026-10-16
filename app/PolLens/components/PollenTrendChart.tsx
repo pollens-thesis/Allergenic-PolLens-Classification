@@ -157,7 +157,7 @@ export default function PollenTrendChart({
           <div role="status" aria-label="Loading pollen trends" className="mt-5 h-64 animate-pulse rounded-sm bg-surface-sunken" />
         )
       ) : summary.collectionCount === 0 ? (
-        <p className="py-10 text-[13px] text-text-muted">No finalized collections in this location and period.</p>
+        <p className="py-10 text-[13px] text-text-muted">No verified collections in this location and period.</p>
       ) : supportedSpecies.length === 0 ? (
         <p className="py-10 text-[13px] text-text-muted">The current pollen reference could not be loaded.</p>
       ) : (
@@ -329,7 +329,7 @@ export default function PollenTrendChart({
                       style={{ minWidth: `${200 + summary.monthlyGrainCounts.length * 80}px` }}
                     >
                       <caption className="sr-only">
-                        Finalized grain counts per selected pollen type and collection month.
+                        Verified grain counts per selected pollen type and collection month.
                       </caption>
                       <thead>
                         <tr>

@@ -351,7 +351,7 @@ function InspectorBody({
                   <dd className="text-right text-text">
                     {focusSpecies.season || "Not yet recorded"}
                   </dd>
-                  <dt className="text-text-muted">Grains in Finalized Reports</dt>
+                  <dt className="text-text-muted">Grains in Verified Reports</dt>
                   <dd className="text-right text-text tabular-nums" style={mono}>
                     {reportCounts === null ? "…" : (reportCounts[focusSpecies.id] ?? 0).toLocaleString()}
                   </dd>

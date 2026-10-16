@@ -57,7 +57,7 @@ export function WelcomeSignInProvider({ children }: { children: ReactNode }) {
                 <SignInForm />
               </div>
               <p className="mt-5 border-t border-border pt-3 text-[12px] leading-relaxed text-text-muted">
-                Access for UP, MSEUF, and approved research accounts.
+                Sign in with a Google account or a Microsoft work or school account.
               </p>
             </Dialog.Popup>
           </Dialog.Portal>

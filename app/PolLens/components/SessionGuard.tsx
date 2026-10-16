@@ -36,13 +36,14 @@ export default function SessionGuard({ children }: { children: React.ReactNode }
     let cancelled = false;
     apiFetch("/api/v1/auth/me/")
       .then((res) => (res.ok ? res.json() : null))
-      .then((me: { email?: string; fullName?: string } | null) => {
+      .then((me: { email?: string; fullName?: string; role?: string } | null) => {
         if (cancelled || typeof me?.email !== "string" || typeof me.fullName !== "string") return;
         const current = getSnapshot();
         // A response for an old account must not update a newer session.
         if (current.email !== email || me.email.toLowerCase() !== email.toLowerCase()) return;
         const name = me.fullName.trim();
-        if (current.name !== name) updateSettings({ name });
+        const role = me.role === "admin" || me.role === "verifier" ? me.role : "user";
+        if (current.name !== name || current.role !== role) updateSettings({ name, role });
       })
       .catch(() => {});
     return () => {

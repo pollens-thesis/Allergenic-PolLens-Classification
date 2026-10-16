@@ -55,8 +55,10 @@ general-purpose botanical classifier.
   choose dark mode and collapse the desktop sidebar to an icon rail; phones retain
   labelled drawer navigation. These preferences stay in the current browser,
   independent of sign-in, and do not alter specimen evidence or data colours.
-- Sign-in uses Google or Microsoft (work/school) accounts. Access is limited to allowlisted
-  domains (up.edu.ph, mseuf.edu.ph) and individually added researchers.
+- Sign-in uses Google or Microsoft (work/school) accounts, open to anyone (2026-10-16). Roles:
+  user, verifier (approves or declines other people's reports) and admin (appoints verifiers,
+  blocks accounts). A report is shared on the map, dashboard and trends only once a verifier
+  has approved it; its owner always sees it. Only admins and the owner see the researcher name.
 
 ## Capabilities and Constraints
 
