@@ -6,8 +6,9 @@
 // the avatar — is derived from it in lib/account.ts rather than stored, so
 // there is no second copy to fall out of step.
 //
-// It is small and read on almost every screen, so it lives in localStorage
-// (the reports and their images live on the server — see lib/store.ts).
+// It is small and read on almost every screen, so it lives in sessionStorage.
+// The browser tab keeps its session through reloads and drops it when the tab
+// closes. Reports and their images live on the server (see lib/store.ts).
 //
 // Reading is done through `useSyncExternalStore`, the React API built for
 // exactly this: an external mutable source that must not desync during
@@ -24,8 +25,10 @@
 import { useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "pollens.settings.v1";
+const LEGACY_LOCAL_STORAGE_KEY = "pollens.settings.v1";
 /** Fired on the window so other components in this tab re-read immediately. */
 const CHANGE_EVENT = "pollens:settings-changed";
+let legacyStorageCleared = false;
 
 export type Role = "user" | "verifier" | "admin";
 
@@ -50,11 +53,25 @@ let cachedValue: Settings = DEFAULT_SETTINGS;
 
 function readRaw(): string | null {
   try {
-    return localStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    clearLegacyStorage();
+    return raw;
   } catch {
     // Private modes and blocked storage: fall back to defaults rather than throw.
     return null;
   }
+}
+
+function clearLegacyStorage(): void {
+  if (legacyStorageCleared) return;
+  try {
+    // Remove sessions persisted by older builds; they must not remain usable
+    // after switching authentication to a tab-scoped browser session.
+    localStorage.removeItem(LEGACY_LOCAL_STORAGE_KEY);
+  } catch {
+    // Ignore unavailable local storage; authentication uses session storage.
+  }
+  legacyStorageCleared = true;
 }
 
 /** Non-hook access to the current settings — for plain async functions outside React. */
@@ -84,10 +101,8 @@ function getServerSnapshot(): Settings {
 
 function subscribe(onChange: () => void): () => void {
   window.addEventListener(CHANGE_EVENT, onChange);
-  window.addEventListener("storage", onChange); // changes made in another tab
   return () => {
     window.removeEventListener(CHANGE_EVENT, onChange);
-    window.removeEventListener("storage", onChange);
   };
 }
 
@@ -99,7 +114,7 @@ export function useSettings(): Settings {
 export function updateSettings(patch: Partial<Settings>): void {
   const next = { ...getSnapshot(), ...patch };
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
     // Nothing useful to do if storage is unavailable; keep the app running.
   }
@@ -109,7 +124,8 @@ export function updateSettings(patch: Partial<Settings>): void {
 /** Sign out: forget the account this browser was using. */
 export function resetSettings(): void {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LEGACY_LOCAL_STORAGE_KEY);
   } catch {
     // ignore
   }

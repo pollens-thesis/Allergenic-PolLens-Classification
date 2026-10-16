@@ -12,14 +12,14 @@ const noopSubscribe = () => () => {};
 /**
  * Keeps signed-out visitors off the console's pages.
  *
- * Client-side on purpose: the session lives in localStorage (lib/settings.ts),
+ * Client-side on purpose: the session lives in sessionStorage (lib/settings.ts),
  * which Next's server-side proxy can't read. The server render — and the first
  * client render, before hydration — can't know who is signed in either, so a
  * neutral placeholder is shown until then: protected content never flashes for
  * a signed-out visitor, and a signed-in one is never bounced by mistake.
  *
- * Also reacts to a sign-out or expiry in another tab, via useSettings()'s
- * storage subscription.
+ * Also reacts to a sign-out or expiry in this tab, via useSettings()'s
+ * subscription. Sessions are tab-scoped and are not shared across tabs.
  */
 export default function SessionGuard({ children }: { children: React.ReactNode }) {
   const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
