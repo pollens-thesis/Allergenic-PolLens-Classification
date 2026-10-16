@@ -24,14 +24,14 @@ export default function LegalPage({
     <main className="min-h-dvh bg-page text-text">
       <header className="border-b border-border">
         <div className="mx-auto flex w-full max-w-[860px] items-center justify-between gap-4 px-5 py-5 sm:px-8">
-          <Link href="/" aria-label={`${BRAND_NAME} home`} className="focus-ring rounded-sm">
+          <Link href="/dashboard" aria-label={`${BRAND_NAME} dashboard`} className="focus-ring rounded-sm">
             <PolleRgiesWordmark className="text-2xl" />
           </Link>
           <Link
-            href="/"
+            href="/dashboard"
             className="focus-ring rounded-sm text-[13px] text-text-muted underline-offset-4 hover:text-text hover:underline"
           >
-            Back To Home
+            Back To Dashboard
           </Link>
         </div>
       </header>
