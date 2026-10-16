@@ -63,17 +63,22 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   public `/privacy` and `/terms` pages (footer on every page and in Settings).
   Brand verification (logo) was rejected once as "home page not registered";
   retry **Verify branding** after 2026-10-17 (`docs/deployment.md`).
-- **Roles, report verification and open sign-in (2026-10-16, issues #59/#60/#9,
-  PR #61):** Doc Fajardo wants the app open to everyone as a nationwide dataset,
-  so reports from normal users are verified first. Roles: admin (`is_superuser`,
-  made with `manage.py grant_admin <email>`; appoints verifiers and can block
-  accounts), verifier (approves or declines with a required reason) and user. Only
-  `Verified` reports reach other people, the map, stats and exports, and only
-  they feed classifier training; only admins (and the owner) see a researcher's
-  name. `SIGNIN_ALLOW_ALL=true` (Render, ships `false`) lets any Google account
-  and any Microsoft work/school account sign in; turn it on last, after the
-  frontend (#60) is live and the admins exist (`docs/deployment.md`). This reverses
-  the 2026-09-24 "no roles" decision (`docs/system-spec.md`).
+- **Roles, report verification and open sign-in (merged and deployed
+  2026-10-17, issues #59/#60/#8 closed, PRs #61 and #63; #9 open):** Doc Fajardo
+  wants the app open to everyone as a nationwide dataset, so reports from normal
+  users are verified first. Roles: admin (`is_superuser`; the emails are in the
+  Render setting `ADMIN_EMAILS`, applied by `build.sh` on every deploy via
+  `grant_admin --from-env`, add-only; admins can always sign in), verifier
+  (approves or declines with a required reason) and user. Only `Verified` reports
+  reach other people, the map, stats and exports, and only they feed classifier
+  training; only admins (and the owner) see a researcher's name. The frontend has
+  `/review` (verifiers, admins) and `/users` (admins; appoint verifiers, block
+  accounts), a first version for Niño to refine. **Not on yet:** `SIGNIN_ALLOW_ALL`
+  (Render dashboard, unset = off) is turned on last, after the admins have signed
+  in and checked both pages; then a gmail account smoke test (submit, stays
+  private, admin approves, appears on the map). The sign-in page already says
+  anyone can sign in, so turn it on promptly. This reversed the 2026-09-24
+  "no roles" decision (`docs/system-spec.md`).
 - **Workflow and board:** `CONTRIBUTING.md` is in use (first cycle: issue #1 →
   PR #2, the accented-name fix `5c23fd9`). The GitHub Projects board **"PolLens"
   exists** (org `pollens-thesis`, project number **1**, columns Backlog → Ready →
