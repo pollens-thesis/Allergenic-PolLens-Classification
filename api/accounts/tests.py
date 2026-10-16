@@ -96,7 +96,10 @@ class MeViewTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
             response.data,
-            {'email': 'researcher@up.edu.ph', 'fullName': '', 'institution': 'up.edu.ph'},
+            {
+                'email': 'researcher@up.edu.ph', 'fullName': '',
+                'institution': 'up.edu.ph', 'role': 'user',
+            },
         )
 
 
@@ -290,3 +293,90 @@ class MicrosoftNameTests(APITestCase):
             '/api/v1/auth/microsoft/', {'id_token': make_microsoft_token(name='Maria Santos')}, format='json',
         )
         self.assertEqual(User.objects.get(email='researcher@up.edu.ph').full_name, 'Maria Santos')
+
+
+class RoleTests(APITestCase):
+    """Admin / verifier / user roles (issue #59)."""
+
+    def setUp(self):
+        self.user = User.objects.create(email='user@up.edu.ph', institution='up.edu.ph')
+        self.verifier = User.objects.create(
+            email='verifier@up.edu.ph', institution='up.edu.ph', is_verifier=True,
+        )
+        self.admin = User.objects.create(
+            email='admin@up.edu.ph', institution='up.edu.ph', is_superuser=True, is_staff=True,
+        )
+
+    def test_me_returns_the_role(self):
+        for user, role in ((self.user, 'user'), (self.verifier, 'verifier'), (self.admin, 'admin')):
+            self.client.force_authenticate(user=user)
+            self.assertEqual(self.client.get('/api/v1/auth/me/').data['role'], role)
+
+    def test_an_admin_who_is_also_flagged_verifier_is_an_admin(self):
+        self.admin.is_verifier = True
+        self.assertEqual(self.admin.role, 'admin')
+
+    def test_an_inactive_verifier_cannot_verify(self):
+        self.verifier.is_active = False
+        self.assertFalse(self.verifier.can_verify)
+
+    def test_only_admins_can_list_users(self):
+        for user in (self.user, self.verifier):
+            self.client.force_authenticate(user=user)
+            self.assertEqual(self.client.get('/api/v1/users/').status_code, 403)
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get('/api/v1/users/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [row['email'] for row in response.data],
+            ['admin@up.edu.ph', 'user@up.edu.ph', 'verifier@up.edu.ph'],
+        )
+        self.assertEqual(response.data[0]['role'], 'admin')
+        self.assertEqual(response.data[0]['reportCount'], 0)
+
+    def test_admin_appoints_and_removes_a_verifier(self):
+        self.client.force_authenticate(user=self.admin)
+        url = f'/api/v1/users/{self.user.id}/'
+        response = self.client.patch(url, {'isVerifier': True}, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['role'], 'verifier')
+        response = self.client.patch(url, {'isVerifier': False}, format='json')
+        self.assertEqual(response.data['role'], 'user')
+
+    def test_non_admins_cannot_appoint(self):
+        self.client.force_authenticate(user=self.verifier)
+        response = self.client.patch(
+            f'/api/v1/users/{self.user.id}/', {'isVerifier': True}, format='json',
+        )
+        self.assertEqual(response.status_code, 403)
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_verifier)
+
+    def test_the_users_api_cannot_grant_admin_or_touch_admins(self):
+        self.client.force_authenticate(user=self.admin)
+        url = f'/api/v1/users/{self.user.id}/'
+        self.assertEqual(self.client.patch(url, {'isSuperuser': True}, format='json').status_code, 400)
+        self.assertEqual(
+            self.client.patch(url, {'isVerifier': True, 'is_superuser': True}, format='json').status_code,
+            400,
+        )
+        self.assertEqual(
+            self.client.patch(
+                f'/api/v1/users/{self.admin.id}/', {'isVerifier': True}, format='json',
+            ).status_code,
+            400,
+        )
+        missing = self.client.patch('/api/v1/users/9999/', {'isVerifier': True}, format='json')
+        self.assertEqual(missing.status_code, 404)
+
+    def test_grant_admin_command(self):
+        from django.core.management import CommandError, call_command
+
+        call_command('grant_admin', 'USER@up.edu.ph')
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_superuser and self.user.is_staff)
+        call_command('grant_admin', 'user@up.edu.ph', '--revoke')
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_superuser or self.user.is_staff)
+        with self.assertRaises(CommandError):
+            call_command('grant_admin', 'nobody@up.edu.ph')

@@ -6,12 +6,12 @@ from .models import User
 
 class UserAdmin(DjangoUserAdmin):
     ordering = ('email',)
-    list_display = ('email', 'full_name', 'institution', 'is_staff', 'is_active', 'date_joined')
+    list_display = ('email', 'full_name', 'institution', 'is_staff', 'is_verifier', 'is_active', 'date_joined')
     search_fields = ('email', 'full_name', 'institution')
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
         ('Profile', {'fields': ('full_name', 'institution')}),
-        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'is_verifier', 'groups', 'user_permissions')}),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
     add_fieldsets = (

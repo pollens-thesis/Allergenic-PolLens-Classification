@@ -41,6 +41,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     institution = models.CharField(max_length=255, blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    # Sub-admin: may approve or decline other people's reports. Appointed by an
+    # admin (is_superuser, see the grant_admin command) from the Users page.
+    is_verifier = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
 
     objects = UserManager()
@@ -50,3 +53,13 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+    @property
+    def can_verify(self):
+        return self.is_active and (self.is_superuser or self.is_verifier)
+
+    @property
+    def role(self):
+        if self.is_superuser:
+            return 'admin'
+        return 'verifier' if self.is_verifier else 'user'

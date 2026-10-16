@@ -23,13 +23,22 @@ from django.http import JsonResponse
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from accounts.views import GoogleLoginView, LogoutView, MeView, MicrosoftLoginView
+from accounts.views import (
+    GoogleLoginView,
+    LogoutView,
+    MeView,
+    MicrosoftLoginView,
+    UserDetailView,
+    UserListView,
+)
 from reports.views import (
     DetectView,
     ReportAnnotationDetailView,
     ReportDetailView,
     ReportListCreateView,
     ReportMonthlyCountsView,
+    ReportResubmitView,
+    ReportVerifyView,
     SpeciesListView,
     WeatherView,
 )
@@ -58,7 +67,17 @@ urlpatterns = [
         'api/v1/reports/<str:sample_id>/annotations/<uuid:annotation_id>/',
         ReportAnnotationDetailView.as_view(), name='report_annotation_detail',
     ),
+    path(
+        'api/v1/reports/<str:sample_id>/verify/',
+        ReportVerifyView.as_view(), name='report_verify',
+    ),
+    path(
+        'api/v1/reports/<str:sample_id>/resubmit/',
+        ReportResubmitView.as_view(), name='report_resubmit',
+    ),
     path('api/v1/reports/<str:sample_id>/', ReportDetailView.as_view(), name='report_detail'),
+    path('api/v1/users/', UserListView.as_view(), name='user_list'),
+    path('api/v1/users/<int:user_id>/', UserDetailView.as_view(), name='user_detail'),
 ]
 
 if settings.DEBUG:

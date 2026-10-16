@@ -18,7 +18,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('email', 'fullName', 'institution')
+        fields = ('email', 'fullName', 'institution', 'role')
         read_only_fields = fields
 
 
@@ -30,3 +30,17 @@ class SafeTokenRefreshSerializer(TokenRefreshSerializer):
             return super().validate(attrs)
         except User.DoesNotExist:
             raise AuthenticationFailed('This account no longer exists.', code='user_not_found')
+
+
+class ManagedUserSerializer(serializers.ModelSerializer):
+    """One row of the admin's Users page."""
+
+    fullName = serializers.CharField(source='full_name', read_only=True)
+    isVerifier = serializers.BooleanField(source='is_verifier')
+    reportCount = serializers.IntegerField(read_only=True)
+    joinedAt = serializers.DateTimeField(source='date_joined', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ('id', 'email', 'fullName', 'institution', 'role', 'isVerifier', 'reportCount', 'joinedAt')
+        read_only_fields = ('id', 'email', 'institution', 'role')

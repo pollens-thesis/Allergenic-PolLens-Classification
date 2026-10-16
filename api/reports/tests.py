@@ -10,7 +10,9 @@ from unittest.mock import Mock, patch
 import requests
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import override_settings
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
+from django.test import TransactionTestCase, override_settings
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -188,13 +190,16 @@ class ReportListCreateViewTests(APITestCase):
         self.assertEqual(len(response.data), 1)
 
 
-def make_report(location='UPLB Campus', status='Completed', collected_at='2026-07-26', species_id='amaranthus_spinosus'):
+def make_report(location='UPLB Campus', status='Completed', collected_at='2026-07-26', species_id='amaranthus_spinosus', owner=None):
     report = Report.objects.create(
+        owner=owner,
         sample_id=next_sample_id(),
         collected_at=collected_at,
         location=location,
         researcher='Dr. Santos',
         status=status,
+        # A submitted report that is already public; drafts are never verified.
+        verification='Awaiting' if status == 'Pending' else 'Verified',
     )
     slide = Slide.objects.create(
         report=report, number=1, file_name='slide-1.png', image=make_test_image(),
@@ -212,7 +217,7 @@ class ReportListFilterTests(APITestCase):
 
     def test_filters_by_status(self):
         make_report(status='Completed')
-        make_report(status='Pending')
+        make_report(status='Pending', owner=self.user)
 
         response = self.client.get(self.url, {'status': 'Pending'})
 
@@ -222,7 +227,7 @@ class ReportListFilterTests(APITestCase):
 
     def test_status_all_returns_everything(self):
         make_report(status='Completed')
-        make_report(status='Pending')
+        make_report(status='Pending', owner=self.user)
 
         response = self.client.get(self.url, {'status': 'All'})
 
@@ -373,7 +378,10 @@ class ReportDetailViewTests(APITestCase):
 
 class ReportAnnotationDetailViewTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create(email='researcher@up.edu.ph', institution='up.edu.ph')
+        # A verifier's own report stays Verified (and so counted) while they annotate it.
+        self.user = User.objects.create(
+            email='researcher@up.edu.ph', institution='up.edu.ph', is_verifier=True,
+        )
         self.client.force_authenticate(user=self.user)
         self.report = make_report(status='Needs review', collected_at=month_key(0))
         self.report.owner = self.user
@@ -1092,7 +1100,8 @@ class ReportUpdateDeleteTests(APITestCase):
 
     def test_other_researchers_can_read_but_not_change_or_delete(self):
         self.report.collected_at = '2026-10-15T11:45'
-        self.report.save(update_fields=['collected_at'])
+        self.report.verification = 'Verified'  # others only see verified reports
+        self.report.save(update_fields=['collected_at', 'verification'])
         self.client.force_authenticate(user=self.other)
 
         get = self.client.get(self.url)
@@ -1313,3 +1322,253 @@ class WeatherQATests(APITestCase):
     def test_upstream_400_is_404(self, mock_get):
         mock_get.return_value = Mock(status_code=400, json=lambda: {'error': True, 'reason': 'out of range'})
         self.assertEqual(self.get(date='2026-09-20').status_code, 404)
+
+
+@override_settings(MEDIA_ROOT=_TEMP_MEDIA)
+class ReportVerificationTests(APITestCase):
+    """Roles and report verification (issue #59)."""
+
+    def setUp(self):
+        self.owner = User.objects.create(email='owner@up.edu.ph', institution='up.edu.ph')
+        self.other = User.objects.create(email='other@up.edu.ph', institution='up.edu.ph')
+        self.verifier = User.objects.create(
+            email='verifier@up.edu.ph', institution='up.edu.ph', is_verifier=True,
+        )
+        self.admin = User.objects.create(
+            email='admin@up.edu.ph', institution='up.edu.ph', is_superuser=True, is_staff=True,
+        )
+        self.report = make_report(status='Pending', location='', owner=self.owner)
+        self.url = f'/api/v1/reports/{self.report.sample_id}/'
+
+    def as_user(self, user):
+        self.client.force_authenticate(user=user)
+
+    def patch(self, body):
+        return self.client.patch(self.url, body, format='json')
+
+    def submit(self):
+        """The owner generates the report: Pending -> Needs review."""
+        self.as_user(self.owner)
+        response = self.patch({'status': 'Needs review', 'location': 'UPLB Campus'})
+        self.assertEqual(response.status_code, 200)
+        return response
+
+    def verify(self, user, body):
+        self.as_user(user)
+        return self.client.post(f'{self.url}verify/', body, format='json')
+
+    def ids(self, user, **params):
+        self.as_user(user)
+        return [r['sampleId'] for r in self.client.get('/api/v1/reports/', params).data]
+
+    def queued_report(self):
+        report = make_report(status='Needs review', owner=self.owner)
+        report.verification = 'Awaiting'
+        report.save()
+        return report
+
+    # --- finalising ---------------------------------------------------------
+
+    def test_a_users_submitted_report_awaits_verification(self):
+        response = self.submit()
+        self.assertEqual(response.data['verification'], 'Awaiting')
+
+    def test_a_verifiers_own_report_verifies_itself_when_submitted(self):
+        self.report.owner = self.verifier
+        self.report.save()
+        self.as_user(self.verifier)
+        response = self.patch({'status': 'Needs review', 'location': 'UPLB Campus'})
+        self.assertEqual(response.data['verification'], 'Verified')
+        self.assertIsNotNone(response.data['verifiedAt'])
+
+    # --- visibility ---------------------------------------------------------
+
+    def test_unverified_reports_are_hidden_from_other_users(self):
+        self.submit()
+        self.assertIn(self.report.sample_id, self.ids(self.owner))
+        self.assertNotIn(self.report.sample_id, self.ids(self.other))
+        self.as_user(self.other)
+        self.assertEqual(self.client.get(self.url).status_code, 404)
+
+    def test_verifiers_and_admins_see_submitted_reports_but_not_drafts(self):
+        submitted = self.queued_report()
+        for user in (self.verifier, self.admin):
+            self.assertIn(submitted.sample_id, self.ids(user))
+        self.assertNotIn(self.report.sample_id, self.ids(self.verifier))
+
+    def test_verification_filter_is_the_review_queue(self):
+        queued = self.queued_report()
+        make_report(status='Completed', owner=self.owner)  # already verified
+        self.assertEqual(self.ids(self.verifier, verification='awaiting'), [queued.sample_id])
+
+    def test_invalid_verification_filter_is_400(self):
+        self.as_user(self.verifier)
+        self.assertEqual(
+            self.client.get('/api/v1/reports/', {'verification': 'bogus'}).status_code, 400,
+        )
+
+    def test_monthly_counts_only_include_verified_reports(self):
+        make_report(collected_at=month_key(0), owner=self.owner)  # verified
+        unverified = make_report(collected_at=month_key(0), owner=self.owner)
+        unverified.verification = 'Awaiting'
+        unverified.save()
+        self.as_user(self.other)
+        response = self.client.get('/api/v1/reports/monthly-counts/')
+        self.assertEqual(response.data[-1]['series']['amaranthus_spinosus'], 3)
+
+    # --- ruling -------------------------------------------------------------
+
+    def test_approving_makes_the_report_public(self):
+        self.submit()
+        response = self.verify(self.verifier, {'decision': 'approve'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['verification'], 'Verified')
+        self.assertIn(self.report.sample_id, self.ids(self.other))
+        self.report.refresh_from_db()
+        self.assertEqual(self.report.verified_by, self.verifier)
+
+    def test_declining_needs_a_reason_and_keeps_it_private(self):
+        self.submit()
+        self.assertEqual(self.verify(self.verifier, {'decision': 'decline'}).status_code, 400)
+        self.assertEqual(
+            self.verify(self.verifier, {'decision': 'decline', 'reason': '   '}).status_code, 400,
+        )
+        response = self.verify(self.admin, {'decision': 'decline', 'reason': 'Blurry slides'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['verification'], 'Declined')
+        self.assertNotIn(self.report.sample_id, self.ids(self.other))
+
+    def test_decline_reason_is_for_the_owner_and_verifiers_only(self):
+        self.submit()
+        self.verify(self.verifier, {'decision': 'decline', 'reason': 'Blurry slides'})
+        self.as_user(self.owner)
+        self.assertEqual(self.client.get(self.url).data['declineReason'], 'Blurry slides')
+        self.as_user(self.verifier)
+        self.assertEqual(self.client.get(self.url).data['declineReason'], 'Blurry slides')
+
+    def test_a_plain_user_cannot_verify(self):
+        self.submit()
+        self.assertEqual(self.verify(self.other, {'decision': 'approve'}).status_code, 403)
+        self.assertEqual(self.verify(self.owner, {'decision': 'approve'}).status_code, 403)
+
+    def test_a_verifier_cannot_rule_on_their_own_report(self):
+        self.submit()
+        self.report.refresh_from_db()
+        self.report.owner = self.verifier
+        self.report.save()
+        self.assertEqual(self.verify(self.verifier, {'decision': 'approve'}).status_code, 403)
+        self.assertEqual(self.verify(self.admin, {'decision': 'approve'}).status_code, 200)
+
+    def test_only_a_submitted_awaiting_report_can_be_ruled_on(self):
+        self.assertEqual(self.verify(self.admin, {'decision': 'approve'}).status_code, 400)  # draft
+        self.submit()
+        self.verify(self.verifier, {'decision': 'approve'})
+        self.assertEqual(self.verify(self.admin, {'decision': 'approve'}).status_code, 400)
+
+    def test_a_bad_decision_is_400(self):
+        self.submit()
+        self.assertEqual(self.verify(self.verifier, {'decision': 'maybe'}).status_code, 400)
+        self.assertEqual(self.verify(self.verifier, {}).status_code, 400)
+
+    def test_can_verify_flag_tells_the_ui_when_to_show_the_buttons(self):
+        self.submit()
+        self.as_user(self.verifier)
+        self.assertIs(self.client.get(self.url).data['canVerify'], True)
+        self.as_user(self.owner)
+        self.assertIs(self.client.get(self.url).data['canVerify'], False)
+
+    # --- resubmit and edits -------------------------------------------------
+
+    def test_owner_can_resubmit_a_declined_report(self):
+        self.submit()
+        self.verify(self.verifier, {'decision': 'decline', 'reason': 'Blurry slides'})
+        self.as_user(self.other)
+        self.assertEqual(self.client.post(f'{self.url}resubmit/').status_code, 404)
+        self.as_user(self.owner)
+        response = self.client.post(f'{self.url}resubmit/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['verification'], 'Awaiting')
+        self.assertEqual(response.data['declineReason'], '')
+
+    def test_only_a_declined_report_can_be_resubmitted(self):
+        self.submit()
+        self.assertEqual(self.client.post(f'{self.url}resubmit/').status_code, 400)
+
+    def test_a_verifier_cannot_clear_their_own_declined_report_by_resubmitting(self):
+        self.report.owner = self.verifier
+        self.report.status = 'Needs review'
+        self.report.verification = 'Declined'
+        self.report.decline_reason = 'Blurry'
+        self.report.save()
+        self.as_user(self.verifier)
+        response = self.client.post(f'{self.url}resubmit/')
+        self.assertEqual(response.data['verification'], 'Awaiting')
+
+    def test_editing_a_verified_report_sends_it_back_to_the_queue(self):
+        self.submit()
+        self.verify(self.verifier, {'decision': 'approve'})
+        self.as_user(self.owner)
+        response = self.patch({'location': 'Lucena City, Quezon'})
+        self.assertEqual(response.data['verification'], 'Awaiting')
+        self.assertNotIn(self.report.sample_id, self.ids(self.other))
+
+    def test_editing_only_notes_keeps_a_report_verified(self):
+        self.submit()
+        self.verify(self.verifier, {'decision': 'approve'})
+        self.as_user(self.owner)
+        slide_id = f'{self.report.sample_id}-S1'
+        response = self.patch({'slides': [{'id': slide_id, 'notes': 'Looks fine'}]})
+        self.assertEqual(response.data['verification'], 'Verified')
+
+    def test_a_verifiers_edits_to_their_own_report_stay_verified(self):
+        self.report.owner = self.verifier
+        self.report.save()
+        self.as_user(self.verifier)
+        self.patch({'status': 'Needs review', 'location': 'UPLB Campus'})
+        response = self.patch({'location': 'Lucena City, Quezon'})
+        self.assertEqual(response.data['verification'], 'Verified')
+
+    def test_annotating_a_verified_report_sends_it_back_to_the_queue(self):
+        self.submit()
+        self.verify(self.verifier, {'decision': 'approve'})
+        self.as_user(self.owner)
+        response = self.client.put(
+            f'{self.url}annotations/{uuid.uuid4()}/',
+            {
+                'slideId': f'{self.report.sample_id}-S1', 'grainId': None, 'kind': 'missed',
+                'speciesId': 'amaranthus_spinosus',
+                'box': {'x': 0.1, 'y': 0.1, 'width': 0.1, 'height': 0.1},
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.report.refresh_from_db()
+        self.assertEqual(self.report.verification, 'Awaiting')
+
+
+class VerifyExistingReportsMigrationTests(TransactionTestCase):
+    """0013 keeps today's finalised reports public and leaves drafts unverified."""
+
+    migrate_from = [('reports', '0012_grainannotation')]
+    migrate_to = [('reports', '0013_role_and_verification')]
+
+    def test_existing_finalised_reports_become_verified(self):
+        executor = MigrationExecutor(connection)
+        executor.migrate(self.migrate_from)
+        old_apps = executor.loader.project_state(self.migrate_from).apps
+        OldReport = old_apps.get_model('reports', 'Report')
+        for number, status_name in enumerate(('Completed', 'Needs review', 'Pending'), start=1):
+            OldReport.objects.create(
+                sample_id=f'PLN-2026-{number:04d}', collected_at='2026-07-26',
+                researcher='Dr. Santos', status=status_name,
+            )
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(self.migrate_to)
+        NewReport = executor.loader.project_state(self.migrate_to).apps.get_model('reports', 'Report')
+
+        verification = dict(NewReport.objects.values_list('status', 'verification'))
+        self.assertEqual(
+            verification,
+            {'Completed': 'Verified', 'Needs review': 'Verified', 'Pending': 'Awaiting'},
+        )

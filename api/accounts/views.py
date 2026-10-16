@@ -1,9 +1,11 @@
 import jwt
 from django.db import IntegrityError
+from django.db.models import Count
 from django.conf import settings
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 from rest_framework import status
+from rest_framework.parsers import JSONParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,7 +14,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .access import is_allowed
 from .models import User
-from .serializers import GoogleLoginSerializer, LogoutSerializer, UserSerializer
+from .serializers import (
+    GoogleLoginSerializer,
+    LogoutSerializer,
+    ManagedUserSerializer,
+    UserSerializer,
+)
 
 NOT_ALLOWED_DETAIL = "This account isn't authorised to use PolleRgies. Ask the project team to add it."
 
@@ -223,10 +230,61 @@ class MeView(APIView):
     """
     GET /api/v1/auth/me/
 
-    Returns the signed-in user's email and institution.
+    Returns the signed-in user's email, name, institution and role
+    (`admin`, `verifier` or `user`).
     """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+
+ADMIN_ONLY_DETAIL = 'Only an admin can manage users.'
+
+
+def _managed_users():
+    return User.objects.annotate(reportCount=Count('reports')).order_by('email')
+
+
+class UserListView(APIView):
+    """GET /api/v1/users/ — every account with its role and report count (admin only)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.is_superuser:
+            return Response({'detail': ADMIN_ONLY_DETAIL}, status=status.HTTP_403_FORBIDDEN)
+        return Response(ManagedUserSerializer(_managed_users(), many=True).data)
+
+
+class UserDetailView(APIView):
+    """
+    PATCH /api/v1/users/<id>/ — `{"isVerifier": true|false}` appoints or removes
+    a verifier (admin only). Admins themselves are made with the `grant_admin`
+    command, never through the API.
+    """
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser]
+
+    def patch(self, request, user_id):
+        if not request.user.is_superuser:
+            return Response({'detail': ADMIN_ONLY_DETAIL}, status=status.HTTP_403_FORBIDDEN)
+        user = _managed_users().filter(pk=user_id).first()
+        if user is None:
+            return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+        data = request.data if isinstance(request.data, dict) else {}
+        if set(data) != {'isVerifier'} or not isinstance(data['isVerifier'], bool):
+            return Response(
+                {'detail': 'Send {"isVerifier": true|false}.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if user.is_superuser:
+            return Response(
+                {'detail': "Admins already verify everything; their role can't be changed here."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user.is_verifier = data['isVerifier']
+        user.save(update_fields=['is_verifier'])
+        return Response(ManagedUserSerializer(user).data)
