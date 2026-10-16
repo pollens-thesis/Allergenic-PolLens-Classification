@@ -29,6 +29,18 @@ Rx-inspired P/R lettering and pollen lens form the logo, with a small crossed
 stroke on the R. This is a branding
 decision; the existing repository and service identifiers remain as configured.
 
+**Google consent screen (2026-10-16).** Published to *In production*; app name
+PolleRgies, the logo (120×120 from `app/icon.png`), support email
+`pollens@googlegroups.com`, and the home, `/privacy` and `/terms` pages on
+`pollens-theta.vercel.app` are set. Public Privacy Policy and Terms pages were
+added to the frontend for this (a footer link on the welcome page). Only
+`openid`/`email`/`profile` are requested, so no scope review. Brand
+verification was submitted and Google answered that the home page is not yet
+registered to the account even though Search Console verified it; retry after
+24 hours (see `deployment.md`, Troubleshooting). Adviser item 12 is unaffected:
+publishing opens Google's consent screen, but the backend allowlist still decides
+who can sign in.
+
 ## Audit 2026-09-24 — decisions made, and what still needs the adviser
 
 A full audit (paper vs. code vs. API contract) was done on 2026-09-24. **Decided by
@@ -100,21 +112,70 @@ only in the gitignored `docs/private/`. Render (Root Directory `api`) and Vercel
     names, botanical descriptions and credited Wikimedia Commons photos (Species
     fields, editable in Django admin; marked for UPLB verification). **Season and
     allergenic risk are still open** — risk stays "Not assessed".
-12. **Open sign-in to any Google account** — planned by the user (2026-09-26),
-    **not built**. Today sign-in is an allowlist (`up.edu.ph`, `mseuf.edu.ph` and
-    subdomains, plus `SIGNIN_ALLOWED_EMAILS`), and both lists empty admits nobody
-    (fails closed on purpose). Opening it needs: an explicit `SIGNIN_ALLOW_ALL`
-    switch in `api/accounts/access.py` (not "empty means everyone"); the Google
-    OAuth consent screen set to *In production*; and a scope decision, since the
-    paper's users are researchers. Consequences to weigh: every signed-in user sees
-    the whole shared corpus and can upload to R2 / write to Neon (free-tier quotas);
-    Microsoft sign-in would open to any work/school account.
+12. **Open sign-in to any Google account** — decided by the user 2026-09-26 and
+    **built 2026-10-16** (issue #9): `SIGNIN_ALLOW_ALL=true` on Render lets any
+    Google account and any Microsoft work/school account in; the domain allowlist
+    only applies while the switch is off (it ships off, and is turned on after
+    the verification UI is live). Personal Microsoft accounts stay refused, since
+    they can carry someone else's address. What it costs: anyone signed in can run
+    detection on Modal and upload to R2 / write to Neon (free-tier quotas; the
+    `detect` throttle limits each user), and reports from new users stay private
+    until a verifier approves them (next section). Admins can block an account.
+    Still worth confirming with the adviser: whether researchers outside UP/MSEUF
+    should be able to see the collective data at all, and the terms/privacy wording.
+
+## Roles and report verification (2026-10-16)
+
+**Why:** Doc Fajardo wants PolLens open to everyone so it collects allergenic
+pollen data for the whole country, but a report from an unknown user can't be
+trusted. **This reverses the 2026-09-24 "no roles / shared corpus" decision** (see
+Notes). Backend built in issue #59 (PR #61); frontend in issue #60.
+
+**Roles** (`accounts.User`; `/api/v1/auth/me/` returns `role`):
+- **admin** — Django `is_superuser`, set with `python manage.py grant_admin <email>`
+  (`--revoke` to remove; the person must have signed in once). Appoints and removes
+  verifiers (`GET /api/v1/users/`, `PATCH /api/v1/users/<id>/ {"isVerifier": bool}`).
+  Admins can't be created through the API.
+- **verifier** (sub-admin) — `User.is_verifier`. Approves or declines reports.
+- **user** — everyone else.
+
+**Verification** (`Report.verification`: `Awaiting` / `Verified` / `Declined`, kept
+separate from `status`; plus `verified_by`, `verified_at`, `decline_reason`):
+- A report is private while `Pending`. When its owner generates it (leaves `Pending`)
+  it is `Awaiting`, unless the owner is an admin or verifier, which verifies it
+  straight away. UP/MSEUF accounts are not trusted automatically.
+- Only `Verified` reports reach anyone but the owner: the reports list, report
+  detail, the map, dashboard, trends and exports (the frontend builds those from the
+  list) and `monthly-counts`. Verifiers also see `Awaiting` and `Declined` reports
+  (never other people's drafts); admins see everything.
+- `POST /api/v1/reports/<id>/verify/ {"decision": "approve"|"decline", "reason"}` —
+  verifiers/admins only, on a submitted `Awaiting` report that isn't their own.
+  A decline needs a reason (≤ 1000 characters). `GET /api/v1/reports/?verification=awaiting`
+  is the review queue.
+- A declined report stays private; the owner sees `declineReason`, can fix it and
+  `POST /api/v1/reports/<id>/resubmit/` to put it back in the queue.
+- Changing a `Verified` report's content (details, status, weather, annotations —
+  not slide notes) sends it back to `Awaiting`, so the public only sees what a
+  verifier looked at. A verifier's own reports stay verified when they edit them.
+- Existing finalised reports were migrated to `Verified` (migration `0013`);
+  drafts stay `Awaiting`.
+- Each report carries `verification`, `verifiedAt`, `declineReason` (owner and
+  verifiers only) and `canVerify` for the caller.
+
+**Frontend (issue #60):** read `role`; use `isPublic` (finalised *and*
+verified) wherever community data is aggregated; verification badge and filter;
+Approve/Decline and Resubmit in the report; a `/review` queue page for verifiers;
+a `/users` page for admins.
+
+**Decided 2026-10-16:** only admins (and the owner) see a researcher's name; only
+`Verified` reports feed classifier training (`trainingEligible` requires it); admins
+can block and unblock accounts (`PATCH /api/v1/users/<id>/ {"isActive": bool}`).
 
 ## Paper Features vs. Frontend Implementation
 
 | Paper Feature | Frontend Status | What Changed | Backend Impact |
 |---|---|---|---|
-| Google OAuth 2.0 Login | Revised (was mocked, now implemented — see note) | Originally mocked: a "Continue with Google" button led to a plain email text field standing in for the account picker; there was no ID token, no `role` field, and no route guard anywhere in the app. **As of 2026-08-27, real OAuth is implemented**: `SignInForm.tsx` loads Google Identity Services and renders Google's own account-chooser button; the returned ID token is POSTed to the backend (`accounts.views.GoogleLoginView`, `POST /api/v1/auth/google/`), which verifies it via `google-auth`, gets-or-creates a user by email, and returns a SimpleJWT pair. The frontend decodes the email claim client-side from the (already backend-verified) token and stores it plus the JWT pair via `updateSettings` (`lib/settings.ts`); `lib/account.ts`'s institution-from-email heuristic is unchanged and still derives display name/institution — the `hd` claim is not yet wired into it (still a heuristic, not the real hosted-domain value). **As of 2026-08-30**, the backend also exposes `POST /api/v1/auth/logout/` (blacklists a refresh token) and `GET /api/v1/auth/me/` (returns `{email, institution}`) — see `api/CLAUDE.md`'s Auth section for their contracts — but neither is called from the frontend yet: sign-out (`SettingsWorkspace.tsx`) only clears local storage, and nothing attaches the stored access token to any request. | Real Google OAuth token exchange and session issuance are implemented (see note above for what's still open). The paper's `role` field on `User` has no frontend consumer — deliberately not added. The request body key (`id_token`) and response shape (`{ access, refresh }`) are now frontend-confirmed — `lib/auth.ts` sends and reads exactly this contract. **Resolved 2026-09-24 (built at the user's request):** every backend call goes through `app/PolLens/lib/api.ts` (`apiFetch` — Bearer, refresh before expiry and on 401, cross-tab-safe rotation, expired session → sign-in with `?next=`); protected pages sit in the `app/(app)/` route group behind a client-side `SessionGuard`; Settings → Sign Out calls `/api/v1/auth/logout/` before clearing locally. See the update note in `login-frontend-handoff.md`. **Unresolved, backend-side:** the `hd` claim is available server-side (used to set `accounts.User.institution`, and now returned by `/api/v1/auth/me/`) but not yet surfaced to the frontend's display logic. |
+| Google OAuth 2.0 Login | Revised (was mocked, now implemented — see note) | Originally mocked: a "Continue with Google" button led to a plain email text field standing in for the account picker; there was no ID token, no `role` field, and no route guard anywhere in the app. **As of 2026-08-27, real OAuth is implemented**: `SignInForm.tsx` loads Google Identity Services and renders Google's own account-chooser button; the returned ID token is POSTed to the backend (`accounts.views.GoogleLoginView`, `POST /api/v1/auth/google/`), which verifies it via `google-auth`, gets-or-creates a user by email, and returns a SimpleJWT pair. The frontend decodes the email claim client-side from the (already backend-verified) token and stores it plus the JWT pair via `updateSettings` (`lib/settings.ts`); `lib/account.ts`'s institution-from-email heuristic is unchanged and still derives display name/institution — the `hd` claim is not yet wired into it (still a heuristic, not the real hosted-domain value). **As of 2026-08-30**, the backend also exposes `POST /api/v1/auth/logout/` (blacklists a refresh token) and `GET /api/v1/auth/me/` (returns `{email, institution}`) — see `api/CLAUDE.md`'s Auth section for their contracts — but neither is called from the frontend yet: sign-out (`SettingsWorkspace.tsx`) only clears local storage, and nothing attaches the stored access token to any request. | Real Google OAuth token exchange and session issuance are implemented (see note above for what's still open). The paper's `role` field on `User` had no frontend consumer and was left out until 2026-10-16, when roles (admin / verifier / user) were added for report verification — see "Roles and report verification". The request body key (`id_token`) and response shape (`{ access, refresh }`) are now frontend-confirmed — `lib/auth.ts` sends and reads exactly this contract. **Resolved 2026-09-24 (built at the user's request):** every backend call goes through `app/PolLens/lib/api.ts` (`apiFetch` — Bearer, refresh before expiry and on 401, cross-tab-safe rotation, expired session → sign-in with `?next=`); protected pages sit in the `app/(app)/` route group behind a client-side `SessionGuard`; Settings → Sign Out calls `/api/v1/auth/logout/` before clearing locally. See the update note in `login-frontend-handoff.md`. **Unresolved, backend-side:** the `hd` claim is available server-side (used to set `accounts.User.institution`, and now returned by `/api/v1/auth/me/`) but not yet surfaced to the frontend's display logic. |
 | Single Image Upload and Processing | Revised | Frontend does **multi-image batch upload** (drag-and-drop, multiple files) per analysis session, not a single image; per-image species names, boxes, and confidence match the paper's description otherwise. | Design the ingest endpoint(s) around a batch of slides per sample, not one image per sample. The per-image detection contract is Roboflow's own response shape, mapped into normalized top-left `BoundingBox` client-side. **As of 2026-09-23, built and wired**: `POST /api/v1/reports/detect/` (`reports.views.DetectView`) proxies one image to Roboflow and returns `{ image: {width, height}, predictions: [{ class, confidence, x, y, width, height }] }` (pixel, center-based); `lib/analysis.ts`'s `analyzeSpecimen()` calls it once signed in and maps the result via `fromRoboflow()` (no client-side fallback since 2026-09-24: a failed detection shows a per-slide error with retry, and a partial batch can't reach the report page — a report only ever holds real model output; originally wired as a frontend integration-point edit under the root `CLAUDE.md` exception). **Update 2026-10-01: the model went live** on a two-stage Roboflow Workflow (YOLOv11 detects `pollen`, ResNet-34 names the species; runbook `docs/roboflow-pipeline.md`). **Update 2026-10-14: the proxy now calls the Modal inference service** (`DETECTION_BACKEND=remote`, `INFERENCE_URL`/`INFERENCE_TOKEN`; YOLO26 Detection v12 + EfficientNet-B0, `docs/inference-modal.md`); the response shape is unchanged, so the frontend needed no change (`fromRoboflow()` is now only a historical name). The Roboflow code was removed in issue #48 and production runs with `DETECTION_MOCK=false` (called `ROBOFLOW_MOCK` before 2026-10-14). The mock (`api/reports/fixtures/roboflow_detect_response.json`, rescaled to each upload) remains only as a demo switch; reports saved while it was on keep a permanent Sample flag. The classifier's names are scientific names (`Sorghum halepense`) that the frontend normalizes to the slugs (`sorghum_halepense`); anything outside the catalog is dropped client-side. iPhone MPO photos are accepted as JPEG. **Issue #31 (the Roboflow classifier returned one species for every grain):** replaced by the EfficientNet-B0 in the Modal service; still open until an end-to-end evaluation exists (only within-slide accuracy is recorded, and it covers 15 of the 23 catalog species). |
 | Sample Metadata Entry | Revised | Paper describes a separate "initialization modal" collecting processor/date/time/location before analysis starts. Frontend collects the same fields (Location, Researcher, Date, Time) plus Weather condition/Temperature/Humidity/Wind inline in the same `AnalyzeWorkspace` form, not a modal. | No API impact beyond field names, which the frontend already fixes: `location`, `researcher`, `collectedDate`, `collectedTime`, plus the weather fields folded into the same payload (`NewReportInput` in `lib/analysis.ts`). |
 | Analysis Lab — Pending Queue | Built (2026-09-24, server-side) | No multi-sample resumable queue (Sample ID / Processor / City list) exists. The frontend only tracks a single in-progress draft at a time (IndexedDB `drafts` store, one record keyed `"current"`), with a warning if an unsaved draft exists from a prior visit. | If concurrent multi-sample pending sessions are still required, that's a frontend gap to raise with the team, not something to build into the backend unilaterally — the backend should not assume multi-draft support exists client-side today. If single-draft-at-a-time is accepted as the real scope, no queue/list endpoint is needed, just draft-adjacent persistence if/when drafts move server-side. **Resolved 2026-09-24 (user decision): server-side Pending.** Running an analysis stores the batch as a `Pending` report (`POST /api/v1/reports/` with `status: "Pending"`); the result page autosaves edits and *Generate Report* marks it `Completed`; Analyze lists the researcher's pending analyses (`owner=me`) with Resume/Discard, from any device. The IndexedDB single-draft store is gone. |
@@ -169,6 +230,7 @@ only in the gitignored `docs/private/`. Render (Root Directory `api`) and Vercel
 - **Resolved 2026-09-24 — built as server-side Pending reports** (see the Pending Queue row). Original note: **`Analysis Lab — Pending Queue` (multi-sample resumable queue) has no frontend counterpart at all.** Only a single current draft is supported. Unclear whether concurrent multi-sample pending sessions are still required scope, or whether the single-draft model is the accepted revision.
 - **`Archived Session History` (dedicated archive with year-over-year comparison) has no frontend counterpart at all.** Historical/seed reports are merged into the ordinary Reports list with no distinct archive UI, search-by-time-period, or comparison tooling. Unclear whether this is still required scope.
 - **Resolved 2026-09-24 — Excel (.xlsx) export added** (see the Report Export row). Original note: **Excel export from the paper is entirely absent**, replaced by CSV/JSON. Whether CSV satisfies the original requirement, or Excel (.xlsx) generation is still needed, is unresolved.
+- **Superseded 2026-10-16:** roles were added after all (admin / verifier / user) with report verification, because the project is to be open to everyone and unknown users' reports can't be trusted — see "Roles and report verification". The paper's `User.role` therefore now has a backend; the frontend consumer is issue #60. The 2026-09-24 decision follows.
 - **Resolved 2026-09-24 (user decision):** no roles; access is an allowlist (`SIGNIN_ALLOWED_DOMAINS` = up.edu.ph, mseuf.edu.ph + subdomains, plus `SIGNIN_ALLOWED_EMAILS`), and reports are a **shared corpus** — every allowed researcher reads every report, only the creator (or staff) may edit/delete. This deliberately differs from the paper's class-diagram wording that one user's data must not be confused with another's. Original note: **The paper's `User.role` field has no frontend counterpart** — nothing in the Settings, Sidebar, or account-derivation code references roles or permission tiers. Unclear if role-based access control is still in scope.
 - ~~No route/session guard exists anywhere in the frontend~~ — **resolved 2026-09-24**: a client-side guard (`app/PolLens/components/SessionGuard.tsx`, via the `app/(app)/` route group layout). Chosen over Next 16's server `proxy.ts` because the session lives in localStorage, which the server can't read; moving it to an httpOnly cookie would allow a server check but is a larger change not currently needed.
 - ~~Sidebar links to an `/dataset` ("Allergen reference") route that does not exist in the codebase~~ — **resolved 2026-09-19**: `app/dataset/page.tsx` + `components/AllergenReference.tsx` now exist (`app/PolLens` commit `21666ac`), listing the live 23-species catalog (via `useSpeciesCatalog()`) with a real per-species "grains detected in your reports" count computed from local report data. Deliberately smaller than the full vision in `app/PolLens/docs/allergen-reference-plan.md` — no seasonality strips, sort/filter, model-metadata block, or reports cross-link yet; see that doc's status note for what's still aspirational.

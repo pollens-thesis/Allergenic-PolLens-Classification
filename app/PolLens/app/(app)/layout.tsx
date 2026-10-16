@@ -1,5 +1,6 @@
 import SessionGuard from "@/components/SessionGuard";
 import Sidebar from "@/components/Sidebar";
+import SiteFooter from "@/components/SiteFooter";
 
 /**
  * Every page in this group requires a signed-in researcher; `/` is the public
@@ -14,7 +15,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="min-w-0 lg:contents">
           <Sidebar />
         </div>
-        <main className="min-w-0">{children}</main>
+        <div className="flex min-w-0 flex-col">
+          <main className="min-w-0 flex-1">{children}</main>
+          <SiteFooter className="border-t border-border px-4 py-4 sm:px-6 lg:px-10" />
+        </div>
       </div>
     </SessionGuard>
   );

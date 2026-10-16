@@ -27,11 +27,15 @@ const STORAGE_KEY = "pollens.settings.v1";
 /** Fired on the window so other components in this tab re-read immediately. */
 const CHANGE_EVENT = "pollens:settings-changed";
 
+export type Role = "user" | "verifier" | "admin";
+
 export type Settings = {
   /** The address this browser is signed in with. Empty means signed out. */
   email: string;
   /** The person's name from the Google/Microsoft account ("" or absent if none). */
   name?: string;
+  /** What the signed-in person may do ("user" until /me/ says otherwise). */
+  role?: Role;
   /** JWT pair from the backend's Google token exchange (see lib/auth.ts). */
   accessToken?: string;
   refreshToken?: string;

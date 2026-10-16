@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
   title: "Page Not Found",
@@ -35,6 +36,7 @@ export default function NotFound() {
           </Link>
         </div>
       </div>
+      <SiteFooter className="fixed inset-x-0 bottom-0 px-6 py-4" />
     </main>
   );
 }

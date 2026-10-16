@@ -33,7 +33,9 @@ npm run test:appearance  # browser preferences, storage fallback and tab sync
 | `/reports` | **Reports** — every report (shared across researchers), filterable by status/location/date, PDF and Excel export. |
 | `/reports/[sampleId]` | One report in full; its creator can flag it for review, mark it completed, or delete it. |
 | `/map` | **Pollen Map** — the Philippines shaded by grains counted in completed reports, drilling into a province's towns. |
-| `/dataset` | **Allergen Reference** — a searchable 6 × 4 atlas of the 23 species (photo, names, risk, code, grains in finalized reports); each card opens the full record. |
+| `/dataset` | **Allergen Reference** — a searchable 6 × 4 atlas of the 23 species (photo, names, risk, code, grains in verified reports); each card opens the full record. |
+| `/review` | **Review Queue** (verifiers and admins) — reports waiting for verification, oldest first; each opens the report with Approve and Decline (a reason is required). |
+| `/users` | **Users** (admins) — every account with its role and report count; appoint or remove verifiers, block or unblock. |
 | `/settings` | Appearance, profile, Excel/CSV/JSON export, sign out. |
 
 ## What it does

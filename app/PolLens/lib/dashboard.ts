@@ -1,5 +1,5 @@
 import {
-  getCollectionDate, getTotalGrains, getWeightedAvgConfidence, isFinalised,
+  getCollectionDate, getTotalGrains, getWeightedAvgConfidence, isPublic,
   type Specimen, type SpeciesId,
 } from "@/lib/data";
 import { ALL_DASHBOARD_LOCATIONS, getDashboardLocation, matchesDashboardLocation } from "@/lib/dashboard-locations";
@@ -108,10 +108,10 @@ export function buildDashboardSummary(
     const date = getCollectionDate(report.collectedAt);
     return date >= from && date <= throughDate;
   });
-  const included = inRange.filter(isFinalised);
+  const included = inRange.filter(isPublic);
   const locations = new Map<string, DashboardLocationSummary>();
   // Keep previously sampled locations visible, even when this period has a gap.
-  for (const report of scoped.filter((report) => isFinalised(report) && getCollectionDate(report.collectedAt) <= throughDate)) {
+  for (const report of scoped.filter((report) => isPublic(report) && getCollectionDate(report.collectedAt) <= throughDate)) {
     const location = getDashboardLocation(report.location);
     if (!locations.has(location.key)) {
       locations.set(location.key, { key: location.key, label: location.label, collectionCount: 0, slideCount: 0, monthly: Array(range).fill(0), occurrences: {}, sampleCount: 0 });

@@ -1,5 +1,6 @@
 import { cva } from "class-variance-authority";
-import type { ReportStatus } from "@/lib/data";
+import { Ban, Clock } from "lucide-react";
+import type { ReportStatus, Verification } from "@/lib/data";
 
 // Each status is a stamp with its own pattern as well as its colour, so the
 // three read apart in greyscale, in print and for colour-blind readers:
@@ -40,6 +41,33 @@ export function SampleBadge() {
       title="Sample detections: the server's built-in example reading, not results"
     >
       Sample
+    </span>
+  );
+}
+
+/**
+ * Whether a verifier has accepted a report. Verified is the normal case and
+ * shows nothing; Awaiting and Declined carry an icon as well as colour, so
+ * they read apart from the lifecycle stamps and without colour.
+ */
+export function VerificationBadge({ verification }: { verification: Verification }) {
+  if (verification === "Verified") return null;
+  const awaiting = verification === "Awaiting";
+  return (
+    <span
+      className={
+        awaiting
+          ? "inline-flex items-center gap-1 whitespace-nowrap rounded-sm border border-border-strong px-2 py-0.5 text-[12px] font-medium text-text-muted"
+          : "inline-flex items-center gap-1 whitespace-nowrap rounded-sm border border-danger px-2 py-0.5 text-[12px] font-medium text-danger"
+      }
+      title={
+        awaiting
+          ? "A verifier has not checked this report yet; only you and verifiers can see it"
+          : "A verifier declined this report; only you and verifiers can see it"
+      }
+    >
+      {awaiting ? <Clock size={11} strokeWidth={1.75} aria-hidden /> : <Ban size={11} strokeWidth={1.75} aria-hidden />}
+      {awaiting ? "Awaiting Verification" : "Declined"}
     </span>
   );
 }

@@ -16,6 +16,7 @@ from .models import (
     Species,
     next_sample_id,
 )
+from .verification import sync_after_change
 
 # ---------------------------------------------------------------------------
 # Input (write-only) — validates and parses the multipart POST body.
@@ -313,6 +314,7 @@ class ReportUpdateSerializer(serializers.Serializer):
 
     def update(self, report, data):
         fields = []
+        submitted_now = report.status == 'Pending' and data.get('status', 'Pending') != 'Pending'
         for field in ('report_name', 'collected_at', 'status'):
             if field in data:
                 setattr(report, field, data[field])
@@ -331,6 +333,9 @@ class ReportUpdateSerializer(serializers.Serializer):
             report.weather_wind_kph = weather.get('wind_kph') if weather else None
             fields += ['weather_condition', 'weather_temperature_c',
                        'weather_humidity_pct', 'weather_wind_kph']
+        fields += sync_after_change(
+            report, content_changed=bool(fields), submitted_now=submitted_now,
+        )
         with transaction.atomic():
             if fields:
                 report.save(update_fields=fields)
@@ -397,8 +402,10 @@ class GrainAnnotationSerializer(serializers.Serializer):
         return f'G{obj.grain.number}' if obj.grain_id else None
 
     def get_training_eligible(self, obj):
+        report = obj.slide.report
         return (
-            not obj.slide.report.sample_detections
+            not report.sample_detections
+            and report.verification == 'Verified'
             and obj.kind in ('confirmed', 'corrected', 'missed')
         )
 
@@ -450,8 +457,33 @@ class ReportSerializer(serializers.Serializer):
     status = serializers.CharField()
     sampleDetections = serializers.BooleanField(source='sample_detections')
     createdAt = serializers.DateTimeField(source='created_at')
+    verification = serializers.CharField()
+    verifiedAt = serializers.DateTimeField(source='verified_at', allow_null=True)
+    declineReason = serializers.SerializerMethodField()
     # Whether the caller may edit/delete it — the owner itself isn't exposed.
     canEdit = serializers.SerializerMethodField()
+    # Whether the caller may approve/decline it right now.
+    canVerify = serializers.SerializerMethodField()
+
+    def _user(self):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        return user if user is not None and user.is_authenticated else None
+
+    def get_declineReason(self, obj):
+        # Only the owner (to fix and resubmit) and verifiers need the reason.
+        user = self._user()
+        if user is None or not (user.can_verify or obj.owner_id == user.id):
+            return ''
+        return obj.decline_reason
+
+    def get_canVerify(self, obj):
+        user = self._user()
+        return bool(
+            user is not None and user.can_verify
+            and obj.verification == 'Awaiting' and obj.status != 'Pending'
+            and obj.owner_id != user.id
+        )
 
     def get_canEdit(self, obj):
         request = self.context.get('request')
@@ -465,10 +497,10 @@ class ReportSerializer(serializers.Serializer):
         return obj.collected_at.split('T', 1)[0]
 
     def get_researcher(self, obj):
-        # Keep the name visible only to the researcher who owns this report.
-        request = self.context.get('request')
-        user = getattr(request, 'user', None)
-        if user is None or not user.is_authenticated or obj.owner_id != user.id:
+        # The name is visible only to the researcher who owns this report and to
+        # admins (not to other users or verifiers).
+        user = self._user()
+        if user is None or not (user.is_superuser or obj.owner_id == user.id):
             return ''
         return obj.researcher
 

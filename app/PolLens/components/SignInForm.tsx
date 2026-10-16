@@ -91,7 +91,7 @@ export default function SignInForm() {
             const message =
               err instanceof GoogleSignInError
                 ? err.message
-                : "Google sign-in failed. Try again, or use your up.edu.ph or mseuf.edu.ph account.";
+                : "Google sign-in failed. Check your connection and try again.";
             setError(message);
             setPending(false);
             toast.error(message);
@@ -121,7 +121,7 @@ export default function SignInForm() {
       const message =
         err instanceof GoogleSignInError
           ? err.message
-          : "Microsoft sign-in failed. Try again, or use your up.edu.ph or mseuf.edu.ph account.";
+          : "Microsoft sign-in failed. Try again with a work or school account, or use Google.";
       setError(message);
       toast.error(message);
     }

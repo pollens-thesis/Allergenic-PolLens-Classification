@@ -1,9 +1,10 @@
 // ---------------------------------------------------------------------------
 // REPORT STORE — reports live on the server (api/, /api/v1/reports/).
 //
-// Reports are a shared corpus: every signed-in researcher can read every
-// report; only a report's creator (or staff) can edit, finalise or delete it
-// (`canEdit` on each report says which). A report's lifecycle is
+// A report is shared only once a verifier or admin has accepted it
+// (`verification` "Verified"); until then only its creator and verifiers see it.
+// Only a report's creator (or staff) can edit, finalise or delete it (`canEdit`
+// on each report says which). A report's lifecycle is
 //
 //   Pending      — stored straight after analysis (Analyze → createReport)
 //   Needs review — the researcher generated the report; awaiting sign-off
@@ -23,7 +24,9 @@ import {
   type ReportStatus,
   type Specimen,
   type SpecimenSlide,
+  type Verification,
 } from "@/lib/data";
+import type { Role } from "@/lib/settings";
 import type { NewReportInput } from "@/lib/analysis";
 import { apiFetch, SessionExpiredError } from "@/lib/api";
 import { BRAND_NAME } from "@/lib/brand";
@@ -57,8 +60,11 @@ async function errorMessage(res: Response, fallback: string): Promise<string> {
   const first = firstFieldError(body?.errors);
   if (first) return first;
   // DRF's stock 403 text doesn't say who may make the change.
-  if (res.status === 403) return "Only the researcher who created this report can change it.";
-  return typeof body?.detail === "string" ? body.detail : fallback;
+  const detail = typeof body?.detail === "string" ? body.detail : null;
+  if (res.status === 403 && (!detail || detail.startsWith("You do not have permission"))) {
+    return "Only the researcher who created this report can change it.";
+  }
+  return detail ?? fallback;
 }
 
 /** Field names in the report API, as the researcher sees them on screen. */
@@ -105,13 +111,14 @@ function sortByRecency(a: Specimen, b: Specimen): number {
   return b.collectedAt.localeCompare(a.collectedAt) || b.sampleId.localeCompare(a.sampleId);
 }
 
-/** Every report (shared corpus), newest collection first. `mine` narrows to your own. */
+/** Every report you may see (yours, plus the verified ones), newest first. `mine` narrows to your own. */
 export async function listReports(
-  options: { mine?: boolean; status?: ReportStatus } = {},
+  options: { mine?: boolean; status?: ReportStatus; verification?: Verification } = {},
 ): Promise<Specimen[]> {
   const params = new URLSearchParams();
   if (options.mine) params.set("owner", "me");
   if (options.status) params.set("status", options.status);
+  if (options.verification) params.set("verification", options.verification.toLowerCase());
   const query = params.size ? `?${params}` : "";
   const res = await request(`/api/v1/reports/${query}`);
   if (!res.ok) throw new ReportStoreError(await errorMessage(res, "Couldn't load reports."));
@@ -263,4 +270,65 @@ export async function deleteReport(sampleId: string): Promise<void> {
   if (!res.ok && res.status !== 404) {
     throw new ReportStoreError(await errorMessage(res, "Couldn't delete the report."));
   }
+}
+
+// ---------------------------------------------------------------------------
+// Verification and accounts
+// ---------------------------------------------------------------------------
+
+/** A verifier or admin accepts a submitted report (it becomes public) or declines it with a reason. */
+export async function verifyReport(
+  sampleId: string,
+  ruling: { decision: "approve" } | { decision: "decline"; reason: string },
+): Promise<Specimen> {
+  const res = await request(`/api/v1/reports/${encodeURIComponent(sampleId)}/verify/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(ruling),
+  });
+  if (!res.ok) throw new ReportStoreError(await errorMessage(res, "Couldn't save the decision."));
+  return mapBackendReport((await res.json()) as BackendReport);
+}
+
+/** Send a declined report you created back to the verifiers. */
+export async function resubmitReport(sampleId: string): Promise<Specimen> {
+  const res = await request(`/api/v1/reports/${encodeURIComponent(sampleId)}/resubmit/`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new ReportStoreError(await errorMessage(res, "Couldn't resubmit the report."));
+  return mapBackendReport((await res.json()) as BackendReport);
+}
+
+/** One account, as the admin's Users page lists it. */
+export type ManagedUser = {
+  id: number;
+  email: string;
+  fullName: string;
+  institution: string;
+  role: Role;
+  isVerifier: boolean;
+  isActive: boolean;
+  reportCount: number;
+  joinedAt: string;
+};
+
+/** Every account (admins only). */
+export async function listUsers(): Promise<ManagedUser[]> {
+  const res = await request("/api/v1/users/");
+  if (!res.ok) throw new ReportStoreError(await errorMessage(res, "Couldn't load the accounts."));
+  return (await res.json()) as ManagedUser[];
+}
+
+/** Appoint or remove a verifier, or block or unblock an account (admins only). */
+export async function updateUser(
+  id: number,
+  patch: { isVerifier?: boolean; isActive?: boolean },
+): Promise<ManagedUser> {
+  const res = await request(`/api/v1/users/${id}/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw new ReportStoreError(await errorMessage(res, "Couldn't update the account."));
+  return (await res.json()) as ManagedUser;
 }

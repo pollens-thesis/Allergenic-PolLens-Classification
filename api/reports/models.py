@@ -31,6 +31,14 @@ STATUS_TRANSITIONS = {
     'Needs review': {'Completed'},
 }
 
+# Trust, separate from the lifecycle above (2026-10-16, issue #59). Only
+# Verified reports reach other people's lists, the map, stats and exports; the
+# owner always sees their own. Reports by an admin or sub-admin verify
+# themselves when finalised (see reports/verification.py).
+VERIFICATION_CHOICES = [
+    ('Awaiting', 'Awaiting'), ('Verified', 'Verified'), ('Declined', 'Declined'),
+]
+
 WEATHER_CONDITION_CHOICES = [
     ('Sunny', 'Sunny'), ('Partly cloudy', 'Partly cloudy'), ('Overcast', 'Overcast'),
     ('Rainy', 'Rainy'), ('Windy', 'Windy'),
@@ -76,11 +84,12 @@ def next_sample_id(year=None):
 class Report(models.Model):
     """
     A collection session (one microscope batch). Maps to the frontend's
-    `Specimen` type (app/PolLens/lib/data.ts). Reports are a shared corpus —
-    every authenticated user can read every report (a deliberate decision,
-    see docs/system-spec.md); only the `owner` (or staff) may edit, change
-    the status of, or delete one. The owner itself is never exposed in the
-    API response — only whether the caller may edit (`canEdit`).
+    `Specimen` type (app/PolLens/lib/data.ts). Reports are a shared corpus
+    once `verification` is Verified; until then only the owner and
+    verifiers can see them (docs/system-spec.md). Only the `owner` (or
+    staff) may edit, change the status of, or delete one. The owner itself
+    is never exposed in the API response — only whether the caller may edit
+    (`canEdit`).
     """
 
     sample_id = models.CharField(max_length=20, unique=True, editable=False)
@@ -100,6 +109,16 @@ class Report(models.Model):
     # The detections came from the detect endpoint's built-in sample
     # (DETECTION_MOCK), not a trained model — shown as a warning on the report.
     sample_detections = models.BooleanField(default=False)
+
+    verification = models.CharField(
+        max_length=10, choices=VERIFICATION_CHOICES, default='Awaiting',
+    )
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='verified_reports',
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+    decline_reason = models.TextField(blank=True, default='')
 
     weather_condition = models.CharField(
         max_length=20, choices=WEATHER_CONDITION_CHOICES, null=True, blank=True,

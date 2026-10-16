@@ -32,6 +32,9 @@ const serif = Source_Serif_4({
 export const metadata: Metadata = {
   title: { default: BRAND_NAME, template: `%s · ${BRAND_NAME}` },
   description: `${BRAND_DESCRIPTOR}. Analyze microscope slides, review detections, and maintain research records.`,
+  // Google Search Console ownership token (public by design); needed for the
+  // OAuth consent screen's brand verification.
+  verification: { google: "W7K1Op9RxiSntNHbbxkwR1x3nyceXSOPtRevPScuius" },
 };
 
 export default function RootLayout({

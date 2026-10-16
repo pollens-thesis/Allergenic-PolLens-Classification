@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import PolleRgiesWordmark from "@/components/PolleRgiesWordmark";
+import SiteFooter from "@/components/SiteFooter";
 import { WelcomeSignInButton, WelcomeSignInProvider } from "@/components/WelcomeSignInDialog";
 import { ThemeToggle } from "@/components/AppearanceControls";
 import { BRAND_NAME } from "@/lib/brand";
@@ -76,7 +77,7 @@ export default function WelcomePage() {
                 Identify allergenic pollen in microscope slides.
               </h1>
               <p className="mt-5 max-w-[58ch] text-[15px] leading-relaxed text-hero-fg-muted sm:text-base">
-                {`${BRAND_NAME} helps approved research teams identify target pollen in microscope slide images from air-sampling collections, review detections and grain counts, and organize findings into reports.`}
+                {`${BRAND_NAME} helps research teams identify target pollen in microscope slide images from air-sampling collections, review detections and grain counts, and organize findings into reports.`}
               </p>
 
               <div className="mt-7 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-5">
@@ -84,7 +85,7 @@ export default function WelcomePage() {
                   Sign In To {BRAND_NAME}
                 </WelcomeSignInButton>
                 <span className="text-[12.5px] leading-relaxed text-hero-fg-muted">
-                  For UP, MSEUF, and approved research accounts
+                  With a Google account or a Microsoft work or school account
                 </span>
               </div>
             </div>
@@ -194,13 +195,15 @@ export default function WelcomePage() {
             </div>
           </div>
           <p className="mx-auto w-full max-w-[1440px] px-5 pb-8 text-[12px] leading-relaxed text-text-muted sm:px-8 lg:px-12 xl:px-16">
-            Reports are shared with signed-in research users. Editing and review are limited to the
-            report owner or staff; access is for UP, MSEUF, and approved research accounts.
+            A report is shared with other signed-in users only after a verifier approves it, and
+            only its owner can edit it. Anyone with a Google account or a Microsoft work or
+            school account can sign in.
           </p>
         </section>
 
         <footer className="mx-auto flex w-full max-w-[1440px] flex-col gap-3 px-5 py-7 text-[12px] text-text-muted sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-12 xl:px-16">
           <span>{`${BRAND_NAME} · Allergenic pollen identification · Philippines only`}</span>
+          <SiteFooter />
         </footer>
       </main>
     </WelcomeSignInProvider>

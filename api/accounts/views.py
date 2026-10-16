@@ -1,9 +1,11 @@
 import jwt
 from django.db import IntegrityError
+from django.db.models import Count
 from django.conf import settings
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 from rest_framework import status
+from rest_framework.parsers import JSONParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,7 +14,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .access import is_allowed
 from .models import User
-from .serializers import GoogleLoginSerializer, LogoutSerializer, UserSerializer
+from .serializers import (
+    GoogleLoginSerializer,
+    LogoutSerializer,
+    ManagedUserSerializer,
+    UserSerializer,
+)
 
 NOT_ALLOWED_DETAIL = "This account isn't authorised to use PolleRgies. Ask the project team to add it."
 
@@ -24,11 +31,11 @@ def issue_session(email, institution, full_name=''):
     our JWT pair. Returns a Response.
     """
     email = email.strip().lower()
-    if not is_allowed(email):
+    user = User.objects.filter(email__iexact=email).first()
+    if not (user is not None and user.is_superuser) and not is_allowed(email):
         return Response({'detail': NOT_ALLOWED_DETAIL}, status=status.HTTP_403_FORBIDDEN)
 
     full_name = (full_name or '').strip()[:255]
-    user = User.objects.filter(email__iexact=email).first()
     if user is None:
         try:
             user = User.objects.create(email=email, institution=institution, full_name=full_name)
@@ -223,10 +230,68 @@ class MeView(APIView):
     """
     GET /api/v1/auth/me/
 
-    Returns the signed-in user's email and institution.
+    Returns the signed-in user's email, name, institution and role
+    (`admin`, `verifier` or `user`).
     """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+
+ADMIN_ONLY_DETAIL = 'Only an admin can manage users.'
+
+
+def _managed_users():
+    return User.objects.annotate(reportCount=Count('reports')).order_by('email')
+
+
+class UserListView(APIView):
+    """GET /api/v1/users/ — every account with its role and report count (admin only)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.is_superuser:
+            return Response({'detail': ADMIN_ONLY_DETAIL}, status=status.HTTP_403_FORBIDDEN)
+        return Response(ManagedUserSerializer(_managed_users(), many=True).data)
+
+
+class UserDetailView(APIView):
+    """
+    PATCH /api/v1/users/<id>/ — admin only. `{"isVerifier": bool}` appoints or
+    removes a verifier; `{"isActive": false}` blocks an account (it is signed
+    out on its next request) and `true` unblocks it. Admins themselves are
+    made with the `grant_admin` command, never through the API, and can't be
+    changed or blocked here.
+    """
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser]
+    FIELDS = {'isVerifier': 'is_verifier', 'isActive': 'is_active'}
+
+    def patch(self, request, user_id):
+        if not request.user.is_superuser:
+            return Response({'detail': ADMIN_ONLY_DETAIL}, status=status.HTTP_403_FORBIDDEN)
+        user = _managed_users().filter(pk=user_id).first()
+        if user is None:
+            return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+        data = request.data if isinstance(request.data, dict) else {}
+        if (
+            not data or not set(data) <= set(self.FIELDS)
+            or not all(isinstance(value, bool) for value in data.values())
+        ):
+            return Response(
+                {'detail': 'Send isVerifier and/or isActive as true or false.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if user.is_superuser:
+            return Response(
+                {'detail': "Admins can't be changed or blocked here."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        for key, value in data.items():
+            setattr(user, self.FIELDS[key], value)
+        user.save(update_fields=[self.FIELDS[key] for key in data])
+        return Response(ManagedUserSerializer(user).data)
