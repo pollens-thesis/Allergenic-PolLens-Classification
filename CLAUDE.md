@@ -58,6 +58,11 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   branches) **must stay private**.
 - **Open work:** the adviser/team list in `docs/system-spec.md` (Audit section)
   and the frontend open tasks in `app/PolLens/AGENTS.md`.
+- **Google consent screen (2026-10-16):** published to *In production* (Cloud
+  project `pollens-506806`, owner va.dmesa@gmail.com), named PolleRgies, with
+  public `/privacy` and `/terms` pages (footer on every page and in Settings).
+  Brand verification (logo) was rejected once as "home page not registered";
+  retry **Verify branding** after 2026-10-17 (`docs/deployment.md`).
 - **Planned, not built:** opening sign-in to any Google account (adviser item
   12 in `docs/system-spec.md`). Today only the allowlist signs in
   (`up.edu.ph`, `mseuf.edu.ph` + `SIGNIN_ALLOWED_EMAILS`).
