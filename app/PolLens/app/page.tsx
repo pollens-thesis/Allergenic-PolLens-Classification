@@ -201,6 +201,14 @@ export default function WelcomePage() {
 
         <footer className="mx-auto flex w-full max-w-[1440px] flex-col gap-3 px-5 py-7 text-[12px] text-text-muted sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-12 xl:px-16">
           <span>{`${BRAND_NAME} · Allergenic pollen identification · Philippines only`}</span>
+          <nav aria-label="Legal" className="flex gap-5">
+            <Link href="/privacy" className="focus-ring rounded-sm underline-offset-4 hover:text-text hover:underline">
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="focus-ring rounded-sm underline-offset-4 hover:text-text hover:underline">
+              Terms Of Service
+            </Link>
+          </nav>
         </footer>
       </main>
     </WelcomeSignInProvider>
