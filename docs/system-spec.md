@@ -29,6 +29,18 @@ Rx-inspired P/R lettering and pollen lens form the logo, with a small crossed
 stroke on the R. This is a branding
 decision; the existing repository and service identifiers remain as configured.
 
+**Google consent screen (2026-10-16).** Published to *In production*; app name
+PolleRgies, the logo (120×120 from `app/icon.png`), support email
+`pollens@googlegroups.com`, and the home, `/privacy` and `/terms` pages on
+`pollens-theta.vercel.app` are set. Public Privacy Policy and Terms pages were
+added to the frontend for this (a footer link on the welcome page). Only
+`openid`/`email`/`profile` are requested, so no scope review. Brand
+verification was submitted and Google answered that the home page is not yet
+registered to the account even though Search Console verified it; retry after
+24 hours (see `deployment.md`, Troubleshooting). Adviser item 12 is unaffected:
+publishing opens Google's consent screen, but the backend allowlist still decides
+who can sign in.
+
 ## Audit 2026-09-24 — decisions made, and what still needs the adviser
 
 A full audit (paper vs. code vs. API contract) was done on 2026-09-24. **Decided by
