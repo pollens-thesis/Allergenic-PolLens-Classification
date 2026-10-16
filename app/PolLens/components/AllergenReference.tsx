@@ -355,7 +355,7 @@ function SpeciesRecord({
                 )}
 
                 <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-border pt-4 text-[14px]">
-                  <RecordItem label="Grains in Finalized Reports">
+                  <RecordItem label="Grains in Verified Reports">
                     <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
                       {grains === null ? "…" : grains.toLocaleString()}
                     </span>

@@ -62,8 +62,10 @@ const sections: LegalSection[] = [
     body: (
       <>
         <p>
-          Reports and slide images are a shared research record. Signed-in, approved research users
-          can view them; editing and review are limited to the report owner or staff.
+          A report and its slide images are private to you and to the verifiers and admins who
+          check it. Once a verifier approves it, it joins the shared research record and other
+          signed-in users can view it; the researcher name you enter stays visible only to you and
+          to admins. Editing is limited to the report owner or staff.
         </p>
         <p>
           Service providers process data on our behalf: Vercel (website), Render (application

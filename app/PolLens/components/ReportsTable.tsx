@@ -22,13 +22,15 @@ import {
   toReportRow,
   type ReportStatus,
   type Specimen,
-  isFinalised,
+  isPublic,
+  VERIFICATIONS,
+  type Verification,
 } from "@/lib/data";
 import { downloadSelectionReportPdf } from "@/lib/pdf";
 import { exportReportsXlsx } from "@/lib/export";
 import { getDashboardLocationOptions, matchesDashboardLocation } from "@/lib/dashboard-locations";
 import { findSpecies, useSpeciesCatalog } from "@/lib/species-catalog";
-import StatusBadge, { SampleBadge } from "@/components/StatusBadge";
+import StatusBadge, { SampleBadge, VerificationBadge } from "@/components/StatusBadge";
 import SpeciesName from "@/components/SpeciesName";
 import { Button, buttonVariants } from "@/components/Button";
 
@@ -42,6 +44,7 @@ const REPORTS_PAGE_SIZE = 10;
 type Filters = {
   query: string;
   status: StatusFilter;
+  verification: Verification | "All";
   location: string;
   /** Inclusive collection-date bounds, "YYYY-MM-DD" or "" for open-ended. */
   from: string;
@@ -51,6 +54,7 @@ type Filters = {
 const NO_FILTERS: Filters = {
   query: "",
   status: "All",
+  verification: "All",
   location: ALL_LOCATIONS,
   from: "",
   to: "",
@@ -82,6 +86,7 @@ function searchText(report: Specimen, catalog: ReturnType<typeof useSpeciesCatal
       formatDate(report.collectedAt),
       formatCollectedAt(report.collectedAt),
       report.status,
+      report.verification,
       ...species,
     ].join(
       " | ",
@@ -173,7 +178,8 @@ export default function ReportsTable({
       // parsing and cannot be shifted by a timezone.
       const date = getCollectionDate(r.collectedAt);
       return (
-        (filters.status === "All" || (filters.status === "Finalized" ? isFinalised(bySampleId.get(r.sampleId)!) : r.status === filters.status)) &&
+        (filters.status === "All" || (filters.status === "Finalized" ? isPublic(bySampleId.get(r.sampleId)!) : r.status === filters.status)) &&
+        (filters.verification === "All" || r.verification === filters.verification) &&
         (filters.location === ALL_LOCATIONS || (scopedLocation && filters.location === scopedLocation.value ? matchesDashboardLocation(r.location, scopedLocation.value) : r.location === filters.location)) &&
         (filters.from === "" || date >= filters.from) &&
         (filters.to === "" || date <= filters.to) &&
@@ -194,6 +200,7 @@ export default function ReportsTable({
   const hasActiveFilters =
     filters.query.trim() !== "" ||
     filters.status !== "All" ||
+    filters.verification !== "All" ||
     filters.location !== ALL_LOCATIONS ||
     filters.from !== "" ||
     filters.to !== "";
@@ -316,10 +323,10 @@ export default function ReportsTable({
         </label>
       </div>
 
-      <div className="mb-4 grid min-w-0 grid-cols-1 items-end gap-x-3 gap-y-3 sm:grid-cols-2 2xl:grid-cols-[minmax(21rem,1.15fr)_minmax(12rem,0.75fr)_minmax(19rem,1.3fr)_auto]">
+      <div className="mb-4 grid min-w-0 grid-cols-1 items-end gap-x-3 gap-y-3 sm:grid-cols-2 2xl:grid-cols-[minmax(21rem,1.15fr)_minmax(10rem,0.6fr)_minmax(12rem,0.75fr)_minmax(19rem,1.3fr)_auto]">
         <fieldset className="flex min-w-0 flex-col gap-1">
           <legend className="text-[12.5px] text-text-muted">
-            {filters.status === "Finalized" ? "Status · Completed + Needs Review" : "Status"}
+            {filters.status === "Finalized" ? "Status · Completed + Needs Review, Verified" : "Status"}
           </legend>
           <div className="flex h-12 max-w-full flex-wrap gap-0.5 rounded-md border border-border bg-surface p-px">
               {STATUS_FILTERS.map((option) => {
@@ -349,6 +356,22 @@ export default function ReportsTable({
               })}
           </div>
         </fieldset>
+
+        <label className="flex min-w-0 flex-col gap-1">
+          <span className="text-[12.5px] text-text-muted">Verification</span>
+          <select
+            value={filters.verification}
+            onChange={(e) => patch({ verification: e.target.value as Verification | "All" })}
+            className={`${controlClass} h-12 w-full bg-surface`}
+          >
+            <option value="All">All</option>
+            {VERIFICATIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <label className="flex min-w-0 flex-col gap-1">
           <span className="text-[12.5px] text-text-muted">Location</span>
@@ -513,6 +536,7 @@ export default function ReportsTable({
                       </span>
                       <span className="flex items-center gap-1.5">
                         {r.sampleDetections && <SampleBadge />}
+                        <VerificationBadge verification={r.verification} />
                         <StatusBadge status={r.status} />
                       </span>
                     </div>
@@ -641,6 +665,7 @@ export default function ReportsTable({
                   <td className="py-2.5 pr-0">
                     <span className="flex flex-wrap items-center gap-1.5">
                       <StatusBadge status={r.status} />
+                      <VerificationBadge verification={r.verification} />
                       {r.sampleDetections && <SampleBadge />}
                     </span>
                   </td>

@@ -40,8 +40,11 @@ paper — flag conflicts in `docs/system-spec.md` instead.
   sample reading when its mock switch is on, and reports saved that way keep
   `sampleDetections` permanently. Those reports show a "Sample" stamp and notes
   on dashboard/map/PDF/CSV. Never drop these labels.
-- **Finalized = Completed + Needs Review.** Pending analyses are excluded from
-  dashboard figures, the chart, the map and exports (with a note saying so).
+- **Shared figures = finalized and verified.** Finalized = Completed + Needs Review;
+  only reports a verifier approved (`isPublic` in `lib/data.ts`) count in dashboard
+  figures, the chart, the map and grain counts. The report list also holds your own
+  unverified reports (badge: Awaiting Verification or Declined), so never aggregate
+  it without `isPublic`. Pending analyses are excluded (with a note saying so).
 - **One oxide accent** (`--accent`) for the page's primary action, plate/figure
   numbers and focus — never decoration. Button intents (`components/Button.tsx`):
   `accent` primary; `caution` (red outline) leaving/removing — Sign Out,
@@ -149,11 +152,12 @@ the backend change first.
   `docs/system-spec.md` (architecture sign-off, map pins vs. choropleth,
   theme reconciliation (light default + user-selectable dark mode are built),
   archive, system-info display, evaluation targets).
-4. **Open sign-in (planned, not built)** — the owner plans to let any Google
-  account sign in. It's a backend switch first (adviser item 12 in
-  `docs/system-spec.md`); when it lands, sign-in dialog copy that says who may
-  sign in, and the "not authorised" message, may need updating. Don't change
-  them before the backend does.
+4. **Roles and open sign-in (built 2026-10-16, issues #59/#60)** — anyone with a Google
+  or Microsoft work/school account can sign in (the backend switch `SIGNIN_ALLOW_ALL`);
+  reports are verified before they are shared. `/review` (verifiers, admins) and
+  `/users` (admins) were written by the backend session as a first version for Niño
+  to refine: layout, copy, empty states, the report-detail verification panel
+  (`components/VerificationPanel.tsx`) and keyboard shortcuts for the new pages.
 
 ## Delivered Sept 30
 

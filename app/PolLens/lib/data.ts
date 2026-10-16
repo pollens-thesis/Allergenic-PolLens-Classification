@@ -151,9 +151,25 @@ export function speciesLabel(sp: Species): string {
 export type ReportStatus = "Pending" | "Needs review" | "Completed";
 export const REPORT_STATUSES: ReportStatus[] = ["Pending", "Needs review", "Completed"];
 
-/** Reports that describe finished work — what charts, stats and the map count. */
+/** Reports that describe finished work. */
 export function isFinalised(report: { status: ReportStatus }): boolean {
   return report.status !== "Pending";
+}
+
+/**
+ * Whether a verifier or admin has accepted a report (api/reports/models.py).
+ * A user's report is Awaiting until then; a Declined one goes back to its owner.
+ */
+export type Verification = "Awaiting" | "Verified" | "Declined";
+export const VERIFICATIONS: Verification[] = ["Awaiting", "Verified", "Declined"];
+
+/**
+ * Reports everyone can rely on — what charts, stats and the map count: finished
+ * and verified. The list also holds the signed-in person's own unverified
+ * reports, which must never reach shared figures.
+ */
+export function isPublic(report: { status: ReportStatus; verification: Verification }): boolean {
+  return isFinalised(report) && report.verification === "Verified";
 }
 
 // ---------------------------------------------------------------------------
@@ -459,6 +475,13 @@ export type Specimen = {
   createdAt: string;
   /** Whether the signed-in researcher may edit, change the status of, or delete it. */
   canEdit: boolean;
+  /** Whether a verifier has accepted it; only Verified reports are shared. */
+  verification: Verification;
+  verifiedAt: string | null;
+  /** Why a verifier declined it; "" unless you own it or can verify. */
+  declineReason: string;
+  /** Whether the signed-in verifier may approve or decline it now. */
+  canVerify: boolean;
   /** Detections came from the server's built-in sample, not a trained model. */
   sampleDetections?: boolean;
 };
@@ -508,6 +531,7 @@ export type ReportRow = {
   totalGrains: number;
   slideCount: number;
   status: ReportStatus;
+  verification: Verification;
   /** Counts are the server's built-in sample reading, not results. */
   sampleDetections: boolean;
 };
@@ -526,6 +550,7 @@ export function toReportRow(specimen: Specimen): ReportRow {
     totalGrains: getReportGrains(specimen),
     slideCount: specimen.slides.length,
     status: specimen.status,
+    verification: specimen.verification,
     sampleDetections: Boolean(specimen.sampleDetections),
   };
 }
@@ -559,7 +584,7 @@ export function computeDashboardStats(
   classesTracked: number,
   now: Date = new Date(),
 ): DashboardStats {
-  const finalised = reports.filter(isFinalised);
+  const finalised = reports.filter(isPublic);
   const detections = finalised.flatMap((r) => r.slides.flatMap((s) => s.detections));
   return {
     totalSpecimens: finalised.length,
