@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import LegalPage, { CONTACT_EMAIL, type LegalSection } from "@/components/LegalPage";
-import { BRAND_NAME } from "@/lib/brand";
+import LegalPage, { type LegalSection } from "@/components/LegalPage";
+import { BRAND_NAME, CONTACT_EMAIL } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",

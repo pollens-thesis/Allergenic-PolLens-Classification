@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   FileJson,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import { type Specimen } from "@/lib/data";
 import { displayName } from "@/lib/account";
+import { BRAND_NAME, CONTACT_EMAIL } from "@/lib/brand";
 import { useSettings } from "@/lib/settings";
 import { signOut } from "@/lib/session";
 import { listReports } from "@/lib/store";
@@ -136,6 +138,33 @@ export default function SettingsWorkspace() {
             Reports couldn&apos;t load. Reload to try again.
           </p>
         )}
+      </section>
+
+      <section className="p-4 sm:p-5">
+        <h2 className="t-plate-title text-text">Legal &amp; Contact</h2>
+        <p className="mt-1 text-[13px] text-text-muted">
+          How {BRAND_NAME} handles your data, the terms of use, and who to write to.
+        </p>
+        <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-[13px]">
+          <li>
+            <Link href="/privacy" className="focus-ring rounded-sm text-text underline underline-offset-4">
+              Privacy Policy
+            </Link>
+          </li>
+          <li>
+            <Link href="/terms" className="focus-ring rounded-sm text-text underline underline-offset-4">
+              Terms Of Service
+            </Link>
+          </li>
+          <li>
+            <a
+              href={`mailto:${CONTACT_EMAIL}`}
+              className="focus-ring rounded-sm text-text underline underline-offset-4"
+            >
+              {CONTACT_EMAIL}
+            </a>
+          </li>
+        </ul>
       </section>
 
       <section className="p-4 sm:p-5">

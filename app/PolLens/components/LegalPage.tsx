@@ -1,8 +1,7 @@
 import Link from "next/link";
 import PolleRgiesWordmark from "@/components/PolleRgiesWordmark";
+import SiteFooter from "@/components/SiteFooter";
 import { BRAND_NAME } from "@/lib/brand";
-
-export const CONTACT_EMAIL = "pollens@googlegroups.com";
 
 export type LegalSection = {
   id: string;
@@ -60,20 +59,7 @@ export default function LegalPage({
         </div>
       </article>
 
-      <footer className="mx-auto flex w-full max-w-[860px] flex-wrap gap-x-5 gap-y-2 px-5 pb-10 text-[12px] text-text-muted sm:px-8">
-        <Link href="/privacy" className="focus-ring rounded-sm underline-offset-4 hover:text-text hover:underline">
-          Privacy Policy
-        </Link>
-        <Link href="/terms" className="focus-ring rounded-sm underline-offset-4 hover:text-text hover:underline">
-          Terms Of Service
-        </Link>
-        <a
-          href={`mailto:${CONTACT_EMAIL}`}
-          className="focus-ring rounded-sm underline-offset-4 hover:text-text hover:underline"
-        >
-          {CONTACT_EMAIL}
-        </a>
-      </footer>
+      <SiteFooter className="mx-auto w-full max-w-[860px] px-5 pb-10 sm:px-8" />
     </main>
   );
 }
