@@ -13,8 +13,10 @@ const sections: LegalSection[] = [
     title: "Who May Use It",
     body: (
       <p>
-        {BRAND_NAME} is for UP, MSEUF and approved research accounts. Access may be limited or
-        removed at any time. You are responsible for activity under your account.
+        Anyone with a Google account or a Microsoft work or school account can sign in to{" "}
+        {BRAND_NAME}. A report you save is private to you until a verifier approves it; after that
+        it is shared with other signed-in users. Access may be limited or removed at any time,
+        for example for misuse. You are responsible for activity under your account.
       </p>
     ),
   },

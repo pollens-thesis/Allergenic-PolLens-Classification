@@ -17,7 +17,7 @@ import {
 import {
   formatCollectedAt,
   getWeightedAvgConfidence,
-  isFinalised,
+  isPublic,
   speciesLabel,
   type Specimen,
   type SpeciesId,
@@ -161,8 +161,8 @@ export default function PollenMap() {
     ])
       .then(([loadedReports, loadedProvinces]) => {
         if (cancelled) return;
-        // Pending analyses aren't results yet.
-        setReports(loadedReports.filter(isFinalised));
+        // Pending analyses aren't results yet, and only verified reports are shared.
+        setReports(loadedReports.filter(isPublic));
         setProvinces(loadedProvinces);
       })
       .catch(() => !cancelled && setFailed(true));
@@ -234,7 +234,7 @@ export default function PollenMap() {
     [places],
   );
 
-  /** Finalized reports with no matching country boundary, independent of pollen filter. */
+  /** Verified reports with no matching country boundary, independent of pollen filter. */
   const unmappedReportCount = useMemo(() => {
     if (scope.level !== "country" || !reports || !provinces) return 0;
     const drawable = new Set(provinces.features.map(featureKey));
@@ -804,7 +804,7 @@ export default function PollenMap() {
 
         {countryScope && unmappedReportCount > 0 && (
           <p className="mt-2 text-[13px] text-text-muted" role="note">
-            {unmappedReportCount} finalized {unmappedReportCount === 1 ? "report isn't" : "reports aren't"} on the map because{" "}
+            {unmappedReportCount} verified {unmappedReportCount === 1 ? "report isn't" : "reports aren't"} on the map because{" "}
             {unmappedReportCount === 1 ? "its province isn't" : "their provinces aren't"} recognized.
           </p>
         )}

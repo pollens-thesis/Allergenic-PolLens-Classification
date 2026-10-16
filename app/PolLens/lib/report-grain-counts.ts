@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { aggregateSlideDetections, isFinalised } from "@/lib/data";
+import { aggregateSlideDetections, isPublic } from "@/lib/data";
 import { listReports } from "@/lib/store";
 
 /**
@@ -19,7 +19,7 @@ export function useReportGrainCounts(): Record<string, number> | null {
       .then((reports) => {
       if (cancelled) return;
       const totals: Record<string, number> = {};
-      for (const specimen of reports.filter(isFinalised)) {
+      for (const specimen of reports.filter(isPublic)) {
         for (const detection of aggregateSlideDetections(specimen.slides)) {
           totals[detection.speciesId] = (totals[detection.speciesId] ?? 0) + detection.grainCount;
         }
