@@ -8,8 +8,8 @@ const LINK =
 /** Privacy Policy, Terms of Service and the project contact — on every page. */
 export default function SiteFooter({ className }: { className?: string }) {
   return (
-    <footer className={clsx("text-[12px] text-text-muted", className)}>
-      <nav aria-label="Legal and contact" className="flex flex-wrap gap-x-5 gap-y-2">
+    <footer className={clsx("flex justify-end text-right text-[12px] text-text-muted", className)}>
+      <nav aria-label="Legal and contact" className="flex flex-wrap justify-end gap-x-5 gap-y-2">
         <Link href="/privacy" className={LINK}>
           Privacy Policy
         </Link>
