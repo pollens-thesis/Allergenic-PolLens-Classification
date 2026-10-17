@@ -66,28 +66,22 @@ async function requestNewPair(refreshToken: string): Promise<string> {
 }
 
 /**
- * A fresh access token. One refresh at a time per tab (concurrent callers
- * share it) and, where the browser supports Web Locks, per browser — two tabs
- * refreshing with the same rotating token would get the second one rejected
- * and sign the researcher out for no reason. Inside the lock, storage is
- * re-read first: if another tab already rotated the pair, that pair is used.
+ * A fresh access token. One refresh at a time per tab; concurrent callers
+ * share it. Authentication sessions are tab-scoped, so tabs never share a
+ * rotating refresh token.
  */
 export function refreshSession(staleRefresh: string | undefined): Promise<string> {
   refreshInFlight ??= (async () => {
-    const run = async () => {
-      const current = getSnapshot();
-      if (!current.refreshToken || isExpired(current.refreshToken)) endSession();
-      if (
-        current.refreshToken !== staleRefresh &&
-        current.accessToken &&
-        !isExpired(current.accessToken, REFRESH_SKEW_SECONDS)
-      ) {
-        return current.accessToken; // another tab already refreshed
-      }
-      return requestNewPair(current.refreshToken);
-    };
-    const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
-    return locks ? locks.request("pollens-token-refresh", run) : run();
+    const current = getSnapshot();
+    if (!current.refreshToken || isExpired(current.refreshToken)) endSession();
+    if (
+      current.refreshToken !== staleRefresh &&
+      current.accessToken &&
+      !isExpired(current.accessToken, REFRESH_SKEW_SECONDS)
+    ) {
+      return current.accessToken;
+    }
+    return requestNewPair(current.refreshToken);
   })().finally(() => {
     refreshInFlight = null;
   });
