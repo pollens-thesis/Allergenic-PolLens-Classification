@@ -1,6 +1,6 @@
 # Deploying PolLens
 
-**Status:** live since 2026-09-25 (https://pollens-theta.vercel.app, API
+**Status:** live since 2026-09-25 (https://pollergies.vercel.app, API
 https://pollens-api.onrender.com). Since 2026-09-26 both services build from the
 monorepo `pollens-thesis/Allergenic-PolLens-Classification`, branch `master`; a
 push to `master` redeploys both. This runbook is for setting it up again.
@@ -161,7 +161,7 @@ Starter plan ($7/mo) stays awake.
    - `NEXT_PUBLIC_GOOGLE_CLIENT_ID` = same Google client ID as in step 2
    - `NEXT_PUBLIC_MICROSOFT_CLIENT_ID` = the Microsoft client ID from step 1b (optional)
 4. **Deploy**. Copy the production domain into `VERCEL_URL`, e.g.
-   `https://your-project.vercel.app`. Vercel may add a suffix (yours is `pollens-theta`) if the short name is taken — a `pollens.vercel.app` you did not create belongs to someone else, so always copy the address Vercel shows you.
+   `https://your-project.vercel.app`. Vercel may add a suffix (it was `pollens-theta` until the project was renamed to `pollergies` on 2026-10-19) if the short name is taken — a `pollens.vercel.app` you did not create belongs to someone else, so always copy the address Vercel shows you.
 
 These variables are built into the page at build time. If you change them
 later, use **Deployments** → **⋯** → **Redeploy**.
@@ -237,6 +237,7 @@ Open `VERCEL_URL` and check each step:
 |---|---|
 | Browser console: *blocked by CORS policy* on `/api/v1/...` | `CORS_ALLOWED_ORIGINS` on Render doesn't exactly match `VERCEL_URL`: scheme, no trailing slash. |
 | Google button: *origin is not allowed for the client ID* | Step 4.2 isn't saved yet, or it's still propagating. |
+| Google popup: *Error 400: origin_mismatch* | The site's address changed (e.g. a Vercel rename, as on 2026-10-19: `pollens-theta` → `pollergies`) and the new origin isn't registered. Add it everywhere step 4 lists: the Google OAuth client's Authorized JavaScript origins, `CORS_ALLOWED_ORIGINS` on Render, the Entra SPA redirect URI and the R2 CORS policy. Keep the old address until the new one works. |
 | Sign-in fails with *Invalid Google token* | Vercel and Render use different Google client IDs. |
 | *This account isn't authorised to use PolLens* | Open sign-in is off and the email isn't on the allowlist: turn on `SIGNIN_ALLOW_ALL`, or add its domain to `SIGNIN_ALLOWED_DOMAINS` or the address to `SIGNIN_ALLOWED_EMAILS` on Render. |
 | Microsoft popup: *redirect URI mismatch* | Add `VERCEL_URL/auth/microsoft` as an SPA redirect URI (step 4.4). |
