@@ -47,7 +47,7 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
 
 ## Current state (2026-10-14)
 
-- **Live and verified:** frontend https://pollens-theta.vercel.app, API
+- **Live and verified:** frontend https://pollergies.vercel.app, API
   https://pollens-api.onrender.com (`/healthz/` ok). Render and Vercel were
   re-pointed to this monorepo on 2026-09-26 (Root Directories `api` and
   `app/PolLens`); a push to `master` deploys both.
@@ -58,6 +58,14 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   branches) **must stay private**.
 - **Open work:** the adviser/team list in `docs/system-spec.md` (Audit section)
   and the frontend open tasks in `app/PolLens/AGENTS.md`.
+- **Site renamed (2026-10-19):** the Vercel project is now
+  https://pollergies.vercel.app (was `pollens-theta`). Sign-in works there after
+  adding the origin to Google, Render CORS, Entra and R2; the old address is still
+  in those lists. Brand verification was tied to the old domain: re-add the new one
+  in Search Console and retry **Verify branding**.
+- **My Reports filter (live 2026-10-19, issue #71, PR #72):** an All Reports /
+  My Reports toggle on `/reports` (also `?owner=me`), backed by a new `isMine`
+  flag on every report.
 - **Google consent screen (2026-10-16):** published to *In production* (Cloud
   project `pollens-506806`, owner va.dmesa@gmail.com), named PolleRgies, with
   public `/privacy` and `/terms` pages (footer on every page and in Settings).

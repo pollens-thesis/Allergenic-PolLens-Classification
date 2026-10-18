@@ -12,7 +12,7 @@ single project repo `pollens-thesis/Allergenic-PolLens-Classification` (the Djan
 sibling folder `api/`). Read the root `AGENTS.md` for the layout; there are
 no submodules and nothing to "bump".
 
-Live: https://pollens-theta.vercel.app · API: https://pollens-api.onrender.com
+Live: https://pollergies.vercel.app · API: https://pollens-api.onrender.com
 (Render free tier — the first request after idle takes about a minute).
 
 ## Read these first (they are the authority)

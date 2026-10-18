@@ -31,7 +31,7 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
 
 ## Current state (2026-09-26)
 
-- **Live and verified:** frontend https://pollens-theta.vercel.app, API
+- **Live and verified:** frontend https://pollergies.vercel.app, API
   https://pollens-api.onrender.com (`/healthz/` ok). Render and Vercel were
   re-pointed to this monorepo on 2026-09-26 (Root Directories `api` and
   `app/PolLens`); a push to `master` deploys both.
@@ -78,7 +78,7 @@ team for values privately.
 
 ## Hosting
 
-- Frontend: Vercel (https://pollens-theta.vercel.app), built from
+- Frontend: Vercel (https://pollergies.vercel.app), built from
   `app/PolLens/` of this repo (Root Directory `app/PolLens`).
 - API: Render (https://pollens-api.onrender.com; free tier sleeps when idle),
   built from `api/` (Root Directory `api`); database on Neon, slide images in
