@@ -475,6 +475,8 @@ export type Specimen = {
   createdAt: string;
   /** Whether the signed-in researcher may edit, change the status of, or delete it. */
   canEdit: boolean;
+  /** Whether the signed-in researcher created it (unlike canEdit, false for staff on others' reports). */
+  isMine: boolean;
   /** Whether a verifier has accepted it; only Verified reports are shared. */
   verification: Verification;
   verifiedAt: string | null;

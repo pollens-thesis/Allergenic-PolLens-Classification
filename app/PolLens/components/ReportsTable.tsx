@@ -38,6 +38,12 @@ import { Button, buttonVariants } from "@/components/Button";
 type StatusFilter = ReportStatus | "All" | "Finalized";
 const STATUS_FILTERS: StatusFilter[] = ["All", "Pending", "Needs review", "Completed"];
 
+export type OwnerFilter = "All" | "Mine";
+const OWNER_FILTERS: { value: OwnerFilter; label: string }[] = [
+  { value: "All", label: "All Reports" },
+  { value: "Mine", label: "My Reports" },
+];
+
 const ALL_LOCATIONS = "all";
 const REPORTS_PAGE_SIZE = 10;
 
@@ -46,6 +52,8 @@ type Filters = {
   status: StatusFilter;
   verification: Verification | "All";
   location: string;
+  /** "Mine" keeps only reports the signed-in researcher created. */
+  owner: OwnerFilter;
   /** Inclusive collection-date bounds, "YYYY-MM-DD" or "" for open-ended. */
   from: string;
   to: string;
@@ -53,6 +61,7 @@ type Filters = {
 
 const NO_FILTERS: Filters = {
   query: "",
+  owner: "All",
   status: "All",
   verification: "All",
   location: ALL_LOCATIONS,
@@ -120,6 +129,7 @@ export default function ReportsTable({
   highlightId,
   initialQuery = "",
   initialStatus = "All",
+  initialOwner = "All",
   initialFrom = "",
   initialTo = "",
   initialLocationScope = "all",
@@ -131,6 +141,8 @@ export default function ReportsTable({
   initialQuery?: string;
   /** Dashboard links prefill the review status and inclusive collection dates. */
   initialStatus?: StatusFilter;
+  /** `?owner=me` opens the list already narrowed to your own reports. */
+  initialOwner?: OwnerFilter;
   initialFrom?: string;
   initialTo?: string;
   /** Exact dashboard area/location scope, kept visible in the location control. */
@@ -142,7 +154,7 @@ export default function ReportsTable({
     return [...options.provinces, ...options.locations].find((option) => option.value === initialLocationScope);
   }, [reports, initialLocationScope]);
   const [filters, setFilters] = useState<Filters>({
-    ...NO_FILTERS, query: initialQuery, status: initialStatus, from: initialFrom, to: initialTo, location: scopedLocation?.value ?? ALL_LOCATIONS,
+    ...NO_FILTERS, query: initialQuery, status: initialStatus, owner: initialOwner, from: initialFrom, to: initialTo, location: scopedLocation?.value ?? ALL_LOCATIONS,
   });
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
@@ -178,6 +190,7 @@ export default function ReportsTable({
       // parsing and cannot be shifted by a timezone.
       const date = getCollectionDate(r.collectedAt);
       return (
+        (filters.owner === "All" || bySampleId.get(r.sampleId)?.isMine === true) &&
         (filters.status === "All" || (filters.status === "Finalized" ? isPublic(bySampleId.get(r.sampleId)!) : r.status === filters.status)) &&
         (filters.verification === "All" || r.verification === filters.verification) &&
         (filters.location === ALL_LOCATIONS || (scopedLocation && filters.location === scopedLocation.value ? matchesDashboardLocation(r.location, scopedLocation.value) : r.location === filters.location)) &&
@@ -199,6 +212,7 @@ export default function ReportsTable({
 
   const hasActiveFilters =
     filters.query.trim() !== "" ||
+    filters.owner !== "All" ||
     filters.status !== "All" ||
     filters.verification !== "All" ||
     filters.location !== ALL_LOCATIONS ||
@@ -306,6 +320,34 @@ export default function ReportsTable({
           </p>
         </div>
 
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+        <div role="group" aria-label="Whose reports" className="flex h-11 shrink-0 gap-0.5 rounded-md border border-border bg-surface p-px">
+          {OWNER_FILTERS.map(({ value, label }) => {
+            const active = filters.owner === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => patch({ owner: value })}
+                aria-pressed={active}
+                className={clsx(
+                  "focus-ring relative h-full flex-1 rounded px-3 text-[13px] whitespace-nowrap",
+                  active ? "text-selected-fg" : "text-text-muted transition-colors hover:text-text",
+                )}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="owner-filter-pill"
+                    className="control-selection absolute inset-0 rounded bg-selected"
+                    transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                  />
+                )}
+                <span className="relative z-10">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+
         <label className="relative w-full sm:w-80">
           <span className="sr-only">Search all report fields</span>
           <Search
@@ -321,6 +363,7 @@ export default function ReportsTable({
             className="focus-ring min-h-11 w-full rounded-md border border-border bg-surface py-2 pr-3 pl-8 text-[13px] text-text placeholder:text-text-faint"
           />
         </label>
+        </div>
       </div>
 
       <div className="mb-4 grid min-w-0 grid-cols-1 items-end gap-x-3 gap-y-3 sm:grid-cols-2 2xl:grid-cols-[minmax(21rem,1.15fr)_minmax(10rem,0.6fr)_minmax(12rem,0.75fr)_minmax(19rem,1.3fr)_auto]">

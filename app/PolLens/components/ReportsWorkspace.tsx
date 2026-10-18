@@ -30,6 +30,7 @@ export default function ReportsWorkspace() {
   const initialLocationScope = searchParams.get("locationScope") ?? "all";
   const statusParam = searchParams.get("status");
   const initialStatus: ReportStatus | "All" | "Finalized" = statusParam === "Finalized" ? "Finalized" : REPORT_STATUSES.find((status) => status === statusParam) ?? "All";
+  const initialOwner = searchParams.get("owner") === "me" ? "Mine" : "All";
   const initialFrom = dateFilter(searchParams.get("from"));
   const initialTo = dateFilter(searchParams.get("to"));
 
@@ -80,11 +81,12 @@ export default function ReportsWorkspace() {
   return (
     // Re-seed filters when a dashboard or map link changes the URL.
     <ReportsTable
-      key={JSON.stringify([initialQuery, initialStatus, initialFrom, initialTo, initialLocationScope])}
+      key={JSON.stringify([initialQuery, initialStatus, initialOwner, initialFrom, initialTo, initialLocationScope])}
       reports={reports}
       highlightId={savedId}
       initialQuery={initialQuery}
       initialStatus={initialStatus}
+      initialOwner={initialOwner}
       initialFrom={initialFrom}
       initialTo={initialTo}
       initialLocationScope={initialLocationScope}

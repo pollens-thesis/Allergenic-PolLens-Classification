@@ -1032,6 +1032,20 @@ class ReportCreateValidationTests(APITestCase):
 
         self.assertEqual([r['sampleId'] for r in response.data], [mine.sample_id])
 
+    def test_is_mine_flags_only_the_callers_own_reports(self):
+        mine = make_report()
+        mine.owner = self.user
+        mine.save()
+        other = make_report()
+        other.owner = User.objects.create(email='other@up.edu.ph', institution='up.edu.ph')
+        other.verification = 'Verified'
+        other.save()
+
+        response = self.client.get(self.url)
+
+        flags = {r['sampleId']: r['isMine'] for r in response.data}
+        self.assertEqual(flags, {mine.sample_id: True, other.sample_id: False})
+
 
 @override_settings(MEDIA_ROOT=_TEMP_MEDIA)
 class ReportUpdateDeleteTests(APITestCase):

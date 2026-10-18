@@ -13,7 +13,7 @@ import {
 
 const now = new Date("2026-09-27T10:00:00Z");
 function report(overrides: Partial<Specimen> = {}): Specimen {
-  return { sampleId: "test", collectedAt: "2026-09-27", location: "Lucban, Quezon", slides: [{ id: "slide", fileName: "test.png", notes: "", detections: [] }], weather: null, researcher: "Test researcher", status: "Completed", createdAt: "2026-09-27T10:00:00Z", canEdit: false, verification: "Verified", verifiedAt: null, declineReason: "", canVerify: false, ...overrides };
+  return { sampleId: "test", collectedAt: "2026-09-27", location: "Lucban, Quezon", slides: [{ id: "slide", fileName: "test.png", notes: "", detections: [] }], weather: null, researcher: "Test researcher", status: "Completed", createdAt: "2026-09-27T10:00:00Z", canEdit: false, isMine: false, verification: "Verified", verifiedAt: null, declineReason: "", canVerify: false, ...overrides };
 }
 
 test("sampling counts collections with no pollen, counts slides separately, and excludes Pending", () => {

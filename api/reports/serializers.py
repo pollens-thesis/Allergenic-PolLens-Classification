@@ -462,6 +462,8 @@ class ReportSerializer(serializers.Serializer):
     declineReason = serializers.SerializerMethodField()
     # Whether the caller may edit/delete it — the owner itself isn't exposed.
     canEdit = serializers.SerializerMethodField()
+    # Whether the caller is the one who created it (staff editing someone else's is not "mine").
+    isMine = serializers.SerializerMethodField()
     # Whether the caller may approve/decline it right now.
     canVerify = serializers.SerializerMethodField()
 
@@ -484,6 +486,10 @@ class ReportSerializer(serializers.Serializer):
             and obj.verification == 'Awaiting' and obj.status != 'Pending'
             and obj.owner_id != user.id
         )
+
+    def get_isMine(self, obj):
+        user = self._user()
+        return user is not None and obj.owner_id == user.id
 
     def get_canEdit(self, obj):
         request = self.context.get('request')
