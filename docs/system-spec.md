@@ -113,7 +113,7 @@ only in the gitignored `docs/private/`. Render (Root Directory `api`) and Vercel
     fields, editable in Django admin; marked for UPLB verification). **Season and
     allergenic risk are still open** — risk stays "Not assessed".
 12. **Open sign-in to any Google account** — decided by the user 2026-09-26 and
-    **built 2026-10-16** (issue #9): `SIGNIN_ALLOW_ALL=true` on Render lets any
+    **built 2026-10-16, turned on in production 2026-10-18** (issue #9): `SIGNIN_ALLOW_ALL=true` on Render lets any
     Google account and any Microsoft work/school account in; the domain allowlist
     only applies while the switch is off (it ships off, and is turned on after
     the verification UI is live). Personal Microsoft accounts stay refused, since
