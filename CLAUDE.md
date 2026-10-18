@@ -123,11 +123,9 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   and is what runs now, but only within-slide accuracy exists, not an end-to-end
   evaluation on YOLO26 crops, and it covers 15 of the app's 23 species. Record
   metrics for the paper (adviser item 7 in `docs/system-spec.md`).
-- **Next steps (written 2026-10-14):**
-  1. Merge PR #52 (this file's update plus the Modal token-rotation procedure)
-     and PR #54 (frontend, needs Niño's 👍; check it visually first: a report,
-     the result workspace, the map popup, the inspector, a CSV export; confirm
-     the odd labels "Rice pollen" and "Koroskorosan" in `DATASET_SPECIES_NAMES`).
+- **Next steps (updated 2026-10-19):**
+  1. PRs #52 and #54 are merged (2026-10-14). Still to confirm with Niño: the
+     odd labels "Rice pollen" and "Koroskorosan" in `DATASET_SPECIES_NAMES`.
   2. Evaluate the live classifier end to end on YOLO26 crops and record the
      metrics for the paper, then close #31 (only within-slide accuracy exists;
      15 of the 23 catalog species are covered).
@@ -138,10 +136,12 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
      `docs/inference-modal.md`). Modal runs on Niño's free workspace
      (`ninoelma874`); the Modal secret was rotated 2026-10-14 and the procedure
      is in `docs/inference-modal.md`.
-  5. Board hygiene: card #21 is still In Progress although its PR merged.
+  5. The adviser still has to review the terms and privacy wording
+     (`docs/system-spec.md`), and Niño is to refine the new `/review` and
+     `/users` pages (`app/PolLens/AGENTS.md`, open task 4).
 - **Teammate:** Niño runs the project locally and signs in. If sign-in fails
-  for someone new, see the Troubleshooting table in `docs/deployment.md`
-  (Google "Access blocked" = add them as a test user).
+  for someone new, note that sign-in is open to any Google account or Microsoft
+  work/school account; see the Troubleshooting table in `docs/deployment.md`.
 
 ## Source of Truth: Paper vs. Frontend
 
