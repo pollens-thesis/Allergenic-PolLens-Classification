@@ -145,7 +145,9 @@ between the thesis proposal paper and the frontend.
     Both: owner or staff only (403 otherwise); every response carries
     `canEdit` for the caller, and `createdAt`.
   - **List filter `owner=me`** (the caller's own reports — used for the
-    Pending list), alongside the existing filters.
+    Pending list), alongside the existing filters. Every report also returns
+    `isMine` (true only for the creator, not for staff who can edit it), which
+    the Reports page uses for its client-side "My Reports" filter.
   - **Validation:** every uploaded image (create and detect) is opened with
     Pillow and must be JPEG/PNG and ≤ `MAX_SLIDE_IMAGE_BYTES` (25 MB,
     paper TC-US-01) → 400/413 with a readable `detail`; the stored extension
