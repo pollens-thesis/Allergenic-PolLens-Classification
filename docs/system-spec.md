@@ -121,8 +121,9 @@ only in the gitignored `docs/private/`. Render (Root Directory `api`) and Vercel
     detection on Modal and upload to R2 / write to Neon (free-tier quotas; the
     `detect` throttle limits each user), and reports from new users stay private
     until a verifier approves them (next section). Admins can block an account.
-    Still worth confirming with the adviser: whether researchers outside UP/MSEUF
-    should be able to see the collective data at all, and the terms/privacy wording.
+    **Adviser, 2026-10-19:** Dr. Fajardo is fine with verified reports being visible
+    to every signed-in user, outsiders included. Still to review: the terms/privacy
+    wording.
 
 ## Roles and report verification (2026-10-16)
 
@@ -170,6 +171,10 @@ a `/users` page for admins.
 **Decided 2026-10-16:** only admins (and the owner) see a researcher's name; only
 `Verified` reports feed classifier training (`trainingEligible` requires it); admins
 can block and unblock accounts (`PATCH /api/v1/users/<id>/ {"isActive": bool}`).
+**Adviser, 2026-10-19:** Dr. Fajardo asked for the researcher name to be omitted
+because of a data-privacy concern. It is shown only to the report's owner and to
+admins; no other user or verifier sees it, and it is blank in anyone else's view and
+exports. What is collected did not change, and the team chose to keep it that way.
 
 ## Paper Features vs. Frontend Implementation
 
