@@ -77,9 +77,11 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   training; only admins (and the owner) see a researcher's name. The frontend has
   `/review` (verifiers, admins) and `/users` (admins; appoint verifiers, block
   accounts), a first version for Niño to refine. Smoke-tested live with a new
-  gmail account (submit, stays private, admin approves, appears on the map). Still
-  open for the adviser: whether outsiders should see the shared data, and the
-  terms/privacy wording (`docs/system-spec.md`).
+  gmail account (submit, stays private, admin approves, appears on the map). Dr. Fajardo
+  (2026-10-19) is fine with verified reports being visible to every signed-in
+  user and wants the researcher name kept from view, which it already is (owner
+  and admins only). Still to review: the terms/privacy wording
+  (`docs/system-spec.md`).
 - **Workflow and board:** `CONTRIBUTING.md` is in use (first cycle: issue #1 →
   PR #2, the accented-name fix `5c23fd9`). The GitHub Projects board **"PolLens"
   exists** (org `pollens-thesis`, project number **1**, columns Backlog → Ready →
