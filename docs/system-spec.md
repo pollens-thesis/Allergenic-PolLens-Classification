@@ -110,8 +110,12 @@ only in the gitignored `docs/private/`. Render (Root Directory `api`) and Vercel
     any "most allergenic" ranking can be shown. **Partly filled 2026-09-26:** the
     Allergen Reference is now a searchable species atlas with common and Filipino
     names, botanical descriptions and credited Wikimedia Commons photos (Species
-    fields, editable in Django admin; marked for UPLB verification). **Season and
-    allergenic risk are still open** — risk stays "Not assessed".
+    fields, editable in Django admin; marked for UPLB verification). **Admins can
+    also edit it in the app since 2026-10-20 (issue #76):** Edit Reference on a
+    species record (text, season, risk, photo upload); id, scientific name, code
+    and colour are locked, species can't be added or deleted. **Season and
+    allergenic risk values are still open** — risk stays "Not assessed" until
+    UPLB supplies it.
 12. **Open sign-in to any Google account** — decided by the user 2026-09-26 and
     **built 2026-10-16, turned on in production 2026-10-18** (issue #9): `SIGNIN_ALLOW_ALL=true` on Render lets any
     Google account and any Microsoft work/school account in; the domain allowlist

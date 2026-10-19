@@ -63,6 +63,11 @@ git clone https://github.com/pollens-thesis/Allergenic-PolLens-Classification.gi
   adding the origin to Google, Render CORS, Entra and R2; the old address is still
   in those lists. Brand verification was tied to the old domain: re-add the new one
   in Search Console and retry **Verify branding**.
+- **Allergen Reference editing (2026-10-20, issue #76, in PR review):** admins
+  edit species names, botanical text, season, risk and photo from the app
+  (Edit Reference in a species record; `PATCH /reports/species/<id>/` and
+  `.../photo/`); `Species.reference_name` replaces the hardcoded card names
+  (migration 0015). Id, scientific name, code and colour stay locked.
 - **My Reports filter (live 2026-10-19, issue #71, PR #72):** an All Reports /
   My Reports toggle on `/reports` (also `?owner=me`), backed by a new `isMine`
   flag on every report.
