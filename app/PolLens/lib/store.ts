@@ -20,6 +20,7 @@ import {
   type GrainAnnotation,
   type GrainAnnotationKind,
   type BoundingBox,
+  type Species,
   type SpeciesId,
   type ReportStatus,
   type Specimen,
@@ -27,6 +28,7 @@ import {
   type Verification,
 } from "@/lib/data";
 import type { Role } from "@/lib/settings";
+import { withReferenceName } from "@/lib/species-names";
 import type { NewReportInput } from "@/lib/analysis";
 import { apiFetch, SessionExpiredError } from "@/lib/api";
 import { BRAND_NAME } from "@/lib/brand";
@@ -75,6 +77,15 @@ const FIELD_LABELS: Record<string, string> = {
   researcher: "Researcher",
   slides: "Slides",
   status: "Status",
+  referenceName: "Display name",
+  commonName: "English name",
+  filipinoName: "Filipino name",
+  growthForm: "Growth form",
+  riskLevel: "Risk level",
+  infoSource: "Source",
+  photoCredit: "Photo credit",
+  photoLicense: "Photo license",
+  photoSource: "Photo source link",
 };
 
 function firstFieldError(errors: unknown): string | null {
@@ -331,4 +342,42 @@ export async function updateUser(
   });
   if (!res.ok) throw new ReportStoreError(await errorMessage(res, "Couldn't update the account."));
   return (await res.json()) as ManagedUser;
+}
+
+/** The Allergen Reference fields an admin may edit (the id, scientific name, code and colour are locked). */
+export type SpeciesEdit = Partial<Pick<
+  Species,
+  | "referenceName" | "commonName" | "filipinoName" | "family" | "growthForm" | "description"
+  | "distribution" | "pollination" | "season" | "riskLevel" | "infoSource"
+  | "photoCredit" | "photoLicense" | "photoSource"
+>>;
+
+/** Save edits to one species' reference text (admins only). */
+export async function updateSpecies(id: SpeciesId, patch: SpeciesEdit): Promise<Species> {
+  const res = await request(`/api/v1/reports/species/${encodeURIComponent(id)}/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw new ReportStoreError(await errorMessage(res, "Couldn't save the species."));
+  return withReferenceName((await res.json()) as Species);
+}
+
+/** Replace a species' photo with an uploaded JPEG or PNG (admins only). */
+export async function uploadSpeciesPhoto(id: SpeciesId, file: File): Promise<Species> {
+  const formData = new FormData();
+  formData.append("image", file);
+  const res = await request(`/api/v1/reports/species/${encodeURIComponent(id)}/photo/`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) throw new ReportStoreError(await errorMessage(res, "Couldn't upload the photo."));
+  return withReferenceName((await res.json()) as Species);
+}
+
+/** Remove an uploaded photo so the species shows its original one again (admins only). */
+export async function removeSpeciesPhoto(id: SpeciesId): Promise<Species> {
+  const res = await request(`/api/v1/reports/species/${encodeURIComponent(id)}/photo/`, { method: "DELETE" });
+  if (!res.ok) throw new ReportStoreError(await errorMessage(res, "Couldn't reset the photo."));
+  return withReferenceName((await res.json()) as Species);
 }
