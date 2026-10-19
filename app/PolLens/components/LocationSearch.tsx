@@ -78,10 +78,42 @@ export function findPlace(places: Place[], label: string): Place | null {
 }
 
 /**
+ * The one place whose bare town or province name is `text` ("Lucena City" →
+ * "Lucena City, Quezon"); null when none or several share it ("San Jose").
+ */
+function findPlaceByName(places: Place[], text: string): Place | null {
+  const key = fold(text.trim());
+  if (!key) return null;
+  const matches = places.filter(
+    (place) => fold(place.kind === "town" ? place.town : place.province) === key,
+  );
+  return matches.length === 1 ? matches[0] : null;
+}
+
+/** Whether `label` is a listed place: null while the list loads, false if it is not. */
+export function useKnownPlace(label: string): boolean | null {
+  const [places, setPlaces] = useState<Place[] | null>(null);
+  useEffect(() => {
+    if (places) return;
+    let cancelled = false;
+    loadPlaces().then((loaded) => {
+      if (!cancelled) setPlaces(loaded);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [places]);
+  if (!label.trim()) return true;
+  return places ? findPlace(places, label) !== null : null;
+}
+
+/**
  * Location field with search-as-you-type suggestions from the Philippine
  * Standard Geographic Code (PSGC) list the map is drawn from — so every picked
- * place is spelled the way the map matches it. Free text is still accepted
- * (a note warns it won't be plotted), since a site may not be a town.
+ * place is spelled the way the map matches it. By default free text is
+ * accepted (a note warns it won't be plotted). With `strict`, the field can
+ * only hold a listed place: typed text is turned into the matching place when
+ * you leave the field, or put back when it matches none.
  *
  * WAI-ARIA combobox pattern: ↑/↓ move, Enter picks, Esc closes.
  */
@@ -92,6 +124,7 @@ export default function LocationSearch({
   placeholder,
   className,
   warnUnrecognised = true,
+  strict = false,
 }: {
   value: string;
   onChange: (text: string) => void;
@@ -101,6 +134,8 @@ export default function LocationSearch({
   className?: string;
   /** Warn when the text isn't a known place (off where partial text is a search). */
   warnUnrecognised?: boolean;
+  /** Only a listed place can be the value; `onChange` then gets labels (or "") only. */
+  strict?: boolean;
 }) {
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -108,6 +143,17 @@ export default function LocationSearch({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [focused, setFocused] = useState(false);
+  // Strict mode: what is typed, until it is committed as a listed place.
+  const [draft, setDraft] = useState(value);
+  const [rejected, setRejected] = useState(false);
+  const text = strict ? draft : value;
+
+  // The parent's value changed (a restored draft, a loaded report): show it.
+  const [seenValue, setSeenValue] = useState(value);
+  if (seenValue !== value) {
+    setSeenValue(value);
+    setDraft(value);
+  }
 
   // An existing value (a restored draft, the result page) needs the list to
   // say whether it is a recognised place.
@@ -122,7 +168,7 @@ export default function LocationSearch({
     };
   }, [value, places]);
 
-  const q = fold(value.trim());
+  const q = fold(text.trim());
   const suggestions = useMemo(() => {
     if (!places || !q) return [];
     return places
@@ -145,8 +191,31 @@ export default function LocationSearch({
 
   function choose(place: Place) {
     onChange(place.label);
+    setDraft(place.label);
+    setRejected(false);
     onSelectPlace?.(place);
     setOpen(false);
+  }
+
+  /** Strict mode: settle the typed text as a listed place, or put the last place back. */
+  function commitDraft() {
+    if (!strict) return;
+    const typed = draft.trim();
+    if (!typed) {
+      setDraft("");
+      setRejected(false);
+      if (value) onChange("");
+      return;
+    }
+    const match = places ? (findPlace(places, typed) ?? findPlaceByName(places, typed)) : null;
+    if (match) {
+      setDraft(match.label);
+      setRejected(false);
+      if (match.label !== value) onChange(match.label);
+    } else {
+      setDraft(value);
+      setRejected(true);
+    }
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -164,6 +233,9 @@ export default function LocationSearch({
     } else if (event.key === "Enter" && showList) {
       event.preventDefault();
       choose(suggestions[activeIndex]);
+    } else if (event.key === "Enter" && strict) {
+      event.preventDefault();
+      commitDraft();
     } else if (event.key === "Escape" && showList) {
       event.preventDefault();
       setOpen(false);
@@ -182,10 +254,15 @@ export default function LocationSearch({
         aria-activedescendant={showList ? `${listId}-${activeIndex}` : undefined}
         autoComplete="off"
         spellCheck={false}
-        value={value}
+        value={text}
         placeholder={placeholder}
         onChange={(event) => {
-          onChange(event.target.value);
+          if (strict) {
+            setDraft(event.target.value);
+            setRejected(false);
+          } else {
+            onChange(event.target.value);
+          }
           setActive(0);
           setOpen(true);
         }}
@@ -197,6 +274,7 @@ export default function LocationSearch({
         onBlur={() => {
           setFocused(false);
           setOpen(false);
+          commitDraft();
         }}
         onKeyDown={handleKeyDown}
         className={className}
@@ -237,7 +315,16 @@ export default function LocationSearch({
         </ul>
       )}
 
-      {warnUnrecognised && !focused && !recognised && (
+      {strict && !focused && (rejected || !recognised) && (
+        <p className="mt-1 flex items-start gap-1 text-[12px] text-danger">
+          <TriangleAlert size={12} strokeWidth={2} className="mt-0.5 shrink-0" />
+          {rejected
+            ? "Choose a town or province from the list."
+            : "Not in the list. Choose a town or province from the list."}
+        </p>
+      )}
+
+      {!strict && warnUnrecognised && !focused && !recognised && (
         <p className="mt-1 flex items-start gap-1 text-[12px] text-processing">
           <TriangleAlert size={12} strokeWidth={2} className="mt-0.5 shrink-0" />
           Not a recognized town or province — it won&apos;t appear on the map.
