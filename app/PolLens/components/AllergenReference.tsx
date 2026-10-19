@@ -2,21 +2,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
-import { ChevronLeft, ChevronRight, ImageOff, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImageOff, Pencil, Search, X } from "lucide-react";
 import type { Species } from "@/lib/data";
 import { useSpeciesCatalog } from "@/lib/species-catalog";
 import { useReportGrainCounts } from "@/lib/report-grain-counts";
-import { additionalSpeciesNames, CLASSIFIER_SPECIES_IDS, DATASET_SPECIES_NAMES } from "@/lib/species-names";
+import { useSettings } from "@/lib/settings";
+import { additionalSpeciesNames, CLASSIFIER_SPECIES_IDS, researchSpeciesName } from "@/lib/species-names";
 import { pollenTrendColor } from "@/lib/pollen-trend-colors";
 import RiskBadge from "@/components/RiskBadge";
-import { buttonVariants } from "@/components/Button";
+import { Button, buttonVariants } from "@/components/Button";
+import SpeciesEditForm from "@/components/SpeciesEditForm";
 
 /**
  * The 15 species in the current EfficientNet classifier, shown as a searchable
  * atlas. Keep the wider catalog available elsewhere for historical reports.
  *
- * Reference text and photos come from the API (Django admin → Species); the
- * text is botanical only — the risk stamp reads "Not Assessed" until UPLB
+ * Reference text and photos come from the API; admins edit them here (Edit in
+ * a species record) or in the Django admin → Species. The text is botanical only — the risk stamp reads "Not Assessed" until UPLB
  * supplies allergenicity data. Photos are freely licensed and always credited.
  */
 const PAGE_SIZE = 9;
@@ -28,13 +30,13 @@ function fold(text: string): string {
 function searchText(sp: Species): string {
   return fold([
     sp.scientificName, sp.commonName, sp.catalogName ?? "", sp.filipinoName ?? "",
-    DATASET_SPECIES_NAMES[sp.id] ?? "", sp.code,
+    sp.referenceName ?? "", sp.code,
   ].join(" "));
 }
 
 /** The dataset name under the binomial, with catalog names as fallback. */
 function plantNames(sp: Species): string {
-  return DATASET_SPECIES_NAMES[sp.id] ?? [sp.commonName, sp.filipinoName].filter(Boolean).join(" · ");
+  return researchSpeciesName(sp);
 }
 
 function otherPlantNames(sp: Species): string {
@@ -256,7 +258,7 @@ function SpeciesCard({
       aria-haspopup="dialog"
       className="focus-ring card-panel card-panel-interactive group flex h-full w-full flex-col overflow-hidden text-left transition-transform duration-[var(--duration-fast)] ease-[var(--ease-out)] active:scale-[0.99]"
     >
-      <SpeciesPhoto sp={sp} className="aspect-[4/3] w-full border-b border-border" />
+      <SpeciesPhoto key={photoFor(sp)} sp={sp} className="aspect-[4/3] w-full border-b border-border" />
       <span className="flex flex-1 flex-col px-3 pt-2.5 pb-3">
         {/* Primary: the binomial. Secondary: the names people use for the plant. */}
         <span className="t-binomial text-[16px] leading-snug font-semibold text-text">{sp.scientificName}</span>
@@ -297,8 +299,18 @@ function SpeciesRecord({
   grains: number | null;
   onClose: () => void;
 }) {
+  const { role } = useSettings();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const editing = sp !== null && editingId === sp.id;
   return (
-    <Dialog.Root open={sp !== null} onOpenChange={(next) => !next && onClose()}>
+    <Dialog.Root
+      open={sp !== null}
+      onOpenChange={(next) => {
+        if (next) return;
+        setEditingId(null);
+        onClose();
+      }}
+    >
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-40 bg-black/40 transition-opacity duration-[var(--duration-base)] ease-[var(--ease-out)] data-[starting-style]:opacity-0 data-[ending-style]:opacity-0" />
         <Dialog.Popup className="fixed top-1/2 left-1/2 z-50 max-h-[calc(100vh-2rem)] w-[min(60rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-surface shadow-lg outline-none transition-all duration-[var(--duration-base)] ease-[var(--ease-out)] data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0">
@@ -314,7 +326,7 @@ function SpeciesRecord({
             <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
               {/* The plate */}
               <figure className="flex flex-col border-b border-border md:border-r md:border-b-0">
-                <SpeciesPhoto sp={sp} className="aspect-[4/3] w-full shrink-0 border-b border-border" />
+                <SpeciesPhoto key={photoFor(sp)} sp={sp} className="aspect-[4/3] w-full shrink-0 border-b border-border" />
                 {sp.photoCredit && (
                   <figcaption className="shrink-0 border-t border-border px-4 py-2 text-[12px] text-text-muted">
                     Photo: {sp.photoCredit} ·{" "}
@@ -330,12 +342,15 @@ function SpeciesRecord({
                     ) : (
                       sp.photoLicense
                     )}
-                    , via Wikimedia Commons
+                    {!sp.photoUploaded && ", via Wikimedia Commons"}
                   </figcaption>
                 )}
               </figure>
 
-              {/* The record */}
+              {/* The record, or its editor for an admin */}
+              {editing ? (
+                <SpeciesEditForm species={sp} onDone={() => setEditingId(null)} />
+              ) : (
               <div className="relative p-5 sm:p-6">
                 <span className="plate-label text-[12px]">{sp.code}</span>
                 <Dialog.Title className="mt-0.5 pr-10 text-[1.875rem] leading-tight font-semibold text-text">
@@ -387,7 +402,17 @@ function SpeciesRecord({
                   </div>
                 )}
 
+                {role === "admin" && (
+                  <div className="mt-5 border-t border-border pt-4">
+                    <Button type="button" intent="secondary" size="sm" onClick={() => setEditingId(sp.id)}>
+                      <Pencil size={13} strokeWidth={1.75} />
+                      Edit Reference
+                    </Button>
+                  </div>
+                )}
+
               </div>
+              )}
             </div>
           )}
         </Dialog.Popup>

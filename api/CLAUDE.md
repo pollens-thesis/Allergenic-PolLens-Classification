@@ -290,6 +290,20 @@ between the thesis proposal paper and the frontend.
     verified by the UPLB team" (`info_source`); `risk_level` stays
     "Not assessed" — no clinical claims. All fields are editable in the
     Species admin (grouped fieldsets).
+    **Admin editing in the app (2026-10-20, issue #76):** `PATCH
+    /api/v1/reports/species/<id>/` (JSON, admin only, 403 otherwise) edits
+    `referenceName`, `commonName`, `filipinoName`, `family`, `growthForm`,
+    `description`, `distribution`, `pollination`, `season`, `riskLevel`,
+    `infoSource`, `photoCredit`, `photoLicense`, `photoSource`; any other key
+    (`id`, `scientificName`, `code`, `color`) or an empty body is a 400 — those
+    are locked because detection, FKs and chart colours depend on them. `POST
+    .../<id>/photo/` (multipart `image`, same JPEG/PNG checks as slides) stores
+    an upload in `Species.photo` (replacing and deleting the previous file after
+    commit); `DELETE` removes it so `photoUrl` falls back to the bundled
+    `/species/<id>.jpg`. The list now also returns `referenceName` and
+    `photoUploaded`. `Species.reference_name` replaced the frontend's hardcoded
+    `DATASET_SPECIES_NAMES` (migration 0015 copied the 15 names; blank falls back to
+    `commonName`). No species can be added or deleted (the model fixes the list).
   - **`POST /api/v1/reports/detect/`** (`reports.views.DetectView`,
     `IsAuthenticated`; registered in `config/urls.py` before
     `<sample_id>/` for the same reason as `monthly-counts/`/`species/`).

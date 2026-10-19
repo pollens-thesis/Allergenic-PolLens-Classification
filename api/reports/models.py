@@ -254,6 +254,11 @@ class Slide(models.Model):
         return sorted(result, key=lambda row: (-row['grain_count'], -row['avg_confidence']))
 
 
+def species_photo_upload_to(instance, filename):
+    suffix = pathlib.Path(filename).suffix
+    return f'species/{instance.pk}-{uuid.uuid4().hex[:8]}{suffix}'
+
+
 class Species(models.Model):
     """
     The 23-species UPLB pollen catalog — single source of truth for the
@@ -286,6 +291,12 @@ class Species(models.Model):
     photo_credit = models.CharField(max_length=120, blank=True, default='')
     photo_license = models.CharField(max_length=40, blank=True, default='')
     photo_source = models.URLField(max_length=300, blank=True, default='')
+    # The name shown on cards, reports and the map (the label researchers use
+    # in the dataset, e.g. "Pigweed"); blank falls back to common_name. Admins
+    # edit it in the app. Replaces the frontend's hardcoded DATASET_SPECIES_NAMES.
+    reference_name = models.CharField(max_length=100, blank=True, default='')
+    # A photo an admin uploaded; when set it replaces the bundled photo_url.
+    photo = models.ImageField(upload_to=species_photo_upload_to, null=True, blank=True)
 
     class Meta:
         ordering = ['sort_order']

@@ -45,6 +45,8 @@ export type Species = {
   commonName: string;
   /** The catalog's English plant name before the reference label replaced `commonName`. */
   catalogName?: string;
+  /** The Allergen Reference name admins edit (API only); the bundled copy falls back to lib/species-names.ts. */
+  referenceName?: string;
   code: string; // taxonomic-style short tag, e.g. AMAR
   season: string;
   /** "Not assessed" until real allergenicity data is entered (backend admin). */
@@ -60,8 +62,9 @@ export type Species = {
   distribution?: string;
   pollination?: string;
   infoSource?: string;
-  /** A freely licensed photo bundled at /species/<id>.jpg, with its credit. */
+  /** The photo: bundled at /species/<id>.jpg, or an admin's upload (`photoUploaded`), with its credit. */
   photoUrl?: string;
+  photoUploaded?: boolean;
   photoCredit?: string;
   photoLicense?: string;
   photoSource?: string;
@@ -118,12 +121,23 @@ const bundledSpecies: Species[] = [
  */
 export const speciesCatalog: Species[] = bundledSpecies.map(withReferenceName);
 
+let liveSpecies: Species[] | null = null;
+
 /**
- * The bundled entry for `id`. A species added on the server after this build
+ * Registers the catalog fetched from the API so `getSpecies` (and so the PDF and
+ * Excel exports and the chart colours) reflect an admin's edits, not just the
+ * bundled copy. Called by lib/species-catalog.ts after each fetch.
+ */
+export function setLiveSpecies(catalog: Species[]): void {
+  liveSpecies = catalog;
+}
+
+/**
+ * The catalog entry for `id` (live once fetched, else the bundled one). A species added on the server after this build
  * gets a neutral stand-in (its id, humanised) instead of crashing the page.
  */
 export function getSpecies(id: SpeciesId): Species {
-  const found = speciesCatalog.find((s) => s.id === id);
+  const found = (liveSpecies ?? speciesCatalog).find((s) => s.id === id) ?? speciesCatalog.find((s) => s.id === id);
   if (found) return found;
   const name = String(id).replace(/_/g, " ");
   return {

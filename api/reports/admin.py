@@ -36,12 +36,12 @@ class SpeciesAdmin(admin.ModelAdmin):
     search_fields = ('id', 'scientific_name', 'common_name', 'filipino_name')
     fieldsets = (
         (None, {'fields': ('id', 'scientific_name', 'code', 'sort_order', 'color')}),
-        ('Names', {'fields': ('common_name', 'filipino_name')}),
+        ('Names', {'fields': ('reference_name', 'common_name', 'filipino_name')}),
         ('Allergen data', {'fields': ('risk_level', 'season')}),
         ('Reference (Allergen Reference page)', {
             'fields': ('family', 'growth_form', 'description', 'distribution', 'pollination', 'info_source'),
         }),
-        ('Photo', {'fields': ('photo_url', 'photo_credit', 'photo_license', 'photo_source')}),
+        ('Photo', {'fields': ('photo', 'photo_url', 'photo_credit', 'photo_license', 'photo_source')}),
     )
 
 

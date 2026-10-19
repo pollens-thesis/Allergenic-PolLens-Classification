@@ -147,7 +147,12 @@ the backend change first.
 1. **Power-user and help affordances** (from the Sept 18 critique): keyboard
    shortcuts, a small help/about entry. Low priority.
 2. **Adviser/UPLB data** — species season and allergenic risk; UPLB to verify
-  the species reference text (editable in Django admin → Species, not in code).
+  the species reference text. Admins now edit it in the app (Allergen Reference →
+  a species → **Edit Reference**: names, text, season, risk, photo upload/reset,
+  `components/SpeciesEditForm.tsx`, issue #76) or in Django admin → Species. The
+  id, scientific name, code and colour are locked; card names come from the
+  server's `referenceName` (`lib/species-names.ts` keeps the old names only as the
+  offline fallback).
 3. **Adviser decisions** still open are listed in `PRODUCT.md` and
   `docs/system-spec.md` (architecture sign-off, map pins vs. choropleth,
   theme reconciliation (light default + user-selectable dark mode are built),

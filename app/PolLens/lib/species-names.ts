@@ -50,19 +50,30 @@ export const DATASET_SPECIES_NAMES: Partial<Record<SpeciesId, string>> = {
  * the app: the bundled `speciesCatalog` and the API response.
  */
 export function withReferenceName(species: Species): Species {
+  const catalogName = species.catalogName ?? species.commonName;
   return {
     ...species,
-    catalogName: species.catalogName ?? species.commonName,
-    commonName: DATASET_SPECIES_NAMES[species.id] ?? species.commonName,
+    catalogName,
+    commonName: referenceLabel(species) ?? catalogName,
   };
 }
 
-type SpeciesNames = Pick<Species, "id" | "commonName" | "catalogName" | "filipinoName">;
+/**
+ * The Allergen Reference label: what an admin saved on the server (an empty
+ * string means "use the catalog name"), else the bundled dataset name for the
+ * bundled catalog, which has no `referenceName`.
+ */
+function referenceLabel(species: Pick<Species, "id" | "referenceName">): string | undefined {
+  if (species.referenceName !== undefined) return species.referenceName || undefined;
+  return DATASET_SPECIES_NAMES[species.id];
+}
+
+type SpeciesNames = Pick<Species, "id" | "commonName" | "catalogName" | "filipinoName" | "referenceName">;
 
 /** The dataset's familiar label, falling back to the catalog's plant names. */
 export function researchSpeciesName(species: SpeciesNames): string {
-  return DATASET_SPECIES_NAMES[species.id]
-    ?? [species.commonName, species.filipinoName].filter(Boolean).join(" · ");
+  return referenceLabel(species)
+    ?? [species.catalogName ?? species.commonName, species.filipinoName].filter(Boolean).join(" · ");
 }
 
 /** Catalog names not already represented by the dataset's primary label. */

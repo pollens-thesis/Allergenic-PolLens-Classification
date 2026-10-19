@@ -9,6 +9,7 @@ import re
 import uuid
 import zoneinfo
 from pathlib import Path
+from types import SimpleNamespace
 
 import requests
 from PIL import Image as PILImage
@@ -46,6 +47,7 @@ from .serializers import (
     ReportSerializer,
     ReportUpdateSerializer,
     SpeciesSerializer,
+    SpeciesUpdateSerializer,
 )
 
 DATE_PARAM_VALIDATOR = re.compile(r'^\d{4}-\d{2}-\d{2}$')
@@ -683,13 +685,112 @@ class ReportMonthlyCountsView(APIView):
         return Response(result)
 
 
+def _stored_file(field_file):
+    # Snapshot of the file now on disk: assigning a new upload mutates the same
+    # FieldFile object, so the old name must be captured before saving.
+    if not field_file:
+        return None
+    return SimpleNamespace(storage=field_file.storage, name=field_file.name)
+
+
+ADMIN_ONLY_SPECIES_DETAIL = 'Only an admin can edit the Allergen Reference.'
+
+
 class SpeciesListView(APIView):
     """GET /api/v1/reports/species/ — the full pollen species catalog, curated order."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response(SpeciesSerializer(Species.objects.all(), many=True).data)
+        return Response(
+            SpeciesSerializer(Species.objects.all(), many=True, context={'request': request}).data
+        )
+
+
+class SpeciesDetailView(APIView):
+    """
+    PATCH /api/v1/reports/species/<id>/ — admin only. Edits the Allergen
+    Reference content (names, botanical text, season, risk level, photo
+    credit); the id, scientific name, code, colour and order are locked, and
+    species can't be added or deleted (the detection model fixes the list).
+    """
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser]
+
+    def patch(self, request, species_id):
+        if not request.user.is_superuser:
+            return Response({'detail': ADMIN_ONLY_SPECIES_DETAIL}, status=status.HTTP_403_FORBIDDEN)
+        species = Species.objects.filter(pk=species_id).first()
+        if species is None:
+            return Response({'detail': 'Species not found.'}, status=status.HTTP_404_NOT_FOUND)
+        data = request.data if isinstance(request.data, dict) else {}
+        serializer = SpeciesUpdateSerializer(data=data)
+        unknown = sorted(set(data) - set(serializer.fields))
+        if not data or unknown:
+            return Response(
+                {'detail': 'Send only editable fields: ' + ', '.join(serializer.fields) + '.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not serializer.is_valid():
+            return Response(
+                {'detail': 'Some fields are not valid.', 'errors': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        for field, value in serializer.validated_data.items():
+            setattr(species, field, value)
+        species.save(update_fields=list(serializer.validated_data))
+        return Response(SpeciesSerializer(species, context={'request': request}).data)
+
+
+class SpeciesPhotoView(APIView):
+    """
+    POST   /api/v1/reports/species/<id>/photo/ — admin only, multipart `image`
+           (JPEG/PNG, same checks as slides). Replaces any earlier upload.
+    DELETE /api/v1/reports/species/<id>/photo/ — admin only. Removes the
+           upload so the species falls back to its bundled photo.
+    """
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def _species(self, request, species_id):
+        if not request.user.is_superuser:
+            return None, Response({'detail': ADMIN_ONLY_SPECIES_DETAIL}, status=status.HTTP_403_FORBIDDEN)
+        species = Species.objects.filter(pk=species_id).first()
+        if species is None:
+            return None, Response({'detail': 'Species not found.'}, status=status.HTTP_404_NOT_FOUND)
+        return species, None
+
+    def post(self, request, species_id):
+        species, error = self._species(request, species_id)
+        if error:
+            return error
+        upload = request.FILES.get('image')
+        if upload is None:
+            return Response({'detail': 'An image file is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            suffix = check_slide_image(upload)
+        except SlideImageError as exc:
+            return image_error_response(exc)
+        old = _stored_file(species.photo)
+        upload.name = f'photo{suffix}'
+        species.photo.save(upload.name, upload, save=False)
+        species.save(update_fields=['photo'])
+        if old:
+            transaction.on_commit(lambda: delete_image_files([old]))
+        return Response(SpeciesSerializer(species, context={'request': request}).data)
+
+    def delete(self, request, species_id):
+        species, error = self._species(request, species_id)
+        if error:
+            return error
+        old = _stored_file(species.photo)
+        species.photo = None
+        species.save(update_fields=['photo'])
+        if old:
+            transaction.on_commit(lambda: delete_image_files([old]))
+        return Response(SpeciesSerializer(species, context={'request': request}).data)
 
 
 class ReportDetailView(APIView):

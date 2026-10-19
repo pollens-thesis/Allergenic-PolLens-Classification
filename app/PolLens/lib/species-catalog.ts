@@ -15,7 +15,7 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useSyncExternalStore } from "react";
-import { getSpecies, speciesCatalog, type Species, type SpeciesId } from "./data";
+import { getSpecies, setLiveSpecies, speciesCatalog, type Species, type SpeciesId } from "./data";
 import { fetchSpeciesCatalog } from "./backend";
 import { useSettings } from "./settings";
 
@@ -47,12 +47,23 @@ async function refreshCatalog(account: string): Promise<void> {
   fetchedFor = account;
   try {
     currentCatalog = await fetchSpeciesCatalog();
+    setLiveSpecies(currentCatalog);
     notify();
   } catch {
     // Keep showing the fallback catalog — a failed refresh shouldn't blank
     // out species labels. Clear the guard so a later render can retry.
     fetchedFor = null;
   }
+}
+
+/**
+ * Fetches the catalog again right away, for after an admin saves an edit so
+ * every screen shows it without a reload.
+ */
+export async function reloadSpeciesCatalog(): Promise<void> {
+  currentCatalog = await fetchSpeciesCatalog();
+  setLiveSpecies(currentCatalog);
+  notify();
 }
 
 /**
