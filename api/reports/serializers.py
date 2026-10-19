@@ -5,6 +5,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from .models import (
+    RISK_LEVEL_CHOICES,
     STATUS_CHOICES,
     STATUS_TRANSITIONS,
     WEATHER_CONDITION_CHOICES,
@@ -366,10 +367,46 @@ class SpeciesSerializer(serializers.Serializer):
     distribution = serializers.CharField()
     pollination = serializers.CharField()
     infoSource = serializers.CharField(source='info_source')
-    photoUrl = serializers.CharField(source='photo_url')
+    referenceName = serializers.CharField(source='reference_name')
+    photoUrl = serializers.SerializerMethodField()
+    # True when an admin uploaded the photo (it can then be reset to the bundled one).
+    photoUploaded = serializers.SerializerMethodField()
     photoCredit = serializers.CharField(source='photo_credit')
     photoLicense = serializers.CharField(source='photo_license')
     photoSource = serializers.CharField(source='photo_source')
+
+    def get_photoUrl(self, obj):
+        if not obj.photo:
+            return obj.photo_url
+        url = obj.photo.url
+        request = self.context.get('request')
+        return request.build_absolute_uri(url) if request else url
+
+    def get_photoUploaded(self, obj):
+        return bool(obj.photo)
+
+
+class SpeciesUpdateSerializer(serializers.Serializer):
+    """
+    PATCH /api/v1/reports/species/<id>/ — the reference content an admin may
+    edit. The id, scientific name, code, colour and order are not here: the
+    detection mapping, foreign keys and chart colours depend on them.
+    """
+
+    referenceName = serializers.CharField(source='reference_name', max_length=100, allow_blank=True, required=False)
+    commonName = serializers.CharField(source='common_name', max_length=100, allow_blank=True, required=False)
+    filipinoName = serializers.CharField(source='filipino_name', max_length=100, allow_blank=True, required=False)
+    family = serializers.CharField(max_length=60, allow_blank=True, required=False)
+    growthForm = serializers.CharField(source='growth_form', max_length=100, allow_blank=True, required=False)
+    description = serializers.CharField(max_length=5000, allow_blank=True, required=False)
+    distribution = serializers.CharField(max_length=255, allow_blank=True, required=False)
+    pollination = serializers.CharField(max_length=60, allow_blank=True, required=False)
+    season = serializers.CharField(max_length=100, allow_blank=True, required=False)
+    riskLevel = serializers.ChoiceField(source='risk_level', choices=RISK_LEVEL_CHOICES, required=False)
+    infoSource = serializers.CharField(source='info_source', max_length=255, allow_blank=True, required=False)
+    photoCredit = serializers.CharField(source='photo_credit', max_length=120, allow_blank=True, required=False)
+    photoLicense = serializers.CharField(source='photo_license', max_length=40, allow_blank=True, required=False)
+    photoSource = serializers.URLField(source='photo_source', max_length=300, allow_blank=True, required=False)
 
 
 class BoundingBoxSerializer(serializers.Serializer):

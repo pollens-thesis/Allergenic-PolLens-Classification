@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 
 import requests
 from PIL import Image
+from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
@@ -20,8 +21,11 @@ from rest_framework.test import APITestCase
 from accounts.models import User
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Detection, Grain, Report, Slide, next_sample_id
+from .models import Detection, Grain, Report, Slide, Species, next_sample_id
 from .views import all_species_ids
+
+
+_TEMP_MEDIA = tempfile.mkdtemp(prefix='pollens-test-media-')
 
 
 def make_test_image(name='slide.png'):
@@ -654,10 +658,106 @@ class SpeciesListViewTests(APITestCase):
                 'id', 'scientificName', 'commonName', 'code', 'season', 'riskLevel', 'color',
                 'filipinoName', 'family', 'growthForm', 'description', 'distribution', 'pollination',
                 'infoSource', 'photoUrl', 'photoCredit', 'photoLicense', 'photoSource',
+                'referenceName', 'photoUploaded',
             },
         )
         self.assertEqual(first['scientificName'], 'Amaranthus spinosus')
         self.assertEqual(first['code'], 'AMAR')
+        self.assertEqual(first['referenceName'], 'Pigweed')
+        self.assertFalse(first['photoUploaded'])
+
+
+@override_settings(MEDIA_ROOT=_TEMP_MEDIA)
+class SpeciesEditTests(APITestCase):
+    url = '/api/v1/reports/species/amaranthus_spinosus/'
+    photo_url = '/api/v1/reports/species/amaranthus_spinosus/photo/'
+
+    def setUp(self):
+        self.admin = User.objects.create(email='admin@up.edu.ph', is_superuser=True, is_staff=True)
+        self.verifier = User.objects.create(email='verifier@up.edu.ph', is_verifier=True)
+        self.user = User.objects.create(email='researcher@up.edu.ph')
+
+    def test_requires_authentication(self):
+        self.assertEqual(self.client.patch(self.url, {'family': 'X'}, format='json').status_code, 401)
+
+    def test_only_admins_can_edit(self):
+        for account in (self.user, self.verifier):
+            self.client.force_authenticate(user=account)
+            response = self.client.patch(self.url, {'family': 'X'}, format='json')
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+            photo = self.client.post(self.photo_url, {'image': make_test_image()}, format='multipart')
+            self.assertEqual(photo.status_code, status.HTTP_403_FORBIDDEN)
+            self.assertEqual(self.client.delete(self.photo_url).status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Species.objects.get(pk='amaranthus_spinosus').family, 'Amaranthaceae')
+
+    def test_admin_edits_text_and_risk(self):
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.patch(self.url, {
+            'referenceName': 'Spiny pigweed', 'riskLevel': 'High', 'season': 'Wet season',
+            'description': 'Edited text.', 'photoSource': 'https://commons.wikimedia.org/wiki/File:X.jpg',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['referenceName'], 'Spiny pigweed')
+        species = Species.objects.get(pk='amaranthus_spinosus')
+        self.assertEqual((species.risk_level, species.season, species.description), ('High', 'Wet season', 'Edited text.'))
+        listed = self.client.get('/api/v1/reports/species/').data[0]
+        self.assertEqual(listed['referenceName'], 'Spiny pigweed')
+
+    def test_locked_and_unknown_fields_are_rejected(self):
+        self.client.force_authenticate(user=self.admin)
+        for body in ({'code': 'ZZZZ'}, {'id': 'x'}, {'scientificName': 'X y'}, {'color': '#000000'}, {'nope': 1}, {}):
+            response = self.client.patch(self.url, body, format='json')
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, body)
+        self.assertEqual(Species.objects.get(pk='amaranthus_spinosus').code, 'AMAR')
+
+    def test_invalid_values_are_rejected(self):
+        self.client.force_authenticate(user=self.admin)
+        for body in ({'riskLevel': 'Extreme'}, {'photoSource': 'not a url'}, {'family': 'x' * 61}):
+            response = self.client.patch(self.url, body, format='json')
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, body)
+            self.assertIn('errors', response.data)
+
+    def test_unknown_species_is_404(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch('/api/v1/reports/species/nope/', {'family': 'X'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_photo_upload_replace_and_reset(self):
+        self.client.force_authenticate(user=self.admin)
+
+        first = self.client.post(self.photo_url, {'image': make_test_image()}, format='multipart')
+
+        self.assertEqual(first.status_code, status.HTTP_200_OK)
+        self.assertTrue(first.data['photoUploaded'])
+        self.assertIn('/species/amaranthus_spinosus-', first.data['photoUrl'])
+        first_name = Species.objects.get(pk='amaranthus_spinosus').photo.name
+        self.assertTrue(default_storage.exists(first_name))
+
+        with self.captureOnCommitCallbacks(execute=True):
+            second = self.client.post(self.photo_url, {'image': make_test_image()}, format='multipart')
+        self.assertEqual(second.status_code, status.HTTP_200_OK)
+        second_name = Species.objects.get(pk='amaranthus_spinosus').photo.name
+        self.assertNotEqual(first_name, second_name)
+        self.assertFalse(default_storage.exists(first_name))
+
+        with self.captureOnCommitCallbacks(execute=True):
+            reset = self.client.delete(self.photo_url)
+        self.assertEqual(reset.status_code, status.HTTP_200_OK)
+        self.assertFalse(reset.data['photoUploaded'])
+        self.assertEqual(reset.data['photoUrl'], '/species/amaranthus_spinosus.jpg')
+        self.assertFalse(default_storage.exists(second_name))
+
+    def test_photo_must_be_an_image(self):
+        self.client.force_authenticate(user=self.admin)
+        fake = SimpleUploadedFile('x.jpg', b'not an image', content_type='image/jpeg')
+
+        response = self.client.post(self.photo_url, {'image': fake}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        missing = self.client.post(self.photo_url, {}, format='multipart')
+        self.assertEqual(missing.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Species.objects.get(pk='amaranthus_spinosus').photo)
 
 
 @override_settings(
@@ -928,7 +1028,6 @@ class WeatherViewTests(APITestCase):
         self.assertEqual(self.get(date='2026-09-20').status_code, 502)
 
 
-_TEMP_MEDIA = tempfile.mkdtemp(prefix='pollens-test-media-')
 
 
 @override_settings(MEDIA_ROOT=_TEMP_MEDIA)
@@ -1617,3 +1716,19 @@ class VerifyExistingReportsMigrationTests(TransactionTestCase):
             verification,
             {'Completed': 'Verified', 'Needs review': 'Verified', 'Pending': 'Awaiting'},
         )
+
+
+class ReferenceNameMigrationTests(TransactionTestCase):
+    """0015 copies the names the frontend used to hardcode into the database."""
+
+    def test_reference_names_are_filled(self):
+        Species.objects.filter(pk='mangifera_indica').update(reference_name='')
+        executor = MigrationExecutor(connection)
+        executor.migrate([('reports', '0014_species_reference_name_photo')])
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate([('reports', '0015_fill_reference_names')])
+        names = dict(Species.objects.values_list('id', 'reference_name'))
+        self.assertEqual(names['mangifera_indica'], 'Mango')
+        self.assertEqual(names['amaranthus_spinosus'], 'Pigweed')
+        self.assertEqual(names['pithecellobium_dulce'], '')

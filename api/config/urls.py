@@ -39,7 +39,9 @@ from reports.views import (
     ReportMonthlyCountsView,
     ReportResubmitView,
     ReportVerifyView,
+    SpeciesDetailView,
     SpeciesListView,
+    SpeciesPhotoView,
     WeatherView,
 )
 
@@ -61,6 +63,8 @@ urlpatterns = [
     # "monthly-counts" as a sample id — Django matches patterns in order.
     path('api/v1/reports/monthly-counts/', ReportMonthlyCountsView.as_view(), name='report_monthly_counts'),
     path('api/v1/reports/species/', SpeciesListView.as_view(), name='species_list'),
+    path('api/v1/reports/species/<slug:species_id>/', SpeciesDetailView.as_view(), name='species_detail'),
+    path('api/v1/reports/species/<slug:species_id>/photo/', SpeciesPhotoView.as_view(), name='species_photo'),
     path('api/v1/reports/detect/', DetectView.as_view(), name='report_detect'),
     path('api/v1/reports/weather/', WeatherView.as_view(), name='report_weather'),
     path(
