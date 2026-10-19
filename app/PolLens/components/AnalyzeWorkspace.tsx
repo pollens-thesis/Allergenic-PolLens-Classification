@@ -566,6 +566,7 @@ export default function AnalyzeWorkspace() {
                 <LocationSearch
                   value={location}
                   onChange={setLocation}
+                  strict
                   placeholder="Search town or province, e.g. Candelaria"
                   className={fieldClass}
                 />
