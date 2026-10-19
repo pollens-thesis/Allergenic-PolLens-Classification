@@ -30,7 +30,7 @@ import { displayName } from "@/lib/account";
 import { useSettings } from "@/lib/settings";
 import SpecimenImageViewer from "@/components/SpecimenImageViewer";
 import SpecimenInspector from "@/components/SpecimenInspector";
-import LocationSearch from "@/components/LocationSearch";
+import LocationSearch, { useKnownPlace } from "@/components/LocationSearch";
 import RiskBadge from "@/components/RiskBadge";
 import SummaryTile from "@/components/SummaryTile";
 import SpeciesName from "@/components/SpeciesName";
@@ -189,6 +189,8 @@ export default function AnalysisResultWorkspace({
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [reportName, setReportName] = useState("");
   const [location, setLocation] = useState("");
+  // An older draft may hold free text; only a listed place can be generated.
+  const locationKnown = useKnownPlace(location);
   const [researcher, setResearcher] = useState("");
   const [collectedDate, setCollectedDate] = useState("");
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -435,13 +437,15 @@ export default function AnalysisResultWorkspace({
   const slideIndex = selected ? report.slides.findIndex((slide) => slide.id === selected.id) : -1;
   // One palette for the whole batch: a type keeps its colour on every slide.
   const colors = overlayColors(aggregateSlideDetections(report.slides));
-  const canGenerate = Boolean(collectedDate) && location.trim() !== "" && !isGenerating;
+  const canGenerate = Boolean(collectedDate) && location.trim() !== "" && locationKnown !== false && !isGenerating;
   // Said beside the disabled button, not only further down in Collection Details.
   const generateBlocker = !collectedDate
     ? "Add the collection date to generate the report."
     : location.trim() === ""
       ? "Add a location to generate the report."
-      : null;
+      : locationKnown === false
+        ? "Choose the location from the list to generate the report."
+        : null;
   const top = aggregateSlideDetections(report.slides)[0];
 
   const generateButton = (size: "sm" | "md") => (
@@ -726,6 +730,7 @@ export default function AnalysisResultWorkspace({
                 setLocation(text);
                 edit({ location: text });
               }}
+              strict
               placeholder="Search town or province"
               className={fieldClass}
             />
@@ -760,6 +765,8 @@ export default function AnalysisResultWorkspace({
           <p className="mt-2 text-[13px] text-danger">Add the collection date to generate the report.</p>
         ) : !location.trim() ? (
           <p className="mt-2 text-[13px] text-danger">Add a location to generate the report.</p>
+        ) : locationKnown === false ? (
+          <p className="mt-2 text-[13px] text-danger">Choose the location from the list to generate the report.</p>
         ) : (
           <p className="mt-2 text-[12.5px] text-text-muted">
             Collected {formatCollectedAt(collectedDate)}
