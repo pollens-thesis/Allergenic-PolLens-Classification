@@ -529,9 +529,11 @@ export default function ReportDetail({ sampleId }: { sampleId: string }) {
                       Delete report {report.sampleId}?
                     </AlertDialog.Title>
                     <AlertDialog.Description className="t-prose mt-2 text-text-muted">
-                      This permanently deletes the report and its {report.slides.length}{" "}
-                      {report.slides.length === 1 ? "slide image" : "slide images"} for every
-                      researcher. It can&apos;t be undone.
+                      {`This permanently deletes the report and its ${report.slides.length} ${
+                        report.slides.length === 1 ? "slide image" : "slide images"
+                      }.`}
+                      {report.verification === "Verified" && " It is shared, so it disappears for everyone."}
+                      {" It can’t be undone."}
                     </AlertDialog.Description>
                     <div className="mt-4 flex justify-end gap-2">
                       <AlertDialog.Close className="focus-ring rounded-md border border-border bg-surface px-3 py-1.5 text-[13px] text-text-muted hover:text-text">
