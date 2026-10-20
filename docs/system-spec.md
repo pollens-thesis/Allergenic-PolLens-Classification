@@ -231,6 +231,14 @@ exports. What is collected did not change, and the team chose to keep it that wa
   reports stay excluded from exports until marked completed. This supersedes older dated
   lifecycle notes below.
 
+## White-box test cases revised (2026-10-20, issue #81)
+
+The paper's Table X (TC-WB-01 … 08) assumed client-side Canvas compression, a
+per-batch UUID, a serverless Postgres controller and a "No Allergen Detected"
+status. None of those exist in the implementation, so the cases were rewritten to
+the real branches and tied to tests; see `docs/white-box-tests.md`. Backend
+tests: `WhiteBoxTests` in `api/reports/tests.py`. No product code changed.
+
 ## Notes: Unresolved Conflicts (flagged, not resolved)
 
 - **Backend language/architecture is internally inconsistent in the paper, and also conflicts with the actual repo layout.** The paper's Backend/Data Layer section says "Backend API (Python)," while its Infrastructure/Deployment section says the backend is Next.js serverless API routes co-hosted with the frontend on Vercel with "no separate hosting instance." The actual repo has a standalone top-level `api/` directory being developed independently from `app/PolLens/` (per root `CLAUDE.md`), which doesn't cleanly match either description. This needs a team decision (language/framework, and whether it's co-hosted with the frontend or a separate service) rather than being inferred from either paper section. **Update 2026-09-24:** the implemented architecture is now settled in practice — a Python/Django API deployed separately on Render, the Next.js frontend on Vercel (see the Serverless API Routes row and `docs/deployment.md`). What remains is the team/adviser sign-off that this supersedes the paper's all-on-Vercel description.
