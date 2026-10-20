@@ -1390,6 +1390,69 @@ class QARegressionTests(APITestCase):
         self.assertEqual(data[-1]['series']['amaranthus_spinosus'], 3)
 
 
+class WhiteBoxTests(APITestCase):
+    """Internal branches behind docs/white-box-tests.md (TC-WB-02, 05 and 08)."""
+    url = '/api/v1/reports/'
+
+    def setUp(self):
+        self.user = User.objects.create(email='researcher@up.edu.ph', institution='up.edu.ph')
+        self.client.force_authenticate(user=self.user)
+
+    def post_slides(self, count, **slide_overrides):
+        payload = make_report_payload(
+            slides=json.dumps([make_slide_payload(**slide_overrides) for _ in range(count)]),
+        )
+        for index in range(count):
+            payload[str(index)] = make_test_image()
+        return self.client.post(self.url, payload, format='multipart')
+
+    # TC-WB-02: one batch is one report with one server-assigned id.
+    def test_batch_gets_a_single_sample_id_shared_by_every_slide(self):
+        response = self.post_slides(3)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        sample_id = response.data['sampleId']
+        self.assertEqual(Report.objects.count(), 1)
+        self.assertEqual(
+            [slide['id'] for slide in response.data['slides']],
+            [f'{sample_id}-S1', f'{sample_id}-S2', f'{sample_id}-S3'],
+        )
+        self.assertEqual(set(Slide.objects.values_list('report__sample_id', flat=True)), {sample_id})
+
+    def test_next_batch_gets_the_next_sample_id(self):
+        first = self.post_slides(1).data['sampleId']
+        second = self.post_slides(2).data['sampleId']
+
+        self.assertNotEqual(first, second)
+        self.assertTrue(first.endswith('-0001'))
+        self.assertTrue(second.endswith('-0002'))
+
+    # TC-WB-05: a failure midway through the insert block leaves no partial rows.
+    def test_failed_insert_rolls_back_the_whole_report(self):
+        self.client.raise_request_exception = False
+        with patch.object(Grain.objects, 'bulk_create', side_effect=RuntimeError('insert failed')):
+            with self.assertLogs('django.request', level='ERROR') as logs:
+                response = self.post_slides(2)
+
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertEqual(Report.objects.count(), 0)
+        self.assertEqual(Slide.objects.count(), 0)
+        self.assertEqual(Detection.objects.count(), 0)
+        self.assertEqual(Grain.objects.count(), 0)
+        self.assertTrue(any('Internal Server Error' in line for line in logs.output))
+
+    # TC-WB-08: an empty detector result is a valid slide, not an error.
+    def test_slide_with_no_detections_is_saved_with_no_rows(self):
+        response = self.post_slides(1, detections=[], grains=[])
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual(response.data['slides'][0]['detections'], [])
+        self.assertEqual(response.data['slides'][0]['grains'], [])
+        self.assertEqual(Slide.objects.count(), 1)
+        self.assertEqual(Detection.objects.count(), 0)
+        self.assertEqual(Grain.objects.count(), 0)
+
+
 @override_settings(SIGNIN_ALLOWED_DOMAINS=['up.edu.ph'], SIGNIN_ALLOWED_EMAILS=[])
 class TokenRefreshQATests(APITestCase):
     url = '/api/v1/auth/token/refresh/'
